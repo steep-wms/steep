@@ -1,0 +1,6 @@
+.gradle/
+.idea/
+build/
+out/
+processChainLog/*.log
+jobmanager*.log
