@@ -51,6 +51,10 @@ tasks {
     named<JavaExec>("run") {
         args("run", "JobManager")
     }
+
+    named<Test>("test") {
+        useJUnitPlatform()
+    }
 }
 
 val compileKotlin: KotlinCompile by tasks
