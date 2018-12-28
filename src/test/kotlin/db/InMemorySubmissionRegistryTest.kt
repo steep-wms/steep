@@ -1,7 +1,7 @@
 package db
 
 /**
- * Test for [InMemorySubmissionRegistry]
+ * Tests for [InMemorySubmissionRegistry]
  * @author Michel Kraemer
  */
 class InMemorySubmissionRegistryTest : SubmissionRegistryTest() {

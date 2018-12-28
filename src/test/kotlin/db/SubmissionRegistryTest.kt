@@ -1,8 +1,10 @@
 package db
 
+import io.vertx.core.Vertx
 import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
+import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import model.Submission
@@ -11,15 +13,19 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
+/**
+ * Tests for all [SubmissionRegistry] implementations
+ * @author Michel Kraemer
+ */
 @ExtendWith(VertxExtension::class)
 abstract class SubmissionRegistryTest {
   abstract val submissionRegistry: SubmissionRegistry
 
   @Test
-  fun addSubmission(ctx: VertxTestContext) {
+  fun addSubmission(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission()
 
-    GlobalScope.launch {
+    GlobalScope.launch(vertx.dispatcher()) {
       submissionRegistry.addSubmission(s)
       val s2 = submissionRegistry.findSubmissionById(s.id)
 
@@ -32,11 +38,11 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  fun addProcessChain(ctx: VertxTestContext) {
+  fun addProcessChain(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission()
     val pc = ProcessChain()
 
-    GlobalScope.launch {
+    GlobalScope.launch(vertx.dispatcher()) {
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChain(pc, s.id)
       val pcs = submissionRegistry.findProcessChainsBySubmissionId(s.id)
@@ -57,8 +63,8 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  fun addProcessChainToMissingSubmission(ctx: VertxTestContext) {
-    GlobalScope.launch {
+  fun addProcessChainToMissingSubmission(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
       try {
         submissionRegistry.addProcessChain(ProcessChain(), "MISSING")
         throw NoStackTraceThrowable("addProcessChain should throw")
@@ -71,11 +77,11 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  fun setProcessChainStatus(ctx: VertxTestContext) {
+  fun setProcessChainStatus(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission()
     val pc = ProcessChain()
 
-    GlobalScope.launch {
+    GlobalScope.launch(vertx.dispatcher()) {
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChain(pc, s.id)
       val pcs = submissionRegistry.findProcessChainsBySubmissionId(s.id)
@@ -122,8 +128,8 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  fun getStatusOfMissingProcessChain(ctx: VertxTestContext) {
-    GlobalScope.launch {
+  fun getStatusOfMissingProcessChain(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
       try {
         submissionRegistry.getProcessChainStatus("MISSING")
         throw NoStackTraceThrowable("getProcessChainStatus should throw")
@@ -136,11 +142,11 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  fun setProcessChainOutput(ctx: VertxTestContext) {
+  fun setProcessChainOutput(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission()
     val pc = ProcessChain()
 
-    GlobalScope.launch {
+    GlobalScope.launch(vertx.dispatcher()) {
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChain(pc, s.id)
       val pcOutput1 = submissionRegistry.getProcessChainOutput(pc.id)
@@ -162,8 +168,8 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  fun getOutputOfMissingProcessChain(ctx: VertxTestContext) {
-    GlobalScope.launch {
+  fun getOutputOfMissingProcessChain(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
       try {
         submissionRegistry.getProcessChainOutput("MISSING")
         throw NoStackTraceThrowable("getProcessChainOutput should throw")
