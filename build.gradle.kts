@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jetbrains.kotlin.script.tryConstructClassFromStringArgs
 
 plugins {
@@ -48,4 +49,9 @@ tasks {
     named<JavaExec>("run") {
         args("run", "JobManager")
     }
+}
+
+val compileKotlin: KotlinCompile by tasks
+compileKotlin.kotlinOptions {
+    jvmTarget = "1.8"
 }
