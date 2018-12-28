@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.script.tryConstructClassFromStringArgs
 
 plugins {
     application
+    jacoco
     kotlin("jvm") version "1.3.11"
 }
 
