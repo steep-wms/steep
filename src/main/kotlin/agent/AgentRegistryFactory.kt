@@ -1,4 +1,4 @@
-package db
+package agent
 
 /**
  * Creates [AgentRegistry] objects
@@ -9,5 +9,5 @@ object AgentRegistryFactory {
    * Create a new [AgentRegistry]
    * @return the [AgentRegistry]
    */
-  fun create(): AgentRegistry = TODO()
+  fun create(): AgentRegistry = LocalAgentRegistry()
 }

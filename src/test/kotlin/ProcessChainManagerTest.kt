@@ -1,6 +1,6 @@
 import agent.Agent
-import db.AgentRegistry
-import db.AgentRegistryFactory
+import agent.AgentRegistry
+import agent.AgentRegistryFactory
 import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus.ERROR
 import db.SubmissionRegistry.ProcessChainStatus.REGISTERED

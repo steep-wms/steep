@@ -1,7 +1,7 @@
 import ConfigConstants.PCM_LOOKUP_NEXT_PROCESSCHAIN_INTERVAL_MILLISECONDS
 import agent.Agent
-import db.AgentRegistry
-import db.AgentRegistryFactory
+import agent.AgentRegistry
+import agent.AgentRegistryFactory
 import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus.ERROR
 import db.SubmissionRegistry.ProcessChainStatus.REGISTERED
