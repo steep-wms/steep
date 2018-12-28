@@ -9,10 +9,10 @@ import helper.UniqueID
  * @param predecessors the process chain's predecessors (i.e. the process chains
  * that should be executed before this one). This set may be empty if there are
  * no predecessors.
- * @param executables the set of [Executable]s to actually be executed
+ * @param executables the list of [Executable]s to actually be executed
  */
 data class ProcessChain(
     val id: String = UniqueID.next(),
     val predecessors: Set<ProcessChain> = emptySet(),
-    val executables: Set<Executable> = emptySet()
+    val executables: List<Executable> = emptyList()
 )
