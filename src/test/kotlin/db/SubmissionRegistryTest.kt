@@ -149,7 +149,7 @@ abstract class SubmissionRegistryTest {
         assertThat(pcOutput1).isNull()
       }
 
-      val output = listOf("output.txt")
+      val output = mapOf("ARG1" to listOf("output.txt"))
       submissionRegistry.setProcessChainOutput(pc.id, output)
       val pcOutput2 = submissionRegistry.getProcessChainOutput(pc.id)
 

@@ -13,7 +13,7 @@ class InMemorySubmissionRegistry : SubmissionRegistry {
       val processChain: ProcessChain,
       val submissionId: String,
       var status: ProcessChainStatus,
-      var output: List<String>? = null
+      var output: Map<String, List<String>>? = null
   )
 
   private val submissions = mutableMapOf<String, Submission>()
@@ -23,7 +23,7 @@ class InMemorySubmissionRegistry : SubmissionRegistry {
     submissions[submission.id] = submission
   }
 
-  override suspend fun findSubmissionById(submissionId: String): Submission? =
+  override suspend fun findSubmissionById(submissionId: String) =
     submissions[submissionId]
 
   override suspend fun addProcessChain(processChain: ProcessChain,
@@ -35,7 +35,7 @@ class InMemorySubmissionRegistry : SubmissionRegistry {
     processChains[processChain.id] = e
   }
 
-  override suspend fun findProcessChainsBySubmissionId(submissionId: String): List<ProcessChain> =
+  override suspend fun findProcessChainsBySubmissionId(submissionId: String) =
       processChains.values
           .filter { it.submissionId == submissionId }
           .map { it.processChain }
@@ -51,16 +51,16 @@ class InMemorySubmissionRegistry : SubmissionRegistry {
     processChains[processChainId]?.status = status
   }
 
-  override suspend fun getProcessChainStatus(processChainId: String): ProcessChainStatus =
+  override suspend fun getProcessChainStatus(processChainId: String) =
       (processChains[processChainId] ?: throw NoSuchElementException(
           "There is no process chain with ID `$processChainId'")).status
 
   override suspend fun setProcessChainOutput(processChainId: String,
-      output: List<String>?) {
+      output: Map<String, List<String>>?) {
     processChains[processChainId]?.output = output
   }
 
-  override suspend fun getProcessChainOutput(processChainId: String): List<String>? =
+  override suspend fun getProcessChainOutput(processChainId: String) =
       (processChains[processChainId] ?: throw NoSuchElementException(
           "There is no process chain with ID `$processChainId'")).output
 }

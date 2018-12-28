@@ -79,7 +79,7 @@ class ProcessChainManagerTest {
       val pcSlot = slot<ProcessChain>()
       coEvery { agent.execute(capture(pcSlot)) } coAnswers {
         delay(1000) // pretend it takes 1 second to execute the process chain
-        listOf("output-${pcSlot.captured.id}")
+        mapOf("ARG1" to listOf("output-${pcSlot.captured.id}"))
       }
     }
 
@@ -111,7 +111,8 @@ class ProcessChainManagerTest {
       }
 
       // register mock for output
-      coEvery { submissionRegistry.setProcessChainOutput(pc.id, listOf("output-${pc.id}")) } just Runs
+      coEvery { submissionRegistry.setProcessChainOutput(pc.id,
+          mapOf("ARG1" to listOf("output-${pc.id}"))) } just Runs
     }
 
     for (pc in allPcs.dropLast(1)) {
@@ -133,7 +134,8 @@ class ProcessChainManagerTest {
         coVerify(exactly = 1) {
           for (pc in allPcs) {
             submissionRegistry.setProcessChainStatus(pc.id, RUNNING)
-            submissionRegistry.setProcessChainOutput(pc.id, listOf("output-${pc.id}"))
+            submissionRegistry.setProcessChainOutput(pc.id,
+                mapOf("ARG1" to listOf("output-${pc.id}")))
             submissionRegistry.setProcessChainStatus(pc.id, SUCCESS)
           }
         }

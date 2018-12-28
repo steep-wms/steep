@@ -76,7 +76,7 @@ interface SubmissionRegistry {
    * @param processChainId the process chain ID
    * @param output the output to set (may be `null` if the output should be removed)
    */
-  suspend fun setProcessChainOutput(processChainId: String, output: List<String>?)
+  suspend fun setProcessChainOutput(processChainId: String, output: Map<String, List<String>>?)
 
   /**
    * Get the output of a process chain
@@ -85,5 +85,5 @@ interface SubmissionRegistry {
    * output yet)
    * @throws NoSuchElementException if the process chain does not exist
    */
-  suspend fun getProcessChainOutput(processChainId: String): List<String>?
+  suspend fun getProcessChainOutput(processChainId: String): Map<String, List<String>>?
 }
