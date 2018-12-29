@@ -64,9 +64,10 @@ class ProcessChainManagerTest {
    * chains have been executed successfully.
    * @param nProcessChains the number of process chains to schedule
    * @param nAgents the number of mock agents to create
+   * @param vertx the Vert.x instance
    * @param ctx the test context
    */
-  private fun testSimple(nProcessChains: Int, nAgents: Int, ctx: VertxTestContext) {
+  private fun testSimple(nProcessChains: Int, nAgents: Int, vertx: Vertx, ctx: VertxTestContext) {
     // mock agents
     val allAgents = (1..nAgents).map { n ->
       val a = mockk<Agent>()
@@ -147,30 +148,32 @@ class ProcessChainManagerTest {
     coEvery { submissionRegistry.findProcessChainsByStatus(REGISTERED, 1) } answers {
       registeredPcs.take(1)
     }
+
+    vertx.eventBus().publish(AddressConstants.PCM_LOOKUP_NOW, null)
   }
 
   @Test
-  fun oneChainOneAgent(ctx: VertxTestContext) {
-    testSimple(1, 1, ctx)
+  fun oneChainOneAgent(vertx: Vertx, ctx: VertxTestContext) {
+    testSimple(1, 1, vertx, ctx)
   }
 
   @Test
-  fun twoChainsOneAgent(ctx: VertxTestContext) {
-    testSimple(2, 1, ctx)
+  fun twoChainsOneAgent(vertx: Vertx, ctx: VertxTestContext) {
+    testSimple(2, 1, vertx, ctx)
   }
 
   @Test
-  fun twoChainsTwoAgents(ctx: VertxTestContext) {
-    testSimple(2, 2, ctx)
+  fun twoChainsTwoAgents(vertx: Vertx, ctx: VertxTestContext) {
+    testSimple(2, 2, vertx, ctx)
   }
 
   @Test
-  fun twentyChainsTenAgents(ctx: VertxTestContext) {
-    testSimple(20, 10, ctx)
+  fun twentyChainsTenAgents(vertx: Vertx, ctx: VertxTestContext) {
+    testSimple(20, 10, vertx, ctx)
   }
 
   @Test
-  fun deallocateAgentOnError(ctx: VertxTestContext) {
+  fun deallocateAgentOnError(vertx: Vertx, ctx: VertxTestContext) {
     // mock agent
     val agent = mockk<Agent>()
     every { agent.id } returns "Mock agent"
@@ -196,5 +199,7 @@ class ProcessChainManagerTest {
     // execute process chains
     coEvery { submissionRegistry.findProcessChainsByStatus(REGISTERED, 1) } returns
         listOf(pc) andThen emptyList()
+
+    vertx.eventBus().publish(AddressConstants.PCM_LOOKUP_NOW, null)
   }
 }

@@ -1,4 +1,5 @@
-import ConfigConstants.PCM_LOOKUP_NEXT_PROCESSCHAIN_INTERVAL_MILLISECONDS
+import AddressConstants.PCM_LOOKUP_NOW
+import ConfigConstants.PCM_LOOKUP_INTERVAL
 import agent.Agent
 import agent.AgentRegistry
 import agent.AgentRegistryFactory
@@ -39,13 +40,18 @@ class ProcessChainManager : CoroutineVerticle() {
     agentRegistry = AgentRegistryFactory.create()
 
     // read configuration
-    val lookupNextProcessChainInterval = config.getLong(
-        PCM_LOOKUP_NEXT_PROCESSCHAIN_INTERVAL_MILLISECONDS, 2000L)
+    val lookupNextProcessChainInterval = config.getLong(PCM_LOOKUP_INTERVAL, 2000L)
 
     // periodically look for new process chains and execute them
     periodicLookupJob = launch {
       while (true) {
         delay(lookupNextProcessChainInterval)
+        lookupNextProcessChains()
+      }
+    }
+
+    vertx.eventBus().consumer<Unit>(PCM_LOOKUP_NOW) {
+      launch {
         lookupNextProcessChains()
       }
     }
