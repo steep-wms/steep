@@ -1,2 +1,14 @@
+before_script:
+  # make gradle put artifacts into project directory so we can cache them
+  - export GRADLE_USER_HOME=`pwd`/.gradle
+  - export TERM=dumb
+
+cache:
+  paths:
+    - .gradle/wrapper
+    - .gradle/caches
+
 build:
-  script: "./gradlew check"
+  image: openjdk:8
+  script:
+    - ./gradlew --no-daemon check
