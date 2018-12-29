@@ -10,6 +10,7 @@ import helper.UniqueID
  * that should be executed before this one). This set may be empty if there are
  * no predecessors.
  * @param executables the list of [Executable]s to actually be executed
+ * @author Michel Kraemer
  */
 data class ProcessChain(
     val id: String = UniqueID.next(),

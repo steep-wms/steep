@@ -9,6 +9,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import model.Submission
 import model.processchain.ProcessChain
+import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -23,7 +24,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun addSubmission(vertx: Vertx, ctx: VertxTestContext) {
-    val s = Submission()
+    val s = Submission(workflow = Workflow())
 
     GlobalScope.launch(vertx.dispatcher()) {
       submissionRegistry.addSubmission(s)
@@ -39,7 +40,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun addProcessChain(vertx: Vertx, ctx: VertxTestContext) {
-    val s = Submission()
+    val s = Submission(workflow = Workflow())
     val pc = ProcessChain()
 
     GlobalScope.launch(vertx.dispatcher()) {
@@ -78,7 +79,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun setProcessChainStatus(vertx: Vertx, ctx: VertxTestContext) {
-    val s = Submission()
+    val s = Submission(workflow = Workflow())
     val pc = ProcessChain()
 
     GlobalScope.launch(vertx.dispatcher()) {
@@ -143,7 +144,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun setProcessChainOutput(vertx: Vertx, ctx: VertxTestContext) {
-    val s = Submission()
+    val s = Submission(workflow = Workflow())
     val pc = ProcessChain()
 
     GlobalScope.launch(vertx.dispatcher()) {
