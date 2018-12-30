@@ -21,7 +21,7 @@ class RuleSystemTest {
   @Test
   fun singleService() {
     val mapper = jacksonObjectMapper()
-    val fixture = javaClass.getResource("fixtures/cp.json").readText()
+    val fixture = javaClass.getResource("fixtures/singleService.json").readText()
     val workflow = mapper.readValue<Workflow>(fixture)
 
     val services = listOf(Service("cp", "cp", "Copy", "cp", Service.Runtime.OTHER, listOf(
