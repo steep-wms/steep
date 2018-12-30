@@ -32,13 +32,13 @@ dependencies {
 
     implementation("io.seruco.encoding:base62:0.1.2")
     implementation("commons-codec:commons-codec:1.11")
+    implementation("commons-io:commons-io:2.6")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.8")
     implementation("org.apache.commons:commons-lang3:3.8.1")
 
     implementation(kotlin("reflect"))
     implementation(kotlin("stdlib-jdk8"))
 
-    testImplementation("commons-io:commons-io:2.6")
     testImplementation("io.mockk:mockk:1.8.13.kotlin13")
     testImplementation("io.vertx:vertx-junit5:$vertxVersion")
     testImplementation("org.assertj:assertj-core:3.11.1")

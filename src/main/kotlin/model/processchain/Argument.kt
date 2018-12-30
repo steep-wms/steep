@@ -1,5 +1,6 @@
 package model.processchain
 
+import com.fasterxml.jackson.annotation.JsonValue
 import helper.UniqueID
 
 /**
@@ -21,10 +22,10 @@ data class Argument(
     val type: Type,
     val dataType: String = DATA_TYPE_STRING
 ) {
-  enum class Type {
-    INPUT,
-    OUTPUT,
-    ARGUMENT
+  enum class Type(@JsonValue val type: String) {
+    INPUT("input"),
+    OUTPUT("output"),
+    ARGUMENT("argument")
   }
 
   companion object {

@@ -4,7 +4,7 @@ import helper.UniqueID
 
 /**
  * An executable in a process chain
- * @param id the executable's unique identifier
+ * @param id the executable's identifier
  * @param path the path to the program to execute
  * @param arguments the program arguments
  * @author Michel Kraemer

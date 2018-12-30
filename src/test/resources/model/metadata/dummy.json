@@ -1,0 +1,33 @@
+[{
+    "id": 1003,
+    "name": "dummy",
+    "description": "A dummy service that has all attributes",
+    "path": "dummy",
+    "runtime": "other",
+    "parameters": [{
+        "id": "arg1",
+        "name": "The first argument",
+        "description": "A dummy argument",
+        "type": "argument",
+        "cardinality": "0..1",
+        "data_type": "string",
+        "default": "foo",
+        "label": "-a"
+    }, {
+        "id": "input_files",
+        "name": "Input files",
+        "description": "Many input files",
+        "type": "input",
+        "cardinality": "1..n",
+        "data_type": "file",
+        "label": "--input"
+    }, {
+        "id": "output_file",
+        "name": "Output file",
+        "description": "Output file name",
+        "type": "output",
+        "cardinality": "1..1",
+        "data_type": "file",
+        "file_suffix": ".txt"
+    }]
+}]

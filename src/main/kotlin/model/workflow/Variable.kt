@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.ObjectIdGenerators
 /**
  * A variable holding a value
  * @param id the variable's unique identifier
- * @value the variable's value (may be `null`)
+ * @param value the variable's value (may be `null`)
  * @author Michel Kraemer
  */
 @JsonIdentityInfo(
@@ -16,5 +16,5 @@ import com.fasterxml.jackson.annotation.ObjectIdGenerators
 )
 data class Variable(
     val id: String = UniqueID.next(),
-    val value: Any? = null
+    var value: Any? = null
 )
