@@ -1,0 +1,63 @@
+[{
+  "id": "2",
+  "executables": [{
+    "id": "cp",
+    "path": "cp",
+    "arguments": [{
+      "id": "input_file",
+      "value": "input_file1.txt",
+      "type": "input",
+      "dataType": "string"
+    },{
+      "id": "output_file",
+      "value": "/tmp/0",
+      "type": "output",
+      "dataType": "string"
+    }]
+  }, {
+    "id": "cp",
+    "path": "cp",
+    "arguments": [{
+      "id": "input_file",
+      "value": "/tmp/0",
+      "type": "input",
+      "dataType": "string"
+    },{
+      "id": "output_file",
+      "value": "/tmp/1",
+      "type": "output",
+      "dataType": "string"
+    }]
+  }]
+}, {
+  "id": "5",
+  "executables": [{
+    "id": "cp",
+    "path": "cp",
+    "arguments": [{
+      "id": "input_file",
+      "value": "input_file2.txt",
+      "type": "input",
+      "dataType": "string"
+    },{
+      "id": "output_file",
+      "value": "/tmp/3",
+      "type": "output",
+      "dataType": "string"
+    }]
+  }, {
+    "id": "cp",
+    "path": "cp",
+    "arguments": [{
+      "id": "input_file",
+      "value": "/tmp/3",
+      "type": "input",
+      "dataType": "string"
+    },{
+      "id": "output_file",
+      "value": "/tmp/4",
+      "type": "output",
+      "dataType": "string"
+    }]
+  }]
+}]

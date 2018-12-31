@@ -1,10 +1,10 @@
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import helper.ConsecutiveID
 import model.metadata.Cardinality
 import model.metadata.Service
 import model.metadata.ServiceParameter
 import model.processchain.Argument
-import model.processchain.Executable
 import model.processchain.ProcessChain
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
@@ -15,38 +15,68 @@ import org.junit.jupiter.api.Test
  * @author Michel Kraemer
  */
 class RuleSystemTest {
+  private val serviceCp = Service("cp", "cp", "Copy", "cp", Service.Runtime.OTHER, listOf(
+      ServiceParameter("input_file", "Input file", "Input file",
+          Argument.Type.INPUT, Cardinality(1, 1)),
+      ServiceParameter("output_file", "Output file", "Output file",
+          Argument.Type.OUTPUT, Cardinality(1, 1))
+  ))
+
+  private fun readWorkflow(name: String): Workflow {
+    val mapper = jacksonObjectMapper()
+    val fixture = javaClass.getResource("fixtures/$name.json").readText()
+    return mapper.readValue(fixture)
+  }
+
+  private fun readProcessChains(name: String): List<ProcessChain> {
+    val mapper = jacksonObjectMapper()
+    val fixture = javaClass.getResource("fixtures/${name}_result.json").readText()
+    return mapper.readValue(fixture)
+  }
+
+  private fun doTest(name: String) {
+    val workflow = readWorkflow(name)
+    val services = listOf(serviceCp)
+    val expected = readProcessChains(name)
+
+    val ruleSystem = RuleSystem(workflow, "/tmp/", services, ConsecutiveID())
+    val processChains = ruleSystem.fire()
+
+    assertThat(processChains).isEqualTo(expected)
+  }
+
   /**
    * Tests if a simple workflow with a single service can be converted correctly
    */
   @Test
   fun singleService() {
-    val mapper = jacksonObjectMapper()
-    val fixture = javaClass.getResource("fixtures/singleService.json").readText()
-    val workflow = mapper.readValue<Workflow>(fixture)
+    doTest("singleService")
+  }
 
-    val services = listOf(Service("cp", "cp", "Copy", "cp", Service.Runtime.OTHER, listOf(
-        ServiceParameter("input_file", "Input file", "Input file",
-            Argument.Type.INPUT, Cardinality(1, 1)),
-        ServiceParameter("output_file", "Output file", "Output file",
-            Argument.Type.OUTPUT, Cardinality(1, 1))
-    )))
+  /**
+   * Tests if a simple workflow with a two independent services is converted
+   * to two process chains
+   */
+  @Test
+  fun twoIndependentServices() {
+    doTest("twoIndependentServices")
+  }
 
-    val ruleSystem = RuleSystem(workflow, "/tmp/", services)
-    val processChains = ruleSystem.fire()
+  /**
+   * Tests if a simple workflow with a two dependent services is converted
+   * to a single process chain
+   */
+  @Test
+  fun twoDependentServices() {
+    doTest("twoDependentServices")
+  }
 
-    assertThat(processChains).hasSize(1)
-    assertThat(processChains[0].executables).hasSize(1)
-    assertThat(processChains[0].executables[0].arguments).hasSize(2)
-    val expected = listOf(ProcessChain(id = processChains[0].id, predecessors = emptySet(), executables = listOf(
-        Executable(id = "cp", path = "cp", arguments = listOf(
-            Argument(id = "input_file", value = "input_file.txt",
-                type = Argument.Type.INPUT, dataType = Argument.DATA_TYPE_STRING),
-            Argument(id = "output_file", value = processChains[0].executables[0].arguments[1].value,
-                type = Argument.Type.OUTPUT, dataType = Argument.DATA_TYPE_STRING)
-        ))
-    )))
-
-    assertThat(processChains).isEqualTo(expected)
-    assertThat(processChains[0].executables[0].arguments[1].value).startsWith("/tmp/")
+  /**
+   * Tests if a simple workflow with a four services is converted to two
+   * process chains
+   */
+  @Test
+  fun twoProcessChains() {
+    doTest("twoProcessChains")
   }
 }
