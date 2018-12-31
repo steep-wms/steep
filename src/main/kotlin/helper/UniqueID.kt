@@ -8,14 +8,14 @@ import java.util.Date
  * Generates short unique identifiers
  * @author Michel Kraemer
  */
-object UniqueID {
+object UniqueID : IDGenerator {
   private val base62 = Base62.createInstance()
 
   /**
    * Generate a unique ID
    * @return the unique ID
    */
-  fun next(): String {
+  override fun next(): String {
     // use a different "epoch" to make IDs shorter
     val o2 = ObjectId(Date(System.currentTimeMillis() - 1545829231994L))
     // convert to base62 and remove leading zeros
