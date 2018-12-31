@@ -52,7 +52,7 @@ application {
 
 tasks {
     named<JavaExec>("run") {
-        args("run", "Main")
+        args("run", "MainVerticle")
     }
 
     named<Test>("test") {

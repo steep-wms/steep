@@ -9,14 +9,14 @@ import java.io.File
 
 suspend fun main(args : Array<String>) {
   val vertx = Vertx.vertx()
-  vertx.deployVerticleAwait(Main::class.qualifiedName!!)
+  vertx.deployVerticleAwait(MainVerticle::class.qualifiedName!!)
 }
 
 /**
  * The JobManager's main verticle
  * @author Michel Kraemer
  */
-class Main : CoroutineVerticle() {
+class MainVerticle : CoroutineVerticle() {
   override suspend fun start() {
     // load configuration
     val confFileStr = File("conf/jobmanager.yaml").readText()
@@ -27,10 +27,10 @@ class Main : CoroutineVerticle() {
 
     // deploy verticles
     val options = DeploymentOptions(conf)
-    if (conf.getBoolean(ConfigConstants.JOBMANAGER_ENABLED)) {
-      vertx.deployVerticleAwait(JobManager::class.qualifiedName!!, options)
+    if (conf.getBoolean(ConfigConstants.JOBMANAGER_ENABLED, false)) {
+      vertx.deployVerticleAwait(JobManagerVerticle::class.qualifiedName!!, options)
     }
-    if (conf.getBoolean(ConfigConstants.AGENT_ENABLED)) {
+    if (conf.getBoolean(ConfigConstants.AGENT_ENABLED, false)) {
       vertx.deployVerticleAwait(AgentVerticle::class.qualifiedName!!, options)
     }
   }

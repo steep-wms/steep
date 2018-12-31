@@ -22,9 +22,9 @@ import org.slf4j.LoggerFactory
  * [SubmissionRegistry].
  * @author Michel Kraemer
  */
-class ProcessChainManager : CoroutineVerticle() {
+class ProcessChainManagerVerticle : CoroutineVerticle() {
   companion object {
-    private val log = LoggerFactory.getLogger(ProcessChainManager::class.java)
+    private val log = LoggerFactory.getLogger(ProcessChainManagerVerticle::class.java)
   }
 
   private lateinit var submissionRegistry: SubmissionRegistry

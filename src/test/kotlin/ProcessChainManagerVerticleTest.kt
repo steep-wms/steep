@@ -28,11 +28,11 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
 /**
- * Test [ProcessChainManager]
+ * Test [ProcessChainManagerVerticle]
  * @author Michel Kraemer
  */
 @ExtendWith(VertxExtension::class)
-class ProcessChainManagerTest {
+class ProcessChainManagerVerticleTest {
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var agentRegistry: AgentRegistry
 
@@ -49,7 +49,7 @@ class ProcessChainManagerTest {
     every { AgentRegistryFactory.create() } returns agentRegistry
 
     // deploy verticle under test
-    vertx.deployVerticle(ProcessChainManager::class.qualifiedName, ctx.completing())
+    vertx.deployVerticle(ProcessChainManagerVerticle::class.qualifiedName, ctx.completing())
   }
 
   @AfterEach
