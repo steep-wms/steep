@@ -1,5 +1,5 @@
-import AddressConstants.PCM_LOOKUP_NOW
-import ConfigConstants.PCM_LOOKUP_INTERVAL
+import AddressConstants.SCHEDULER_LOOKUP_NOW
+import ConfigConstants.SCHEDULER_LOOKUP_INTERVAL
 import agent.Agent
 import agent.AgentRegistry
 import agent.AgentRegistryFactory
@@ -17,14 +17,14 @@ import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
 
 /**
- * The process chain manager fetches process chains from a [SubmissionRegistry],
- * executes them through [Agent]s, and puts the results back into the
+ * The scheduler fetches process chains from a [SubmissionRegistry], executes
+ * them through [Agent]s, and puts the results back into the
  * [SubmissionRegistry].
  * @author Michel Kraemer
  */
-class ProcessChainManagerVerticle : CoroutineVerticle() {
+class Scheduler : CoroutineVerticle() {
   companion object {
-    private val log = LoggerFactory.getLogger(ProcessChainManagerVerticle::class.java)
+    private val log = LoggerFactory.getLogger(Scheduler::class.java)
   }
 
   private lateinit var submissionRegistry: SubmissionRegistry
@@ -33,14 +33,14 @@ class ProcessChainManagerVerticle : CoroutineVerticle() {
   private lateinit var periodicLookupJob: Job
 
   override suspend fun start() {
-    log.info("Launching process chain manager ...")
+    log.info("Launching scheduler ...")
 
     // create registries
     submissionRegistry = SubmissionRegistryFactory.create()
     agentRegistry = AgentRegistryFactory.create()
 
     // read configuration
-    val lookupNextProcessChainInterval = config.getLong(PCM_LOOKUP_INTERVAL, 2000L)
+    val lookupNextProcessChainInterval = config.getLong(SCHEDULER_LOOKUP_INTERVAL, 2000L)
 
     // periodically look for new process chains and execute them
     periodicLookupJob = launch {
@@ -50,7 +50,7 @@ class ProcessChainManagerVerticle : CoroutineVerticle() {
       }
     }
 
-    vertx.eventBus().consumer<Unit>(PCM_LOOKUP_NOW) {
+    vertx.eventBus().consumer<Unit>(SCHEDULER_LOOKUP_NOW) {
       launch {
         lookupNextProcessChains()
       }
@@ -58,7 +58,7 @@ class ProcessChainManagerVerticle : CoroutineVerticle() {
   }
 
   override suspend fun stop() {
-    log.info("Stopping process chain manager ...")
+    log.info("Stopping scheduler ...")
     periodicLookupJob.cancelAndJoin()
   }
 

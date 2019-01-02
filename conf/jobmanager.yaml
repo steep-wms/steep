@@ -1,12 +1,9 @@
 jobmanager:
-  enabled: true
   host: localhost
   port: 8080
 
-  processChainManager:
-    lookupIntervalMilliseconds: 2000
+  agent:
+    enabled: true
 
-agent:
-  enabled: true
-  host: localhost
-  port: 8007
+  scheduler:
+    lookupIntervalMilliseconds: 2000

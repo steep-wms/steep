@@ -5,18 +5,18 @@ import io.vertx.kotlin.coroutines.CoroutineVerticle
 import org.slf4j.LoggerFactory
 
 /**
- * This verticle runs an HTTP server that accepts process chains and executes
- * them through a [LocalAgent]
+ * The JobManager's main API entry point
  * @author Michel Kraemer
  */
-class AgentVerticle : CoroutineVerticle() {
+class JobManager : CoroutineVerticle() {
   companion object {
-    private val log = LoggerFactory.getLogger(AgentVerticle::class.java)
+    private val log = LoggerFactory.getLogger(JobManager::class.java)
   }
 
   override suspend fun start() {
-    val host = config.getString(ConfigConstants.AGENT_HOST, "localhost")
-    val port = config.getInteger(ConfigConstants.AGENT_PORT, 8007)
+    // deploy HTTP server
+    val host = config.getString(ConfigConstants.HOST, "localhost")
+    val port = config.getInteger(ConfigConstants.PORT, 8080)
 
     val options = HttpServerOptions()
         .setCompressionSupported(true)
@@ -27,6 +27,6 @@ class AgentVerticle : CoroutineVerticle() {
 
     server.requestHandler(router).listenAwait(port, host)
 
-    log.info("JobManager agent deployed to http://$host:$port ...")
+    log.info("JobManager deployed to http://$host:$port ...")
   }
 }

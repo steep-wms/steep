@@ -4,7 +4,7 @@
  */
 object AddressConstants {
   /**
-   * Make the process chain manager look up for new process chains now
+   * Make the scheduler look up for new process chains now
    */
-  const val PCM_LOOKUP_NOW = "jobmanager.processChainManager.lookupNow"
+  const val SCHEDULER_LOOKUP_NOW = "jobmanager.scheduler.lookupNow"
 }

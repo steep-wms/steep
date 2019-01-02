@@ -28,11 +28,11 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
 /**
- * Test [ProcessChainManagerVerticle]
+ * Tests for the [Scheduler]
  * @author Michel Kraemer
  */
 @ExtendWith(VertxExtension::class)
-class ProcessChainManagerVerticleTest {
+class SchedulerTest {
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var agentRegistry: AgentRegistry
 
@@ -49,7 +49,7 @@ class ProcessChainManagerVerticleTest {
     every { AgentRegistryFactory.create() } returns agentRegistry
 
     // deploy verticle under test
-    vertx.deployVerticle(ProcessChainManagerVerticle::class.qualifiedName, ctx.completing())
+    vertx.deployVerticle(Scheduler::class.qualifiedName, ctx.completing())
   }
 
   @AfterEach
@@ -149,7 +149,7 @@ class ProcessChainManagerVerticleTest {
       registeredPcs.take(1)
     }
 
-    vertx.eventBus().publish(AddressConstants.PCM_LOOKUP_NOW, null)
+    vertx.eventBus().publish(AddressConstants.SCHEDULER_LOOKUP_NOW, null)
   }
 
   @Test
@@ -200,6 +200,6 @@ class ProcessChainManagerVerticleTest {
     coEvery { submissionRegistry.findProcessChainsByStatus(REGISTERED, 1) } returns
         listOf(pc) andThen emptyList()
 
-    vertx.eventBus().publish(AddressConstants.PCM_LOOKUP_NOW, null)
+    vertx.eventBus().publish(AddressConstants.SCHEDULER_LOOKUP_NOW, null)
   }
 }
