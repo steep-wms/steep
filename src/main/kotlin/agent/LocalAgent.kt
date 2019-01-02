@@ -45,20 +45,20 @@ class LocalAgent : Agent {
 
     // create list of results
     val fs = Vertx.currentContext().owner().fileSystem()
-    return outputs.map { it.id to readRecursive(it.value, fs) }.toMap()
+    return outputs.map { it.variable.id to readRecursive(it.variable.value, fs) }.toMap()
   }
 
   /**
    * Create `mkdir` commands for all output directories
-   * @param outputs the outputs extracted by [extractOutputs]
+   * @param outputs the outputs
    * @return the `mkdir` commands
    */
   private fun mkdirForOutputs(outputs: List<Argument>) =
       listOf("mkdir", "-p").plus(outputs.map {
         if (it.dataType == Argument.DATA_TYPE_DIRECTORY) {
-          it.value
+          it.variable.value
         } else {
-          File(it.value).parent
+          File(it.variable.value).parent
         }
       }.distinct())
 
@@ -76,13 +76,14 @@ class LocalAgent : Agent {
       line.add(exec.path)
       for (arg in exec.arguments) {
         // only include label if the argument is not boolean or if it is `true`
-        if (arg.dataType != Argument.DATA_TYPE_BOOLEAN || BooleanUtils.toBoolean(arg.value)) {
+        if (arg.dataType != Argument.DATA_TYPE_BOOLEAN ||
+            BooleanUtils.toBoolean(arg.variable.value)) {
           if (arg.label != null) {
             line.add(arg.label)
           }
         }
         if (arg.dataType != Argument.DATA_TYPE_BOOLEAN) {
-          line.add(arg.value)
+          line.add(arg.variable.value)
         }
       }
       log.debug(line.joinToString(" "))

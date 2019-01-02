@@ -1,3 +1,5 @@
+import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import helper.IDGenerator
 import helper.UniqueID
 import model.metadata.Service
@@ -5,13 +7,15 @@ import model.processchain.Argument
 import model.processchain.Argument.Type.ARGUMENT
 import model.processchain.Argument.Type.INPUT
 import model.processchain.Argument.Type.OUTPUT
+import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import model.processchain.ProcessChain
 import model.workflow.ExecuteAction
 import model.workflow.Variable
 import model.workflow.Workflow
 import org.apache.commons.io.FilenameUtils
-import java.util.ArrayDeque
+import org.slf4j.LoggerFactory
+import java.util.Collections
 import java.util.IdentityHashMap
 
 /**
@@ -23,6 +27,10 @@ import java.util.IdentityHashMap
  */
 class RuleSystem(workflow: Workflow, private val tmpPath: String,
     private val services: List<Service>, private val idGenerator: IDGenerator = UniqueID) {
+  companion object {
+    private val log = LoggerFactory.getLogger(RuleSystem::class.java)
+  }
+
   private val vars: Map<String, Variable> = workflow.vars.map { it.id to it }.toMap()
   private val actions = workflow.actions.toMutableList()
 
@@ -55,57 +63,75 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
     // create process chains for all actions that are ready to be executed (i.e.
     // whose inputs are all available)
     val processChains = mutableListOf<ProcessChain>()
-    val actionsToRemove = mutableSetOf<ExecuteAction>()
+    val actionsToRemove = Collections.newSetFromMap(IdentityHashMap<ExecuteAction, Boolean>())
+    val actionsVisited = Collections.newSetFromMap(IdentityHashMap<ExecuteAction, Boolean>())
     for (action in actions) {
-      if (actionsToRemove.contains(action) || action !is ExecuteAction) {
-        continue
-      }
-
-      // convert action if all inputs are available
-      val allInputsAvailable = action.inputs.all { it.variable.value != null }
-      if (!allInputsAvailable) {
+      if (action !is ExecuteAction) {
         continue
       }
 
       val executables = mutableListOf<Executable>()
-      executables.add(actionToExecutable(action))
-      actionsToRemove.add(action)
+      val argumentValues = mutableMapOf<String, String>()
 
-      // try to convert as many subsequent actions as possible
-      val outputVariablesToCheck = ArrayDeque(action.outputs.map { it.variable })
-      while (!outputVariablesToCheck.isEmpty()) {
-        val outputVariable = outputVariablesToCheck.poll()
-        inputsToActions[outputVariable]?.forEach { nextAction ->
-          val isExecutable = nextAction.inputs.all { it.variable.value != null }
-          if (isExecutable) {
-            executables.add(actionToExecutable(nextAction))
-            actionsToRemove.add(nextAction)
-            val newOutputVariables = nextAction.outputs.map { it.variable }
-            outputVariablesToCheck.addAll(newOutputVariables)
+      var nextAction: ExecuteAction = action
+      while (!actionsVisited.contains(nextAction)) {
+        // check if all inputs are set (either because the variable has a value
+        // or because the value has been calculated earlier)
+        val isExecutable = nextAction.inputs.all { it.variable.value != null ||
+            argumentValues.contains(it.variable.id) }
+        if (isExecutable) {
+          executables.add(actionToExecutable(nextAction, argumentValues))
+
+          // do not visit this action again
+          actionsToRemove.add(nextAction)
+          actionsVisited.add(nextAction)
+
+          // try to find next action
+          val moreActions = nextAction.outputs.map { it.variable }.flatMap {
+            inputsToActions[it] ?: mutableListOf() }.distinct()
+          if (moreActions.size != 1) {
+            // leverage parallelization and stop if there are more than one
+            // next actions (i.e. if the process chain would fork)
+            break
           }
+          nextAction = moreActions[0]
+        } else {
+          // the action is not executable at the moment - do not visit it
+          // again unless it was the first action (it could depend on the
+          // results of another action that we haven't visited yet)
+          if (nextAction !== action) {
+            actionsVisited.add(nextAction)
+          }
+          break
         }
       }
 
-      processChains.add(ProcessChain(idGenerator.next(), executables))
+      if (executables.isNotEmpty()) {
+        processChains.add(ProcessChain(idGenerator.next(), executables))
+      }
     }
 
     // do not touch these actions again
     actions.removeAll(actionsToRemove)
+
+    if (processChains.isNotEmpty()) {
+      log.debug("Generated process chains:\n" + jacksonObjectMapper()
+          .enable(SerializationFeature.INDENT_OUTPUT)
+          .writeValueAsString(processChains))
+    }
 
     return processChains
   }
 
   /**
    * Converts an [ExecuteAction] to an [Executable].
-   *
-   * **Note:** This method has a side-effect: It sets the action's outputs to
-   * valid values and also sets parameters to their default values (if they
-   * have default values).
-   *
    * @param action the [ExecuteAction] to convert
+   * @param argumentValues a map that will be filled with the values of all
+   * generated arguments
    * @return the created [Executable]
    */
-  private fun actionToExecutable(action: ExecuteAction): Executable {
+  private fun actionToExecutable(action: ExecuteAction,
+      argumentValues: MutableMap<String, String>): Executable {
     // find matching service metadata
     val service = services.find { it.id == action.service } ?: throw IllegalStateException(
         "There is no service with ID `${action.service}'")
@@ -128,21 +154,18 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
 
       // convert parameters to arguments
       params.map { param ->
-        // side-effect: the Action's parameters will be set to valid values
-        // if possible
         val v = if (serviceParam.type == OUTPUT) {
-          param.variable.value = FilenameUtils.normalize("$tmpPath/" +
-              idGenerator.next() + (serviceParam.fileSuffix ?: ""))
-          param.variable.value
+          FilenameUtils.normalize("$tmpPath/" +
+              idGenerator.next() + (serviceParam.fileSuffix ?: ""))!!
         } else {
-          if (param.variable.value == null) {
-            param.variable.value = serviceParam.default
-          }
-          param.variable.value ?: throw IllegalStateException(
-              "Parameter `${param.id}' does not have a value")
+          (param.variable.value ?: argumentValues[param.variable.id] ?:
+              serviceParam.default ?: throw IllegalStateException(
+                  "Parameter `${param.id}' does not have a value")).toString()
         }
 
-        Argument(serviceParam.id, serviceParam.label, v.toString(),
+        argumentValues[param.variable.id] = v
+        Argument(serviceParam.id, serviceParam.label,
+            ArgumentVariable(param.variable.id, v),
             serviceParam.type, serviceParam.dataType)
       }
     }

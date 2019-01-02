@@ -1,6 +1,6 @@
 [{
   "chains": [{
-    "id": "2",
+    "id": "3",
     "executables": [{
       "id": "cp",
       "path": "cp",
@@ -12,7 +12,7 @@
         },
         "type": "input",
         "dataType": "string"
-      }, {
+      },{
         "id": "output_file",
         "variable": {
           "id": "output_file1",
@@ -41,45 +41,22 @@
         "type": "output",
         "dataType": "string"
       }]
-    }]
-  }, {
-    "id": "5",
-    "executables": [{
-      "id": "cp",
-      "path": "cp",
-      "arguments": [{
-        "id": "input_file",
-        "variable": {
-          "id": "input_file2",
-          "value": "input_file2.txt"
-        },
-        "type": "input",
-        "dataType": "string"
-      }, {
-        "id": "output_file",
-        "variable": {
-          "id": "output_file3",
-          "value": "/tmp/3"
-        },
-        "type": "output",
-        "dataType": "string"
-      }]
     }, {
       "id": "cp",
       "path": "cp",
       "arguments": [{
         "id": "input_file",
         "variable": {
-          "id": "output_file3",
-          "value": "/tmp/3"
+          "id": "output_file2",
+          "value": "/tmp/1"
         },
         "type": "input",
         "dataType": "string"
       }, {
         "id": "output_file",
         "variable": {
-          "id": "output_file4",
-          "value": "/tmp/4"
+          "id": "output_file3",
+          "value": "/tmp/2"
         },
         "type": "output",
         "dataType": "string"
@@ -89,7 +66,6 @@
   "results": {
     "output_file1": ["/tmp/0"],
     "output_file2": ["/tmp/1"],
-    "output_file3": ["/tmp/3"],
-    "output_file4": ["/tmp/4"]
+    "output_file3": ["/tmp/2"]
   }
 }]

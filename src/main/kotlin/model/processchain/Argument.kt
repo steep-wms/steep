@@ -5,9 +5,9 @@ import helper.UniqueID
 
 /**
  * A program argument
- * @param id a unique identifier for this argumetn
+ * @param id a unique identifier for this argument
  * @param label an optional label (e.g. `--input` or `-i`)
- * @param value the argument's value
+ * @param variable a variable holding the argument's value
  * @param type the argument's type (describes if this is an input, an output,
  * or a normal argument)
  * @param dataType the argument's data type. Describes the type of the argument
@@ -18,7 +18,7 @@ import helper.UniqueID
 data class Argument(
     val id: String = UniqueID.next(),
     val label: String? = null,
-    val value: String,
+    val variable: ArgumentVariable,
     val type: Type,
     val dataType: String = DATA_TYPE_STRING
 ) {

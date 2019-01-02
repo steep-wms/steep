@@ -1,0 +1,62 @@
+{
+  "vars": [{
+    "id": "input_file1",
+    "value": "input_file1.txt"
+  }, {
+    "id": "output_file1"
+  }, {
+    "id": "output_file2"
+  }, {
+    "id": "output_file3"
+  }, {
+    "id": "output_file4"
+  }],
+  "actions": [{
+    "type": "execute",
+    "service": "cp",
+    "inputs": [{
+      "id": "input_file",
+      "var": "input_file1"
+    }],
+    "outputs": [{
+      "id": "output_file",
+      "var": "output_file1"
+    }]
+  }, {
+    "type": "execute",
+    "service": "cp",
+    "inputs": [{
+      "id": "input_file",
+      "var": "output_file1"
+    }],
+    "outputs": [{
+      "id": "output_file",
+      "var": "output_file2"
+    }]
+  }, {
+    "type": "execute",
+    "service": "cp",
+    "inputs": [{
+      "id": "input_file",
+      "var": "output_file1"
+    }],
+    "outputs": [{
+      "id": "output_file",
+      "var": "output_file3"
+    }]
+  }, {
+    "type": "execute",
+    "service": "join",
+    "inputs": [{
+      "id": "i",
+      "var": "output_file2"
+    }, {
+      "id": "i",
+      "var": "output_file3"
+    }],
+    "outputs": [{
+      "id": "o",
+      "var": "output_file4"
+    }]
+  }]
+}

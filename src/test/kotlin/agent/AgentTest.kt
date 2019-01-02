@@ -1,5 +1,6 @@
 package agent
 
+import helper.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
@@ -7,6 +8,7 @@ import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import model.processchain.Argument
+import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import model.processchain.ProcessChain
 import org.apache.commons.io.FileUtils
@@ -43,12 +45,13 @@ abstract class AgentTest {
     inputFile.deleteOnExit()
 
     // create process chain that copies the test file from tempDir1 to tempDir2
-    val outputArg = Argument(value = tempDir2.toString(),
+    val outputArg = Argument(variable = ArgumentVariable(UniqueID.next(), tempDir2.toString()),
         type = Argument.Type.OUTPUT,
         dataType = Argument.DATA_TYPE_DIRECTORY)
     val processChain = ProcessChain(executables = listOf(
         Executable(path = "cp", arguments = listOf(
-            Argument(value = inputFile.toString(), type = Argument.Type.INPUT),
+            Argument(variable = ArgumentVariable(UniqueID.next(), inputFile.toString()),
+                type = Argument.Type.INPUT),
             outputArg
         ))
     ))
@@ -66,7 +69,7 @@ abstract class AgentTest {
               .hasSameContentAs(inputFile)
           assertThat(results)
               .hasSize(1)
-              .contains(entry(outputArg.id, listOf(outputFile.path)))
+              .contains(entry(outputArg.variable.id, listOf(outputFile.path)))
         }
 
         ctx.completeNow()
