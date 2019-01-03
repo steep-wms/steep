@@ -33,7 +33,9 @@ class LocalAgent : Agent {
         .flatMap { it.arguments }
         .filter { it.type == Argument.Type.OUTPUT }
     val commandLines = mutableListOf<List<String>>()
-    commandLines.add(mkdirForOutputs(outputs))
+    if (outputs.isNotEmpty()) {
+      commandLines.add(mkdirForOutputs(outputs))
+    }
     commandLines.addAll(processToCommandLines(processChain))
 
     // execute commands
@@ -160,7 +162,7 @@ class LocalAgent : Agent {
     return r
   }
 
-  private class ExecutionException(
+  class ExecutionException(
       message: String,
       val lastOutput: String,
       val exitCode: Int

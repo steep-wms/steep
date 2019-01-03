@@ -25,6 +25,7 @@ dependencies {
     implementation("ch.qos.logback:logback-core:1.1.7")
 
     implementation("io.vertx:vertx-core:$vertxVersion")
+    implementation("io.vertx:vertx-hazelcast:$vertxVersion")
     implementation("io.vertx:vertx-lang-kotlin:$vertxVersion")
     implementation("io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion")
     implementation("io.vertx:vertx-mongo-client:$vertxVersion")
@@ -47,14 +48,10 @@ dependencies {
 }
 
 application {
-    mainClassName = "io.vertx.core.Launcher"
+    mainClassName = "MainKt"
 }
 
 tasks {
-    named<JavaExec>("run") {
-        args("run", "Main")
-    }
-
     named<Test>("test") {
         useJUnitPlatform()
     }

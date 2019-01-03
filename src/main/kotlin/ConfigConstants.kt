@@ -4,14 +4,19 @@
  */
 object ConfigConstants {
   /**
+   * `true` the the JobManager should deploy an HTTP server
+   */
+  const val HTTP_ENABLED = "jobmanager.http.enabled"
+
+  /**
    * The host to bind the JobManager's HTTP server to
    */
-  const val HOST = "jobmanager.host"
+  const val HTTP_HOST = "jobmanager.http.host"
 
   /**
    * The port the JobManager's HTTP server should listen on
    */
-  const val PORT = "jobmanager.port"
+  const val HTTP_PORT = "jobmanager.http.port"
 
   /**
    * The interval in which the scheduler looks for registered process chains

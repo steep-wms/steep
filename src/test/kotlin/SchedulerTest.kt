@@ -46,7 +46,7 @@ class SchedulerTest {
     // mock agent registry
     agentRegistry = mockk()
     mockkObject(AgentRegistryFactory)
-    every { AgentRegistryFactory.create() } returns agentRegistry
+    every { AgentRegistryFactory.create(any()) } returns agentRegistry
 
     // deploy verticle under test
     vertx.deployVerticle(Scheduler::class.qualifiedName, ctx.completing())

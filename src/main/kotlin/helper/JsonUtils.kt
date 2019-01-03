@@ -1,5 +1,8 @@
 package helper
 
+import com.fasterxml.jackson.module.kotlin.convertValue
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import io.vertx.core.json.Json
 import io.vertx.core.json.JsonObject
 
 /**
@@ -7,6 +10,8 @@ import io.vertx.core.json.JsonObject
  * @author Michel Kraemer
  */
 object JsonUtils {
+  val mapper = Json.mapper.copy().registerKotlinModule()
+
   /**
    * Recursively flattens a hierarchy of JSON objects. Combines keys
    * of parents and their children by concatening them with a dot. For
@@ -56,5 +61,23 @@ object JsonUtils {
       }
     }
     return result
+  }
+
+  /**
+   * Convert any given object to a Json object
+   * @param obj the object to convert
+   * @return the converted Json object
+   */
+  fun toJson(obj: Any): JsonObject {
+    return JsonObject(mapper.convertValue<MutableMap<String, Any>>(obj))
+  }
+
+  /**
+   * Convert any given object to a Json object
+   * @param obj the object to convert
+   * @return the converted Json object
+   */
+  inline fun <reified T> fromJson(obj: JsonObject): T {
+    return mapper.convertValue(obj.map)
   }
 }

@@ -37,7 +37,7 @@ class Scheduler : CoroutineVerticle() {
 
     // create registries
     submissionRegistry = SubmissionRegistryFactory.create()
-    agentRegistry = AgentRegistryFactory.create()
+    agentRegistry = AgentRegistryFactory.create(vertx)
 
     // read configuration
     val lookupNextProcessChainInterval = config.getLong(SCHEDULER_LOOKUP_INTERVAL, 2000L)
@@ -64,7 +64,7 @@ class Scheduler : CoroutineVerticle() {
 
   private suspend fun lookupNextProcessChains() {
     while (true) {
-      log.debug("Looking up next process chain ...")
+      log.trace("Looking up next process chain ...")
 
       // get next registered process chain
       val processChains = submissionRegistry.findProcessChainsByStatus(REGISTERED, 1)

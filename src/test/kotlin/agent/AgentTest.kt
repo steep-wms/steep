@@ -25,7 +25,7 @@ import java.nio.file.Files
  */
 @ExtendWith(VertxExtension::class)
 abstract class AgentTest {
-  abstract val agent: Agent
+  abstract fun createAgent(vertx: Vertx): Agent
 
   /**
    * Executes a process chain that copies a file from a temporary directory to
@@ -34,7 +34,7 @@ abstract class AgentTest {
    * @param ctx the test context
    */
   @Test
-  fun execute(vertx: Vertx, ctx: VertxTestContext) {
+  open fun execute(vertx: Vertx, ctx: VertxTestContext) {
     // TODO replace by TemporaryDirectory once JUnit 5.4 is released
     val tempDir1 = Files.createTempDirectory(null).toRealPath()
     val tempDir2 = Files.createTempDirectory(null).toRealPath()
@@ -55,6 +55,8 @@ abstract class AgentTest {
             outputArg
         ))
     ))
+
+    val agent = createAgent(vertx)
 
     GlobalScope.launch(vertx.dispatcher()) {
       try {

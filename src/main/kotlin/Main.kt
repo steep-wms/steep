@@ -1,14 +1,36 @@
 import helper.JsonUtils
-import io.vertx.core.Vertx
+import io.vertx.core.VertxOptions
 import io.vertx.core.json.JsonObject
+import io.vertx.core.spi.cluster.NodeListener
 import io.vertx.kotlin.core.DeploymentOptions
+import io.vertx.kotlin.core.Vertx
 import io.vertx.kotlin.core.deployVerticleAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.spi.cluster.hazelcast.ConfigUtil
+import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager
 import org.yaml.snakeyaml.Yaml
 import java.io.File
 
+var globalNodeId: String = "localhost"
+
 suspend fun main(args : Array<String>) {
-  val vertx = Vertx.vertx()
+  val hazelcastConfig = ConfigUtil.loadConfig()
+  val mgr = HazelcastClusterManager(hazelcastConfig)
+
+  val options = VertxOptions().setClusterManager(mgr)
+  val vertx = Vertx.clusteredVertxAwait(options)
+  globalNodeId = mgr.nodeID
+
+  mgr.nodeListener(object: NodeListener {
+    override fun nodeAdded(nodeID: String?) {
+      vertx.eventBus().publish(AddressConstants.CLUSTER_NODE_ADDED, nodeID)
+    }
+
+    override fun nodeLeft(nodeID: String?) {
+      vertx.eventBus().publish(AddressConstants.CLUSTER_NODE_LEFT, nodeID)
+    }
+  })
+
   vertx.deployVerticleAwait(Main::class.qualifiedName!!)
 }
 
@@ -17,6 +39,10 @@ suspend fun main(args : Array<String>) {
  * @author Michel Kraemer
  */
 class Main : CoroutineVerticle() {
+  companion object {
+    val nodeId: String get() = globalNodeId
+  }
+
   override suspend fun start() {
     // load configuration
     val confFileStr = File("conf/jobmanager.yaml").readText()
