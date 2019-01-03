@@ -26,7 +26,7 @@ data class Cardinality(val min: Int, val max: Int) {
 
   @JsonValue
   override fun toString(): String {
-    return "[$min.." + (if (max == Int.MAX_VALUE) "n" else max) + "]"
+    return "$min.." + (if (max == Int.MAX_VALUE) "n" else max)
   }
 
   companion object {
