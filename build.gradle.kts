@@ -14,6 +14,9 @@ val vertxVersion by extra("3.6.2")
 
 repositories {
     jcenter()
+
+    // necessary for jacoco 0.8.3-SNAPSHOT
+    maven("https://oss.sonatype.org/content/repositories/snapshots")
 }
 
 dependencies {
@@ -51,18 +54,24 @@ application {
     mainClassName = "MainKt"
 }
 
+jacoco {
+    toolVersion = "0.8.3-SNAPSHOT"
+}
+
 tasks {
-    named<Test>("test") {
+    test {
         useJUnitPlatform()
     }
-}
 
-val compileKotlin: KotlinCompile by tasks
-compileKotlin.kotlinOptions {
-    jvmTarget = "1.8"
-}
+    compileKotlin {
+        kotlinOptions {
+            jvmTarget = "1.8"
+        }
+    }
 
-val compileTestKotlin: KotlinCompile by tasks
-compileTestKotlin.kotlinOptions {
-    jvmTarget = "1.8"
+    compileTestKotlin {
+        kotlinOptions {
+            jvmTarget = "1.8"
+        }
+    }
 }
