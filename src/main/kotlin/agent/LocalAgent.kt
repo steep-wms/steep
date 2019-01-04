@@ -22,7 +22,7 @@ import java.util.LinkedList
  */
 class LocalAgent : Agent {
   companion object {
-    private val log = LoggerFactory.getLogger(Agent::class.java)
+    private val log = LoggerFactory.getLogger(LocalAgent::class.java)
   }
 
   override val id: String = UniqueID.next()
@@ -134,6 +134,7 @@ class LocalAgent : Agent {
     val code = process.exitValue()
     val result = lines.joinToString("\n")
     if (code != 0) {
+      log.error("Command failed with exit code: $code")
       throw ExecutionException("Failed to run `$joinedCommand'", result, code)
     }
 

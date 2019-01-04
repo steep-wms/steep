@@ -14,7 +14,6 @@ import kotlinx.coroutines.launch
 import model.Submission
 import model.processchain.ProcessChain
 import org.slf4j.LoggerFactory
-import java.lang.IllegalStateException
 
 /**
  * The controller fetches submissions from a [SubmissionRegistry], converts
