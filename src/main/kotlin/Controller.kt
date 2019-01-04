@@ -120,6 +120,9 @@ class Controller : CoroutineVerticle() {
         submissionRegistry.addProcessChain(processChain, submission.id)
       }
 
+      // notify scheduler
+      vertx.eventBus().send(AddressConstants.SCHEDULER_LOOKUP_NOW, null)
+
       // wait for process chain results
       totalProcessChains += processChains.size
       val w = waitForProcessChains(processChains)
