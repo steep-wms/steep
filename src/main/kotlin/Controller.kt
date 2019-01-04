@@ -87,7 +87,12 @@ class Controller : CoroutineVerticle() {
 
       // execute submission asynchronously
       launch {
-        runSubmission(submission)
+        try {
+          runSubmission(submission)
+        } catch (e: Exception) {
+          log.error("Could not execute submission", e)
+          submissionRegistry.setSubmissionStatus(submission.id, Submission.Status.ERROR)
+        }
       }
     }
   }
