@@ -1,6 +1,6 @@
 package helper
 
-import io.seruco.encoding.base62.Base62
+import com.google.common.io.BaseEncoding
 import org.bson.types.ObjectId
 import java.util.Date
 
@@ -9,7 +9,7 @@ import java.util.Date
  * @author Michel Kraemer
  */
 object UniqueID : IDGenerator {
-  private val base62 = Base62.createInstance()
+  private val base32 = BaseEncoding.base32().lowerCase().omitPadding()
 
   /**
    * Generate a unique ID
@@ -18,7 +18,7 @@ object UniqueID : IDGenerator {
   override fun next(): String {
     // use a different "epoch" to make IDs shorter
     val o2 = ObjectId(Date(System.currentTimeMillis() - 1545829231994L))
-    // convert to base62 and remove leading zeros
-    return String(base62.encode(o2.toByteArray())).trimStart('0')
+    // convert to base32
+    return base32.encode(o2.toByteArray())
   }
 }

@@ -34,10 +34,10 @@ dependencies {
     implementation("io.vertx:vertx-mongo-client:$vertxVersion")
     implementation("io.vertx:vertx-web:$vertxVersion")
 
-    implementation("io.seruco.encoding:base62:0.1.2")
     implementation("commons-codec:commons-codec:1.11")
     implementation("commons-io:commons-io:2.6")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.8")
+    implementation("com.google.guava:guava:27.0.1-jre")
     implementation("org.apache.commons:commons-lang3:3.8.1")
     implementation("org.yaml:snakeyaml:1.23")
 
