@@ -11,6 +11,7 @@ import model.Submission
 import model.processchain.ProcessChain
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
@@ -20,7 +21,14 @@ import org.junit.jupiter.api.extension.ExtendWith
  */
 @ExtendWith(VertxExtension::class)
 abstract class SubmissionRegistryTest {
-  abstract val submissionRegistry: SubmissionRegistry
+  abstract fun createRegistry(vertx: Vertx): SubmissionRegistry
+
+  private lateinit var submissionRegistry: SubmissionRegistry
+
+  @BeforeEach
+  fun setUp(vertx: Vertx) {
+    submissionRegistry = createRegistry(vertx)
+  }
 
   @Test
   fun addSubmission(vertx: Vertx, ctx: VertxTestContext) {

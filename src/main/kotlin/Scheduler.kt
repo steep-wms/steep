@@ -36,7 +36,7 @@ class Scheduler : CoroutineVerticle() {
     log.info("Launching scheduler ...")
 
     // create registries
-    submissionRegistry = SubmissionRegistryFactory.create()
+    submissionRegistry = SubmissionRegistryFactory.create(vertx)
     agentRegistry = AgentRegistryFactory.create(vertx)
 
     // read configuration

@@ -1,6 +1,15 @@
 package db
 
+import com.fasterxml.jackson.module.kotlin.readValue
 import db.SubmissionRegistry.ProcessChainStatus
+import helper.JsonUtils
+import io.vertx.core.Future
+import io.vertx.core.Vertx
+import io.vertx.core.shareddata.AsyncMap
+import io.vertx.kotlin.core.shareddata.getAwait
+import io.vertx.kotlin.core.shareddata.putAwait
+import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.awaitResult
 import model.Submission
 import model.processchain.ProcessChain
 
@@ -8,73 +17,125 @@ import model.processchain.ProcessChain
  * A submission registry that keeps objects in memory
  * @author Michel Kraemer
  */
-class InMemorySubmissionRegistry : SubmissionRegistry {
+class InMemorySubmissionRegistry(vertx: Vertx) : SubmissionRegistry {
+  companion object {
+    /**
+     * Name of a cluster-wide map keeping [Submission]s
+     */
+    private const val ASYNC_MAP_SUBMISSIONS = "InMemorySubmissionRegistry.Submissions"
+
+    /**
+     * Name of a cluster-wide map keeping [ProcessChain]s
+     */
+    private const val ASYNC_MAP_PROCESS_CHAINS = "InMemorySubmissionRegistry.ProcessChains"
+  }
+
   private data class ProcessChainEntry(
       val processChain: ProcessChain,
       val submissionId: String,
-      var status: ProcessChainStatus,
-      var output: Map<String, List<String>>? = null
+      val status: ProcessChainStatus,
+      val output: Map<String, List<String>>? = null
   )
 
-  private val submissions = mutableMapOf<String, Submission>()
-  private val processChains = mutableMapOf<String, ProcessChainEntry>()
+  private val submissions: Future<AsyncMap<String, String>>
+  private val processChains:  Future<AsyncMap<String, String>>
 
-  override suspend fun addSubmission(submission: Submission) {
-    submissions[submission.id] = submission
+  init {
+    val sharedData = vertx.sharedData()
+    submissions = Future.future()
+    processChains = Future.future()
+    sharedData.getAsyncMap(ASYNC_MAP_SUBMISSIONS, submissions)
+    sharedData.getAsyncMap(ASYNC_MAP_PROCESS_CHAINS, processChains)
   }
 
-  override suspend fun findSubmissions() = submissions.values.toList()
+  override suspend fun addSubmission(submission: Submission) {
+    val str = JsonUtils.mapper.writeValueAsString(submission)
+    submissions.await().putAwait(submission.id, str)
+  }
 
-  override suspend fun findSubmissionById(submissionId: String) =
-    submissions[submissionId]
+  override suspend fun findSubmissions(): List<Submission> {
+    val map = submissions.await()
+    val values = awaitResult<List<String>> { map.values(it) }
+    return values.map { JsonUtils.mapper.readValue<Submission>(it) }
+  }
+
+  override suspend fun findSubmissionById(submissionId: String): Submission? {
+    return submissions.await().getAwait(submissionId)?.let {
+      JsonUtils.mapper.readValue(it)
+    }
+  }
 
   override suspend fun findSubmissionsByStatus(status: Submission.Status, limit: Int?) =
-      submissions.values
+      findSubmissions()
           .filter { it.status == status }
           .take(limit ?: Integer.MAX_VALUE)
-          .map { it }
 
   override suspend fun setSubmissionStatus(submissionId: String, status: Submission.Status) {
-    submissions[submissionId]?.let {
-      submissions[submissionId] = it.copy(status = status)
+    val map = submissions.await()
+    map.getAwait(submissionId)?.let {
+      val submission = JsonUtils.mapper.readValue<Submission>(it)
+      val newSubmission = submission.copy(status = status)
+      map.putAwait(submissionId, JsonUtils.mapper.writeValueAsString(newSubmission))
     }
   }
 
   override suspend fun addProcessChain(processChain: ProcessChain,
       submissionId: String, status: ProcessChainStatus) {
-    if (!submissions.containsKey(submissionId)) {
+    if (submissions.await().getAwait(submissionId) == null) {
       throw NoSuchElementException("There is no submission with ID `$submissionId'")
     }
     val e = ProcessChainEntry(processChain, submissionId, status)
-    processChains[processChain.id] = e
+    processChains.await().putAwait(processChain.id, JsonUtils.mapper.writeValueAsString(e))
+  }
+
+  private suspend fun findProcessChainEntries(): List<ProcessChainEntry> {
+    val map = processChains.await()
+    val values = awaitResult<List<String>> { map.values(it) }
+    return values.map { JsonUtils.mapper.readValue<ProcessChainEntry>(it) }
   }
 
   override suspend fun findProcessChainsBySubmissionId(submissionId: String) =
-      processChains.values
+      findProcessChainEntries()
           .filter { it.submissionId == submissionId }
           .map { it.processChain }
 
   override suspend fun findProcessChainsByStatus(status: ProcessChainStatus, limit: Int?) =
-      processChains.values
+      findProcessChainEntries()
           .filter { it.status == status }
           .take(limit ?: Integer.MAX_VALUE)
           .map { it.processChain }
 
   override suspend fun setProcessChainStatus(processChainId: String,
       status: ProcessChainStatus) {
-    processChains[processChainId]?.status = status
+    val map = processChains.await()
+    map.getAwait(processChainId)?.let {
+      val entry = JsonUtils.mapper.readValue<ProcessChainEntry>(it)
+      val newEntry = entry.copy(status = status)
+      map.putAwait(processChainId, JsonUtils.mapper.writeValueAsString(newEntry))
+    }
   }
 
-  override suspend fun getProcessChainStatus(processChainId: String) =
-      (processChains[processChainId] ?: throw NoSuchElementException(
-          "There is no process chain with ID `$processChainId'")).status
+  override suspend fun getProcessChainStatus(processChainId: String): ProcessChainStatus {
+    val map = processChains.await()
+    val str = map.getAwait(processChainId) ?: throw NoSuchElementException(
+        "There is no process chain with ID `$processChainId'")
+    return JsonUtils.mapper.readValue<ProcessChainEntry>(str).status
+  }
 
   override suspend fun setProcessChainOutput(processChainId: String,
       output: Map<String, List<String>>?) {
-    processChains[processChainId]?.output = output
+    val map = processChains.await()
+    map.getAwait(processChainId)?.let {
+      val entry = JsonUtils.mapper.readValue<ProcessChainEntry>(it)
+      val newEntry = entry.copy(output = output)
+      map.putAwait(processChainId, JsonUtils.mapper.writeValueAsString(newEntry))
+    }
   }
 
-  override suspend fun getProcessChainOutput(processChainId: String) =
-      (processChains[processChainId] ?: throw NoSuchElementException(
-          "There is no process chain with ID `$processChainId'")).output
+  override suspend fun getProcessChainOutput(processChainId: String): Map<String, List<String>>? {
+    val map = processChains.await()
+    val str = map.getAwait(processChainId) ?: throw NoSuchElementException(
+        "There is no process chain with ID `$processChainId'")
+    return JsonUtils.mapper.readValue<ProcessChainEntry>(str).output
+  }
 }

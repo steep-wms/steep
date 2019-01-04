@@ -39,7 +39,7 @@ class Controller : CoroutineVerticle() {
     log.info("Launching controller ...")
 
     // create registries
-    submissionRegistry = SubmissionRegistryFactory.create()
+    submissionRegistry = SubmissionRegistryFactory.create(vertx)
     metadataRegistry = MetadataRegistryFactory.create(vertx)
 
     // read configuration

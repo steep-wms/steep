@@ -33,7 +33,7 @@ class JobManager : CoroutineVerticle() {
   private lateinit var submissionRegistry: SubmissionRegistry
 
   override suspend fun start() {
-    submissionRegistry = SubmissionRegistryFactory.create()
+    submissionRegistry = SubmissionRegistryFactory.create(vertx)
 
     // deploy remote agent
     val agentEnabled = config.getBoolean(ConfigConstants.AGENT_ENABLED, true)

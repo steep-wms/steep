@@ -49,7 +49,7 @@ class ControllerTest {
     // mock submission registry
     submissionRegistry = mockk()
     mockkObject(SubmissionRegistryFactory)
-    every { SubmissionRegistryFactory.create() } returns submissionRegistry
+    every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
 
     // deploy verticle under test
     val config = json {

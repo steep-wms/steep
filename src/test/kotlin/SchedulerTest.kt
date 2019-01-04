@@ -41,7 +41,7 @@ class SchedulerTest {
     // mock submission registry
     submissionRegistry = mockk()
     mockkObject(SubmissionRegistryFactory)
-    every { SubmissionRegistryFactory.create() } returns submissionRegistry
+    every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
 
     // mock agent registry
     agentRegistry = mockk()

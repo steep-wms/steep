@@ -1,5 +1,7 @@
 package db
 
+import io.vertx.core.Vertx
+
 /**
  * Creates [SubmissionRegistry] objects
  * @author Michel Kraemer
@@ -7,7 +9,8 @@ package db
 object SubmissionRegistryFactory {
   /**
    * Create a new [SubmissionRegistry]
+   * @param vertx the current Vert.x instance
    * @return the [SubmissionRegistry]
    */
-  fun create(): SubmissionRegistry = InMemorySubmissionRegistry()
+  fun create(vertx: Vertx): SubmissionRegistry = InMemorySubmissionRegistry(vertx)
 }
