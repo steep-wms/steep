@@ -67,11 +67,31 @@ tasks {
         kotlinOptions {
             jvmTarget = "1.8"
         }
+        sourceSets {
+            main {
+                resources {
+                    srcDirs("$buildDir/generated-src/main/resources")
+                }
+            }
+        }
     }
 
     compileTestKotlin {
         kotlinOptions {
             jvmTarget = "1.8"
         }
+    }
+
+    val generateVersionFile = register("generateVersionFile") {
+        doLast {
+            val dst = File(buildDir, "generated-src/main/resources")
+            dst.mkdirs()
+            val versionFile = File(dst, "version.dat")
+            versionFile.writeText(version.toString())
+        }
+    }
+
+    processResources {
+        dependsOn(generateVersionFile)
     }
 }
