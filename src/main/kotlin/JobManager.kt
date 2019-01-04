@@ -1,5 +1,6 @@
 import agent.LocalAgent
 import agent.RemoteAgentRegistry
+import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.readValue
 import db.SubmissionRegistry
 import db.SubmissionRegistryFactory
@@ -161,6 +162,10 @@ class JobManager : CoroutineVerticle() {
           .end("Invalid workflow JSON: " + e.message)
       return
     }
+
+    log.info("Received workflow:\n" + JsonUtils.mapper.copy()
+        .enable(SerializationFeature.INDENT_OUTPUT)
+        .writeValueAsString(workflow))
 
     // store submission in registry
     val submission = Submission(workflow = workflow)

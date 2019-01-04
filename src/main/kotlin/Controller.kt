@@ -122,16 +122,25 @@ class Controller : CoroutineVerticle() {
       errors += w.second
     }
 
-    if (ruleSystem.isFinished()) {
-      val status = when (errors) {
+    val status = if (ruleSystem.isFinished()) {
+      when (errors) {
         0 -> Submission.Status.SUCCESS
         totalProcessChains -> Submission.Status.ERROR
         else -> Submission.Status.PARTIAL_SUCCESS
       }
-      submissionRegistry.setSubmissionStatus(submission.id, status)
     } else {
-      submissionRegistry.setSubmissionStatus(submission.id, Submission.Status.ERROR)
+      log.error("Workflow was not executed completely")
+      Submission.Status.ERROR
     }
+
+    val msg = "Submission `${submission.id}' finished with status $status"
+    when (status) {
+      Submission.Status.PARTIAL_SUCCESS -> log.warn(msg)
+      Submission.Status.ERROR -> log.error(msg)
+      else -> log.info(msg)
+    }
+
+    submissionRegistry.setSubmissionStatus(submission.id, status)
   }
 
   /**
