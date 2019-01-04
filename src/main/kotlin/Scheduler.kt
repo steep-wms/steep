@@ -90,6 +90,9 @@ class Scheduler : CoroutineVerticle() {
           submissionRegistry.setProcessChainStatus(processChain.id, ERROR)
         } finally {
           agentRegistry.deallocate(agent)
+
+          // try to lookup next process chain immediately
+          vertx.eventBus().send(SCHEDULER_LOOKUP_NOW, null)
         }
       }
     }
