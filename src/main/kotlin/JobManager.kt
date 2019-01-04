@@ -152,13 +152,44 @@ class JobManager : CoroutineVerticle() {
   }
 
   /**
+   * Amend submission JSON with additional information such as progress
+   * @param submission the JSON object to amend
+   */
+  private suspend fun amendSubmission(submission: JsonObject) {
+    var runningProcessChains = 0L
+    var succeededProcessChains = 0L
+    var failedProcessChains = 0L
+    val processChains = submissionRegistry.findProcessChainsBySubmissionId(
+        submission.getString("id"))
+    val totalProcessChains = processChains.size
+    processChains.forEach { processChain ->
+      val status = submissionRegistry.getProcessChainStatus(processChain.id)
+      when (status) {
+        SubmissionRegistry.ProcessChainStatus.REGISTERED -> {}
+        SubmissionRegistry.ProcessChainStatus.RUNNING -> runningProcessChains++
+        SubmissionRegistry.ProcessChainStatus.SUCCESS -> succeededProcessChains++
+        SubmissionRegistry.ProcessChainStatus.ERROR -> failedProcessChains++
+      }
+    }
+
+    submission.put("runningProcessChains", runningProcessChains)
+    submission.put("succeededProcessChains", succeededProcessChains)
+    submission.put("failedProcessChains", failedProcessChains)
+    submission.put("totalProcessChains", totalProcessChains)
+  }
+
+  /**
    * Get list of workflows
    * @param ctx the routing context
    */
   private fun onGetWorkflows(ctx: RoutingContext) {
     launch {
       val list = submissionRegistry.findSubmissions().map { submission ->
-        JsonUtils.toJson(submission).also { it.remove("workflow") } }
+        JsonUtils.toJson(submission).also {
+          it.remove("workflow")
+          amendSubmission(it)
+        }
+      }
       val arr = JsonArray(list)
       ctx.response().end(arr.encode())
     }
@@ -177,7 +208,9 @@ class JobManager : CoroutineVerticle() {
             .setStatusCode(404)
             .end("There is no workflow with the ID `$id'")
       } else {
-        ctx.response().end(JsonUtils.mapper.writeValueAsString(submission))
+        val json = JsonUtils.toJson(submission)
+        amendSubmission(json)
+        ctx.response().end(json.encode())
       }
     }
   }
