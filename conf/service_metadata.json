@@ -20,7 +20,7 @@
         "data_type": "directory"
     }]
 }, {
-    "id": 1003,
+    "id": "cp",
     "name": "cp",
     "description": "Copies files",
     "path": "cp",
