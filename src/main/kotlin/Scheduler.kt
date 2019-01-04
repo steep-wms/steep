@@ -68,24 +68,17 @@ class Scheduler : CoroutineVerticle() {
   private suspend fun lookup() {
     while (true) {
       // get next registered process chain
-      val processChains = submissionRegistry.findProcessChainsByStatus(REGISTERED, 1)
-      if (processChains.isEmpty()) {
-        // no registered process chains found
-        return
-      }
-      val processChain = processChains.first()
+      val processChain = submissionRegistry.fetchNextProcessChain(REGISTERED, RUNNING) ?: return
       log.info("Found registered process chain `${processChain.id}'")
 
       // allocate an agent for the process chain
       val agent = agentRegistry.allocate(processChain)
       if (agent == null) {
         log.info("No agent available to execute process chain `${processChain.id}'")
+        submissionRegistry.setProcessChainStatus(processChain.id, REGISTERED)
         return
       }
       log.info("Assigned process chain `${processChain.id}' to agent `${agent.id}'")
-
-      // set status to RUNNING before launching a new job to avoid race conditions
-      submissionRegistry.setProcessChainStatus(processChain.id, RUNNING)
 
       // execute process chain
       launch {

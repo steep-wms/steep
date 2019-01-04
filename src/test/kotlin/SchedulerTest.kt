@@ -103,12 +103,12 @@ class SchedulerTest {
     val allPcs = (1..nProcessChains).map { ProcessChain() }
     val registeredPcs = allPcs.toMutableList()
     for (pc in allPcs) {
-      // remove running process chains from list of registered process chains
-      coEvery { submissionRegistry.setProcessChainStatus(pc.id, RUNNING) } answers {
+      // add running process chain to list of registered process chains again
+      coEvery { submissionRegistry.setProcessChainStatus(pc.id, REGISTERED) } answers {
         ctx.verify {
-          assertThat(registeredPcs).contains(pc)
+          assertThat(registeredPcs).doesNotContain(pc)
         }
-        registeredPcs.remove(pc)
+        registeredPcs.add(0, pc)
       }
 
       // register mock for output
@@ -130,11 +130,10 @@ class SchedulerTest {
       ctx.verify {
         assertThat(registeredPcs).doesNotContain(allPcs.last())
 
-        // verify that all process chains were set to RUNNING and then SUCCESS,
+        // verify that all process chains were set to SUCCESS,
         // and that the output was set correctly
         coVerify(exactly = 1) {
           for (pc in allPcs) {
-            submissionRegistry.setProcessChainStatus(pc.id, RUNNING)
             submissionRegistry.setProcessChainOutput(pc.id,
                 mapOf("ARG1" to listOf("output-${pc.id}")))
             submissionRegistry.setProcessChainStatus(pc.id, SUCCESS)
@@ -145,8 +144,8 @@ class SchedulerTest {
     }
 
     // execute process chains
-    coEvery { submissionRegistry.findProcessChainsByStatus(REGISTERED, 1) } answers {
-      registeredPcs.take(1)
+    coEvery { submissionRegistry.fetchNextProcessChain(REGISTERED, RUNNING) } answers {
+      if (registeredPcs.isEmpty()) null else registeredPcs.removeAt(0)
     }
 
     vertx.eventBus().publish(AddressConstants.SCHEDULER_LOOKUP_NOW, null)
@@ -183,13 +182,11 @@ class SchedulerTest {
 
     // mock submission registry
     val pc = ProcessChain()
-    coEvery { submissionRegistry.setProcessChainStatus(pc.id, RUNNING) } just Runs
     coEvery { submissionRegistry.setProcessChainStatus(pc.id, ERROR) } just Runs
 
     coEvery { agentRegistry.deallocate(agent) } answers {
       ctx.verify {
         coVerify(exactly = 1) {
-          submissionRegistry.setProcessChainStatus(pc.id, RUNNING)
           submissionRegistry.setProcessChainStatus(pc.id, ERROR)
         }
       }
@@ -197,8 +194,8 @@ class SchedulerTest {
     }
 
     // execute process chains
-    coEvery { submissionRegistry.findProcessChainsByStatus(REGISTERED, 1) } returns
-        listOf(pc) andThen emptyList()
+    coEvery { submissionRegistry.fetchNextProcessChain(REGISTERED, RUNNING) } returns
+        pc andThen null
 
     vertx.eventBus().publish(AddressConstants.SCHEDULER_LOOKUP_NOW, null)
   }

@@ -89,19 +89,20 @@ class ControllerTest {
     // mock submission registry
     coEvery { submissionRegistry.setSubmissionStatus(submission.id, Status.RUNNING) } just Runs
 
-    val processChainSlot = slot<ProcessChain>()
-    coEvery { submissionRegistry.addProcessChain(capture(processChainSlot), submission.id) } answers {
-      coEvery { submissionRegistry.getProcessChainStatus(processChainSlot.captured.id) } returns
-          ProcessChainStatus.SUCCESS
-      coEvery { submissionRegistry.getProcessChainOutput(processChainSlot.captured.id) } returns
-          mapOf("output_file1" to listOf("/tmp/0"))
+    val processChainsSlot = slot<List<ProcessChain>>()
+    coEvery { submissionRegistry.addProcessChains(capture(processChainsSlot), submission.id) } answers {
+      for (processChain in processChainsSlot.captured) {
+        coEvery { submissionRegistry.getProcessChainStatus(processChain.id) } returns
+            ProcessChainStatus.SUCCESS
+        coEvery { submissionRegistry.getProcessChainOutput(processChain.id) } returns
+            mapOf("output_file1" to listOf("/tmp/0"))
+      }
     }
 
     coEvery { submissionRegistry.setSubmissionStatus(submission.id, Status.SUCCESS) } answers {
       ctx.verify {
-        // verify that the submission was set to RUNNING and then SUCCESS
+        // verify that the submission was set to SUCCESS
         coVerify(exactly = 1) {
-          submissionRegistry.setSubmissionStatus(submission.id, Status.RUNNING)
           submissionRegistry.setSubmissionStatus(submission.id, Status.SUCCESS)
         }
       }
@@ -109,9 +110,8 @@ class ControllerTest {
     }
 
     // execute submissions
-    coEvery { submissionRegistry.findSubmissionsByStatus(Status.ACCEPTED, 1) } answers {
-      if (acceptedSubmissions.isEmpty()) emptyList() else
-        listOf(acceptedSubmissions.removeAt(0))
+    coEvery { submissionRegistry.fetchNextSubmission(Status.ACCEPTED, Status.RUNNING) } answers {
+      if (acceptedSubmissions.isEmpty()) null else acceptedSubmissions.removeAt(0)
     }
 
     vertx.eventBus().publish(AddressConstants.CONTROLLER_LOOKUP_NOW, null)

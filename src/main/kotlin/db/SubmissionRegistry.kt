@@ -35,14 +35,15 @@ interface SubmissionRegistry {
   suspend fun findSubmissionById(submissionId: String): Submission?
 
   /**
-   * Find all submissions with a given status
-   * @param status the status
-   * @param limit the maximum number of submissions to return (may be `null`
-   * if all submissions should be returned)
-   * @return the list of submissions
+   * Atomically fetch a submission that has the given `currentStatus` and
+   * set its status to `newStatus` before returning it.
+   * @param currentStatus the current status of the submission
+   * @param newStatus the new status
+   * @return the submission (or `null` if there was no submission with
+   * the given `currentStatus`)
    */
-  suspend fun findSubmissionsByStatus(status: Submission.Status,
-      limit: Int? = null): Collection<Submission>
+  suspend fun fetchNextSubmission(currentStatus: Submission.Status,
+      newStatus: Submission.Status): Submission?
 
   /**
    * Set the status of a submission
@@ -52,14 +53,14 @@ interface SubmissionRegistry {
   suspend fun setSubmissionStatus(submissionId: String, status: Submission.Status)
 
   /**
-   * Add a process chain to a submission
-   * @param processChain the process chain to add
+   * Add multiple process chains to a submission
+   * @param processChains the process chains to add
    * @param submissionId the submission ID
-   * @param status the status of the process chain
+   * @param status the status of the process chains
    * @throws NoSuchElementException if there is no submission with the given ID
    */
-  suspend fun addProcessChain(processChain: ProcessChain, submissionId: String,
-      status: ProcessChainStatus = ProcessChainStatus.REGISTERED)
+  suspend fun addProcessChains(processChains: Collection<ProcessChain>,
+      submissionId: String, status: ProcessChainStatus = ProcessChainStatus.REGISTERED)
 
   /**
    * Find all process chains that belong to a given submission
@@ -70,14 +71,15 @@ interface SubmissionRegistry {
   suspend fun findProcessChainsBySubmissionId(submissionId: String): Collection<ProcessChain>
 
   /**
-   * Find all process chains with a given status
-   * @param status the status
-   * @param limit the maximum number of process chains to return (may be `null`
-   * if all process chains should be returned)
-   * @return the list of process chains
+   * Atomically fetch a process chain that has the given `currentStatus` and
+   * set its status to `newStatus` before returning it.
+   * @param currentStatus the current status of the process chain
+   * @param newStatus the new status
+   * @return the process chain (or `null` if there was no process chain with
+   * the given `currentStatus`)
    */
-  suspend fun findProcessChainsByStatus(status: ProcessChainStatus,
-      limit: Int? = null): Collection<ProcessChain>
+  suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
+      newStatus: ProcessChainStatus): ProcessChain?
 
   /**
    * Set the status of a process chain

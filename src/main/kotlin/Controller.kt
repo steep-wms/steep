@@ -72,18 +72,10 @@ class Controller : CoroutineVerticle() {
    */
   private suspend fun lookup() {
     while (true) {
-      // get next accepted submission
-      val submissions = submissionRegistry.findSubmissionsByStatus(
-          Submission.Status.ACCEPTED, 1)
-      if (submissions.isEmpty()) {
-        // no new submissions found
-        return
-      }
-      val submission = submissions.first()
+      // get next submission
+      val submission = submissionRegistry.fetchNextSubmission(
+          Submission.Status.ACCEPTED, Submission.Status.RUNNING) ?: return
       log.info("Found new submission `${submission.id}'")
-
-      // set status to RUNNING before launching a new job to avoid race conditions
-      submissionRegistry.setSubmissionStatus(submission.id, Submission.Status.RUNNING)
 
       // execute submission asynchronously
       launch {
@@ -116,9 +108,7 @@ class Controller : CoroutineVerticle() {
       }
 
       // store process chains in submission registry
-      for (processChain in processChains) {
-        submissionRegistry.addProcessChain(processChain, submission.id)
-      }
+      submissionRegistry.addProcessChains(processChains, submission.id)
 
       // notify scheduler
       vertx.eventBus().send(AddressConstants.SCHEDULER_LOOKUP_NOW, null)

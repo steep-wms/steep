@@ -47,41 +47,60 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun fetchNextSubmission(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s)
+      val s2 = submissionRegistry.fetchNextSubmission(Submission.Status.ACCEPTED,
+          Submission.Status.RUNNING)
+      val status = submissionRegistry.findSubmissionById(s.id)?.status
+      val s3 = submissionRegistry.fetchNextSubmission(Submission.Status.ACCEPTED,
+          Submission.Status.RUNNING)
+      ctx.verify {
+        assertThat(s2).isEqualTo(s)
+        assertThat(s3).isNull()
+        assertThat(status).isNotNull.isEqualTo(Submission.Status.RUNNING)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun setSubmissionStatus(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
 
     GlobalScope.launch(vertx.dispatcher()) {
       submissionRegistry.addSubmission(s)
       val submissions = submissionRegistry.findSubmissions()
-      val acceptedSubmissions1 = submissionRegistry.findSubmissionsByStatus(
-          Submission.Status.ACCEPTED)
-      val runningSubmissions1 = submissionRegistry.findSubmissionsByStatus(
-          Submission.Status.RUNNING)
+      val acceptedSubmission1 = submissionRegistry.fetchNextSubmission(
+          Submission.Status.ACCEPTED, Submission.Status.ACCEPTED)
+      val runningSubmission1 = submissionRegistry.fetchNextSubmission(
+          Submission.Status.RUNNING, Submission.Status.RUNNING)
 
       ctx.verify {
         assertThat(submissions)
             .hasSize(1)
             .contains(s)
-        assertThat(acceptedSubmissions1)
-            .hasSize(1)
-            .contains(s)
-        assertThat(runningSubmissions1)
-            .isEmpty()
+        assertThat(acceptedSubmission1)
+            .isEqualTo(s)
+        assertThat(runningSubmission1)
+            .isNull()
       }
 
       submissionRegistry.setSubmissionStatus(s.id, Submission.Status.RUNNING)
 
-      val acceptedSubmissions2 = submissionRegistry.findSubmissionsByStatus(
-          Submission.Status.ACCEPTED)
-      val runningSubmissions2 = submissionRegistry.findSubmissionsByStatus(
-          Submission.Status.RUNNING)
+      val acceptedSubmission2 = submissionRegistry.fetchNextSubmission(
+          Submission.Status.ACCEPTED, Submission.Status.ACCEPTED)
+      val runningSubmission2 = submissionRegistry.fetchNextSubmission(
+          Submission.Status.RUNNING, Submission.Status.RUNNING)
 
       ctx.verify {
-        assertThat(acceptedSubmissions2)
-            .isEmpty()
-        assertThat(runningSubmissions2)
-            .hasSize(1)
-            .contains(s.copy(status = Submission.Status.RUNNING))
+        assertThat(acceptedSubmission2)
+            .isNull()
+        assertThat(runningSubmission2)
+            .isEqualTo(s.copy(status = Submission.Status.RUNNING))
       }
 
       ctx.completeNow()
@@ -95,18 +114,43 @@ abstract class SubmissionRegistryTest {
 
     GlobalScope.launch(vertx.dispatcher()) {
       submissionRegistry.addSubmission(s)
-      submissionRegistry.addProcessChain(pc, s.id)
+      submissionRegistry.addProcessChains(listOf(pc), s.id)
       val pcs = submissionRegistry.findProcessChainsBySubmissionId(s.id)
-      val registeredPcs = submissionRegistry.findProcessChainsByStatus(
+      val registeredPc = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
           SubmissionRegistry.ProcessChainStatus.REGISTERED)
 
       ctx.verify {
         assertThat(pcs)
             .hasSize(1)
             .contains(pc)
-        assertThat(registeredPcs)
-            .hasSize(1)
-            .contains(pc)
+        assertThat(registeredPc)
+            .isEqualTo(pc)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun fetchNextProcessChain(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc = ProcessChain()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s)
+      submissionRegistry.addProcessChains(listOf(pc), s.id)
+      val pc2 = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      val status = submissionRegistry.getProcessChainStatus(pc.id)
+      val pc3 = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      ctx.verify {
+        assertThat(pc2).isEqualTo(pc)
+        assertThat(pc3).isNull()
+        assertThat(status).isEqualTo(SubmissionRegistry.ProcessChainStatus.RUNNING)
       }
 
       ctx.completeNow()
@@ -117,7 +161,7 @@ abstract class SubmissionRegistryTest {
   fun addProcessChainToMissingSubmission(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
       try {
-        submissionRegistry.addProcessChain(ProcessChain(), "MISSING")
+        submissionRegistry.addProcessChains(listOf(ProcessChain()), "MISSING")
         throw NoStackTraceThrowable("addProcessChain should throw")
       } catch (e: NoSuchElementException) {
         ctx.completeNow()
@@ -134,11 +178,13 @@ abstract class SubmissionRegistryTest {
 
     GlobalScope.launch(vertx.dispatcher()) {
       submissionRegistry.addSubmission(s)
-      submissionRegistry.addProcessChain(pc, s.id)
+      submissionRegistry.addProcessChains(listOf(pc), s.id)
       val pcs = submissionRegistry.findProcessChainsBySubmissionId(s.id)
-      val registeredPcs1 = submissionRegistry.findProcessChainsByStatus(
+      val registeredPc1 = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
           SubmissionRegistry.ProcessChainStatus.REGISTERED)
-      val runningPcs1 = submissionRegistry.findProcessChainsByStatus(
+      val runningPc1 = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.RUNNING,
           SubmissionRegistry.ProcessChainStatus.RUNNING)
       val pcStatus1 = submissionRegistry.getProcessChainStatus(pc.id)
 
@@ -146,11 +192,10 @@ abstract class SubmissionRegistryTest {
         assertThat(pcs)
             .hasSize(1)
             .contains(pc)
-        assertThat(registeredPcs1)
-            .hasSize(1)
-            .contains(pc)
-        assertThat(runningPcs1)
-            .isEmpty()
+        assertThat(registeredPc1)
+            .isEqualTo(pc)
+        assertThat(runningPc1)
+            .isNull()
         assertThat(pcStatus1)
             .isEqualTo(SubmissionRegistry.ProcessChainStatus.REGISTERED)
       }
@@ -158,18 +203,19 @@ abstract class SubmissionRegistryTest {
       submissionRegistry.setProcessChainStatus(pc.id,
           SubmissionRegistry.ProcessChainStatus.RUNNING)
 
-      val registeredPcs2 = submissionRegistry.findProcessChainsByStatus(
+      val registeredPc2 = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
           SubmissionRegistry.ProcessChainStatus.REGISTERED)
-      val runningPcs2 = submissionRegistry.findProcessChainsByStatus(
+      val runningPc2 = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.RUNNING,
           SubmissionRegistry.ProcessChainStatus.RUNNING)
       val pcStatus2 = submissionRegistry.getProcessChainStatus(pc.id)
 
       ctx.verify {
-        assertThat(registeredPcs2)
-            .isEmpty()
-        assertThat(runningPcs2)
-            .hasSize(1)
-            .contains(pc)
+        assertThat(registeredPc2)
+            .isNull()
+        assertThat(runningPc2)
+            .isEqualTo(pc)
         assertThat(pcStatus2)
             .isEqualTo(SubmissionRegistry.ProcessChainStatus.RUNNING)
       }
@@ -199,7 +245,7 @@ abstract class SubmissionRegistryTest {
 
     GlobalScope.launch(vertx.dispatcher()) {
       submissionRegistry.addSubmission(s)
-      submissionRegistry.addProcessChain(pc, s.id)
+      submissionRegistry.addProcessChains(listOf(pc), s.id)
       val pcOutput1 = submissionRegistry.getProcessChainOutput(pc.id)
 
       ctx.verify {
