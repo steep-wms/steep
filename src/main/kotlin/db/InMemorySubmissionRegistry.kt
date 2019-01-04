@@ -23,8 +23,22 @@ class InMemorySubmissionRegistry : SubmissionRegistry {
     submissions[submission.id] = submission
   }
 
+  override suspend fun findSubmissions() = submissions.values.toList()
+
   override suspend fun findSubmissionById(submissionId: String) =
     submissions[submissionId]
+
+  override suspend fun findSubmissionsByStatus(status: Submission.Status, limit: Int?) =
+      submissions.values
+          .filter { it.status == status }
+          .take(limit ?: Integer.MAX_VALUE)
+          .map { it }
+
+  override suspend fun setSubmissionStatus(submissionId: String, status: Submission.Status) {
+    submissions[submissionId]?.let {
+      submissions[submissionId] = it.copy(status = status)
+    }
+  }
 
   override suspend fun addProcessChain(processChain: ProcessChain,
       submissionId: String, status: ProcessChainStatus) {

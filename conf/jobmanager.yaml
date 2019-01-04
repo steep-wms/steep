@@ -1,11 +1,18 @@
 jobmanager:
+  serviceMetadataFile: conf/service_metadata.json
+  tmpPath: /tmp
+
   http:
     enabled: true
     host: localhost
     port: 8080
+    postMaxSize: 10485760  # 10 MB
 
   agent:
     enabled: true
+
+  controller:
+    lookupIntervalMilliseconds: 2000
 
   scheduler:
     lookupIntervalMilliseconds: 2000

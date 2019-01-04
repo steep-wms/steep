@@ -1,17 +1,24 @@
 import agent.LocalAgent
 import agent.RemoteAgentRegistry
+import com.fasterxml.jackson.module.kotlin.readValue
+import db.SubmissionRegistry
+import db.SubmissionRegistryFactory
 import helper.JsonUtils
 import io.vertx.core.eventbus.Message
 import io.vertx.core.http.HttpServerOptions
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
+import io.vertx.ext.web.RoutingContext
+import io.vertx.ext.web.handler.BodyHandler
 import io.vertx.kotlin.core.http.listenAwait
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import kotlinx.coroutines.launch
+import model.Submission
 import model.processchain.ProcessChain
+import model.workflow.Workflow
 import org.slf4j.LoggerFactory
 
 /**
@@ -23,7 +30,11 @@ class JobManager : CoroutineVerticle() {
     private val log = LoggerFactory.getLogger(JobManager::class.java)
   }
 
+  private lateinit var submissionRegistry: SubmissionRegistry
+
   override suspend fun start() {
+    submissionRegistry = SubmissionRegistryFactory.create()
+
     // deploy remote agent
     val agentEnabled = config.getBoolean(ConfigConstants.AGENT_ENABLED, true)
     if (agentEnabled) {
@@ -49,7 +60,14 @@ class JobManager : CoroutineVerticle() {
       val server = vertx.createHttpServer(options)
       val router = Router.router(vertx)
 
+      val bodyHandler = BodyHandler.create()
+          .setHandleFileUploads(false)
+          .setBodyLimit(config.getLong(ConfigConstants.HTTP_POST_MAX_SIZE))
 
+      router.get("/").handler(this::onGet)
+      router.post("/workflows")
+          .handler(bodyHandler)
+          .handler(this::onPostWorkflow)
 
       server.requestHandler(router).listenAwait(port, host)
 
@@ -113,6 +131,54 @@ class JobManager : CoroutineVerticle() {
       obj(
           "errorMessage" to message
       )
+    }
+  }
+
+  /**
+   * Get information about the JobManager
+   * @param ctx the routing context
+   */
+  private fun onGet(ctx: RoutingContext) {
+    val response = json {
+      obj(
+          "version" to javaClass.getResource("/version.dat").readText()
+      )
+    }
+    ctx.response().end(response.encodePrettily())
+  }
+
+  /**
+   * Execute a workflow
+   * @param ctx the routing context
+   */
+  private fun onPostWorkflow(ctx: RoutingContext) {
+    // parse workflow
+    val workflow = try {
+      JsonUtils.mapper.readValue<Workflow>(ctx.bodyAsString)
+    } catch (e: Exception) {
+      ctx.response()
+          .setStatusCode(400)
+          .end("Invalid workflow JSON: " + e.message)
+      return
+    }
+
+    // store submission in registry
+    val submission = Submission(workflow = workflow)
+    launch {
+      try {
+        submissionRegistry.addSubmission(submission)
+        ctx.response()
+            .setStatusCode(202)
+            .putHeader("content-type", "application/json")
+            .end(JsonUtils.mapper.writeValueAsString(submission))
+
+        // notify controller to speed up lookup process
+        vertx.eventBus().send(AddressConstants.CONTROLLER_LOOKUP_NOW, null)
+      } catch (e: Exception) {
+        ctx.response()
+            .setStatusCode(500)
+            .end(e.message)
+      }
     }
   }
 }

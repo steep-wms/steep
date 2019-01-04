@@ -22,11 +22,34 @@ interface SubmissionRegistry {
   suspend fun addSubmission(submission: Submission)
 
   /**
+   * Get a list of all submissions in the registry
+   * @return all submissions
+   */
+  suspend fun findSubmissions(): Collection<Submission>
+
+  /**
    * Get a single submission from the registry
    * @param submissionId the submission's ID
    * @return the submission or `null` if the submission does not exist
    */
   suspend fun findSubmissionById(submissionId: String): Submission?
+
+  /**
+   * Find all submissions with a given status
+   * @param status the status
+   * @param limit the maximum number of submissions to return (may be `null`
+   * if all submissions should be returned)
+   * @return the list of submissions
+   */
+  suspend fun findSubmissionsByStatus(status: Submission.Status,
+      limit: Int? = null): Collection<Submission>
+
+  /**
+   * Set the status of a submission
+   * @param submissionId the submission ID
+   * @param status the new status
+   */
+  suspend fun setSubmissionStatus(submissionId: String, status: Submission.Status)
 
   /**
    * Add a process chain to a submission
@@ -44,7 +67,7 @@ interface SubmissionRegistry {
    * @return the list of process chains (may be empty if the submission does not
    * exist or if it has no process chains)
    */
-  suspend fun findProcessChainsBySubmissionId(submissionId: String): List<ProcessChain>
+  suspend fun findProcessChainsBySubmissionId(submissionId: String): Collection<ProcessChain>
 
   /**
    * Find all process chains with a given status
@@ -54,7 +77,7 @@ interface SubmissionRegistry {
    * @return the list of process chains
    */
   suspend fun findProcessChainsByStatus(status: ProcessChainStatus,
-      limit: Int? = null): List<ProcessChain>
+      limit: Int? = null): Collection<ProcessChain>
 
   /**
    * Set the status of a process chain

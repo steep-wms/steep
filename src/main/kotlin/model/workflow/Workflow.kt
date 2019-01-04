@@ -11,6 +11,7 @@ import helper.UniqueID
  * @author Michel Kraemer
  */
 data class Workflow(
+    val api: String = "3.0.0",
     val id: String = UniqueID.next(),
     val name: String? = null,
     val vars: List<Variable> = emptyList(),

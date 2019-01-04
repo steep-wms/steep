@@ -1,0 +1,17 @@
+package db
+
+import com.fasterxml.jackson.module.kotlin.readValue
+import helper.JsonUtils
+import model.metadata.Service
+import java.io.File
+
+/**
+ * A metadata registry that reads service metadata from a JSON file
+ * @param path the path to the JSON file
+ * @author Michel Kraemer
+ */
+class FileMetadataRegistry(path: String) : MetadataRegistry {
+  private val services: List<Service> = JsonUtils.mapper.readValue(File(path))
+
+  override suspend fun findServices(): List<Service> = services
+}

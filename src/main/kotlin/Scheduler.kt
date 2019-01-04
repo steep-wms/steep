@@ -40,19 +40,19 @@ class Scheduler : CoroutineVerticle() {
     agentRegistry = AgentRegistryFactory.create(vertx)
 
     // read configuration
-    val lookupNextProcessChainInterval = config.getLong(SCHEDULER_LOOKUP_INTERVAL, 2000L)
+    val lookupInterval = config.getLong(SCHEDULER_LOOKUP_INTERVAL, 2000L)
 
     // periodically look for new process chains and execute them
     periodicLookupJob = launch {
       while (true) {
-        delay(lookupNextProcessChainInterval)
-        lookupNextProcessChains()
+        delay(lookupInterval)
+        lookup()
       }
     }
 
     vertx.eventBus().consumer<Unit>(SCHEDULER_LOOKUP_NOW) {
       launch {
-        lookupNextProcessChains()
+        lookup()
       }
     }
   }
@@ -62,17 +62,18 @@ class Scheduler : CoroutineVerticle() {
     periodicLookupJob.cancelAndJoin()
   }
 
-  private suspend fun lookupNextProcessChains() {
+  /**
+   * Get registered process chains and execute them asynchronously
+   */
+  private suspend fun lookup() {
     while (true) {
-      log.trace("Looking up next process chain ...")
-
       // get next registered process chain
       val processChains = submissionRegistry.findProcessChainsByStatus(REGISTERED, 1)
       if (processChains.isEmpty()) {
         // no registered process chains found
         return
       }
-      val processChain = processChains[0]
+      val processChain = processChains.first()
       log.info("Found registered process chain `${processChain.id}'")
 
       // allocate an agent for the process chain
@@ -83,10 +84,12 @@ class Scheduler : CoroutineVerticle() {
       }
       log.info("Assigned process chain `${processChain.id}' to agent `${agent.id}'")
 
+      // set status to RUNNING before launching a new job to avoid race conditions
+      submissionRegistry.setProcessChainStatus(processChain.id, RUNNING)
+
       // execute process chain
       launch {
         try {
-          submissionRegistry.setProcessChainStatus(processChain.id, RUNNING)
           val results = agent.execute(processChain)
           submissionRegistry.setProcessChainOutput(processChain.id, results)
           submissionRegistry.setProcessChainStatus(processChain.id, SUCCESS)

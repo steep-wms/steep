@@ -1,6 +1,6 @@
 import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import helper.IDGenerator
+import helper.JsonUtils
 import helper.UniqueID
 import model.metadata.Service
 import model.processchain.Argument
@@ -33,6 +33,12 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
 
   private val vars: Map<String, Variable> = workflow.vars.map { it.id to it }.toMap()
   private val actions = workflow.actions.toMutableList()
+
+  /**
+   * Returns `true` if the workflow has been fully converted to process chains
+   * @return `true` if the rule system has finished, `false` otherwise
+   */
+  fun isFinished() = actions.isEmpty()
 
   /**
    * Evaluate the production rules and create the next set of process chains.
@@ -115,7 +121,7 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
     actions.removeAll(actionsToRemove)
 
     if (processChains.isNotEmpty()) {
-      log.debug("Generated process chains:\n" + jacksonObjectMapper()
+      log.debug("Generated process chains:\n" + JsonUtils.mapper.copy()
           .enable(SerializationFeature.INDENT_OUTPUT)
           .writeValueAsString(processChains))
     }

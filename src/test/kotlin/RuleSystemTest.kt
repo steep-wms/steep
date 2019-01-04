@@ -1,10 +1,7 @@
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import TestMetadata.services
 import com.fasterxml.jackson.module.kotlin.readValue
 import helper.ConsecutiveID
-import model.metadata.Cardinality
-import model.metadata.Service
-import model.metadata.ServiceParameter
-import model.processchain.Argument
+import helper.JsonUtils
 import model.processchain.ProcessChain
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
@@ -15,50 +12,27 @@ import org.junit.jupiter.api.Test
  * @author Michel Kraemer
  */
 class RuleSystemTest {
-  private val serviceCp = Service("cp", "cp", "Copy", "cp", Service.Runtime.OTHER, listOf(
-      ServiceParameter("input_file", "Input file", "Input file",
-          Argument.Type.INPUT, Cardinality(1, 1)),
-      ServiceParameter("output_file", "Output file", "Output file",
-          Argument.Type.OUTPUT, Cardinality(1, 1))
-  ))
-
-  private val serviceJoin = Service("join", "join", "Join", "join.sh", Service.Runtime.OTHER, listOf(
-      ServiceParameter("i", "Input files", "Many inputs files",
-          Argument.Type.INPUT, Cardinality(1, Int.MAX_VALUE)),
-      ServiceParameter("o", "Output file", "Single output file",
-          Argument.Type.OUTPUT, Cardinality(1, 1))
-  ))
-
-  private val serviceSplit = Service("split", "split", "Split", "split.sh", Service.Runtime.OTHER, listOf(
-      ServiceParameter("input", "Input file", "An input file",
-          Argument.Type.INPUT, Cardinality(1, 1)),
-      ServiceParameter("output", "Output files", "Multiple output files",
-          Argument.Type.OUTPUT, Cardinality(1, Int.MAX_VALUE))
-  ))
-
   data class Expected(
       val chains: List<ProcessChain>,
       val results: Map<String, List<String>>
   )
 
   private fun readWorkflow(name: String): Workflow {
-    val mapper = jacksonObjectMapper()
     val fixture = javaClass.getResource("fixtures/$name.json").readText()
-    return mapper.readValue(fixture)
+    return JsonUtils.mapper.readValue(fixture)
   }
 
   private fun readProcessChains(name: String): List<Expected> {
-    val mapper = jacksonObjectMapper()
     val fixture = javaClass.getResource("fixtures/${name}_result.json").readText()
-    return mapper.readValue(fixture)
+    return JsonUtils.mapper.readValue(fixture)
   }
 
   private fun doTest(workflowName: String, resultsName: String = workflowName) {
     val workflow = readWorkflow(workflowName)
-    val services = listOf(serviceCp, serviceJoin, serviceSplit)
     val expectedChains = readProcessChains(resultsName)
 
     val ruleSystem = RuleSystem(workflow, "/tmp/", services, ConsecutiveID())
+    assertThat(ruleSystem.isFinished()).isFalse()
 
     var results = mapOf<String, List<String>>()
     for (expected in expectedChains) {
@@ -69,6 +43,7 @@ class RuleSystemTest {
 
     val processChains = ruleSystem.fire(results)
     assertThat(processChains).isEmpty()
+    assertThat(ruleSystem.isFinished()).isTrue()
   }
 
   /**

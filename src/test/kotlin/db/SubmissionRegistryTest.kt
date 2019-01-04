@@ -39,6 +39,48 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun setSubmissionStatus(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s)
+      val submissions = submissionRegistry.findSubmissions()
+      val acceptedSubmissions1 = submissionRegistry.findSubmissionsByStatus(
+          Submission.Status.ACCEPTED)
+      val runningSubmissions1 = submissionRegistry.findSubmissionsByStatus(
+          Submission.Status.RUNNING)
+
+      ctx.verify {
+        assertThat(submissions)
+            .hasSize(1)
+            .contains(s)
+        assertThat(acceptedSubmissions1)
+            .hasSize(1)
+            .contains(s)
+        assertThat(runningSubmissions1)
+            .isEmpty()
+      }
+
+      submissionRegistry.setSubmissionStatus(s.id, Submission.Status.RUNNING)
+
+      val acceptedSubmissions2 = submissionRegistry.findSubmissionsByStatus(
+          Submission.Status.ACCEPTED)
+      val runningSubmissions2 = submissionRegistry.findSubmissionsByStatus(
+          Submission.Status.RUNNING)
+
+      ctx.verify {
+        assertThat(acceptedSubmissions2)
+            .isEmpty()
+        assertThat(runningSubmissions2)
+            .hasSize(1)
+            .contains(s.copy(status = Submission.Status.RUNNING))
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun addProcessChain(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()

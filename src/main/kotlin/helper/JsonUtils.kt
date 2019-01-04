@@ -1,5 +1,7 @@
 package helper
 
+import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.vertx.core.json.Json
@@ -10,7 +12,9 @@ import io.vertx.core.json.JsonObject
  * @author Michel Kraemer
  */
 object JsonUtils {
-  val mapper = Json.mapper.copy().registerKotlinModule()
+  val mapper: ObjectMapper = Json.mapper.copy()
+      .registerKotlinModule()
+      .setSerializationInclusion(JsonInclude.Include.NON_NULL)
 
   /**
    * Recursively flattens a hierarchy of JSON objects. Combines keys

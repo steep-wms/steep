@@ -4,6 +4,16 @@
  */
 object ConfigConstants {
   /**
+   * The path to the service metadata JSON file
+   */
+  const val SERVICE_METADATA_FILE = "jobmanager.serviceMetadataFile"
+
+  /**
+   * Path where temporary files should be stored
+   */
+  const val TMP_PATH = "jobmanager.tmpPath"
+
+  /**
    * `true` the the JobManager should deploy an HTTP server
    */
   const val HTTP_ENABLED = "jobmanager.http.enabled"
@@ -17,6 +27,16 @@ object ConfigConstants {
    * The port the JobManager's HTTP server should listen on
    */
   const val HTTP_PORT = "jobmanager.http.port"
+
+  /**
+   * The maximum size of HTTP POST bodies in bytes
+   */
+  const val HTTP_POST_MAX_SIZE = "jobmanager.http.postMaxSize"
+
+  /**
+   * The interval in which the controller looks for accepted submissions
+   */
+  const val CONTROLLER_LOOKUP_INTERVAL = "jobmanager.controller.lookupIntervalMilliseconds"
 
   /**
    * The interval in which the scheduler looks for registered process chains

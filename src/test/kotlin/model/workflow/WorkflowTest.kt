@@ -1,8 +1,11 @@
 package model.workflow
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.databind.deser.UnresolvedForwardReference
+import com.fasterxml.jackson.databind.exc.InvalidDefinitionException
 import com.fasterxml.jackson.module.kotlin.readValue
+import helper.JsonUtils
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 
 /**
@@ -15,9 +18,8 @@ class WorkflowTest {
    */
   @Test
   fun read() {
-    val mapper = jacksonObjectMapper()
     val fixture = javaClass.getResource("/fixtures/LS1_2datasets.json").readText()
-    val workflow = mapper.readValue<Workflow>(fixture)
+    val workflow = JsonUtils.mapper.readValue<Workflow>(fixture)
 
     assertThat(workflow.name).isEqualTo("Land showcase 1.1")
     assertThat(workflow.vars).hasSize(19)
@@ -82,5 +84,62 @@ class WorkflowTest {
     assertThat(storeAction4x1.inputs[0]).isSameAs(workflow.vars[11])
     assertThat(execAction4x0.inputs[0].variable).isSameAs(forAction4.enumerator)
     assertThat(execAction4x0.inputs[0].variable).isSameAs(workflow.vars[10])
+  }
+
+  /**
+   * Test if reading a workflow with an undeclared variable fails
+   */
+  @Test
+  fun undeclaredVar() {
+    val fixture = javaClass.getResource("undeclaredVar.json").readText()
+    assertThatThrownBy { JsonUtils.mapper.readValue<Workflow>(fixture) }
+        .isInstanceOf(UnresolvedForwardReference::class.java)
+        .hasMessageContaining("Object Id [input_file1]")
+  }
+
+  /**
+   * Test if reading a workflow that redeclares a declared variable fails
+   */
+  @Test
+  fun redeclareDeclaredVar() {
+    val fixture = javaClass.getResource("redeclareDeclaredVar.json").readText()
+    assertThatThrownBy { JsonUtils.mapper.readValue<Workflow>(fixture) }
+        .isInstanceOf(InvalidDefinitionException::class.java)
+        .hasMessageContaining("key=input_file1")
+  }
+
+  /**
+   * Test if reading a workflow with a duplicate declared variable fails
+   */
+  @Test
+  fun duplicateDeclaredVar() {
+    val fixture = javaClass.getResource("duplicateDeclaredVar.json").readText()
+    assertThatThrownBy { JsonUtils.mapper.readValue<Workflow>(fixture) }
+        .isInstanceOf(InvalidDefinitionException::class.java)
+        .hasMessageContaining("key=input_file1")
+  }
+
+  /**
+   * Test if reading a workflow with a duplicate variable fails
+   */
+  @Test
+  fun redeclareVar() {
+    val fixture = javaClass.getResource("redeclareVar.json").readText()
+    assertThatThrownBy { JsonUtils.mapper.readValue<Workflow>(fixture) }
+        .isInstanceOf(InvalidDefinitionException::class.java)
+        .hasMessageContaining("key=input_file1")
+  }
+
+  /**
+   * Test if a variable that was not declared in 'vars' but used twice is
+   * resolved to the same object
+   */
+  @Test
+  fun sameVarUndeclared() {
+    val fixture = javaClass.getResource("sameVarUndeclared.json").readText()
+    val workflow = JsonUtils.mapper.readValue<Workflow>(fixture)
+    val a0 = workflow.actions[0] as ExecuteAction
+    val a1 = workflow.actions[1] as ExecuteAction
+    assertThat(a0.inputs[0].variable).isSameAs(a1.inputs[0].variable)
   }
 }

@@ -1,0 +1,43 @@
+[{
+    "id": 1002,
+    "name": "knn",
+    "description": "An artificial neural network that classifies surfaces in point clouds",
+    "path": "knn:latest",
+    "runtime": "docker",
+    "parameters": [{
+        "id": "input_directory",
+        "name": "Input directory",
+        "description": "A directory containing the point clouds to classify",
+        "type": "input",
+        "cardinality": "1..1",
+        "data_type": "directory"
+    }, {
+        "id": "output_directory",
+        "name": "Output directory",
+        "description": "An output directory for the classification results",
+        "type": "output",
+        "cardinality": "1..1",
+        "data_type": "directory"
+    }]
+}, {
+    "id": 1003,
+    "name": "cp",
+    "description": "Copies files",
+    "path": "cp",
+    "runtime": "other",
+    "parameters": [{
+        "id": "input_file",
+        "name": "Input file name",
+        "description": "Input file name",
+        "type": "input",
+        "cardinality": "1..1",
+        "data_type": "file"
+    }, {
+        "id": "output_file",
+        "name": "Output file name",
+        "description": "Output file name",
+        "type": "output",
+        "cardinality": "1..1",
+        "data_type": "file"
+    }]
+}]

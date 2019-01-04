@@ -54,6 +54,7 @@ class Main : CoroutineVerticle() {
     // deploy verticles
     val options = DeploymentOptions(conf)
     vertx.deployVerticleAwait(Scheduler::class.qualifiedName!!, options)
+    vertx.deployVerticleAwait(Controller::class.qualifiedName!!, options)
     vertx.deployVerticleAwait(JobManager::class.qualifiedName!!, options)
   }
 
