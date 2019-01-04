@@ -7,6 +7,7 @@ import db.SubmissionRegistryFactory
 import helper.JsonUtils
 import io.vertx.core.eventbus.Message
 import io.vertx.core.http.HttpServerOptions
+import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
@@ -66,6 +67,8 @@ class JobManager : CoroutineVerticle() {
           .setBodyLimit(config.getLong(ConfigConstants.HTTP_POST_MAX_SIZE))
 
       router.get("/").handler(this::onGet)
+      router.get("/workflows").handler(this::onGetWorkflows)
+      router.get("/workflows/:id").handler(this::onGetWorkflowById)
       router.post("/workflows")
           .handler(bodyHandler)
           .handler(this::onPostWorkflow)
@@ -146,6 +149,37 @@ class JobManager : CoroutineVerticle() {
       )
     }
     ctx.response().end(response.encodePrettily())
+  }
+
+  /**
+   * Get list of workflows
+   * @param ctx the routing context
+   */
+  private fun onGetWorkflows(ctx: RoutingContext) {
+    launch {
+      val list = submissionRegistry.findSubmissions().map { submission ->
+        JsonUtils.toJson(submission).also { it.remove("workflow") } }
+      val arr = JsonArray(list)
+      ctx.response().end(arr.encode())
+    }
+  }
+
+  /**
+   * Get single workflow by name
+   * @param ctx the routing context
+   */
+  private fun onGetWorkflowById(ctx: RoutingContext) {
+    launch {
+      val id = ctx.pathParam("id")
+      val submission = submissionRegistry.findSubmissionById(id)
+      if (submission == null) {
+        ctx.response()
+            .setStatusCode(404)
+            .end("There is no workflow with the ID `$id'")
+      } else {
+        ctx.response().end(JsonUtils.mapper.writeValueAsString(submission))
+      }
+    }
   }
 
   /**
