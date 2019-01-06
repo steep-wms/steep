@@ -16,3 +16,9 @@ jobmanager:
 
   scheduler:
     lookupIntervalMilliseconds: 2000
+
+  db:
+    driver: inmemory
+    url: jdbc:postgresql://localhost:5432/jobmanager?currentSchema=jobmanager
+    username: postgres
+    password: mysecretpassword

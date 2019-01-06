@@ -50,6 +50,26 @@ object ConfigConstants {
   const val AGENT_ENABLED = "jobmanager.agent.enabled"
 
   /**
+   * The database driver (see [db.SubmissionRegistryFactory] for valid values)
+   */
+  const val DB_DRIVER = "jobmanager.db.driver"
+
+  /**
+   * The database URL
+   */
+  const val DB_URL = "jobmanager.db.url"
+
+  /**
+   * The database username
+   */
+  const val DB_USERNAME = "jobmanager.db.username"
+
+  /**
+   * The database password
+   */
+  const val DB_PASSWORD = "jobmanager.db.password"
+
+  /**
    * Get all configuration keys from this class
    * @return the list of configuration keys
    */
