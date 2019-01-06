@@ -182,6 +182,15 @@ class RuleSystemTest {
     doTest("smallGraph")
   }
 
+  /**
+   * Test if a missing parameter with a default value is correctly added as an
+   * argument
+   */
+  @Test
+  fun missingDefaultParameter() {
+    doTest("missingDefaultParameter")
+  }
+
 //  TODO test complex graph
 
 //  TODO test missing service metadata

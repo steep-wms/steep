@@ -142,13 +142,23 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
     val service = services.find { it.id == action.service } ?: throw IllegalStateException(
         "There is no service with ID `${action.service}'")
 
-    val arguments = service.parameters.flatMap { serviceParam ->
+    val arguments = service.parameters.flatMap flatMap@ { serviceParam ->
       // look for action parameters matching the service parameter's ID
       val params = (when (serviceParam.type) {
         INPUT -> action.inputs
         OUTPUT -> action.outputs
         ARGUMENT -> action.parameters
       }).filter { it.id == serviceParam.id }
+
+      // if there are no params but the serviceParam is required and has a
+      // default value, add a new argument (does not apply to inputs or outputs!)
+      if (params.isEmpty() && serviceParam.cardinality.min == 1 &&
+          serviceParam.cardinality.max == 1 && serviceParam.type == ARGUMENT &&
+          serviceParam.default != null) {
+        return@flatMap listOf(Argument(serviceParam.id, serviceParam.label,
+            ArgumentVariable(idGenerator.next(), serviceParam.default.toString()),
+            serviceParam.type, serviceParam.dataType))
+      }
 
       // validate cardinality
       if (params.size < serviceParam.cardinality.min ||
@@ -159,7 +169,7 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
       }
 
       // convert parameters to arguments
-      params.map { param ->
+      return@flatMap params.map { param ->
         val v = if (serviceParam.type == OUTPUT) {
           FilenameUtils.normalize("$tmpPath/" +
               idGenerator.next() + (serviceParam.fileSuffix ?: ""))!!

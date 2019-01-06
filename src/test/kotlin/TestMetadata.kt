@@ -15,6 +15,17 @@ object TestMetadata {
           Argument.Type.OUTPUT, Cardinality(1, 1))
   ))
 
+  private val serviceCpDefaultParam = Service("cpDefaultParam", "cp", "Copy", "cp",
+      Service.Runtime.OTHER, listOf(
+      ServiceParameter("no_overwrite", "No overwrite", "Do not overwrite existing file",
+          Argument.Type.ARGUMENT, Cardinality(1, 1), Argument.DATA_TYPE_BOOLEAN,
+          true, label = "-n"),
+      ServiceParameter("input_file", "input file", "input file",
+          Argument.Type.INPUT, Cardinality(1, 1)),
+      ServiceParameter("output_file", "output file", "output file",
+          Argument.Type.OUTPUT, Cardinality(1, 1))
+  ))
+
   private val serviceJoin = Service("join", "join", "Join", "join.sh", Service.Runtime.OTHER, listOf(
       ServiceParameter("i", "Input files", "Many inputs files",
           Argument.Type.INPUT, Cardinality(1, Int.MAX_VALUE)),
@@ -29,5 +40,5 @@ object TestMetadata {
           Argument.Type.OUTPUT, Cardinality(1, Int.MAX_VALUE))
   ))
 
-  val services = listOf(serviceCp, serviceJoin, serviceSplit)
+  val services = listOf(serviceCp, serviceCpDefaultParam, serviceJoin, serviceSplit)
 }

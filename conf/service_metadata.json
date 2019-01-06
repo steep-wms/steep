@@ -26,6 +26,15 @@
     "path": "cp",
     "runtime": "other",
     "parameters": [{
+        "id": "no_overwrite",
+        "name": "No overwrite",
+        "description": "Do not overwrite existing file",
+        "type": "argument",
+        "cardinality": "1..1",
+        "label": "-n",
+        "data_type": "boolean",
+        "default": "true"
+    },{
         "id": "input_file",
         "name": "Input file name",
         "description": "Input file name",
