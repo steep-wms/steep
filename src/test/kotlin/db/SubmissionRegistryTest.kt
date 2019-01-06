@@ -238,26 +238,47 @@ abstract class SubmissionRegistryTest {
     }
   }
 
-  @Test
-  fun setProcessChainOutput(vertx: Vertx, ctx: VertxTestContext) {
+  private suspend fun doSetProcessChainOutput(ctx: VertxTestContext): ProcessChain {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()
 
+    submissionRegistry.addSubmission(s)
+    submissionRegistry.addProcessChains(listOf(pc), s.id)
+    val pcOutput1 = submissionRegistry.getProcessChainOutput(pc.id)
+
+    ctx.verify {
+      assertThat(pcOutput1).isNull()
+    }
+
+    val output = mapOf("ARG1" to listOf("output.txt"))
+    submissionRegistry.setProcessChainOutput(pc.id, output)
+    val pcOutput2 = submissionRegistry.getProcessChainOutput(pc.id)
+
+    ctx.verify {
+      assertThat(pcOutput2).isEqualTo(output)
+    }
+
+    return pc
+  }
+
+  @Test
+  fun setProcessChainOutput(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
-      submissionRegistry.addSubmission(s)
-      submissionRegistry.addProcessChains(listOf(pc), s.id)
-      val pcOutput1 = submissionRegistry.getProcessChainOutput(pc.id)
+      doSetProcessChainOutput(ctx)
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun resetProcessChainOutput(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      val pc = doSetProcessChainOutput(ctx)
+
+      submissionRegistry.setProcessChainOutput(pc.id, null)
+      val pcOutput = submissionRegistry.getProcessChainOutput(pc.id)
 
       ctx.verify {
-        assertThat(pcOutput1).isNull()
-      }
-
-      val output = mapOf("ARG1" to listOf("output.txt"))
-      submissionRegistry.setProcessChainOutput(pc.id, output)
-      val pcOutput2 = submissionRegistry.getProcessChainOutput(pc.id)
-
-      ctx.verify {
-        assertThat(pcOutput2).isEqualTo(output)
+        assertThat(pcOutput).isNull()
       }
 
       ctx.completeNow()
