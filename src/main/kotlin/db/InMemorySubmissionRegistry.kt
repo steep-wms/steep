@@ -151,6 +151,18 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
           .filter { it.submissionId == submissionId }
           .map { it.processChain }
 
+  override suspend fun countProcessChainsBySubmissionId(submissionId: String): Long =
+      findProcessChainEntries()
+          .filter { it.submissionId == submissionId }
+          .count().toLong()
+
+  override suspend fun countProcessChainsByStatus(submissionId: String,
+      status: ProcessChainStatus): Long =
+      findProcessChainEntries()
+          .filter { it.submissionId == submissionId }
+          .filter { it.status == status }
+          .count().toLong()
+
   override suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
       newStatus: ProcessChainStatus): ProcessChain? {
     val sharedData = vertx.sharedData()

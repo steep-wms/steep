@@ -156,22 +156,15 @@ class JobManager : CoroutineVerticle() {
    * @param submission the JSON object to amend
    */
   private suspend fun amendSubmission(submission: JsonObject) {
-    var runningProcessChains = 0L
-    var succeededProcessChains = 0L
-    var failedProcessChains = 0L
-    val processChains = submissionRegistry.findProcessChainsBySubmissionId(
-        submission.getString("id"))
-    val totalProcessChains = processChains.size
-    processChains.forEach { processChain ->
-      val status = submissionRegistry.getProcessChainStatus(processChain.id)
-      when (status) {
-        SubmissionRegistry.ProcessChainStatus.REGISTERED -> {}
-        SubmissionRegistry.ProcessChainStatus.RUNNING -> runningProcessChains++
-        SubmissionRegistry.ProcessChainStatus.SUCCESS -> succeededProcessChains++
-        SubmissionRegistry.ProcessChainStatus.ERROR -> failedProcessChains++
-      }
-    }
-
+    val submissionId = submission.getString("id")
+    val runningProcessChains = submissionRegistry.countProcessChainsByStatus(
+        submissionId, SubmissionRegistry.ProcessChainStatus.RUNNING)
+    val succeededProcessChains = submissionRegistry.countProcessChainsByStatus(
+        submissionId, SubmissionRegistry.ProcessChainStatus.SUCCESS)
+    val failedProcessChains = submissionRegistry.countProcessChainsByStatus(
+        submissionId, SubmissionRegistry.ProcessChainStatus.ERROR)
+    val totalProcessChains = submissionRegistry.countProcessChainsBySubmissionId(
+        submissionId)
     submission.put("runningProcessChains", runningProcessChains)
     submission.put("succeededProcessChains", succeededProcessChains)
     submission.put("failedProcessChains", failedProcessChains)

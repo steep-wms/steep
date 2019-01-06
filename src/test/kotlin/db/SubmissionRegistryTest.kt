@@ -133,6 +133,71 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun countProcessChainsBySubmissionId(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc1 = ProcessChain()
+    val pc2 = ProcessChain()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s)
+      val count0 = submissionRegistry.countProcessChainsBySubmissionId(s.id)
+      submissionRegistry.addProcessChains(listOf(pc1, pc2), s.id)
+      val count2 = submissionRegistry.countProcessChainsBySubmissionId(s.id)
+
+      ctx.verify {
+        assertThat(count0).isEqualTo(0)
+        assertThat(count2).isEqualTo(2)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun countProcessChainsByStatus(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc1 = ProcessChain()
+    val pc2 = ProcessChain()
+    val pc3 = ProcessChain()
+    val pc4 = ProcessChain()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s)
+      val count0 = submissionRegistry.countProcessChainsByStatus(s.id,
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      submissionRegistry.addProcessChains(listOf(pc1), s.id)
+      val count1 = submissionRegistry.countProcessChainsByStatus(s.id,
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      submissionRegistry.addProcessChains(listOf(pc2, pc3), s.id,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      val count2 = submissionRegistry.countProcessChainsByStatus(s.id,
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      val count3 = submissionRegistry.countProcessChainsByStatus(s.id,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      submissionRegistry.addProcessChains(listOf(pc4), s.id,
+          SubmissionRegistry.ProcessChainStatus.SUCCESS)
+      val count4 = submissionRegistry.countProcessChainsByStatus(s.id,
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      val count5 = submissionRegistry.countProcessChainsByStatus(s.id,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      val count6 = submissionRegistry.countProcessChainsByStatus(s.id,
+          SubmissionRegistry.ProcessChainStatus.SUCCESS)
+
+      ctx.verify {
+        assertThat(count0).isEqualTo(0)
+        assertThat(count1).isEqualTo(1)
+        assertThat(count2).isEqualTo(1)
+        assertThat(count3).isEqualTo(2)
+        assertThat(count4).isEqualTo(1)
+        assertThat(count5).isEqualTo(2)
+        assertThat(count6).isEqualTo(1)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun fetchNextProcessChain(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()

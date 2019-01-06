@@ -8,10 +8,28 @@ import model.processchain.ProcessChain
  * @author Michel Kraemer
  */
 interface SubmissionRegistry {
+  /**
+   * The status of a process chain
+   */
   enum class ProcessChainStatus {
+    /**
+     * The process chain has been added to the registry
+     */
     REGISTERED,
+
+    /**
+     * The process chain is currently being executed
+     */
     RUNNING,
+
+    /**
+     * The process chain was executed successfully
+     */
     SUCCESS,
+
+    /**
+     * The process chain failed
+     */
     ERROR
   }
 
@@ -69,6 +87,23 @@ interface SubmissionRegistry {
    * exist or if it has no process chains)
    */
   suspend fun findProcessChainsBySubmissionId(submissionId: String): Collection<ProcessChain>
+
+  /**
+   * Count the number of process chains that belong to a given submission
+   * @param submissionId the submission's ID
+   * @return the number of process chains belonging to the given submission
+   */
+  suspend fun countProcessChainsBySubmissionId(submissionId: String): Long
+
+  /**
+   * Count the number of process chains from a certain submission that have a
+   * given status
+   * @param submissionId the submission's ID
+   * @param status the status
+   * @return the number of process chains that belong to the given submission
+   * and that have the given status
+   */
+  suspend fun countProcessChainsByStatus(submissionId: String, status: ProcessChainStatus): Long
 
   /**
    * Atomically fetch a process chain that has the given `currentStatus` and
