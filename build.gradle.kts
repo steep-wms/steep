@@ -29,6 +29,7 @@ dependencies {
 
     implementation("io.vertx:vertx-core:$vertxVersion")
     implementation("io.vertx:vertx-hazelcast:$vertxVersion")
+    implementation("io.vertx:vertx-jdbc-client:$vertxVersion")
     implementation("io.vertx:vertx-lang-kotlin:$vertxVersion")
     implementation("io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion")
     implementation("io.vertx:vertx-mongo-client:$vertxVersion")
@@ -39,6 +40,8 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.8")
     implementation("com.google.guava:guava:27.0.1-jre")
     implementation("org.apache.commons:commons-lang3:3.8.1")
+    implementation("org.flywaydb:flyway-core:5.2.4")
+    implementation("org.postgresql:postgresql:42.2.5")
     implementation("org.yaml:snakeyaml:1.23")
 
     implementation(kotlin("reflect"))
@@ -48,6 +51,8 @@ dependencies {
     testImplementation("io.vertx:vertx-junit5:$vertxVersion")
     testImplementation("org.assertj:assertj-core:3.11.1")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.3.2")
+    testImplementation("org.testcontainers:testcontainers:1.10.5")
+    testImplementation("org.testcontainers:postgresql:1.10.5")
 }
 
 application {
