@@ -13,4 +13,6 @@ CREATE TABLE processchains (
   PRIMARY KEY(id)
 );
 
+CREATE INDEX submissions_status_idx ON submissions ((data->'status'));
 CREATE INDEX processchains_submissionId_idx ON processchains (submissionId);
+CREATE INDEX processchains_status_idx ON processchains (status);
