@@ -16,6 +16,7 @@ import model.processchain.ProcessChain
 
 /**
  * A submission registry that keeps objects in memory
+ * @param vertx the current Vert.x instance
  * @author Michel Kraemer
  */
 class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry {
@@ -78,7 +79,8 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     }
   }
 
-  override suspend fun fetchNextSubmission(currentStatus: Submission.Status, newStatus: Submission.Status): Submission? {
+  override suspend fun fetchNextSubmission(currentStatus: Submission.Status,
+      newStatus: Submission.Status): Submission? {
     val sharedData = vertx.sharedData()
     val lock = sharedData.getLockAwait(LOCK_SUBMISSIONS)
     try {
@@ -117,13 +119,24 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
 
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,
       submissionId: String, status: ProcessChainStatus) {
-    if (submissions.await().getAwait(submissionId) == null) {
-      throw NoSuchElementException("There is no submission with ID `$submissionId'")
-    }
-    val map = this.processChains.await()
-    for (processChain in processChains) {
-      val e = ProcessChainEntry(processChain, submissionId, status)
-      map.putAwait(processChain.id, JsonUtils.mapper.writeValueAsString(e))
+    val sharedData = vertx.sharedData()
+    val submissionLock = sharedData.getLockAwait(LOCK_SUBMISSIONS)
+    try {
+      val processChainLock = sharedData.getLockAwait(LOCK_PROCESS_CHAINS)
+      try {
+        if (submissions.await().getAwait(submissionId) == null) {
+          throw NoSuchElementException("There is no submission with ID `$submissionId'")
+        }
+        val map = this.processChains.await()
+        for (processChain in processChains) {
+          val e = ProcessChainEntry(processChain, submissionId, status)
+          map.putAwait(processChain.id, JsonUtils.mapper.writeValueAsString(e))
+        }
+      } finally {
+        processChainLock.release()
+      }
+    } finally {
+      submissionLock.release()
     }
   }
 
