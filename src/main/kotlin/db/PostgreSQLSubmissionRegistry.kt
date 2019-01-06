@@ -11,15 +11,14 @@ import io.vertx.ext.sql.SQLConnection
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.core.shareddata.getLockAwait
 import io.vertx.kotlin.ext.sql.batchWithParamsAwait
 import io.vertx.kotlin.ext.sql.closeAwait
-import io.vertx.kotlin.ext.sql.commitAwait
+import io.vertx.kotlin.ext.sql.executeAwait
 import io.vertx.kotlin.ext.sql.getConnectionAwait
 import io.vertx.kotlin.ext.sql.queryAwait
 import io.vertx.kotlin.ext.sql.querySingleWithParamsAwait
 import io.vertx.kotlin.ext.sql.queryWithParamsAwait
-import io.vertx.kotlin.ext.sql.rollbackAwait
-import io.vertx.kotlin.ext.sql.setAutoCommitAwait
 import io.vertx.kotlin.ext.sql.updateWithParamsAwait
 import model.Submission
 import model.processchain.ProcessChain
@@ -29,12 +28,12 @@ import org.flywaydb.core.Flyway
  * A submission registry that keeps objects in a PostgreSQL database
  * @param vertx the current Vert.x instance
  * @param url the JDBC url to the database
- * @param user the username
+ * @param username the username
  * @param password the password
  * @author Michel Kraemer
  */
-class PostgreSQLSubmissionRegistry(vertx: Vertx, url: String,
-    user: String, password: String) : SubmissionRegistry {
+class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
+    username: String, password: String) : SubmissionRegistry {
   companion object {
     /**
      * Table and column names
@@ -46,17 +45,35 @@ class PostgreSQLSubmissionRegistry(vertx: Vertx, url: String,
     private const val DATA = "data"
     private const val STATUS = "status"
     private const val OUTPUT = "output"
+
+    /**
+     * Identifier of a PostgreSQL advisory lock used to make atomic operations
+     */
+    private val ADVISORY_LOCK_ID =
+        ('J'.toLong() shl 56) +
+        ('o'.toLong() shl 48) +
+        ('b'.toLong() shl 40) +
+        ('M'.toLong() shl 32) +
+        ('a'.toLong() shl 24) +
+        ('n'.toLong() shl 16) +
+        ('a'.toLong() shl 8) +
+        ('g'.toLong())
+
+    /**
+     * Name of a cluster-wide lock used to make atomic operations
+     */
+    private const val LOCK = "PostgreSQLSubmissionRegistry.Lock"
   }
 
   private val client: JDBCClient
 
   init {
-    migrate(url, user, password)
+    migrate(url, username, password)
 
     val jdbcConfig = json {
       obj(
           "url" to url,
-          "user" to user,
+          "user" to username,
           "password" to password
       )
     }
@@ -85,20 +102,28 @@ class PostgreSQLSubmissionRegistry(vertx: Vertx, url: String,
     }
   }
 
-  private suspend fun <T> withTransaction(block: suspend (SQLConnection) -> T): T {
+  /**
+   * Atomically executes the given block. We are using two locks: a cluster-wide
+   * one to protect against concurrent access from within the same cluster and
+   * a PostgreSQL advisory lock to protect against concurrent access from other
+   * processes outside the cluster. We need two locks because PostgreSQL
+   * advisory locks are re-entrant (within the same process).
+   * @param block the block to execute
+   * @return the block's result
+   */
+  private suspend fun <T> withLocks(block: suspend (SQLConnection) -> T): T {
     return withConnection { connection ->
-      connection.setAutoCommitAwait(false)
+      val sharedData = vertx.sharedData()
+      val lock = sharedData.getLockAwait(LOCK)
       try {
-        val r = block(connection)
-        connection.commitAwait()
-        r
-      } catch (e: Exception) {
+        connection.executeAwait("SELECT pg_advisory_lock($ADVISORY_LOCK_ID)")
         try {
-          connection.rollbackAwait()
-        } catch (e1: Exception) {
-          // ignore
+          block(connection)
+        } finally {
+          connection.executeAwait("SELECT pg_advisory_unlock($ADVISORY_LOCK_ID)")
         }
-        throw e
+      } finally {
+        lock.release()
       }
     }
   }
@@ -176,7 +201,7 @@ class PostgreSQLSubmissionRegistry(vertx: Vertx, url: String,
 
   override suspend fun fetchNextSubmission(currentStatus: Submission.Status,
       newStatus: Submission.Status): Submission? {
-    return withTransaction { connection ->
+    return withLocks { connection ->
       val statement = "SELECT $DATA FROM $SUBMISSIONS WHERE $DATA->'$STATUS'=?::jsonb LIMIT 1"
       val params = json {
         array(
@@ -208,7 +233,7 @@ class PostgreSQLSubmissionRegistry(vertx: Vertx, url: String,
 
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,
       submissionId: String, status: ProcessChainStatus) {
-    withTransaction { connection ->
+    withLocks { connection ->
       val existsStatement = "SELECT 1 FROM $SUBMISSIONS WHERE $ID=?"
       val existsParam = json {
         array(
@@ -250,7 +275,7 @@ class PostgreSQLSubmissionRegistry(vertx: Vertx, url: String,
 
   override suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
       newStatus: ProcessChainStatus): ProcessChain? {
-    return withTransaction { connection ->
+    return withLocks { connection ->
       val statement = "SELECT $DATA FROM $PROCESS_CHAINS WHERE $STATUS=? LIMIT 1"
       val params = json {
         array(
