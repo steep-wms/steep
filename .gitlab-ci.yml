@@ -8,6 +8,9 @@ cache:
     - .gradle/wrapper
     - .gradle/caches
 
+services:
+  - docker:dind
+
 build:
   image: openjdk:8
   script:
