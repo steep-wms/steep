@@ -1,3 +1,5 @@
+import java.text.SimpleDateFormat
+import java.util.Date
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jetbrains.kotlin.script.tryConstructClassFromStringArgs
 
@@ -91,8 +93,16 @@ tasks {
         doLast {
             val dst = File(buildDir, "generated-src/main/resources")
             dst.mkdirs()
-            val versionFile = File(dst, "version.dat")
-            versionFile.writeText(version.toString())
+            val versionFile = File(dst, "version.json")
+            val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+            val timestamp = format.format(Date())
+            val versionText = """{
+              |  "version": "$version",
+              |  "build": "${System.getenv("CI_PIPELINE_IID") ?: ""}",
+              |  "commit": "${System.getenv("CI_COMMIT_SHA") ?: ""}",
+              |  "timestamp": "${timestamp}"
+              |}""".trimMargin()
+            versionFile.writeText(versionText)
         }
     }
 

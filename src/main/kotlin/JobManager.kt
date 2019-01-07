@@ -143,12 +143,8 @@ class JobManager : CoroutineVerticle() {
    * @param ctx the routing context
    */
   private fun onGet(ctx: RoutingContext) {
-    val response = json {
-      obj(
-          "version" to javaClass.getResource("/version.dat").readText()
-      )
-    }
-    ctx.response().end(response.encodePrettily())
+    val versionInfo = JsonObject(javaClass.getResource("/version.json").readText())
+    ctx.response().end(versionInfo.encodePrettily())
   }
 
   /**
