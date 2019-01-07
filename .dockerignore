@@ -1,0 +1,8 @@
+# first exclude everything
+**
+
+# then include JobManager (built with `./gradlew installDist`)
+!build/install/jobmanager3
+
+# also include conf files
+!conf
