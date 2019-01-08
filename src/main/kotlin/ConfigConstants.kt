@@ -14,6 +14,17 @@ object ConfigConstants {
   const val TMP_PATH = "jobmanager.tmpPath"
 
   /**
+   * The IP address (or hostname) the JobManager uses to announce itself within
+   * in the cluster
+   */
+  const val CLUSTER_ANNOUNCE_ADDRESS = "jobmanager.cluster.announceAddress"
+
+  /**
+   * A list of IP addresses (or hostnames) of cluster members
+   */
+  const val CLUSTER_MEMBERS = "jobmanager.cluster.members"
+
+  /**
    * `true` the the JobManager should deploy an HTTP server
    */
   const val HTTP_ENABLED = "jobmanager.http.enabled"

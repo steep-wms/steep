@@ -2,6 +2,10 @@ jobmanager:
   serviceMetadataFile: conf/service_metadata.yaml
   tmpPath: /tmp
 
+  cluster:
+    announceAddress: localhost
+    members:
+
   http:
     enabled: true
     host: localhost
