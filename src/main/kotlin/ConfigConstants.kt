@@ -31,6 +31,16 @@ object ConfigConstants {
   const val CLUSTER_MEMBERS = "jobmanager.cluster.members"
 
   /**
+   * The IP address (or hostname) to bind the clustered eventbus to
+   */
+  const val CLUSTER_HOST = "jobmanager.cluster.host"
+
+  /**
+   * The port the clustered eventbus should listen on
+   */
+  const val CLUSTER_PORT = "jobmanager.cluster.port"
+
+  /**
    * `true` the the JobManager should deploy an HTTP server
    */
   const val HTTP_ENABLED = "jobmanager.http.enabled"

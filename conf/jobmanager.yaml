@@ -9,6 +9,7 @@ jobmanager:
       # - 192.168.*.*
       # - 192.168.1.3
     members:
+    port: 41187
 
   http:
     enabled: true

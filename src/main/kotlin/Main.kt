@@ -48,10 +48,16 @@ suspend fun main(args : Array<String>) {
     hazelcastConfig.networkConfig.join.tcpIpConfig.members = members.map { it.toString() }
   }
 
-  // start cluster and Vert.x
+  // configure cluster
   val mgr = HazelcastClusterManager(hazelcastConfig)
   val options = VertxOptions().setClusterManager(mgr)
-  getDefaultAddress()?.let { options.setClusterHost(it) }
+  val clusterHost = conf.getString(ConfigConstants.CLUSTER_HOST) ?: getDefaultAddress()
+  clusterHost?.let { options.setClusterHost(it) }
+  val clusterPort = conf.getInteger(ConfigConstants.CLUSTER_PORT)
+  clusterPort?.let { options.setClusterPort(it) }
+  publicAddress?.let { options.setClusterPublicHost(it) }
+
+  // start Vert.x
   val vertx = Vertx.clusteredVertxAwait(options)
 
   globalNodeId = mgr.nodeID
