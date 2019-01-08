@@ -14,10 +14,25 @@ object ConfigConstants {
   const val TMP_PATH = "jobmanager.tmpPath"
 
   /**
+   * The IP address (or hostname) to bind the clustered eventbus to
+   */
+  const val CLUSTER_HOST = "jobmanager.cluster.host"
+
+  /**
+   * The port the clustered eventbus should listen on
+   */
+  const val CLUSTER_PORT = "jobmanager.cluster.port"
+
+  /**
    * The IP address (or hostname) the JobManager uses to announce itself within
    * in the cluster
    */
-  const val CLUSTER_ANNOUNCE_ADDRESS = "jobmanager.cluster.announceAddress"
+  const val CLUSTER_PUBLIC_HOST = "jobmanager.cluster.publicHost"
+
+  /**
+   * The public port the clustered eventbus should listen on
+   */
+  const val CLUSTER_PUBLIC_PORT = "jobmanager.cluster.publicPort"
 
   /**
    * A list of IP address patterns specifying valid interfaces the cluster
@@ -29,16 +44,6 @@ object ConfigConstants {
    * A list of IP addresses (or hostnames) of cluster members
    */
   const val CLUSTER_MEMBERS = "jobmanager.cluster.members"
-
-  /**
-   * The IP address (or hostname) to bind the clustered eventbus to
-   */
-  const val CLUSTER_HOST = "jobmanager.cluster.host"
-
-  /**
-   * The port the clustered eventbus should listen on
-   */
-  const val CLUSTER_PORT = "jobmanager.cluster.port"
 
   /**
    * `true` the the JobManager should deploy an HTTP server

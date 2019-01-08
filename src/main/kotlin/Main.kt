@@ -29,9 +29,9 @@ suspend fun main(args : Array<String>) {
   val hazelcastConfig = ConfigUtil.loadConfig()
 
   // set hazelcast public address
-  val publicAddress = conf.getString(ConfigConstants.CLUSTER_ANNOUNCE_ADDRESS)
-  if (publicAddress != null) {
-    hazelcastConfig.networkConfig.publicAddress = publicAddress
+  val publicHost = conf.getString(ConfigConstants.CLUSTER_PUBLIC_HOST)
+  if (publicHost != null) {
+    hazelcastConfig.networkConfig.publicAddress = publicHost
   }
 
   // set hazelcast interfaces
@@ -55,7 +55,9 @@ suspend fun main(args : Array<String>) {
   clusterHost?.let { options.setClusterHost(it) }
   val clusterPort = conf.getInteger(ConfigConstants.CLUSTER_PORT)
   clusterPort?.let { options.setClusterPort(it) }
-  publicAddress?.let { options.setClusterPublicHost(it) }
+  publicHost?.let { options.setClusterPublicHost(it) }
+  val publicPort = conf.getInteger(ConfigConstants.CLUSTER_PUBLIC_PORT)
+  publicPort?.let { options.setClusterPublicPort(it) }
 
   // start Vert.x
   val vertx = Vertx.clusteredVertxAwait(options)
