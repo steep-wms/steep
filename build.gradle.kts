@@ -39,6 +39,7 @@ dependencies {
 
     implementation("commons-codec:commons-codec:1.11")
     implementation("commons-io:commons-io:2.6")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.9.8")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.8")
     implementation("com.google.guava:guava:27.0.1-jre")
     implementation("org.apache.commons:commons-lang3:3.8.1")

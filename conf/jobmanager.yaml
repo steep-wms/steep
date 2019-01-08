@@ -1,5 +1,5 @@
 jobmanager:
-  serviceMetadataFile: conf/service_metadata.json
+  serviceMetadataFile: conf/service_metadata.yaml
   tmpPath: /tmp
 
   http:
