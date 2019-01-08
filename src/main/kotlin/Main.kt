@@ -24,6 +24,12 @@ suspend fun main(args : Array<String>) {
   // load hazelcast config
   val hazelcastConfig = ConfigUtil.loadConfig()
 
+  // set hazelcast public address
+  val publicAddress = conf.getString(ConfigConstants.CLUSTER_ANNOUNCE_ADDRESS)
+  if (publicAddress != null) {
+    hazelcastConfig.networkConfig.publicAddress = publicAddress
+  }
+
   // set hazelcast interfaces
   val interfaces = conf.getJsonArray(ConfigConstants.CLUSTER_INTERFACES)
   if (interfaces != null) {
