@@ -10,6 +10,10 @@ import io.vertx.spi.cluster.hazelcast.ConfigUtil
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager
 import org.yaml.snakeyaml.Yaml
 import java.io.File
+import java.net.Inet6Address
+import java.net.NetworkInterface
+import java.net.SocketException
+import java.util.Enumeration
 
 var globalNodeId: String = "localhost"
 
@@ -44,9 +48,10 @@ suspend fun main(args : Array<String>) {
     hazelcastConfig.networkConfig.join.tcpIpConfig.members = members.map { it.toString() }
   }
 
-  // stare cluster and Vert.x
+  // start cluster and Vert.x
   val mgr = HazelcastClusterManager(hazelcastConfig)
   val options = VertxOptions().setClusterManager(mgr)
+  getDefaultAddress()?.let { options.setClusterHost(it) }
   val vertx = Vertx.clusteredVertxAwait(options)
 
   globalNodeId = mgr.nodeID
@@ -91,6 +96,37 @@ private fun overwriteWithEnvironmentVariables(conf: JsonObject,
       conf.put(name, newVal)
     }
   }
+}
+
+/**
+ * This method has been copied from [io.vertx.core.impl.launcher.commands.BareCommand]
+ * released under the EPL-2.0 or Apache-2.0 license. Copyright (c) 2011-2018
+ * Contributors to the Eclipse Foundation.
+ */
+private fun getDefaultAddress(): String? {
+  val nets: Enumeration<NetworkInterface>
+  try {
+    nets = NetworkInterface.getNetworkInterfaces()
+  } catch (e: SocketException) {
+    return null
+  }
+
+  var netinf: NetworkInterface
+  while (nets.hasMoreElements()) {
+    netinf = nets.nextElement()
+
+    val addresses = netinf.inetAddresses
+
+    while (addresses.hasMoreElements()) {
+      val address = addresses.nextElement()
+      if (!address.isAnyLocalAddress && !address.isMulticastAddress &&
+          address !is Inet6Address) {
+        return address.hostAddress
+      }
+    }
+  }
+
+  return null
 }
 
 /**
