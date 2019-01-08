@@ -20,6 +20,12 @@ object ConfigConstants {
   const val CLUSTER_ANNOUNCE_ADDRESS = "jobmanager.cluster.announceAddress"
 
   /**
+   * A list of IP address patterns specifying valid interfaces the cluster
+   * manager should bind to
+   */
+  const val CLUSTER_INTERFACES = "jobmanager.cluster.interfaces"
+
+  /**
    * A list of IP addresses (or hostnames) of cluster members
    */
   const val CLUSTER_MEMBERS = "jobmanager.cluster.members"

@@ -24,9 +24,17 @@ suspend fun main(args : Array<String>) {
   // load hazelcast config
   val hazelcastConfig = ConfigUtil.loadConfig()
 
+  // set hazelcast interfaces
+  val interfaces = conf.getJsonArray(ConfigConstants.CLUSTER_INTERFACES)
+  if (interfaces != null) {
+    hazelcastConfig.networkConfig.interfaces.isEnabled = true
+    hazelcastConfig.networkConfig.interfaces.interfaces = interfaces.map { it.toString() }
+  }
+
   // replace hazelcast members
   val members = conf.getJsonArray(ConfigConstants.CLUSTER_MEMBERS)
   if (members != null) {
+    hazelcastConfig.networkConfig.join.tcpIpConfig.isEnabled = true
     hazelcastConfig.networkConfig.join.tcpIpConfig.members = members.map { it.toString() }
   }
 

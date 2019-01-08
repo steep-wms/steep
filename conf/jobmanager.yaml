@@ -4,6 +4,10 @@ jobmanager:
 
   cluster:
     announceAddress: localhost
+    interfaces:
+      # - 146.140.35-37.*
+      # - 192.168.*.*
+      # - 192.168.1.3
     members:
 
   http:
