@@ -20,6 +20,8 @@ jobmanager:
 
   agent:
     enabled: true
+    # id: <uniqueId>
+    capabilities:
 
   controller:
     lookupIntervalMilliseconds: 2000

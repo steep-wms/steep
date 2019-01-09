@@ -1,10 +1,12 @@
 package agent
 
 import AddressConstants
+import helper.JsonUtils
 import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.core.shareddata.AsyncMap
 import io.vertx.core.shareddata.LocalMap
+import io.vertx.kotlin.core.shareddata.getAwait
 import io.vertx.kotlin.core.shareddata.getLockAwait
 import io.vertx.kotlin.core.shareddata.putAwait
 import io.vertx.kotlin.core.shareddata.removeAwait
@@ -66,14 +68,16 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
   private val localMap: LocalMap<String, Boolean>
 
   /**
-   * A cluster-wide map keeping addresses of available [RemoteAgent]s
+   * A cluster-wide map keeping addresses and serialized metadata of
+   * available [RemoteAgent]s
    */
-  private val availableAgents: Future<AsyncMap<String, Boolean>>
+  private val availableAgents: Future<AsyncMap<String, String>>
 
   /**
-   * A cluster-wide map keeping addresses of busy [RemoteAgent]s
+   * A cluster-wide map keeping addresses and serialized metadata of
+   * busy [RemoteAgent]s
    */
-  private val busyAgents: Future<AsyncMap<String, Boolean>>
+  private val busyAgents: Future<AsyncMap<String, String>>
 
   init {
     // create shared maps
@@ -94,7 +98,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
         }
       }
 
-      // local left agents
+      // log left agents
       vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_LEFT) { msg ->
         log.info("Remote agent `${msg.body()}' has left.")
         launch {
@@ -115,17 +119,29 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
   }
 
   /**
-   * Register a remote agent under the given `nodeId` unless there already is
-   * an agent under this `nodeId`, in which case the method does nothing. The
-   * agent should already listen to messages on the eventbus address
-   * ([AGENT_ADDRESS_PREFIX]` + nodeId`). The agent registry automatically
-   * unregisters the agent when the node with the given `nodeId` leaves the
-   * cluster.
-   * @param nodeId the node ID
+   * Register a remote agent under the `nodeId` from the given [metadata]
+   * object unless there already is an agent under this `nodeId`, in which case
+   * the method does nothing. The agent should already listen to messages on
+   * the eventbus address ([AGENT_ADDRESS_PREFIX]` + nodeId`). The agent
+   * registry automatically unregisters the agent when the node with the
+   * `nodeId` leaves the cluster.
+   * @param metadata metadata about the remote agent
    */
-  suspend fun register(nodeId: String) {
-    availableAgents.await().putAwait(RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + nodeId, true)
-    vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_ADDED, nodeId)
+  suspend fun register(metadata: RemoteAgentMetadata) {
+    val sharedData = vertx.sharedData()
+    val lock = sharedData.getLockAwait(LOCK_NAME)
+    try {
+      val availableAgents = this.availableAgents.await()
+      val key = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + metadata.nodeId
+      val currentMetadata = availableAgents.getAwait(key)
+      if (currentMetadata == null) {
+        val json = JsonUtils.toJson(metadata)
+        availableAgents.putAwait(key, json.encode())
+        vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_ADDED, json)
+      }
+    } finally {
+      lock.release()
+    }
   }
 
   private suspend fun logAgents() {
@@ -152,8 +168,8 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
 
       val id = keys.iterator().next()
 
-      availableAgents.removeAwait(id)
-      busyAgents.await().putAwait(id, true)
+      val metadata = availableAgents.removeAwait(id)!!
+      busyAgents.await().putAwait(id, metadata)
 
       return RemoteAgent(id, vertx)
     } finally {
@@ -165,8 +181,8 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     val sharedData = vertx.sharedData()
     val lock = sharedData.getLockAwait(LOCK_NAME)
     try {
-      busyAgents.await().removeAwait(agent.id)
-      availableAgents.await().putAwait(agent.id, true)
+      val metadata = busyAgents.await().removeAwait(agent.id)!!
+      availableAgents.await().putAwait(agent.id, metadata)
     } finally {
       lock.release()
     }

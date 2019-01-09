@@ -82,6 +82,16 @@ object ConfigConstants {
   const val AGENT_ENABLED = "jobmanager.agent.enabled"
 
   /**
+   * Unique identifier of this agent instance
+   */
+  const val AGENT_ID = "jobmanager.agent.id"
+
+  /**
+   * List of capabilities that this agent provides
+   */
+  const val AGENT_CAPABILTIIES = "jobmanager.agent.capabilities"
+
+  /**
    * The database driver (see [db.SubmissionRegistryFactory] for valid values)
    */
   const val DB_DRIVER = "jobmanager.db.driver"

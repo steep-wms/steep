@@ -1,4 +1,5 @@
 import agent.LocalAgent
+import agent.RemoteAgentMetadata
 import agent.RemoteAgentRegistry
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -6,6 +7,7 @@ import db.SubmissionRegistry
 import db.SubmissionRegistryFactory
 import helper.JsonUtils
 import helper.Shell
+import helper.UniqueID
 import io.vertx.core.eventbus.Message
 import io.vertx.core.http.HttpServerOptions
 import io.vertx.core.json.JsonArray
@@ -47,7 +49,10 @@ class JobManager : CoroutineVerticle() {
 
       // register remote agent
       val rar = RemoteAgentRegistry(vertx)
-      rar.register(Main.nodeId)
+      val agentId = config.getString(ConfigConstants.AGENT_ID, UniqueID.next())
+      val capabilities = config.getJsonArray(ConfigConstants.AGENT_CAPABILTIIES,
+          JsonArray()).map { it as String }.toSet()
+      rar.register(RemoteAgentMetadata(agentId, Main.nodeId, capabilities))
 
       log.info("Remote agent `${Main.nodeId}' successfully deployed")
     }
