@@ -61,5 +61,7 @@ class ServiceTest {
     assertThat(p2.default).isNull()
     assertThat(p2.label).isNull()
     assertThat(p2.fileSuffix).isEqualTo(".txt")
+
+    assertThat(s.requiredCapabilities).isEqualTo(setOf("docker", "gpu"))
   }
 }

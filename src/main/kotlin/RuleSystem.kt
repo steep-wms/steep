@@ -77,6 +77,7 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
       }
 
       val executables = mutableListOf<Executable>()
+      val capabilities = mutableSetOf<String>()
       val argumentValues = mutableMapOf<String, String>()
 
       var nextAction: ExecuteAction = action
@@ -86,7 +87,7 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
         val isExecutable = nextAction.inputs.all { it.variable.value != null ||
             argumentValues.contains(it.variable.id) }
         if (isExecutable) {
-          executables.add(actionToExecutable(nextAction, argumentValues))
+          executables.add(actionToExecutable(nextAction, capabilities, argumentValues))
 
           // do not visit this action again
           actionsToRemove.add(nextAction)
@@ -113,7 +114,7 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
       }
 
       if (executables.isNotEmpty()) {
-        processChains.add(ProcessChain(idGenerator.next(), executables))
+        processChains.add(ProcessChain(idGenerator.next(), executables, capabilities))
       }
     }
 
@@ -132,15 +133,20 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
   /**
    * Converts an [ExecuteAction] to an [Executable].
    * @param action the [ExecuteAction] to convert
+   * @param capabilities a set that will be filled with the capabilities that
+   * the executable needs to be able to run
    * @param argumentValues a map that will be filled with the values of all
    * generated arguments
    * @return the created [Executable]
    */
-  private fun actionToExecutable(action: ExecuteAction,
+  private fun actionToExecutable(action: ExecuteAction, capabilities: MutableSet<String>,
       argumentValues: MutableMap<String, String>): Executable {
     // find matching service metadata
     val service = services.find { it.id == action.service } ?: throw IllegalStateException(
         "There is no service with ID `${action.service}'")
+
+    // add capabilties
+    capabilities.addAll(service.requiredCapabilities)
 
     val arguments = service.parameters.flatMap flatMap@ { serviceParam ->
       // look for action parameters matching the service parameter's ID

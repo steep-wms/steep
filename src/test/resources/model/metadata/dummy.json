@@ -29,5 +29,9 @@
         "cardinality": "1..1",
         "data_type": "file",
         "file_suffix": ".txt"
-    }]
+    }],
+    "required_capabilities": [
+        "docker",
+        "gpu"
+    ]
 }]

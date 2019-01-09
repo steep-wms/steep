@@ -4,6 +4,10 @@
   path: "knn:latest"
   runtime: docker
 
+  required_capabilities:
+    - docker
+    - gpu
+
   parameters:
     - id: input_directory
       name: Input directory
