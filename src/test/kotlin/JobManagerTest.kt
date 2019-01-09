@@ -1,5 +1,6 @@
 import agent.LocalAgent
 import agent.RemoteAgentRegistry
+import helper.Shell
 import io.mockk.coEvery
 import io.mockk.mockkConstructor
 import io.mockk.unmockkAll
@@ -144,7 +145,7 @@ class JobManagerTest {
 
     mockkConstructor(LocalAgent::class)
     coEvery { anyConstructed<LocalAgent>().execute(processChain) } throws
-        LocalAgent.ExecutionException(errorMessage, lastOutput, exitCode)
+        Shell.ExecutionException(errorMessage, lastOutput, exitCode)
 
     GlobalScope.launch(vertx.dispatcher()) {
       val agent = remoteAgentRegistry.allocate(processChain)

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import db.SubmissionRegistry
 import db.SubmissionRegistryFactory
 import helper.JsonUtils
+import helper.Shell
 import io.vertx.core.eventbus.Message
 import io.vertx.core.http.HttpServerOptions
 import io.vertx.core.json.JsonArray
@@ -120,7 +121,7 @@ class JobManager : CoroutineVerticle() {
       )
     }
   } catch (t: Throwable) {
-    val message = if (t is LocalAgent.ExecutionException) {
+    val message = if (t is Shell.ExecutionException) {
       """
         ${t.message}
 

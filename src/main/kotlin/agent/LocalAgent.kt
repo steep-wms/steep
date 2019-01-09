@@ -1,5 +1,6 @@
 package agent
 
+import helper.Shell
 import helper.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.core.file.FileSystem
@@ -11,10 +12,8 @@ import model.processchain.ProcessChain
 import org.apache.commons.lang3.BooleanUtils
 import org.slf4j.LoggerFactory
 import java.io.File
-import java.io.IOException
 import java.util.ArrayDeque
 import java.util.ArrayList
-import java.util.LinkedList
 
 /**
  * An agent that executes process chains locally
@@ -41,7 +40,7 @@ class LocalAgent : Agent {
     // execute commands
     awaitBlocking {
       for (cmd in commandLines) {
-        executeOnShell(cmd)
+        Shell.execute(cmd)
       }
     }
 
@@ -97,51 +96,6 @@ class LocalAgent : Agent {
   }
 
   /**
-   * Executes the given command
-   * @param command the command
-   * @return the command's output (stdout and stderr)
-   */
-  private fun executeOnShell(command: List<String>): String {
-    return executeOnShell(command, File(System.getProperty("user.dir")))
-  }
-
-  /**
-   * Executes the given command in the given working directory
-   * @param command the command
-   * @param workingDir the working directory
-   * @return the command's output (stdout and stderr)
-   */
-  private fun executeOnShell(command: List<String>, workingDir: File): String {
-    val lines = LinkedList<String>()
-    val joinedCommand = command.joinToString(" ")
-    log.info(joinedCommand)
-
-    val process = ProcessBuilder(command)
-        .directory(workingDir)
-        .redirectErrorStream(true)
-        .start()
-
-    process.inputStream.bufferedReader().forEachLine { line ->
-      log.info(line)
-      lines.add(line)
-      if (lines.size > 100) {
-        lines.removeFirst()
-      }
-    }
-
-    process.waitFor()
-
-    val code = process.exitValue()
-    val result = lines.joinToString("\n")
-    if (code != 0) {
-      log.error("Command failed with exit code: $code")
-      throw ExecutionException("Failed to run `$joinedCommand'", result, code)
-    }
-
-    return result
-  }
-
-  /**
    * Recursively get all files from the given path. If the path is a file, the
    * method will return a list with only one entry: the file itself.
    * @param dirOrFile a directory or a file
@@ -162,10 +116,4 @@ class LocalAgent : Agent {
     }
     return r
   }
-
-  class ExecutionException(
-      message: String,
-      val lastOutput: String,
-      val exitCode: Int
-  ) : IOException(message)
 }
