@@ -71,11 +71,6 @@
         <appender-ref ref="STDOUT"/>
     </logger>
 
-    <logger name="net.schmizz" level="INFO">
-        <appender-ref ref="DEBUG"/>
-        <appender-ref ref="STDOUT"/>
-    </logger>
-
     <logger name="org.openstack4j.core.transport.internal" level="INFO">
         <appender-ref ref="DEBUG"/>
         <appender-ref ref="STDOUT"/>

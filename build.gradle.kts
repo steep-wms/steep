@@ -17,7 +17,7 @@ val vertxVersion by extra("3.6.2")
 repositories {
     jcenter()
 
-    // necessary for jacoco 0.8.3-SNAPSHOT
+    // necessary for jacoco 0.8.3-SNAPSHOT and openstack4j 3.1.1-SNAPSHOT
     maven("https://oss.sonatype.org/content/repositories/snapshots")
 }
 
@@ -42,8 +42,10 @@ dependencies {
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.9.8")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.8")
     implementation("com.google.guava:guava:27.0.1-jre")
+    implementation("io.pebbletemplates:pebble:3.0.7")
     implementation("org.apache.commons:commons-lang3:3.8.1")
     implementation("org.flywaydb:flyway-core:5.2.4")
+    implementation("org.pacesys:openstack4j:3.1.1-SNAPSHOT")
     implementation("org.postgresql:postgresql:42.2.5")
     implementation("org.yaml:snakeyaml:1.23")
 

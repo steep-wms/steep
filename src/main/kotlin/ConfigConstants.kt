@@ -112,6 +112,97 @@ object ConfigConstants {
   const val DB_PASSWORD = "jobmanager.db.password"
 
   /**
+   * `true` if the JobManager should connect to a cloud to acquire remote
+   * agents on demand
+   */
+  const val CLOUD_ENABLED = "jobmanager.cloud.enabled"
+
+  /**
+   * Defines which [cloud.CloudClient] to use
+   */
+  const val CLOUD_DRIVER = "jobmanager.cloud.driver"
+
+  /**
+   * A tag that should be attached to virtual machines to indicate that they
+   * have been created by the JobManager
+   */
+  const val CLOUD_CREATED_BY_TAG = "jobmanager.cloud.createdByTag"
+
+  /**
+   * The path to the file that describes all available setups
+   */
+  const val CLOUD_SETUPS_FILE = "jobmanager.cloud.setupsFile"
+
+  /**
+   * OpenStack authentication endpoint
+   */
+  const val CLOUD_OPENSTACK_ENDPOINT = "jobmanager.cloud.openstack.endpoint"
+
+  /**
+   * OpenStack username used for authentication
+   */
+  const val CLOUD_OPENSTACK_USERNAME = "jobmanager.cloud.openstack.username"
+
+  /**
+   * OpenStack password used for authentication
+   */
+  const val CLOUD_OPENSTACK_PASSWORD = "jobmanager.cloud.openstack.password"
+
+  /**
+   * OpenStack domain name used for authentication
+   */
+  const val CLOUD_OPENSTACK_DOMAIN_NAME = "jobmanager.cloud.openstack.domainName"
+
+  /**
+   * The ID of the OpenStack project to connect to.Either
+   * [CLOUD_OPENSTACK_PROJECT_ID] or [CLOUD_OPENSTACK_PROJECT_NAME] must be set
+   * but not both at the same time.
+   */
+  const val CLOUD_OPENSTACK_PROJECT_ID = "jobmanager.cloud.openstack.projectId"
+
+  /**
+   * The name of the OpenStack project to connect to. Will be used in
+   * combination with [CLOUD_OPENSTACK_DOMAIN_NAME] if
+   * [CLOUD_OPENSTACK_PROJECT_ID] is not set.
+   */
+  const val CLOUD_OPENSTACK_PROJECT_NAME = "jobmanager.cloud.openstack.projectName"
+
+  /**
+   * The OpenStack availability zone in which to create resources
+   */
+  const val CLOUD_OPENSTACK_AVAILABILITY_ZONE = "jobmanager.cloud.openstack.availabilityZone"
+
+  /**
+   * The ID of the OpenStack network to attach new VMs to
+   */
+  const val CLOUD_OPENSTACK_NETWORK_ID = "jobmanager.cloud.openstack.networkId"
+
+  /**
+   * `true` if new VMs should have a public IP address
+   */
+  const val CLOUD_OPENSTACK_USE_PUBLIC_IP = "jobmanager.cloud.openstack.usePublicIp"
+
+  /**
+   * The OpenStack security groups that new VMs should be put in
+   */
+  const val CLOUD_OPENSTACK_SECURITY_GROUPS = "jobmanager.cloud.openstack.securityGroups"
+
+  /**
+   * The OpenStack keypair to deploy to new VMs
+   */
+  const val CLOUD_OPENSTACK_KEYPAIR_NAME = "jobmanager.cloud.openstack.keypairName"
+
+  /**
+   * Username for SSH access to VMs
+   */
+  const val CLOUD_SSH_USERNAME = "jobmanager.cloud.ssh.username"
+
+  /**
+   * Location of a private key to use for SSH
+   */
+  const val CLOUD_SSH_PRIVATE_KEY_LOCATION = "jobmanager.cloud.ssh.privateKeyLocation"
+
+  /**
    * Get all configuration keys from this class
    * @return the list of configuration keys
    */

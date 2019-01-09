@@ -32,4 +32,10 @@ object AddressConstants {
    * Will be published when a remote agent has left
    */
   const val REMOTE_AGENT_LEFT = "jobmanager.remoteAgentRegistry.agentLeft"
+
+  /**
+   * Will be published if the remote agent registry was not able to allocate
+   * an agent with the given set of capabilities
+   */
+  const val REMOTE_AGENT_MISSING = "jobmanager.remoteAgentRegistry.agentMissing"
 }

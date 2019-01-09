@@ -9,6 +9,7 @@ import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.spi.cluster.hazelcast.ConfigUtil
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager
 import org.yaml.snakeyaml.Yaml
+import cloud.CloudManager
 import java.io.File
 import java.net.Inet6Address
 import java.net.NetworkInterface
@@ -149,6 +150,9 @@ class Main : CoroutineVerticle() {
 
   override suspend fun start() {
     val options = DeploymentOptions(config)
+    if (config.getBoolean(ConfigConstants.CLOUD_ENABLED, false)) {
+      vertx.deployVerticleAwait(CloudManager::class.qualifiedName!!, options)
+    }
     vertx.deployVerticleAwait(Scheduler::class.qualifiedName!!, options)
     vertx.deployVerticleAwait(Controller::class.qualifiedName!!, options)
     vertx.deployVerticleAwait(JobManager::class.qualifiedName!!, options)

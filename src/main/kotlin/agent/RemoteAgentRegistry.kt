@@ -4,6 +4,7 @@ import AddressConstants
 import helper.JsonUtils
 import io.vertx.core.Future
 import io.vertx.core.Vertx
+import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.AsyncMap
 import io.vertx.core.shareddata.LocalMap
@@ -153,16 +154,16 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     availableAgents.await().values(availableAgentValues)
     busyAgents.await().values(busyAgentValues)
 
-    val msg = StringBuilder("\n\nAgents [")
+    val msg = StringBuilder("\n\nAgents [\n")
 
     for (agent in availableAgentValues.await()) {
-      msg.append("  ").append(agent)
+      msg.append("  ").append(agent).append("\n")
     }
     for (agent in busyAgentValues.await()) {
-      msg.append("  ").append(agent).append(" [busy]")
+      msg.append("  ").append(agent).append(" [busy]\n")
     }
 
-    msg.append("]\n\n")
+    msg.append("]\n")
 
     log.info(msg.toString())
   }
@@ -174,6 +175,10 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
       val availableAgents = this.availableAgents.await()
       val keys = awaitResult<Set<String>> { availableAgents.keys(it) }
       if (keys.isEmpty()) {
+        // TODO decide depending on required capabilities
+        val arr = JsonArray()
+        processChain.requiredCapabilities.forEach { arr.add(it) }
+        vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_MISSING, arr)
         return null
       }
 

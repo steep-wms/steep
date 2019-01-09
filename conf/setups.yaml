@@ -1,0 +1,13 @@
+- id: default
+  flavor: 7d217779-4d7b-4689-8a40-c12a377b946d
+  imageName: Ubuntu 18.04
+  blockDeviceSizeGb: 50
+  maxVMs: 1
+
+  provisioningScripts:
+    - conf/setups/default/01_docker.sh
+    - conf/setups/default/02_sshfs.sh
+    - conf/setups/default/03_jobmanager.sh
+
+  providedCapabilities:
+    - docker

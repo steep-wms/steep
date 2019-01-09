@@ -34,3 +34,39 @@ jobmanager:
     url: jdbc:postgresql://localhost:5432/jobmanager?currentSchema=jobmanager
     username: postgres
     password: mysecretpassword
+
+  cloud:
+    enabled: false
+    setupsFile: conf/setups.yaml
+    driver: openstack
+    createdByTag: JobManager
+
+    openstack:
+      endpoint: https://cloudapi.igd.fraunhofer.de:5000/v3
+      username: myusername
+      password: mysecretpassword
+      domainName: Default
+      projectId: dbcc955cb8884742be64b23ca43ce3f9
+      # projectName: geotest
+      availabilityZone: nova
+      networkId: b7a8cacb-92c4-4580-a6d0-64caba96c38a
+      usePublicIp: true
+      keypairName: jobmanager
+      securityGroups:
+        - default
+        - express-cloud
+
+    ssh:
+      username: ubuntu
+      privateKeyLocation: conf/jobmanager-cloudapi.pem
+
+setups:
+  default:
+    docker:
+      username: myusername
+      password: mysecretpassword
+      registry: geocode.igd.fraunhofer.de:4567
+      image: geocode.igd.fraunhofer.de:4567/jobmanager/jobmanager3:latest
+
+    sshfs:
+      password: mysecretpassword
