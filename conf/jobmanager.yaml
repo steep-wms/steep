@@ -69,4 +69,4 @@ setups:
       image: geocode.igd.fraunhofer.de:4567/jobmanager/jobmanager3:latest
 
     sshfs:
-      password: mysecretpassword
+      url: user@192.168.0.1

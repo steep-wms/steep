@@ -2,7 +2,7 @@
 
 set -xe
 
-docker pull {{ config["jobmanager.docker.image"] }}
+docker pull {{ config["setups.default.docker.image"] }}
 
 docker run -d --name jobmanager --restart always \
   -p 5701:5701 -p {{ config["jobmanager.cluster.publicPort"] }}:{{ config["jobmanager.cluster.port"] }} \
@@ -12,4 +12,4 @@ docker run -d --name jobmanager --restart always \
   -e "JOBMANAGER_AGENT_ID={{ agentId }}" \
   -e "JOBMANAGER_AGENT_CAPABILITIES=[{% for cap in agentCapabilities %}\"{{ cap }}\"{% if not loop.last %},{% endif %}{% endfor %}]" \
   -v /data:/data \
-  {{ config["jobmanager.docker.image"] }}
+  {{ config["setups.default.docker.image"] }}
