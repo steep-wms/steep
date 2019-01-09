@@ -44,6 +44,7 @@ suspend fun main(args : Array<String>) {
   // replace hazelcast members
   val members = conf.getJsonArray(ConfigConstants.CLUSTER_MEMBERS)
   if (members != null) {
+    hazelcastConfig.networkConfig.join.multicastConfig.isEnabled = false
     hazelcastConfig.networkConfig.join.tcpIpConfig.isEnabled = true
     hazelcastConfig.networkConfig.join.tcpIpConfig.members = members.map { it.toString() }
   }
