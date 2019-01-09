@@ -65,6 +65,15 @@ class CloudManager : CoroutineVerticle() {
 //      return
 //    }
 
+    // destroy all virtual machines we created before to start from scratch
+    val existingVMs = cloudClient.listVMs { createdByTag == it[CREATED_BY] }
+    launch {
+      for (id in existingVMs) {
+        log.info("Found existing VM `$id' ...")
+        cloudClient.destroyVM(id)
+      }
+    }
+
     // create new virtual machines on demand
     var creating = false
     vertx.eventBus().consumer<JsonArray>(AddressConstants.REMOTE_AGENT_MISSING) { msg ->
