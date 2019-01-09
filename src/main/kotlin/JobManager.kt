@@ -73,7 +73,7 @@ class JobManager : CoroutineVerticle() {
 
       val bodyHandler = BodyHandler.create()
           .setHandleFileUploads(false)
-          .setBodyLimit(config.getLong(ConfigConstants.HTTP_POST_MAX_SIZE))
+          .setBodyLimit(config.getLong(ConfigConstants.HTTP_POST_MAX_SIZE, 1024 * 1024))
 
       router.get("/").handler(this::onGet)
       router.get("/workflows").handler(this::onGetWorkflows)
@@ -152,7 +152,9 @@ class JobManager : CoroutineVerticle() {
    * @param ctx the routing context
    */
   private fun onGet(ctx: RoutingContext) {
-    ctx.response().end(JsonUtils.toJson(version).encodePrettily())
+    ctx.response()
+        .putHeader("content-type", "application/json")
+        .end(JsonUtils.toJson(version).encodePrettily())
   }
 
   /**
@@ -188,7 +190,9 @@ class JobManager : CoroutineVerticle() {
         }
       }
       val arr = JsonArray(list)
-      ctx.response().end(arr.encode())
+      ctx.response()
+          .putHeader("content-type", "application/json")
+          .end(arr.encode())
     }
   }
 
@@ -207,7 +211,9 @@ class JobManager : CoroutineVerticle() {
       } else {
         val json = JsonUtils.toJson(submission)
         amendSubmission(json)
-        ctx.response().end(json.encode())
+        ctx.response()
+            .putHeader("content-type", "application/json")
+            .end(json.encode())
       }
     }
   }
@@ -218,12 +224,29 @@ class JobManager : CoroutineVerticle() {
    */
   private fun onPostWorkflow(ctx: RoutingContext) {
     // parse workflow
-    val workflow = try {
-      JsonUtils.mapper.readValue<Workflow>(ctx.bodyAsString)
+    val workflowJson = try {
+      ctx.bodyAsJson
     } catch (e: Exception) {
       ctx.response()
           .setStatusCode(400)
           .end("Invalid workflow JSON: " + e.message)
+      return
+    }
+
+    val api = workflowJson.getValue("api")
+    if ("3.0.0" != api) {
+      ctx.response()
+          .setStatusCode(400)
+          .end("Invalid workflow api version: $api")
+      return
+    }
+
+    val workflow = try {
+      JsonUtils.fromJson<Workflow>(workflowJson)
+    } catch (e: Exception) {
+      ctx.response()
+          .setStatusCode(400)
+          .end("Invalid workflow: " + e.message)
       return
     }
 

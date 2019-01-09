@@ -36,6 +36,7 @@ dependencies {
     implementation("io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion")
     implementation("io.vertx:vertx-mongo-client:$vertxVersion")
     implementation("io.vertx:vertx-web:$vertxVersion")
+    implementation("io.vertx:vertx-web-client:$vertxVersion")
 
     implementation("commons-codec:commons-codec:1.11")
     implementation("commons-io:commons-io:2.6")
