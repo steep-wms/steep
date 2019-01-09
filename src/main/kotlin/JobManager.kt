@@ -22,6 +22,7 @@ import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import kotlinx.coroutines.launch
 import model.Submission
+import model.Version
 import model.processchain.ProcessChain
 import model.workflow.Workflow
 import org.slf4j.LoggerFactory
@@ -36,9 +37,11 @@ class JobManager : CoroutineVerticle() {
   }
 
   private lateinit var submissionRegistry: SubmissionRegistry
+  private lateinit var version: Version
 
   override suspend fun start() {
     submissionRegistry = SubmissionRegistryFactory.create(vertx)
+    version = JsonUtils.mapper.readValue(javaClass.getResource("/version.json"))
 
     // deploy remote agent
     val agentEnabled = config.getBoolean(ConfigConstants.AGENT_ENABLED, true)
@@ -52,7 +55,7 @@ class JobManager : CoroutineVerticle() {
       val agentId = config.getString(ConfigConstants.AGENT_ID, UniqueID.next())
       val capabilities = config.getJsonArray(ConfigConstants.AGENT_CAPABILTIIES,
           JsonArray()).map { it as String }.toSet()
-      rar.register(RemoteAgentMetadata(agentId, Main.nodeId, capabilities))
+      rar.register(RemoteAgentMetadata(agentId, Main.nodeId, version, capabilities))
 
       log.info("Remote agent `${Main.nodeId}' successfully deployed")
     }
@@ -149,8 +152,7 @@ class JobManager : CoroutineVerticle() {
    * @param ctx the routing context
    */
   private fun onGet(ctx: RoutingContext) {
-    val versionInfo = JsonObject(javaClass.getResource("/version.json").readText())
-    ctx.response().end(versionInfo.encodePrettily())
+    ctx.response().end(JsonUtils.toJson(version).encodePrettily())
   }
 
   /**

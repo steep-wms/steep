@@ -101,7 +101,7 @@ tasks {
               |  "version": "$version",
               |  "build": "${System.getenv("CI_PIPELINE_IID") ?: ""}",
               |  "commit": "${System.getenv("CI_COMMIT_SHA") ?: ""}",
-              |  "timestamp": "${timestamp}"
+              |  "timestamp": "$timestamp"
               |}""".trimMargin()
             versionFile.writeText(versionText)
         }
