@@ -4,6 +4,7 @@ import AddressConstants
 import helper.JsonUtils
 import io.vertx.core.Future
 import io.vertx.core.Vertx
+import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.AsyncMap
 import io.vertx.core.shareddata.LocalMap
 import io.vertx.kotlin.core.shareddata.getAwait
@@ -17,6 +18,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import model.processchain.ProcessChain
 import org.slf4j.LoggerFactory
+import java.lang.StringBuilder
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -91,8 +93,9 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     // do not register consumers multiple times
     if (localMap.compute(KEY_INITIALIZED) { _, v -> v != null } == false) {
       // log added agents
-      vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_ADDED) { msg ->
-        log.info("Remote agent `${msg.body()}' has been added.")
+      vertx.eventBus().consumer<JsonObject>(AddressConstants.REMOTE_AGENT_ADDED) { msg ->
+        val metadata = JsonUtils.fromJson<RemoteAgentMetadata>(msg.body())
+        log.info("Remote agent `${metadata.nodeId}' has been added.")
         launch {
           logAgents()
         }
@@ -145,15 +148,23 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
   }
 
   private suspend fun logAgents() {
-    val availableAgentKeys = Future.future<MutableSet<String>>()
-    val busyAgentKeys = Future.future<MutableSet<String>>()
-    availableAgents.await().keys(availableAgentKeys)
-    busyAgents.await().keys(busyAgentKeys)
+    val availableAgentValues = Future.future<List<String>>()
+    val busyAgentValues = Future.future<List<String>>()
+    availableAgents.await().values(availableAgentValues)
+    busyAgents.await().values(busyAgentValues)
 
-    log.info("Available agents: " + availableAgentKeys.await().map {
-      it.substring(AGENT_ADDRESS_PREFIX.length) })
-    log.info("Busy agents: " + busyAgentKeys.await().map {
-      it.substring(AGENT_ADDRESS_PREFIX.length) })
+    val msg = StringBuilder("\n\nAgents [")
+
+    for (agent in availableAgentValues.await()) {
+      msg.append("  ").append(agent)
+    }
+    for (agent in busyAgentValues.await()) {
+      msg.append("  ").append(agent).append(" [busy]")
+    }
+
+    msg.append("]\n\n")
+
+    log.info(msg.toString())
   }
 
   override suspend fun allocate(processChain: ProcessChain): Agent? {
