@@ -1,5 +1,6 @@
 package agent
 
+import AddressConstants
 import helper.JsonUtils
 import helper.UniqueID
 import io.vertx.core.Vertx
@@ -18,6 +19,7 @@ import model.processchain.ProcessChain
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.rmi.RemoteException
+import java.util.ArrayDeque
 
 /**
  * Tests for [RemoteAgent]
@@ -25,8 +27,8 @@ import java.rmi.RemoteException
  */
 class RemoteAgentTest : AgentTest() {
   companion object {
-    const val NODE_ID = "RemoteAgentTest"
-    const val ADDRESS = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + NODE_ID
+    private const val NODE_ID = "RemoteAgentTest"
+    private const val ADDRESS = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + NODE_ID
   }
 
   override fun createAgent(vertx: Vertx): Agent =
@@ -44,6 +46,11 @@ class RemoteAgentTest : AgentTest() {
 
       val replyAddress: String = jsonObj["replyAddress"]
       val processChain = JsonUtils.fromJson<ProcessChain>(jsonObj["processChain"])
+      val sequence: Long = jsonObj["sequence"]
+      if (sequence != 0L) {
+        msg.fail(400, "Wrong sequence number: $sequence")
+        return@consumer
+      }
 
       GlobalScope.launch(vertx.dispatcher()) {
         val la = LocalAgent()
@@ -138,6 +145,47 @@ class RemoteAgentTest : AgentTest() {
       } catch (e: RemoteException) {
         ctx.verify {
           assertThat(e).hasMessage(errorMessage)
+        }
+        ctx.completeNow()
+      } catch (t: Throwable) {
+        ctx.failNow(t)
+      }
+    }
+  }
+
+  /**
+   * Test if the sequence is correctly incremented
+   */
+  @Test
+  fun sequence(vertx: Vertx, ctx: VertxTestContext) {
+    val q = ArrayDeque<Long>((0L..2L).toList())
+
+    vertx.eventBus().consumer<JsonObject>(ADDRESS) consumer@ { msg ->
+      val jsonObj: JsonObject = msg.body()
+      val sequence: Long = jsonObj["sequence"]
+      if (sequence != q.pop()) {
+        msg.fail(400, "Wrong sequence number: $sequence")
+        return@consumer
+      }
+
+      val replyAddress: String = jsonObj["replyAddress"]
+      vertx.eventBus().send(replyAddress, json {
+        obj(
+            "results" to obj()
+        )
+      })
+
+      msg.reply("ACK")
+    }
+
+    val agent = createAgent(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      try {
+        agent.execute(ProcessChain())
+        agent.execute(ProcessChain())
+        agent.execute(ProcessChain())
+        ctx.verify {
+          assertThat(q).isEmpty()
         }
         ctx.completeNow()
       } catch (t: Throwable) {

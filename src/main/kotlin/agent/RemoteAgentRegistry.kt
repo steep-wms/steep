@@ -51,8 +51,6 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
      * Name of a cluster-wide map keeping nodeIds of [RemoteAgent]s
      */
     private const val ASYNC_MAP_NAME = "RemoteAgentRegistry.Async"
-
-
   }
 
   override val coroutineContext: CoroutineContext = vertx.dispatcher()
@@ -122,7 +120,6 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
   }
 
   override suspend fun allocate(processChain: ProcessChain): Agent? {
-    // TODO sort by last used timestamp
     val requiredCapabilities = JsonArray()
     processChain.requiredCapabilities.forEach { requiredCapabilities.add(it) }
     val msgInquire = json {
@@ -132,32 +129,63 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
       )
     }
 
-    // ask all agents if they are able and available to execute a process
-    // chain with the given required capabilities
     val agents = this.agents.await()
     val keys = awaitResult<Set<String>> { agents.keys(it) }
-    for (agent in keys) {
-      val address = AGENT_ADDRESS_PREFIX + agent
+    val skippedAgents = mutableSetOf<String>()
+
+    while (true) {
+      // ask all agents if they are able and available to execute a process
+      // chain with the given required capabilities. collect these agents in
+      // a list of candidates
+      val candidates = mutableListOf<Pair<String, Long>>()
+      for (agent in keys) {
+        val address = AGENT_ADDRESS_PREFIX + agent
+        if (skippedAgents.contains(address)) {
+          continue
+        }
+        try {
+          val replyInquire = vertx.eventBus().sendAwait<JsonObject>(address, msgInquire)
+          if (replyInquire.body().getBoolean("available")) {
+            val lastSequence = replyInquire.body().getLong("lastSequence", -1L)
+            candidates.add(Pair(address, lastSequence))
+          }
+        } catch (t: Throwable) {
+          log.error("Could not inquire agent `$agent'. Skipping it.", t)
+        }
+      }
+
+      // there is no agent that has the required capabilities
+      if (candidates.isEmpty()) {
+        // publish a message that says that we need an agent with the given
+        // capabilities
+        val arr = JsonArray()
+        processChain.requiredCapabilities.forEach { arr.add(it) }
+        vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_MISSING, arr)
+
+        return null
+      }
+
+      // LRU: Select agent with the lowest `lastSequence` because it's the one
+      // that has not processed a process chain for the longest time.
+      candidates.sortBy { it.second }
+      val result = candidates.first().first
+
+      // try to allocate the agent
+      val msgAllocate = json {
+        obj(
+            "action" to "allocate"
+        )
+      }
       try {
-        val replyInquire = vertx.eventBus().sendAwait<JsonObject>(address, msgInquire)
-        if (replyInquire.body().getBoolean("available")) {
-          // Agent has indicated availability. Try to allocate it
-          val msgAllocate = json {
-            obj(
-                "action" to "allocate"
-            )
-          }
-          val replyAllocate = vertx.eventBus().sendAwait<String>(address, msgAllocate)
-          if (replyAllocate.body() == "ACK") {
-            return RemoteAgent(address, vertx)
-          }
+        val replyAllocate = vertx.eventBus().sendAwait<String>(result, msgAllocate)
+        if (replyAllocate.body() == "ACK") {
+          return RemoteAgent(result, vertx)
         }
       } catch (t: Throwable) {
-        log.error("Could not inquire agent `$agent'. Skipping it.", t)
+        // fall through
       }
+      skippedAgents.add(result)
     }
-
-    return null
   }
 
   override suspend fun deallocate(agent: Agent) {

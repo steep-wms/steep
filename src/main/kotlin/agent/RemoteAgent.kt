@@ -3,13 +3,17 @@ package agent
 import AddressConstants
 import helper.JsonUtils
 import helper.UniqueID
+import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject
+import io.vertx.core.shareddata.Counter
 import io.vertx.kotlin.core.eventbus.sendAwait
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.core.shareddata.getAndIncrementAwait
+import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.receiveChannelHandler
 import model.processchain.ProcessChain
 import java.rmi.RemoteException
@@ -21,6 +25,25 @@ import java.rmi.RemoteException
  * @author Michel Kraemer
  */
 class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
+  companion object {
+    /**
+     * Name of a cluster-wide counter that keeps a process chain sequence number
+     */
+    private const val COUNTER_NAME = "RemoteAgent.Sequence"
+  }
+
+  /**
+   * Counts how many process chains have been sent to be processed throughout
+   * the whole cluster
+   */
+  private val counter: Future<Counter>
+
+  init {
+    val sharedData = vertx.sharedData()
+    counter = Future.future()
+    sharedData.getCounter(COUNTER_NAME, counter)
+  }
+
   override suspend fun execute(processChain: ProcessChain): Map<String, List<String>> {
     // create reply handler
     val replyAddress = id + "." + UniqueID.next()
@@ -43,7 +66,8 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
           obj(
             "action" to "process",
             "processChain" to JsonUtils.toJson(processChain),
-            "replyAddress" to replyAddress
+            "replyAddress" to replyAddress,
+            "sequence" to counter.await().getAndIncrementAwait()
           )
         }
         vertx.eventBus().sendAwait<Any>(id, msg)

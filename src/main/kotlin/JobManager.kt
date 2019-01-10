@@ -41,6 +41,7 @@ class JobManager : CoroutineVerticle() {
 
   private lateinit var capabilities: Set<String>
   private var busy = false
+  private var lastProcessChainSequence = -1L
 
   override suspend fun start() {
     submissionRegistry = SubmissionRegistryFactory.create(vertx)
@@ -128,7 +129,8 @@ class JobManager : CoroutineVerticle() {
 
     val reply = json {
       obj(
-          "available" to available
+          "available" to available,
+          "lastSequence" to lastProcessChainSequence
       )
     }
     msg.reply(reply)
@@ -166,6 +168,7 @@ class JobManager : CoroutineVerticle() {
       val jsonObj: JsonObject = msg.body()
       val replyAddress: String = jsonObj["replyAddress"]
       val processChain = JsonUtils.fromJson<ProcessChain>(jsonObj["processChain"])
+      lastProcessChainSequence = jsonObj.getLong("sequence", -1L)
 
       // run the local agent and return its results
       launch {
