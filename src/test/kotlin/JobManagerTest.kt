@@ -64,7 +64,8 @@ class JobManagerTest {
       obj(
           ConfigConstants.HTTP_HOST to "localhost",
           ConfigConstants.HTTP_PORT to port,
-          ConfigConstants.HTTP_POST_MAX_SIZE to maxPostSize
+          ConfigConstants.HTTP_POST_MAX_SIZE to maxPostSize,
+          ConfigConstants.AGENT_CAPABILTIIES to array("docker")
       )
     }
     val options = DeploymentOptions(config)
@@ -193,6 +194,70 @@ class JobManagerTest {
       } catch (t: Throwable) {
         ctx.failNow(t)
       }
+    }
+  }
+
+  /**
+   * Test what happens if the agent does not have the required capabilities
+   */
+  @Test
+  fun wrongCapabilities(vertx: Vertx, ctx: VertxTestContext) {
+    val processChain = ProcessChain(requiredCapabilities = setOf("docker", "gpu"))
+    val remoteAgentRegistry = RemoteAgentRegistry(vertx)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      val agent = remoteAgentRegistry.allocate(processChain)
+      ctx.verify {
+        assertThat(agent).isNull()
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if we are available if the required capabilities match
+   */
+  @Test
+  fun rightCapabilities(vertx: Vertx, ctx: VertxTestContext) {
+    val processChain = ProcessChain(requiredCapabilities = setOf("docker"))
+    val remoteAgentRegistry = RemoteAgentRegistry(vertx)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      val agent = remoteAgentRegistry.allocate(processChain)
+      ctx.verify {
+        assertThat(agent).isNotNull()
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if we can be allocated and deallocated
+   */
+  @Test
+  fun allocateDeallocate(vertx: Vertx, ctx: VertxTestContext) {
+    val processChain = ProcessChain()
+    val remoteAgentRegistry = RemoteAgentRegistry(vertx)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      val agent1 = remoteAgentRegistry.allocate(processChain)
+      ctx.verify {
+        assertThat(agent1).isNotNull()
+      }
+      requireNotNull(agent1)
+
+      val agent2 = remoteAgentRegistry.allocate(processChain)
+      ctx.verify {
+        assertThat(agent2).isNull()
+      }
+
+      remoteAgentRegistry.deallocate(agent1)
+      val agent3 = remoteAgentRegistry.allocate(processChain)
+      ctx.verify {
+        assertThat(agent3).isNotNull()
+      }
+
+      ctx.completeNow()
     }
   }
 

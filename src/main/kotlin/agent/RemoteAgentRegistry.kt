@@ -4,6 +4,7 @@ import AddressConstants
 import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.core.impl.NoStackTraceThrowable
+import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.AsyncMap
 import io.vertx.core.shareddata.LocalMap
@@ -122,12 +123,17 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
 
   override suspend fun allocate(processChain: ProcessChain): Agent? {
     // TODO sort by last used timestamp
+    val requiredCapabilities = JsonArray()
+    processChain.requiredCapabilities.forEach { requiredCapabilities.add(it) }
     val msgInquire = json {
       obj(
-          "action" to "inquire"
+          "action" to "inquire",
+          "requiredCapabilities" to requiredCapabilities
       )
     }
 
+    // ask all agents if they are able and available to execute a process
+    // chain with the given required capabilities
     val agents = this.agents.await()
     val keys = awaitResult<Set<String>> { agents.keys(it) }
     for (agent in keys) {

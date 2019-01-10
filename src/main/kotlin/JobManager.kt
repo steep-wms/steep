@@ -93,14 +93,17 @@ class JobManager : CoroutineVerticle() {
     }
   }
 
+  /**
+   * Handle a message that is sent to our agent
+   */
   private fun onAgentMessage(msg: Message<JsonObject>) {
     try {
       val jsonObj: JsonObject = msg.body()
       val action = jsonObj.getString("action")
       when (action) {
-        "inquire" -> onInquire(msg)
-        "allocate" -> onAllocate(msg)
-        "deallocate" -> onDeallocate(msg)
+        "inquire" -> onAgentInquire(msg)
+        "allocate" -> onAgentAllocate(msg)
+        "deallocate" -> onAgentDeallocate(msg)
         "process" -> onProcessChain(msg)
         else -> throw NoStackTraceThrowable("Unknown action `$action'")
       }
@@ -109,17 +112,32 @@ class JobManager : CoroutineVerticle() {
     }
   }
 
-  private fun onInquire(msg: Message<JsonObject>) {
-    // TODO check capabilities
+  /**
+   * Handle an inquiry whether we are able to handle a process chain that
+   * requires a given set of capabilities
+   */
+  private fun onAgentInquire(msg: Message<JsonObject>) {
+    val available = if (busy) {
+      false
+    } else {
+      // we are not busy - check if we have the required capabilities
+      val arr = msg.body().getJsonArray("requiredCapabilities")
+      val requiredCapabilities = arr.map { it as String }
+      capabilities.containsAll(requiredCapabilities)
+    }
+
     val reply = json {
       obj(
-          "available" to !busy
+          "available" to available
       )
     }
     msg.reply(reply)
   }
 
-  private fun onAllocate(msg: Message<JsonObject>) {
+  /**
+   * Handle an allocation message
+   */
+  private fun onAgentAllocate(msg: Message<JsonObject>) {
     if (busy) {
       msg.fail(503, "Agent is busy")
     } else {
@@ -128,7 +146,10 @@ class JobManager : CoroutineVerticle() {
     }
   }
 
-  private fun onDeallocate(msg: Message<JsonObject>) {
+  /**
+   * Handle a deallocation message
+   */
+  private fun onAgentDeallocate(msg: Message<JsonObject>) {
     busy = false
     msg.reply("ACK")
   }
