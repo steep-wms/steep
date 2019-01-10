@@ -5,15 +5,12 @@ import ConfigConstants.CLOUD_CREATED_BY_TAG
 import ConfigConstants.CLOUD_SETUPS_FILE
 import ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION
 import ConfigConstants.CLOUD_SSH_USERNAME
-import agent.RemoteAgentMetadata
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.mitchellbosecke.pebble.PebbleEngine
-import helper.JsonUtils
 import helper.UniqueID
 import helper.YamlUtils
 import io.vertx.core.Future
 import io.vertx.core.json.JsonArray
-import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import kotlinx.coroutines.delay
@@ -185,11 +182,10 @@ class CloudManager : CoroutineVerticle() {
       ssh.execute("sudo $destFileName")
     }
 
-    // wait for the new virtual machine to join the cluster
+    // wait for the agent on the new virtual machine to become available
     val future = Future.future<Unit>()
-    val consumer = vertx.eventBus().consumer<JsonObject>(AddressConstants.REMOTE_AGENT_ADDED) { msg ->
-      val metadata = JsonUtils.fromJson<RemoteAgentMetadata>(msg.body())
-      if (metadata.id == agentId) {
+    val consumer = vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_AVAILABLE) { msg ->
+      if (msg.body() == agentId) {
         future.complete()
       }
     }

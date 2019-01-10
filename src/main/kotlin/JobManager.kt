@@ -1,5 +1,4 @@
 import agent.LocalAgent
-import agent.RemoteAgentMetadata
 import agent.RemoteAgentRegistry
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -10,6 +9,7 @@ import helper.Shell
 import helper.UniqueID
 import io.vertx.core.eventbus.Message
 import io.vertx.core.http.HttpServerOptions
+import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
@@ -39,6 +39,9 @@ class JobManager : CoroutineVerticle() {
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var version: Version
 
+  private lateinit var capabilities: Set<String>
+  private var busy = false
+
   override suspend fun start() {
     submissionRegistry = SubmissionRegistryFactory.create(vertx)
     version = JsonUtils.mapper.readValue(javaClass.getResource("/version.json"))
@@ -48,16 +51,18 @@ class JobManager : CoroutineVerticle() {
     if (agentEnabled) {
       // consume process chains and run a local agent for each of them
       val address = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + Main.nodeId
-      vertx.eventBus().consumer<JsonObject>(address, this::onProcessChain)
+      vertx.eventBus().consumer<JsonObject>(address, this::onAgentMessage)
 
       // register remote agent
       val rar = RemoteAgentRegistry(vertx)
       val agentId = config.getString(ConfigConstants.AGENT_ID, UniqueID.next())
-      val capabilities = config.getJsonArray(ConfigConstants.AGENT_CAPABILTIIES,
+      capabilities = config.getJsonArray(ConfigConstants.AGENT_CAPABILTIIES,
           JsonArray()).map { it as String }.toSet()
-      rar.register(RemoteAgentMetadata(agentId, Main.nodeId, version, capabilities))
+      rar.register(Main.nodeId, agentId)
 
       log.info("Remote agent `${Main.nodeId}' successfully deployed")
+    } else {
+      capabilities = emptySet()
     }
 
     // deploy HTTP server
@@ -86,6 +91,46 @@ class JobManager : CoroutineVerticle() {
 
       log.info("JobManager deployed to http://$host:$port")
     }
+  }
+
+  private fun onAgentMessage(msg: Message<JsonObject>) {
+    try {
+      val jsonObj: JsonObject = msg.body()
+      val action = jsonObj.getString("action")
+      when (action) {
+        "inquire" -> onInquire(msg)
+        "allocate" -> onAllocate(msg)
+        "deallocate" -> onDeallocate(msg)
+        "process" -> onProcessChain(msg)
+        else -> throw NoStackTraceThrowable("Unknown action `$action'")
+      }
+    } catch (e: Throwable) {
+      msg.fail(400, e.message)
+    }
+  }
+
+  private fun onInquire(msg: Message<JsonObject>) {
+    // TODO check capabilities
+    val reply = json {
+      obj(
+          "available" to !busy
+      )
+    }
+    msg.reply(reply)
+  }
+
+  private fun onAllocate(msg: Message<JsonObject>) {
+    if (busy) {
+      msg.fail(503, "Agent is busy")
+    } else {
+      busy = true
+      msg.reply("ACK")
+    }
+  }
+
+  private fun onDeallocate(msg: Message<JsonObject>) {
+    busy = false
+    msg.reply("ACK")
   }
 
   /**

@@ -31,9 +31,8 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
     try {
       // abort when cluster node has left
       val agentLeftConsumer = vertx.eventBus().consumer<String>(
-          AddressConstants.CLUSTER_NODE_LEFT) { agentLeftMsg ->
-        val leftNodeId = agentLeftMsg.body()
-        if (id == RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + leftNodeId) {
+          AddressConstants.REMOTE_AGENT_LEFT) { agentLeftMsg ->
+        if (id == agentLeftMsg.body()) {
           adapter.cancel()
         }
       }
@@ -42,6 +41,7 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
         // send process chain and wait for ACK
         val msg = json {
           obj(
+            "action" to "process",
             "processChain" to JsonUtils.toJson(processChain),
             "replyAddress" to replyAddress
           )

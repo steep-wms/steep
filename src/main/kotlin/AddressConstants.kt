@@ -38,4 +38,9 @@ object AddressConstants {
    * an agent with the given set of capabilities
    */
   const val REMOTE_AGENT_MISSING = "jobmanager.remoteAgentRegistry.agentMissing"
+
+  /**
+   * Will be published when an agent becomes available
+   */
+  const val REMOTE_AGENT_AVAILABLE = "jobmanager.remoteAgentRegistry.agentAvailable"
 }

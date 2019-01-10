@@ -34,8 +34,14 @@ class RemoteAgentTest : AgentTest() {
 
   @Test
   override fun execute(vertx: Vertx, ctx: VertxTestContext) {
-    vertx.eventBus().consumer<JsonObject>(ADDRESS) { msg ->
+    vertx.eventBus().consumer<JsonObject>(ADDRESS) consumer@ { msg ->
       val jsonObj: JsonObject = msg.body()
+      val action: String = jsonObj["action"]
+      if (action != "process") {
+        msg.fail(400, "Unknown action: `$action'")
+        return@consumer
+      }
+
       val replyAddress: String = jsonObj["replyAddress"]
       val processChain = JsonUtils.fromJson<ProcessChain>(jsonObj["processChain"])
 
@@ -87,7 +93,7 @@ class RemoteAgentTest : AgentTest() {
       msg.reply("ACK")
 
       // but then leave the cluster
-      vertx.eventBus().publish(AddressConstants.CLUSTER_NODE_LEFT, NODE_ID)
+      vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_LEFT, ADDRESS)
     }
 
     val agent = createAgent(vertx)
@@ -108,7 +114,7 @@ class RemoteAgentTest : AgentTest() {
    */
   @Test
   fun errorMessage(vertx: Vertx, ctx: VertxTestContext) {
-    val ERROR_MESSAGE = UniqueID.next()
+    val errorMessage = UniqueID.next()
 
     vertx.eventBus().consumer<JsonObject>(ADDRESS) { msg ->
       // accept the process chain ...
@@ -119,7 +125,7 @@ class RemoteAgentTest : AgentTest() {
       val replyAddress: String = jsonObj["replyAddress"]
       vertx.eventBus().send(replyAddress, json {
         obj(
-            "errorMessage" to ERROR_MESSAGE
+            "errorMessage" to errorMessage
         )
       })
     }
@@ -131,7 +137,7 @@ class RemoteAgentTest : AgentTest() {
         ctx.failNow(NoStackTraceThrowable("Agent should throw"))
       } catch (e: RemoteException) {
         ctx.verify {
-          assertThat(e).hasMessage(ERROR_MESSAGE)
+          assertThat(e).hasMessage(errorMessage)
         }
         ctx.completeNow()
       } catch (t: Throwable) {
