@@ -1,7 +1,8 @@
 package db
 
+import assertThatThrownBy
+import coVerify
 import io.vertx.core.Vertx
-import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
@@ -225,13 +226,11 @@ abstract class SubmissionRegistryTest {
   @Test
   fun addProcessChainToMissingSubmission(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
-      try {
-        submissionRegistry.addProcessChains(listOf(ProcessChain()), "MISSING")
-        throw NoStackTraceThrowable("addProcessChain should throw")
-      } catch (e: NoSuchElementException) {
+      ctx.coVerify {
+        assertThatThrownBy {
+          submissionRegistry.addProcessChains(listOf(ProcessChain()), "MISSING")
+        }.isInstanceOf(NoSuchElementException::class.java)
         ctx.completeNow()
-      } catch (e: Throwable) {
-        ctx.failNow(e)
       }
     }
   }
@@ -292,13 +291,11 @@ abstract class SubmissionRegistryTest {
   @Test
   fun getStatusOfMissingProcessChain(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
-      try {
-        submissionRegistry.getProcessChainStatus("MISSING")
-        throw NoStackTraceThrowable("getProcessChainStatus should throw")
-      } catch (e: NoSuchElementException) {
+      ctx.coVerify {
+        assertThatThrownBy {
+          submissionRegistry.getProcessChainStatus("MISSING")
+        }.isInstanceOf(NoSuchElementException::class.java)
         ctx.completeNow()
-      } catch (e: Throwable) {
-        ctx.failNow(e)
       }
     }
   }
@@ -353,13 +350,11 @@ abstract class SubmissionRegistryTest {
   @Test
   fun getOutputOfMissingProcessChain(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
-      try {
-        submissionRegistry.getProcessChainOutput("MISSING")
-        throw NoStackTraceThrowable("getProcessChainOutput should throw")
-      } catch (e: NoSuchElementException) {
+      ctx.coVerify {
+        assertThatThrownBy {
+          submissionRegistry.getProcessChainOutput("MISSING")
+        }.isInstanceOf(NoSuchElementException::class.java)
         ctx.completeNow()
-      } catch (e: Throwable) {
-        ctx.failNow(e)
       }
     }
   }

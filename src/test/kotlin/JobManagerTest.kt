@@ -12,7 +12,6 @@ import io.mockk.mockkObject
 import io.mockk.slot
 import io.mockk.unmockkAll
 import io.vertx.core.Vertx
-import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.ext.web.client.WebClient
 import io.vertx.ext.web.client.predicate.ResponsePredicate
 import io.vertx.ext.web.codec.BodyCodec
@@ -87,17 +86,12 @@ class JobManagerTest {
 
     GlobalScope.launch(vertx.dispatcher()) {
       val agent = remoteAgentRegistry.allocate(processChain)
-      try {
+      ctx.coVerify {
         assertThat(agent).isNotNull
-        requireNotNull(agent)
-
-        val results = agent.execute(processChain)
+        val results = agent!!.execute(processChain)
         assertThat(results).isEmpty()
-
-        ctx.completeNow()
-      } catch (t: Throwable) {
-        ctx.failNow(t)
       }
+      ctx.completeNow()
     }
   }
 
@@ -115,17 +109,12 @@ class JobManagerTest {
 
     GlobalScope.launch(vertx.dispatcher()) {
       val agent = remoteAgentRegistry.allocate(processChain)
-      try {
+      ctx.coVerify {
         assertThat(agent).isNotNull
-        requireNotNull(agent)
-
-        val results = agent.execute(processChain)
+        val results = agent!!.execute(processChain)
         assertThat(results).isEqualTo(expectedResults)
-
-        ctx.completeNow()
-      } catch (t: Throwable) {
-        ctx.failNow(t)
       }
+      ctx.completeNow()
     }
   }
 
@@ -144,21 +133,13 @@ class JobManagerTest {
 
     GlobalScope.launch(vertx.dispatcher()) {
       val agent = remoteAgentRegistry.allocate(processChain)
-      ctx.verify {
+      ctx.coVerify {
         assertThat(agent).isNotNull
+        assertThatThrownBy { agent!!.execute(processChain) }
+            .isInstanceOf(RemoteException::class.java)
+            .hasMessage(errorMessage)
       }
-
-      try {
-        agent!!.execute(processChain)
-        ctx.failNow(NoStackTraceThrowable("Agent should throw"))
-      } catch (e: RemoteException) {
-        ctx.verify {
-          assertThat(e).hasMessage(errorMessage)
-        }
-        ctx.completeNow()
-      } catch (t: Throwable) {
-        ctx.failNow(t)
-      }
+      ctx.completeNow()
     }
   }
 
@@ -179,21 +160,13 @@ class JobManagerTest {
 
     GlobalScope.launch(vertx.dispatcher()) {
       val agent = remoteAgentRegistry.allocate(processChain)
-      ctx.verify {
+      ctx.coVerify {
         assertThat(agent).isNotNull
+        assertThatThrownBy { agent!!.execute(processChain) }
+            .isInstanceOf(RemoteException::class.java)
+            .hasMessage("$errorMessage\n\nExit code: $exitCode\n\n$lastOutput")
       }
-
-      try {
-        agent!!.execute(processChain)
-        ctx.failNow(NoStackTraceThrowable("Agent should throw"))
-      } catch (e: RemoteException) {
-        ctx.verify {
-          assertThat(e).hasMessage("$errorMessage\n\nExit code: $exitCode\n\n$lastOutput")
-        }
-        ctx.completeNow()
-      } catch (t: Throwable) {
-        ctx.failNow(t)
-      }
+      ctx.completeNow()
     }
   }
 
@@ -240,23 +213,17 @@ class JobManagerTest {
     val remoteAgentRegistry = RemoteAgentRegistry(vertx)
 
     GlobalScope.launch(vertx.dispatcher()) {
-      val agent1 = remoteAgentRegistry.allocate(processChain)
-      ctx.verify {
-        assertThat(agent1).isNotNull()
-      }
-      requireNotNull(agent1)
+      ctx.coVerify {
+        val agent1 = remoteAgentRegistry.allocate(processChain)
+        assertThat(agent1).isNotNull
 
-      val agent2 = remoteAgentRegistry.allocate(processChain)
-      ctx.verify {
+        val agent2 = remoteAgentRegistry.allocate(processChain)
         assertThat(agent2).isNull()
-      }
 
-      remoteAgentRegistry.deallocate(agent1)
-      val agent3 = remoteAgentRegistry.allocate(processChain)
-      ctx.verify {
-        assertThat(agent3).isNotNull()
+        remoteAgentRegistry.deallocate(agent1!!)
+        val agent3 = remoteAgentRegistry.allocate(processChain)
+        assertThat(agent3).isNotNull
       }
-
       ctx.completeNow()
     }
   }
@@ -267,18 +234,13 @@ class JobManagerTest {
   @Test
   fun getVersion(vertx: Vertx, ctx: VertxTestContext) {
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) launch@ {
-      val response = try {
-        client.get(port, "localhost", "/")
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/")
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_SUCCESS)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
-      } catch (t: Throwable) {
-        ctx.failNow(t)
-        return@launch
-      }
-      ctx.verify {
         assertThat(response.body().map).containsKey("version")
       }
       ctx.completeNow()
@@ -315,18 +277,14 @@ class JobManagerTest {
     coEvery { submissionRegistry.findSubmissions() } returns listOf(s1, s2)
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) launch@ {
-      val response = try {
-        client.get(port, "localhost", "/workflows")
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/workflows")
             .`as`(BodyCodec.jsonArray())
             .expect(ResponsePredicate.SC_SUCCESS)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
-      } catch (t: Throwable) {
-        ctx.failNow(t)
-        return@launch
-      }
-      ctx.verify {
+
         assertThat(response.body()).isEqualTo(json {
           array(
               obj(
@@ -372,29 +330,19 @@ class JobManagerTest {
     coEvery { submissionRegistry.findSubmissionById(neq(s1.id)) } returns null
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) launch@ {
-      try {
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
         client.get(port, "localhost", "/workflows/${s1.id}_doesnotexist")
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .sendAwait()
-      } catch (t: Throwable) {
-        ctx.failNow(t)
-        return@launch
-      }
 
-      val response = try {
-        client.get(port, "localhost", "/workflows/${s1.id}")
+        val response = client.get(port, "localhost", "/workflows/${s1.id}")
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_SUCCESS)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
-      } catch (t: Throwable) {
-        ctx.failNow(t)
-        return@launch
-      }
 
-      ctx.verify {
         assertThat(response.body()).isEqualTo(json {
             obj(
                 "id" to s1.id,
@@ -419,14 +367,12 @@ class JobManagerTest {
   fun postWorkflowEmpty(vertx: Vertx, ctx: VertxTestContext) {
     val client = WebClient.create(vertx)
     GlobalScope.launch(vertx.dispatcher()) {
-      try {
+      ctx.coVerify {
         client.post(port, "localhost", "/workflows")
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .sendAwait()
-        ctx.completeNow()
-      } catch (t: Throwable) {
-        ctx.failNow(t)
       }
+      ctx.completeNow()
     }
   }
 
@@ -437,14 +383,12 @@ class JobManagerTest {
   fun postWorkflowInvalid(vertx: Vertx, ctx: VertxTestContext) {
     val client = WebClient.create(vertx)
     GlobalScope.launch(vertx.dispatcher()) {
-      try {
+      ctx.coVerify {
         client.post(port, "localhost", "/workflows")
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .sendJsonObjectAwait(JsonObject().put("invalid", true))
-        ctx.completeNow()
-      } catch (t: Throwable) {
-        ctx.failNow(t)
       }
+      ctx.completeNow()
     }
   }
 
@@ -457,14 +401,12 @@ class JobManagerTest {
 
     val client = WebClient.create(vertx)
     GlobalScope.launch(vertx.dispatcher()) {
-      try {
+      ctx.coVerify {
         client.post(port, "localhost", "/workflows")
             .expect(ResponsePredicate.SC_REQUEST_ENTITY_TOO_LARGE)
             .sendJsonObjectAwait(JsonUtils.toJson(w))
-        ctx.completeNow()
-      } catch (t: Throwable) {
-        ctx.failNow(t)
       }
+      ctx.completeNow()
     }
   }
 
@@ -477,14 +419,12 @@ class JobManagerTest {
 
     val client = WebClient.create(vertx)
     GlobalScope.launch(vertx.dispatcher()) {
-      try {
+      ctx.coVerify {
         client.post(port, "localhost", "/workflows")
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .sendJsonObjectAwait(JsonUtils.toJson(w))
-        ctx.completeNow()
-      } catch (t: Throwable) {
-        ctx.failNow(t)
       }
+      ctx.completeNow()
     }
   }
 
@@ -505,19 +445,14 @@ class JobManagerTest {
     }
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) launch@ {
-      val response = try {
-        client.post(port, "localhost", "/workflows")
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val response = client.post(port, "localhost", "/workflows")
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_ACCEPTED)
             .expect(ResponsePredicate.JSON)
             .sendJsonObjectAwait(JsonUtils.toJson(w))
-      } catch (t: Throwable) {
-        ctx.failNow(t)
-        return@launch
-      }
 
-      ctx.verify {
         assertThat(response.body()).isEqualTo(json {
           obj(
               "id" to submissionSlot.captured.id,

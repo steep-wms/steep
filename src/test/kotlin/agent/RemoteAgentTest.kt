@@ -1,11 +1,12 @@
 package agent
 
 import AddressConstants
+import assertThatThrownBy
+import coVerify
 import helper.JsonUtils
 import helper.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.ReplyException
-import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.json.get
@@ -79,14 +80,11 @@ class RemoteAgentTest : AgentTest() {
 
     val agent = createAgent(vertx)
     GlobalScope.launch(vertx.dispatcher()) {
-      try {
-        agent.execute(ProcessChain())
-        ctx.failNow(NoStackTraceThrowable("Agent should throw"))
-      } catch (e: ReplyException) {
-        ctx.completeNow()
-      } catch (t: Throwable) {
-        ctx.failNow(t)
+      ctx.coVerify {
+        assertThatThrownBy { agent.execute(ProcessChain()) }
+            .isInstanceOf(ReplyException::class.java)
       }
+      ctx.completeNow()
     }
   }
 
@@ -105,14 +103,11 @@ class RemoteAgentTest : AgentTest() {
 
     val agent = createAgent(vertx)
     GlobalScope.launch(vertx.dispatcher()) {
-      try {
-        agent.execute(ProcessChain())
-        ctx.failNow(NoStackTraceThrowable("Agent should throw"))
-      } catch (e: ClosedReceiveChannelException) {
-        ctx.completeNow()
-      } catch (t: Throwable) {
-        ctx.failNow(t)
+      ctx.coVerify {
+        assertThatThrownBy { agent.execute(ProcessChain()) }
+            .isInstanceOf(ClosedReceiveChannelException::class.java)
       }
+      ctx.completeNow()
     }
   }
 
@@ -139,17 +134,12 @@ class RemoteAgentTest : AgentTest() {
 
     val agent = createAgent(vertx)
     GlobalScope.launch(vertx.dispatcher()) {
-      try {
-        agent.execute(ProcessChain())
-        ctx.failNow(NoStackTraceThrowable("Agent should throw"))
-      } catch (e: RemoteException) {
-        ctx.verify {
-          assertThat(e).hasMessage(errorMessage)
-        }
-        ctx.completeNow()
-      } catch (t: Throwable) {
-        ctx.failNow(t)
+      ctx.coVerify {
+        assertThatThrownBy { agent.execute(ProcessChain()) }
+            .isInstanceOf(RemoteException::class.java)
+            .hasMessage(errorMessage)
       }
+      ctx.completeNow()
     }
   }
 
@@ -180,17 +170,13 @@ class RemoteAgentTest : AgentTest() {
 
     val agent = createAgent(vertx)
     GlobalScope.launch(vertx.dispatcher()) {
-      try {
+      ctx.coVerify {
         agent.execute(ProcessChain())
         agent.execute(ProcessChain())
         agent.execute(ProcessChain())
-        ctx.verify {
-          assertThat(q).isEmpty()
-        }
-        ctx.completeNow()
-      } catch (t: Throwable) {
-        ctx.failNow(t)
+        assertThat(q).isEmpty()
       }
+      ctx.completeNow()
     }
   }
 }
