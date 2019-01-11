@@ -14,7 +14,9 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.shareddata.AsyncMap
 import io.vertx.kotlin.core.shareddata.getAsyncMapAwait
 import io.vertx.kotlin.core.shareddata.getAwait
-import io.vertx.kotlin.core.shareddata.putAwait
+import io.vertx.kotlin.core.shareddata.getCounterAwait
+import io.vertx.kotlin.core.shareddata.incrementAndGetAwait
+import io.vertx.kotlin.core.shareddata.putIfAbsentAwait
 import io.vertx.kotlin.core.shareddata.removeAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
@@ -52,6 +54,12 @@ class CloudManager : CoroutineVerticle() {
      * virtual machine for
      */
     private const val CREATING_SETUPS_MAP_NAME = "CloudManager.CreatingSetups"
+
+    /**
+     * Prefix for counters that keep track of how many VMs we created
+     * with a certain setup
+     */
+    private const val COUNTER_PREFIX = "CloudManager.Counter."
   }
 
   /**
@@ -145,26 +153,33 @@ class CloudManager : CoroutineVerticle() {
         "Could not find a setup that can satisfy the required capabilities: " +
             requiredCapabilities)
 
-    if (creatingSetups.getAwait(setup.id) == true) {
-      // we are already creating a virtual machine with this setup
+    // atomically check if we're already creating a VM with this setup
+    if (creatingSetups.putIfAbsentAwait(setup.id, true) == true) {
       return
     }
 
-    log.info("Creating virtual machine with setup `${setup.id}' for " +
-        "capabilities $requiredCapabilities ...")
-
-    creatingSetups.putAwait(setup.id, true)
     try {
+      val counter = vertx.sharedData().getCounterAwait(COUNTER_PREFIX + setup.id)
+      if (counter.getAwait() >= setup.maxVMs.toLong()) {
+        // we already created more than enough virtual machines with this setup
+        return
+      }
+
+      log.info("Creating virtual machine with setup `${setup.id}' for " +
+          "capabilities $requiredCapabilities ...")
+
       val vmId = createVM(setup)
       try {
         val ipAddress = cloudClient.getIPAddress(vmId)
         val agentId = UniqueID.next()
         provisionVM(ipAddress, vmId, agentId, setup)
+        counter.incrementAndGetAwait()
       } catch (e: Throwable) {
         cloudClient.destroyVM(vmId)
         throw e
       }
     } finally {
+      // remove flag that says we're currently creating a VM with this setup
       creatingSetups.removeAwait(setup.id)
     }
   }

@@ -49,6 +49,7 @@ class CloudManagerTest {
 
   private lateinit var client: CloudClient
   private lateinit var testSetup: Setup
+  private lateinit var testSetupLarge: Setup
   private lateinit var cloudManager: CloudManager
 
   @BeforeEach
@@ -65,9 +66,12 @@ class CloudManagerTest {
     val tempDirFile = tempDir.toRealPath().toFile()
     val testSh = File(tempDirFile, "test.sh")
     testSh.writeText("{{ agentId }}")
-    testSetup = Setup("test", "myflavor", "myImage", 500000, 1, listOf(testSh.absolutePath))
+    testSetup = Setup("test", "myflavor", "myImage", 500000, 1,
+        listOf(testSh.absolutePath), listOf("test1"))
+    testSetupLarge = Setup("testLarge", "myflavor", "myImage", 500000, 4,
+        listOf(testSh.absolutePath), listOf("test2"))
     val setupFile = File(tempDirFile, "test_setups.yaml")
-    YamlUtils.mapper.writeValue(setupFile, listOf(testSetup))
+    YamlUtils.mapper.writeValue(setupFile, listOf(testSetup, testSetupLarge))
 
     // return a VM that should be deleted when the verticle starts up
     coEvery { client.listVMs(any()) } returns listOf(MY_OLD_VM)
@@ -107,18 +111,17 @@ class CloudManagerTest {
     }
   }
 
-  private suspend fun doCreateOnDemand(vertx: Vertx, ctx: VertxTestContext) {
-    val capabilities = setOf<String>()
-
+  private suspend fun doCreateOnDemand(setup: Setup, vertx: Vertx,
+      ctx: VertxTestContext) {
     val metadata = mapOf(
         "Created-By" to CREATED_BY_TAG,
-        "Setup-Id" to testSetup.id
+        "Setup-Id" to setup.id
     )
 
-    coEvery { client.getImageID(testSetup.imageName) } returns testSetup.imageName
-    coEvery { client.createBlockDevice(testSetup.imageName, testSetup.blockDeviceSizeGb,
+    coEvery { client.getImageID(setup.imageName) } returns setup.imageName
+    coEvery { client.createBlockDevice(setup.imageName, setup.blockDeviceSizeGb,
         metadata) } answers { UniqueID.next() }
-    coEvery { client.createVM(testSetup.flavor, any(), metadata) } answers { UniqueID.next() }
+    coEvery { client.createVM(setup.flavor, any(), metadata) } answers { UniqueID.next() }
     coEvery { client.getIPAddress(any()) } answers { UniqueID.next() }
     coEvery { client.waitForVM(any()) } just Runs
 
@@ -145,7 +148,7 @@ class CloudManagerTest {
       }
     }
 
-    cloudManager.createRemoteAgent(capabilities)
+    cloudManager.createRemoteAgent(setup.providedCapabilities.toSet())
   }
 
   /**
@@ -154,7 +157,7 @@ class CloudManagerTest {
   @Test
   fun createVMOnDemand(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
-      doCreateOnDemand(vertx, ctx)
+      doCreateOnDemand(testSetup, vertx, ctx)
 
       ctx.coVerify {
         coVerify(exactly = 1) {
@@ -171,13 +174,13 @@ class CloudManagerTest {
   }
 
   /**
-   * Test if we can only create one VM with [testSetup]
+   * Make sure we can only create one VM with [testSetup] at a time
    */
   @Test
   fun tryCreateTwoAsync(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
-      val d1 = async { doCreateOnDemand(vertx, ctx) }
-      val d2 = async { doCreateOnDemand(vertx, ctx) }
+      val d1 = async { doCreateOnDemand(testSetup, vertx, ctx) }
+      val d2 = async { doCreateOnDemand(testSetup, vertx, ctx) }
 
       d1.await()
       d2.await()
@@ -188,6 +191,55 @@ class CloudManagerTest {
           client.createBlockDevice(testSetup.imageName,
               testSetup.blockDeviceSizeGb, any())
           client.createVM(testSetup.flavor, any(), any())
+          client.getIPAddress(any())
+        }
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Make sure we can only create one VM with [testSetup] at all
+   */
+  @Test
+  fun tryCreateTwoSync(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      doCreateOnDemand(testSetup, vertx, ctx)
+      doCreateOnDemand(testSetup, vertx, ctx)
+
+      ctx.coVerify {
+        coVerify(exactly = 1) {
+          client.getImageID(testSetup.imageName)
+          client.createBlockDevice(testSetup.imageName,
+              testSetup.blockDeviceSizeGb, any())
+          client.createVM(testSetup.flavor, any(), any())
+          client.getIPAddress(any())
+        }
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Make sure we can only create four VMs with [testSetupLarge] at all
+   */
+  @Test
+  fun tryCreateFiveSync(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      doCreateOnDemand(testSetupLarge, vertx, ctx)
+      doCreateOnDemand(testSetupLarge, vertx, ctx)
+      doCreateOnDemand(testSetupLarge, vertx, ctx)
+      doCreateOnDemand(testSetupLarge, vertx, ctx)
+      doCreateOnDemand(testSetupLarge, vertx, ctx)
+
+      ctx.coVerify {
+        coVerify(exactly = 4) {
+          client.getImageID(testSetupLarge.imageName)
+          client.createBlockDevice(testSetupLarge.imageName,
+              testSetupLarge.blockDeviceSizeGb, any())
+          client.createVM(testSetupLarge.flavor, any(), any())
           client.getIPAddress(any())
         }
       }
