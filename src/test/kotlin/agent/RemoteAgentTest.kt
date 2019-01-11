@@ -19,6 +19,10 @@ import kotlinx.coroutines.launch
 import model.processchain.ProcessChain
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.support.io.TempDirectory
+import org.junit.jupiter.api.support.io.TempDirectory.TempDir
+import java.nio.file.Path
 import java.rmi.RemoteException
 import java.util.ArrayDeque
 
@@ -36,7 +40,8 @@ class RemoteAgentTest : AgentTest() {
       RemoteAgent(ADDRESS, vertx)
 
   @Test
-  override fun execute(vertx: Vertx, ctx: VertxTestContext) {
+  @ExtendWith(TempDirectory::class)
+  override fun execute(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
     vertx.eventBus().consumer<JsonObject>(ADDRESS) consumer@ { msg ->
       val jsonObj: JsonObject = msg.body()
       val action: String = jsonObj["action"]
@@ -66,7 +71,7 @@ class RemoteAgentTest : AgentTest() {
       msg.reply("ACK")
     }
 
-    super.execute(vertx, ctx)
+    super.execute(vertx, ctx, tempDir)
   }
 
   /**

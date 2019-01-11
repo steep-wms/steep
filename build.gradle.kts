@@ -56,7 +56,7 @@ dependencies {
     testImplementation("io.mockk:mockk:1.8.13.kotlin13")
     testImplementation("io.vertx:vertx-junit5:$vertxVersion")
     testImplementation("org.assertj:assertj-core:3.11.1")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.3.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.4.0-M1")
     testImplementation("org.testcontainers:testcontainers:1.10.5")
     testImplementation("org.testcontainers:postgresql:1.10.5")
 }
