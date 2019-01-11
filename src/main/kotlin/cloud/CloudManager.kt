@@ -11,6 +11,11 @@ import helper.UniqueID
 import helper.YamlUtils
 import io.vertx.core.Future
 import io.vertx.core.json.JsonArray
+import io.vertx.core.shareddata.AsyncMap
+import io.vertx.kotlin.core.shareddata.getAsyncMapAwait
+import io.vertx.kotlin.core.shareddata.getAwait
+import io.vertx.kotlin.core.shareddata.putAwait
+import io.vertx.kotlin.core.shareddata.removeAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import kotlinx.coroutines.delay
@@ -30,19 +35,62 @@ import java.io.StringWriter
 class CloudManager : CoroutineVerticle() {
   companion object {
     private val log = LoggerFactory.getLogger(CloudManager::class.java)
+
+    /**
+     * A metadata key indicating that a virtual machine has been created
+     * by the JobManager
+     */
     private const val CREATED_BY = "Created-By"
+
+    /**
+     * A metadata key indicating which setup a virtual machine has
+     */
     private const val SETUP_ID = "Setup-Id"
+
+    /**
+     * The name of a map containing IDs of setups we are currently creating a
+     * virtual machine for
+     */
+    private const val CREATING_SETUPS_MAP_NAME = "CloudManager.CreatingSetups"
   }
 
+  /**
+   * The client to connect to the Cloud
+   */
   private lateinit var cloudClient: CloudClient
+
+  /**
+   * A metadata item indicating that a virtual machine has been created
+   * by the JobManager
+   */
   private lateinit var createdByTag: String
+
+  /**
+   * The username for SSH access to created virtual machines
+   */
   private lateinit var sshUsername: String
+
+  /**
+   * A SSH private key used for authentication when logging in to the new
+   * virtual machines
+   */
   private lateinit var sshPrivateKeyLocation: String
+
+  /**
+   * A list of pre-configured setups
+   */
   private lateinit var setups: List<Setup>
+
+  /**
+   * A map containing IDs of setups we are currently creating a virtual
+   * machine for
+   */
+  private lateinit var creatingSetups: AsyncMap<String, Boolean>
 
   override suspend fun start() {
     log.info("Launching cloud manager ...")
 
+    // load configuration
     cloudClient = CloudClientFactory.create(vertx)
     createdByTag = config.getString(CLOUD_CREATED_BY_TAG) ?: throw IllegalStateException(
         "Missing configuration item `$CLOUD_CREATED_BY_TAG'")
@@ -52,15 +100,14 @@ class CloudManager : CoroutineVerticle() {
     sshPrivateKeyLocation = config.getString(CLOUD_SSH_PRIVATE_KEY_LOCATION) ?: throw IllegalStateException(
         "Missing configuration item `$CLOUD_SSH_PRIVATE_KEY_LOCATION'")
 
+    // load setups file
     val setupsFile = config.getString(CLOUD_SETUPS_FILE) ?: throw IllegalStateException(
         "Missing configuration item `$CLOUD_SETUPS_FILE'")
     setups = YamlUtils.mapper.readValue(File(setupsFile))
 
-    // TODO limit to maximum number of VMs per setup
-//    if (cloudClient.listVMs { createdByTag == it[CREATED_BY] }.size == setup.maxVMs) {
-//      // there are already enough VMs
-//      return
-//    }
+    // initialize shared maps
+    val sharedData = vertx.sharedData()
+    creatingSetups = sharedData.getAsyncMapAwait(CREATING_SETUPS_MAP_NAME)
 
     // destroy all virtual machines we created before to start from scratch
     val existingVMs = cloudClient.listVMs { createdByTag == it[CREATED_BY] }
@@ -72,18 +119,11 @@ class CloudManager : CoroutineVerticle() {
     }
 
     // create new virtual machines on demand
-    var creating = false
     vertx.eventBus().consumer<JsonArray>(AddressConstants.REMOTE_AGENT_MISSING) { msg ->
-      if (!creating) {
-        creating = true
-
-        val requiredCapabilities = msg.body().map { it as String }.toSet()
+      val requiredCapabilities = msg.body()
+      if (requiredCapabilities != null) {
         launch {
-          try {
-            createRemoteAgent(requiredCapabilities)
-          } finally {
-            creating = false
-          }
+          createRemoteAgent(requiredCapabilities.map { it as String }.toSet())
         }
       }
     }
@@ -100,22 +140,32 @@ class CloudManager : CoroutineVerticle() {
    * Create a virtual machine that matches the given [requiredCapabilities]
    * and deploy a remote agent to it
    */
-  private suspend fun createRemoteAgent(requiredCapabilities: Set<String>) {
+  internal suspend fun createRemoteAgent(requiredCapabilities: Set<String>) {
     val setup = selectSetup(requiredCapabilities) ?: throw IllegalStateException(
         "Could not find a setup that can satisfy the required capabilities: " +
             requiredCapabilities)
 
+    if (creatingSetups.getAwait(setup.id) == true) {
+      // we are already creating a virtual machine with this setup
+      return
+    }
+
     log.info("Creating virtual machine with setup `${setup.id}' for " +
         "capabilities $requiredCapabilities ...")
 
-    val vmId = createVM(setup)
+    creatingSetups.putAwait(setup.id, true)
     try {
-      val ipAddress = cloudClient.getIPAddress(vmId)
-      val agentId = UniqueID.next()
-      provisionVM(ipAddress, vmId, agentId, setup)
-    } catch (e: Throwable) {
-      cloudClient.destroyVM(vmId)
-      throw e
+      val vmId = createVM(setup)
+      try {
+        val ipAddress = cloudClient.getIPAddress(vmId)
+        val agentId = UniqueID.next()
+        provisionVM(ipAddress, vmId, agentId, setup)
+      } catch (e: Throwable) {
+        cloudClient.destroyVM(vmId)
+        throw e
+      }
+    } finally {
+      creatingSetups.removeAwait(setup.id)
     }
   }
 
@@ -148,6 +198,15 @@ class CloudManager : CoroutineVerticle() {
     val ssh = SSHClient(ipAddress, sshUsername, sshPrivateKeyLocation, vertx)
     waitForSSH(ipAddress, vmId, ssh)
 
+    // register a handler that waits for the agent on the new virtual machine
+    // to become available
+    val future = Future.future<Unit>()
+    val consumer = vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_AVAILABLE) { msg ->
+      if (msg.body() == agentId) {
+        future.complete()
+      }
+    }
+
     log.info("Provisioning server $ipAddress ...")
 
     val engine = PebbleEngine.Builder()
@@ -160,6 +219,7 @@ class CloudManager : CoroutineVerticle() {
         "agentCapabilities" to setup.providedCapabilities
     )
 
+    // run provisioning scripts
     for (script in setup.provisioningScripts) {
       // compile script template
       val compiledTemplate = engine.getTemplate(script)
@@ -180,14 +240,6 @@ class CloudManager : CoroutineVerticle() {
       // execute script
       ssh.execute("sudo chmod +x $destFileName")
       ssh.execute("sudo $destFileName")
-    }
-
-    // wait for the agent on the new virtual machine to become available
-    val future = Future.future<Unit>()
-    val consumer = vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_AVAILABLE) { msg ->
-      if (msg.body() == agentId) {
-        future.complete()
-      }
     }
 
     // throw if the agent does not become available after a set amount of time
