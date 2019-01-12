@@ -59,7 +59,7 @@ class RemoteAgentTest : AgentTest() {
       }
 
       GlobalScope.launch(vertx.dispatcher()) {
-        val la = LocalAgent()
+        val la = LocalAgent(vertx)
         val results = la.execute(processChain)
         vertx.eventBus().send(replyAddress, json {
           obj(

@@ -15,19 +15,24 @@ object Shell {
   /**
    * Executes the given command
    * @param command the command
+   * @param outputLinesToCollect the number of output lines to collect at most
    * @return the command's output (stdout and stderr)
+   * @throws ExecutionException if the command failed
    */
-  fun execute(command: List<String>): String {
-    return execute(command, File(System.getProperty("user.dir")))
+  fun execute(command: List<String>, outputLinesToCollect: Int = 100): String {
+    return execute(command, File(System.getProperty("user.dir")), outputLinesToCollect)
   }
 
   /**
    * Executes the given command in the given working directory
    * @param command the command
    * @param workingDir the working directory
+   * @param outputLinesToCollect the number of output lines to collect at most
    * @return the command's output (stdout and stderr)
+   * @throws ExecutionException if the command failed
    */
-  private fun execute(command: List<String>, workingDir: File): String {
+  private fun execute(command: List<String>, workingDir: File,
+      outputLinesToCollect: Int = 100): String {
     val lines = LinkedList<String>()
     val joinedCommand = command.joinToString(" ")
     log.info(joinedCommand)
@@ -40,7 +45,7 @@ object Shell {
     process.inputStream.bufferedReader().forEachLine { line ->
       log.info(line)
       lines.add(line)
-      if (lines.size > 100) {
+      if (lines.size > outputLinesToCollect) {
         lines.removeFirst()
       }
     }
@@ -57,6 +62,13 @@ object Shell {
     return result
   }
 
+  /**
+   * An exception thrown by [execute] if the command failed
+   * @param message a generic error message
+   * @param lastOutput the last output collected from the command before it
+   * failed (may contain the actual error message issued by the command)
+   * @param exitCode the command's exit code
+   */
   class ExecutionException(
       message: String,
       val lastOutput: String,

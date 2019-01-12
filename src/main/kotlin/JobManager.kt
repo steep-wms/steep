@@ -190,7 +190,7 @@ class JobManager : CoroutineVerticle() {
    * @return the reply message (containing either results or an error message)
    */
   private suspend fun executeProcessChain(processChain: ProcessChain) = try {
-    val la = LocalAgent()
+    val la = LocalAgent(vertx)
     val results = la.execute(processChain)
     json {
       obj(

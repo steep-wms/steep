@@ -7,5 +7,5 @@ import io.vertx.core.Vertx
  * @author Michel Kraemer
  */
 class LocalAgentTest : AgentTest() {
-  override fun createAgent(vertx: Vertx): Agent = LocalAgent()
+  override fun createAgent(vertx: Vertx): Agent = LocalAgent(vertx)
 }

@@ -92,6 +92,12 @@ object ConfigConstants {
   const val AGENT_CAPABILTIIES = "jobmanager.agent.capabilities"
 
   /**
+   * The number of output lines to collect at most from each executed service
+   * (also applies to error output)
+   */
+  const val AGENT_OUTPUT_LINES_TO_COLLECT = "jobmanager.agent.outputLinesToCollect"
+
+  /**
    * The database driver (see [db.SubmissionRegistryFactory] for valid values)
    */
   const val DB_DRIVER = "jobmanager.db.driver"

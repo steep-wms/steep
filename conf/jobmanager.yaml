@@ -22,6 +22,7 @@ jobmanager:
     enabled: true
     # id: <uniqueId>
     capabilities:
+    outputLinesToCollect: 100
 
   controller:
     lookupIntervalMilliseconds: 2000

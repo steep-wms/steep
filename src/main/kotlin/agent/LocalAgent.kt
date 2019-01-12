@@ -19,12 +19,15 @@ import java.util.ArrayList
  * An agent that executes process chains locally
  * @author Michel Kraemer
  */
-class LocalAgent : Agent {
+class LocalAgent(vertx: Vertx) : Agent {
   companion object {
     private val log = LoggerFactory.getLogger(LocalAgent::class.java)
   }
 
   override val id: String = UniqueID.next()
+
+  private val outputLinesToCollect = vertx.orCreateContext.config()
+      .getInteger(ConfigConstants.AGENT_OUTPUT_LINES_TO_COLLECT, 100)
 
   override suspend fun execute(processChain: ProcessChain): Map<String, List<String>> {
     // prepare commands
@@ -40,7 +43,7 @@ class LocalAgent : Agent {
     // execute commands
     awaitBlocking {
       for (cmd in commandLines) {
-        Shell.execute(cmd)
+        Shell.execute(cmd, outputLinesToCollect)
       }
     }
 
