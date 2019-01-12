@@ -89,6 +89,13 @@ interface SubmissionRegistry {
   suspend fun findProcessChainsBySubmissionId(submissionId: String): Collection<ProcessChain>
 
   /**
+   * Get a single process chain from the registry
+   * @param processChainId the process chain's ID
+   * @return the process chain or `null` if the process chain does not exist
+   */
+  suspend fun findProcessChainById(processChainId: String): ProcessChain?
+
+  /**
    * Count the number of process chains that belong to a given submission
    * @param submissionId the submission's ID
    * @return the number of process chains belonging to the given submission
@@ -115,6 +122,14 @@ interface SubmissionRegistry {
    */
   suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
       newStatus: ProcessChainStatus): ProcessChain?
+
+  /**
+   * Get the ID of the submission the given process chain belongs to
+   * @param processChainId the process chain ID
+   * @return the ID of the submission the process chain belongs to
+   * @throws NoSuchElementException if the process chain does not exist
+   */
+  suspend fun getProcessChainSubmissionId(processChainId: String): String
 
   /**
    * Set the status of a process chain

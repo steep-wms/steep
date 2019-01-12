@@ -151,6 +151,12 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
           .filter { it.submissionId == submissionId }
           .map { it.processChain }
 
+  override suspend fun findProcessChainById(processChainId: String): ProcessChain? {
+    return processChains.await().getAwait(processChainId)?.let {
+      JsonUtils.mapper.readValue<ProcessChainEntry>(it).processChain
+    }
+  }
+
   override suspend fun countProcessChainsBySubmissionId(submissionId: String): Long =
       findProcessChainEntries()
           .filter { it.submissionId == submissionId }
@@ -182,6 +188,13 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     }
   }
 
+  private suspend fun getProcessChainEntryById(processChainId: String): ProcessChainEntry {
+    val map = processChains.await()
+    val str = map.getAwait(processChainId) ?: throw NoSuchElementException(
+        "There is no process chain with ID `$processChainId'")
+    return JsonUtils.mapper.readValue(str)
+  }
+
   private suspend fun updateProcessChain(processChainId: String,
       updater: (ProcessChainEntry) -> ProcessChainEntry) {
     val sharedData = vertx.sharedData()
@@ -198,27 +211,22 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     }
   }
 
+  override suspend fun getProcessChainSubmissionId(processChainId: String): String =
+      getProcessChainEntryById(processChainId).submissionId
+
   override suspend fun setProcessChainStatus(processChainId: String,
       status: ProcessChainStatus) {
     updateProcessChain(processChainId) { it.copy(status = status) }
   }
 
-  override suspend fun getProcessChainStatus(processChainId: String): ProcessChainStatus {
-    val map = processChains.await()
-    val str = map.getAwait(processChainId) ?: throw NoSuchElementException(
-        "There is no process chain with ID `$processChainId'")
-    return JsonUtils.mapper.readValue<ProcessChainEntry>(str).status
-  }
+  override suspend fun getProcessChainStatus(processChainId: String): ProcessChainStatus =
+      getProcessChainEntryById(processChainId).status
 
   override suspend fun setProcessChainResults(processChainId: String,
       results: Map<String, List<String>>?) {
     updateProcessChain(processChainId) { it.copy(results = results) }
   }
 
-  override suspend fun getProcessChainResults(processChainId: String): Map<String, List<String>>? {
-    val map = processChains.await()
-    val str = map.getAwait(processChainId) ?: throw NoSuchElementException(
-        "There is no process chain with ID `$processChainId'")
-    return JsonUtils.mapper.readValue<ProcessChainEntry>(str).results
-  }
+  override suspend fun getProcessChainResults(processChainId: String): Map<String, List<String>>? =
+      getProcessChainEntryById(processChainId).results
 }

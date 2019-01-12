@@ -1,9 +1,11 @@
 import agent.LocalAgent
 import agent.RemoteAgentRegistry
 import db.SubmissionRegistry
+import db.SubmissionRegistry.ProcessChainStatus
 import db.SubmissionRegistryFactory
 import helper.JsonUtils
 import helper.Shell
+import helper.UniqueID
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -28,6 +30,7 @@ import io.vertx.kotlin.ext.web.client.sendJsonObjectAwait
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import model.Submission
+import model.processchain.Executable
 import model.processchain.ProcessChain
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
@@ -458,6 +461,189 @@ class JobManagerTest {
               "id" to submissionSlot.captured.id,
               "workflow" to JsonUtils.toJson(w),
               "status" to Submission.Status.ACCEPTED.toString()
+          )
+        })
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that the endpoint returns a list of all process chains (without executables)
+   */
+  @Test
+  fun getProcessChains(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow())
+    val s2 = Submission(workflow = Workflow())
+    coEvery { submissionRegistry.findSubmissions() } returns listOf(s1, s2)
+
+    val pc1 = ProcessChain(executables = listOf(Executable(path = "path", arguments = emptyList())))
+    val pc2 = ProcessChain()
+    val pc3 = ProcessChain()
+    val pc4 = ProcessChain()
+
+    coEvery { submissionRegistry.findProcessChainsBySubmissionId(s1.id) } returns listOf(pc1, pc2)
+    coEvery { submissionRegistry.findProcessChainsBySubmissionId(s2.id) } returns listOf(pc3, pc4)
+
+    coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns ProcessChainStatus.SUCCESS
+    coEvery { submissionRegistry.getProcessChainStatus(pc2.id) } returns ProcessChainStatus.RUNNING
+    coEvery { submissionRegistry.getProcessChainStatus(pc3.id) } returns ProcessChainStatus.REGISTERED
+    coEvery { submissionRegistry.getProcessChainStatus(pc4.id) } returns ProcessChainStatus.ERROR
+
+    coEvery { submissionRegistry.getProcessChainResults(pc1.id) } returns mapOf(
+        "output_file1" to listOf("output.txt"))
+    coEvery { submissionRegistry.getProcessChainResults(pc2.id) } returns null
+    coEvery { submissionRegistry.getProcessChainResults(pc3.id) } returns null
+    coEvery { submissionRegistry.getProcessChainResults(pc4.id) } returns null
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/processchains")
+            .`as`(BodyCodec.jsonArray())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.JSON)
+            .sendAwait()
+
+        assertThat(response.body()).isEqualTo(json {
+          array(
+              obj(
+                  "id" to pc1.id,
+                  "requiredCapabilities" to array(),
+                  "submissionId" to s1.id,
+                  "status" to "SUCCESS",
+                  "results" to obj(
+                      "output_file1" to array("output.txt")
+                  )
+              ),
+              obj(
+                  "id" to pc2.id,
+                  "requiredCapabilities" to array(),
+                  "submissionId" to s1.id,
+                  "status" to "RUNNING"
+              ),
+              obj(
+                  "id" to pc3.id,
+                  "requiredCapabilities" to array(),
+                  "submissionId" to s2.id,
+                  "status" to "REGISTERED"
+              ),
+              obj(
+                  "id" to pc4.id,
+                  "requiredCapabilities" to array(),
+                  "submissionId" to s2.id,
+                  "status" to "ERROR"
+              )
+          )
+        })
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that the endpoint returns a list of process chains (without
+   * executables) for a given submission ID
+   */
+  @Test
+  fun getProcessChainsBySubmissionId(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow())
+    val s2 = Submission(workflow = Workflow())
+    coEvery { submissionRegistry.findSubmissions() } returns listOf(s1, s2)
+
+    val pc1 = ProcessChain(executables = listOf(Executable(path = "path", arguments = emptyList())))
+    val pc2 = ProcessChain()
+
+    coEvery { submissionRegistry.findProcessChainsBySubmissionId(s1.id) } returns listOf(pc1, pc2)
+
+    coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns ProcessChainStatus.SUCCESS
+    coEvery { submissionRegistry.getProcessChainStatus(pc2.id) } returns ProcessChainStatus.RUNNING
+
+    coEvery { submissionRegistry.getProcessChainResults(pc1.id) } returns mapOf(
+        "output_file1" to listOf("output.txt"))
+    coEvery { submissionRegistry.getProcessChainResults(pc2.id) } returns null
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/processchains?submissionId=${s1.id}")
+            .`as`(BodyCodec.jsonArray())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.JSON)
+            .sendAwait()
+
+        assertThat(response.body()).isEqualTo(json {
+          array(
+              obj(
+                  "id" to pc1.id,
+                  "requiredCapabilities" to array(),
+                  "submissionId" to s1.id,
+                  "status" to "SUCCESS",
+                  "results" to obj(
+                      "output_file1" to array("output.txt")
+                  )
+              ),
+              obj(
+                  "id" to pc2.id,
+                  "requiredCapabilities" to array(),
+                  "submissionId" to s1.id,
+                  "status" to "RUNNING"
+              )
+          )
+        })
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that the endpoint returns a single process chain
+   */
+  @Test
+  fun getProcessChainById(vertx: Vertx, ctx: VertxTestContext) {
+    val eid = UniqueID.next()
+    val sid = UniqueID.next()
+    val pc1 = ProcessChain(executables = listOf(Executable(id = eid,
+        path = "path", arguments = emptyList())))
+
+    coEvery { submissionRegistry.findProcessChainById(pc1.id) } returns pc1
+    coEvery { submissionRegistry.findProcessChainById(neq(pc1.id)) } returns null
+    coEvery { submissionRegistry.getProcessChainSubmissionId(pc1.id) } returns sid
+    coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns ProcessChainStatus.REGISTERED
+    coEvery { submissionRegistry.getProcessChainResults(pc1.id) } returns mapOf(
+        "output_file1" to listOf("output.txt"))
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        client.get(port, "localhost", "/processchains/${pc1.id}_doesnotexist")
+            .`as`(BodyCodec.none())
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .sendAwait()
+
+        val response = client.get(port, "localhost", "/processchains/${pc1.id}")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.JSON)
+            .sendAwait()
+
+        assertThat(response.body()).isEqualTo(json {
+          obj(
+              "id" to pc1.id,
+              "executables" to array(
+                  obj(
+                      "id" to eid,
+                      "path" to "path",
+                      "arguments" to array()
+                  )
+              ),
+              "requiredCapabilities" to array(),
+              "submissionId" to sid,
+              "status" to ProcessChainStatus.REGISTERED.toString(),
+              "results" to obj(
+                  "output_file1" to array("output.txt")
+              )
           )
         })
       }

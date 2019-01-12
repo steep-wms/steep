@@ -21,7 +21,7 @@ jobmanager:
   agent:
     enabled: true
     # id: <uniqueId>
-    capabilities:
+    # capabilities:
     outputLinesToCollect: 100
 
   controller:

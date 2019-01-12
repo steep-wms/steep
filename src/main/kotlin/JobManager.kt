@@ -87,6 +87,8 @@ class JobManager : CoroutineVerticle() {
       router.post("/workflows")
           .handler(bodyHandler)
           .handler(this::onPostWorkflow)
+      router.get("/processchains").handler(this::onGetProcessChains)
+      router.get("/processchains/:id").handler(this::onGetProcessChainById)
 
       server.requestHandler(router).listenAwait(port, host)
 
@@ -266,7 +268,7 @@ class JobManager : CoroutineVerticle() {
   }
 
   /**
-   * Get single workflow by name
+   * Get single workflow by ID
    * @param ctx the routing context
    */
   private fun onGetWorkflowById(ctx: RoutingContext) {
@@ -276,7 +278,7 @@ class JobManager : CoroutineVerticle() {
       if (submission == null) {
         ctx.response()
             .setStatusCode(404)
-            .end("There is no workflow with the ID `$id'")
+            .end("There is no workflow with ID `$id'")
       } else {
         val json = JsonUtils.toJson(submission)
         amendSubmission(json)
@@ -339,6 +341,68 @@ class JobManager : CoroutineVerticle() {
         ctx.response()
             .setStatusCode(500)
             .end(e.message)
+      }
+    }
+  }
+
+  private suspend fun amendProcessChain(processChain: JsonObject, submissionId: String) {
+    processChain.put("submissionId", submissionId)
+
+    val id = processChain.getString("id")
+    val status = submissionRegistry.getProcessChainStatus(id)
+    val results = submissionRegistry.getProcessChainResults(id)
+    processChain.put("status", status.toString())
+    if (results != null) {
+      processChain.put("results", results)
+    }
+  }
+
+  /**
+   * Get list of process chains
+   * @param ctx the routing context
+   */
+  private fun onGetProcessChains(ctx: RoutingContext) {
+    launch {
+      var submissionIds = ctx.queryParam("submissionId") ?: emptyList()
+      if (submissionIds.isEmpty()) {
+          submissionIds = submissionRegistry.findSubmissions().map { it.id }
+      }
+
+      val list = submissionIds.flatMap { submissionId ->
+        submissionRegistry.findProcessChainsBySubmissionId(submissionId).map { processChain ->
+          JsonUtils.toJson(processChain).also {
+            it.remove("executables")
+            amendProcessChain(it, submissionId)
+          }
+        }
+      }
+
+      val arr = JsonArray(list)
+      ctx.response()
+          .putHeader("content-type", "application/json")
+          .end(arr.encode())
+    }
+  }
+
+  /**
+   * Get single process chain by ID
+   * @param ctx the routing context
+   */
+  private fun onGetProcessChainById(ctx: RoutingContext) {
+    launch {
+      val id = ctx.pathParam("id")
+      val processChain = submissionRegistry.findProcessChainById(id)
+      if (processChain == null) {
+        ctx.response()
+            .setStatusCode(404)
+            .end("There is no process chain with ID `$id'")
+      } else {
+        val json = JsonUtils.toJson(processChain)
+        val submissionId = submissionRegistry.getProcessChainSubmissionId(id)
+        amendProcessChain(json, submissionId)
+        ctx.response()
+            .putHeader("content-type", "application/json")
+            .end(json.encode())
       }
     }
   }

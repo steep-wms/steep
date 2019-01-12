@@ -117,9 +117,7 @@ abstract class SubmissionRegistryTest {
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChains(listOf(pc), s.id)
       val pcs = submissionRegistry.findProcessChainsBySubmissionId(s.id)
-      val registeredPc = submissionRegistry.fetchNextProcessChain(
-          SubmissionRegistry.ProcessChainStatus.REGISTERED,
-          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      val registeredPc = submissionRegistry.findProcessChainById(pc.id)
 
       ctx.verify {
         assertThat(pcs)
@@ -219,6 +217,35 @@ abstract class SubmissionRegistryTest {
         assertThat(status).isEqualTo(SubmissionRegistry.ProcessChainStatus.RUNNING)
       }
 
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun getProcessChainSubmissionId(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc = ProcessChain()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s)
+      submissionRegistry.addProcessChains(listOf(pc), s.id)
+      val sid = submissionRegistry.getProcessChainSubmissionId(pc.id)
+      ctx.verify {
+        assertThat(sid).isEqualTo(s.id)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun getSubmissionIdOfMissingProcessChain(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        assertThatThrownBy {
+          submissionRegistry.getProcessChainSubmissionId("MISSING")
+        }.isInstanceOf(NoSuchElementException::class.java)
+      }
       ctx.completeNow()
     }
   }

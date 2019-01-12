@@ -273,6 +273,19 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
   }
 
+  override suspend fun findProcessChainById(processChainId: String): ProcessChain? {
+    return withConnection { connection ->
+      val statement = "SELECT $DATA FROM $PROCESS_CHAINS WHERE $ID=?"
+      val params = json {
+        array(
+            processChainId
+        )
+      }
+      val rs = connection.querySingleWithParamsAwait(statement, params)
+      rs?.let { JsonUtils.mapper.readValue<ProcessChain>(it.getString(0)) }
+    }
+  }
+
   override suspend fun countProcessChainsBySubmissionId(submissionId: String): Long {
     return withConnection { connection ->
       val statement = "SELECT COUNT(*) FROM $PROCESS_CHAINS WHERE $SUBMISSION_ID=?"
@@ -335,6 +348,9 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       block(r)
     }
   }
+
+  override suspend fun getProcessChainSubmissionId(processChainId: String): String =
+      getProcessChainColumn(processChainId, SUBMISSION_ID) { it.getString(0) }
 
   override suspend fun setProcessChainStatus(processChainId: String,
       status: ProcessChainStatus) {
