@@ -9,7 +9,7 @@ CREATE TABLE processchains (
   submissionId VARCHAR(64) NOT NULL,
   status VARCHAR(20) NOT NULL,
   data jsonb NOT NULL,
-  output jsonb,
+  results jsonb,
   PRIMARY KEY(id)
 );
 

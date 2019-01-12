@@ -48,7 +48,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       val processChain: ProcessChain,
       val submissionId: String,
       val status: ProcessChainStatus,
-      val output: Map<String, List<String>>? = null
+      val results: Map<String, List<String>>? = null
   )
 
   private val submissions: Future<AsyncMap<String, String>>
@@ -210,15 +210,15 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     return JsonUtils.mapper.readValue<ProcessChainEntry>(str).status
   }
 
-  override suspend fun setProcessChainOutput(processChainId: String,
-      output: Map<String, List<String>>?) {
-    updateProcessChain(processChainId) { it.copy(output = output) }
+  override suspend fun setProcessChainResults(processChainId: String,
+      results: Map<String, List<String>>?) {
+    updateProcessChain(processChainId) { it.copy(results = results) }
   }
 
-  override suspend fun getProcessChainOutput(processChainId: String): Map<String, List<String>>? {
+  override suspend fun getProcessChainResults(processChainId: String): Map<String, List<String>>? {
     val map = processChains.await()
     val str = map.getAwait(processChainId) ?: throw NoSuchElementException(
         "There is no process chain with ID `$processChainId'")
-    return JsonUtils.mapper.readValue<ProcessChainEntry>(str).output
+    return JsonUtils.mapper.readValue<ProcessChainEntry>(str).results
   }
 }

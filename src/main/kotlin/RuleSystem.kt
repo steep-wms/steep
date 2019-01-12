@@ -44,14 +44,14 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
    * Evaluate the production rules and create the next set of process chains.
    * Call this method until it returns an empty list (i.e. until it does not
    * produce more process chains). Execute the process chains after each call
-   * to this method and pass their output to the next call.
-   * @param outputs the output of previously generated process chains
+   * to this method and pass their results to the next call.
+   * @param results the results of previously generated process chains
    * @return a list of process chains (may be empty if there are no process
    * chains anymore)
    */
-  fun fire(outputs: Map<String, List<String>>? = null): List<ProcessChain> {
-    // replace variable values with outputs
-    outputs?.forEach { key, value ->
+  fun fire(results: Map<String, List<String>>? = null): List<ProcessChain> {
+    // replace variable values with results
+    results?.forEach { key, value ->
       val v = vars[key]
       v?.value = if (value.size == 1) value[0] else value
     }

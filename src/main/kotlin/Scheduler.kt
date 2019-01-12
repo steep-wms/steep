@@ -84,7 +84,7 @@ class Scheduler : CoroutineVerticle() {
       launch {
         try {
           val results = agent.execute(processChain)
-          submissionRegistry.setProcessChainOutput(processChain.id, results)
+          submissionRegistry.setProcessChainResults(processChain.id, results)
           submissionRegistry.setProcessChainStatus(processChain.id, SUCCESS)
         } catch (t: Throwable) {
           submissionRegistry.setProcessChainStatus(processChain.id, ERROR)

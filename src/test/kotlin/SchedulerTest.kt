@@ -111,8 +111,8 @@ class SchedulerTest {
         registeredPcs.add(0, pc)
       }
 
-      // register mock for output
-      coEvery { submissionRegistry.setProcessChainOutput(pc.id,
+      // register mock for results
+      coEvery { submissionRegistry.setProcessChainResults(pc.id,
           mapOf("ARG1" to listOf("output-${pc.id}"))) } just Runs
     }
 
@@ -131,10 +131,10 @@ class SchedulerTest {
         assertThat(registeredPcs).doesNotContain(allPcs.last())
 
         // verify that all process chains were set to SUCCESS,
-        // and that the output was set correctly
+        // and that the results were set correctly
         coVerify(exactly = 1) {
           for (pc in allPcs) {
-            submissionRegistry.setProcessChainOutput(pc.id,
+            submissionRegistry.setProcessChainResults(pc.id,
                 mapOf("ARG1" to listOf("output-${pc.id}")))
             submissionRegistry.setProcessChainStatus(pc.id, SUCCESS)
           }

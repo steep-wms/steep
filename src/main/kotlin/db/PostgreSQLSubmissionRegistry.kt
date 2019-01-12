@@ -44,12 +44,12 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     private const val SUBMISSION_ID = "submissionId"
     private const val DATA = "data"
     private const val STATUS = "status"
-    private const val OUTPUT = "output"
+    private const val RESULTS = "results"
 
     /**
      * Identifier of a PostgreSQL advisory lock used to make atomic operations
      */
-    private val ADVISORY_LOCK_ID =
+    private const val ADVISORY_LOCK_ID =
         ('J'.toLong() shl 56) +
         ('o'.toLong() shl 48) +
         ('b'.toLong() shl 40) +
@@ -347,14 +347,14 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
   }
 
-  override suspend fun setProcessChainOutput(processChainId: String,
-      output: Map<String, List<String>>?) {
-    updateColumn(PROCESS_CHAINS, processChainId, OUTPUT,
-        JsonUtils.mapper.writeValueAsString(output), true)
+  override suspend fun setProcessChainResults(processChainId: String,
+      results: Map<String, List<String>>?) {
+    updateColumn(PROCESS_CHAINS, processChainId, RESULTS,
+        JsonUtils.mapper.writeValueAsString(results), true)
   }
 
-  override suspend fun getProcessChainOutput(processChainId: String): Map<String, List<String>>? {
-    return getProcessChainColumn(processChainId, OUTPUT) { r ->
+  override suspend fun getProcessChainResults(processChainId: String): Map<String, List<String>>? {
+    return getProcessChainColumn(processChainId, RESULTS) { r ->
       r.getString(0)?.let { JsonUtils.mapper.readValue<Map<String, List<String>>>(it) }
     }
   }

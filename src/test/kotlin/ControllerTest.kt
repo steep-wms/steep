@@ -94,7 +94,7 @@ class ControllerTest {
       for (processChain in processChainsSlot.captured) {
         coEvery { submissionRegistry.getProcessChainStatus(processChain.id) } returns
             ProcessChainStatus.SUCCESS
-        coEvery { submissionRegistry.getProcessChainOutput(processChain.id) } returns
+        coEvery { submissionRegistry.getProcessChainResults(processChain.id) } returns
             mapOf("output_file1" to listOf("/tmp/0"))
       }
     }

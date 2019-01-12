@@ -159,7 +159,7 @@ class Controller : CoroutineVerticle() {
         val status = submissionRegistry.getProcessChainStatus(processChain.id)
         when (status) {
           ProcessChainStatus.SUCCESS -> {
-            submissionRegistry.getProcessChainOutput(processChain.id)?.let {
+            submissionRegistry.getProcessChainResults(processChain.id)?.let {
               results.putAll(it)
             }
             finished++

@@ -300,47 +300,47 @@ abstract class SubmissionRegistryTest {
     }
   }
 
-  private suspend fun doSetProcessChainOutput(ctx: VertxTestContext): ProcessChain {
+  private suspend fun doSetProcessChainResults(ctx: VertxTestContext): ProcessChain {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()
 
     submissionRegistry.addSubmission(s)
     submissionRegistry.addProcessChains(listOf(pc), s.id)
-    val pcOutput1 = submissionRegistry.getProcessChainOutput(pc.id)
+    val pcResults1 = submissionRegistry.getProcessChainResults(pc.id)
 
     ctx.verify {
-      assertThat(pcOutput1).isNull()
+      assertThat(pcResults1).isNull()
     }
 
-    val output = mapOf("ARG1" to listOf("output.txt"))
-    submissionRegistry.setProcessChainOutput(pc.id, output)
-    val pcOutput2 = submissionRegistry.getProcessChainOutput(pc.id)
+    val results = mapOf("ARG1" to listOf("output.txt"))
+    submissionRegistry.setProcessChainResults(pc.id, results)
+    val pcResults2 = submissionRegistry.getProcessChainResults(pc.id)
 
     ctx.verify {
-      assertThat(pcOutput2).isEqualTo(output)
+      assertThat(pcResults2).isEqualTo(results)
     }
 
     return pc
   }
 
   @Test
-  fun setProcessChainOutput(vertx: Vertx, ctx: VertxTestContext) {
+  fun setProcessChainResults(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
-      doSetProcessChainOutput(ctx)
+      doSetProcessChainResults(ctx)
       ctx.completeNow()
     }
   }
 
   @Test
-  fun resetProcessChainOutput(vertx: Vertx, ctx: VertxTestContext) {
+  fun resetProcessChainResults(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
-      val pc = doSetProcessChainOutput(ctx)
+      val pc = doSetProcessChainResults(ctx)
 
-      submissionRegistry.setProcessChainOutput(pc.id, null)
-      val pcOutput = submissionRegistry.getProcessChainOutput(pc.id)
+      submissionRegistry.setProcessChainResults(pc.id, null)
+      val pcResults = submissionRegistry.getProcessChainResults(pc.id)
 
       ctx.verify {
-        assertThat(pcOutput).isNull()
+        assertThat(pcResults).isNull()
       }
 
       ctx.completeNow()
@@ -348,11 +348,11 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  fun getOutputOfMissingProcessChain(vertx: Vertx, ctx: VertxTestContext) {
+  fun getResultsOfMissingProcessChain(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.coVerify {
         assertThatThrownBy {
-          submissionRegistry.getProcessChainOutput("MISSING")
+          submissionRegistry.getProcessChainResults("MISSING")
         }.isInstanceOf(NoSuchElementException::class.java)
         ctx.completeNow()
       }
