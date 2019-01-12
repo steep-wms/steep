@@ -16,6 +16,7 @@ import io.vertx.kotlin.core.shareddata.getAsyncMapAwait
 import io.vertx.kotlin.core.shareddata.getAwait
 import io.vertx.kotlin.core.shareddata.getCounterAwait
 import io.vertx.kotlin.core.shareddata.incrementAndGetAwait
+import io.vertx.kotlin.core.shareddata.putAwait
 import io.vertx.kotlin.core.shareddata.putIfAbsentAwait
 import io.vertx.kotlin.core.shareddata.removeAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
@@ -54,6 +55,11 @@ class CloudManager : CoroutineVerticle() {
      * virtual machine for
      */
     private const val CREATING_SETUPS_MAP_NAME = "CloudManager.CreatingSetups"
+
+    /**
+     * The name of a map containing IDs of created virtual machines
+     */
+    private const val CREATED_VMS_MAP_NAME = "CloudManager.CreatedVMs"
 
     /**
      * Prefix for counters that keep track of how many VMs we created
@@ -95,6 +101,11 @@ class CloudManager : CoroutineVerticle() {
    */
   private lateinit var creatingSetups: AsyncMap<String, Boolean>
 
+  /**
+   * A map containing IDs of created virtual machines
+   */
+  private lateinit var createdVMs: AsyncMap<String, Boolean>
+
   override suspend fun start() {
     log.info("Launching cloud manager ...")
 
@@ -116,13 +127,16 @@ class CloudManager : CoroutineVerticle() {
     // initialize shared maps
     val sharedData = vertx.sharedData()
     creatingSetups = sharedData.getAsyncMapAwait(CREATING_SETUPS_MAP_NAME)
+    createdVMs = sharedData.getAsyncMapAwait(CREATED_VMS_MAP_NAME)
 
     // destroy all virtual machines we created before to start from scratch
     val existingVMs = cloudClient.listVMs { createdByTag == it[CREATED_BY] }
     launch {
       for (id in existingVMs) {
-        log.info("Found existing VM `$id' ...")
-        cloudClient.destroyVM(id)
+        if (createdVMs.getAwait(id) == null) {
+          log.info("Found orphaned VM `$id' ...")
+          cloudClient.destroyVM(id)
+        }
       }
     }
 
@@ -170,11 +184,13 @@ class CloudManager : CoroutineVerticle() {
 
       val vmId = createVM(setup)
       try {
+        createdVMs.putAwait(vmId, true)
         val ipAddress = cloudClient.getIPAddress(vmId)
         val agentId = UniqueID.next()
         provisionVM(ipAddress, vmId, agentId, setup)
         counter.incrementAndGetAwait()
       } catch (e: Throwable) {
+        createdVMs.removeAwait(vmId)
         cloudClient.destroyVM(vmId)
         throw e
       }
