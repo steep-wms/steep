@@ -1,12 +1,13 @@
 package agent
 
+import ConfigConstants
 import helper.Shell
 import helper.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.core.file.FileSystem
 import io.vertx.kotlin.core.file.propsAwait
 import io.vertx.kotlin.core.file.readDirAwait
-import io.vertx.kotlin.coroutines.awaitBlocking
+import io.vertx.kotlin.coroutines.awaitResult
 import model.processchain.Argument
 import model.processchain.ProcessChain
 import org.apache.commons.lang3.BooleanUtils
@@ -19,7 +20,7 @@ import java.util.ArrayList
  * An agent that executes process chains locally
  * @author Michel Kraemer
  */
-class LocalAgent(vertx: Vertx) : Agent {
+class LocalAgent(private val vertx: Vertx) : Agent {
   companion object {
     private val log = LoggerFactory.getLogger(LocalAgent::class.java)
   }
@@ -40,15 +41,29 @@ class LocalAgent(vertx: Vertx) : Agent {
     }
     commandLines.addAll(processToCommandLines(processChain))
 
-    // execute commands
-    awaitBlocking {
-      for (cmd in commandLines) {
-        Shell.execute(cmd, outputLinesToCollect)
+    // execute commands in a separate worker executor
+    val executor = vertx.createSharedWorkerExecutor(LocalAgent::class.simpleName,
+        1, Long.MAX_VALUE)
+    try {
+      awaitResult<Unit> { handler ->
+        // IMPORTANT: call `executeBlocking` with `ordered = false`! Otherwise,
+        // we will block other calls to `executeBlocking` in the same Vert.x
+        // context, because Vert.x tries to execute them all sequentially.
+        executor.executeBlocking<Unit>({ f ->
+          for (cmd in commandLines) {
+            Shell.execute(cmd, outputLinesToCollect)
+          }
+          f.complete()
+        }, false, { ar ->
+          handler.handle(ar)
+        })
       }
+    } finally {
+      executor.close()
     }
 
     // create list of results
-    val fs = Vertx.currentContext().owner().fileSystem()
+    val fs = vertx.fileSystem()
     return outputs.map { it.variable.id to readRecursive(it.variable.value, fs) }.toMap()
   }
 
