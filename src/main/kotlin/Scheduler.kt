@@ -87,6 +87,7 @@ class Scheduler : CoroutineVerticle() {
           submissionRegistry.setProcessChainResults(processChain.id, results)
           submissionRegistry.setProcessChainStatus(processChain.id, SUCCESS)
         } catch (t: Throwable) {
+          submissionRegistry.setProcessChainErrorMessage(processChain.id, t.message)
           submissionRegistry.setProcessChainStatus(processChain.id, ERROR)
         } finally {
           agentRegistry.deallocate(agent)

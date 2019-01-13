@@ -1,15 +1,16 @@
 CREATE TABLE submissions (
-  id VARCHAR(64),
+  id VARCHAR,
   data jsonb NOT NULL,
   PRIMARY KEY(id)
 );
 
 CREATE TABLE processchains (
-  id VARCHAR(64),
-  submissionId VARCHAR(64) NOT NULL,
-  status VARCHAR(20) NOT NULL,
+  id VARCHAR,
+  submissionId VARCHAR NOT NULL,
+  status VARCHAR NOT NULL,
   data jsonb NOT NULL,
   results jsonb,
+  errorMessage VARCHAR,
   PRIMARY KEY(id)
 );
 

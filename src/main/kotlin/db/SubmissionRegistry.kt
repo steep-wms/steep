@@ -161,4 +161,22 @@ interface SubmissionRegistry {
    * @throws NoSuchElementException if the process chain does not exist
    */
   suspend fun getProcessChainResults(processChainId: String): Map<String, List<String>>?
+
+  /**
+   * Set the error message for a process chain
+   * @param processChainId the process chain ID
+   * @param errorMessage the error message (may be `null` if the error message
+   * should be removed)
+   * @throws NoSuchElementException if the process chain does not exist
+   */
+  suspend fun setProcessChainErrorMessage(processChainId: String, errorMessage: String?)
+
+  /**
+   * Get the error message of a process chain
+   * @param processChainId the process chain ID
+   * @return the error message (may be `null` if the process chain oes not have
+   * an error message)
+   * @throws NoSuchElementException if the process chain does not exist
+   */
+  suspend fun getProcessChainErrorMessage(processChainId: String): String?
 }

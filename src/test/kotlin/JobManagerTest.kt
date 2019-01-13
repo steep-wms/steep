@@ -493,9 +493,17 @@ class JobManagerTest {
 
     coEvery { submissionRegistry.getProcessChainResults(pc1.id) } returns mapOf(
         "output_file1" to listOf("output.txt"))
-    coEvery { submissionRegistry.getProcessChainResults(pc2.id) } returns null
+    coEvery { submissionRegistry.getProcessChainResults(pc2.id) } returns mapOf(
+        "output_file_that_should_not_be_returned" to listOf("output2.txt"))
     coEvery { submissionRegistry.getProcessChainResults(pc3.id) } returns null
     coEvery { submissionRegistry.getProcessChainResults(pc4.id) } returns null
+
+    coEvery { submissionRegistry.getProcessChainErrorMessage(pc1.id) } returns
+        "This error SHOULD NOT BE returned"
+    coEvery { submissionRegistry.getProcessChainErrorMessage(pc2.id) } returns null
+    coEvery { submissionRegistry.getProcessChainErrorMessage(pc3.id) } returns null
+    coEvery { submissionRegistry.getProcessChainErrorMessage(pc4.id) } returns
+        "THIS is an ERROR"
 
     val client = WebClient.create(vertx)
     GlobalScope.launch(vertx.dispatcher()) {
@@ -533,7 +541,8 @@ class JobManagerTest {
                   "id" to pc4.id,
                   "requiredCapabilities" to array(),
                   "submissionId" to s2.id,
-                  "status" to "ERROR"
+                  "status" to "ERROR",
+                  "errorMessage" to "THIS is an ERROR"
               )
           )
         })
@@ -610,7 +619,8 @@ class JobManagerTest {
     coEvery { submissionRegistry.findProcessChainById(pc1.id) } returns pc1
     coEvery { submissionRegistry.findProcessChainById(neq(pc1.id)) } returns null
     coEvery { submissionRegistry.getProcessChainSubmissionId(pc1.id) } returns sid
-    coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns ProcessChainStatus.REGISTERED
+    coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns
+        ProcessChainStatus.SUCCESS
     coEvery { submissionRegistry.getProcessChainResults(pc1.id) } returns mapOf(
         "output_file1" to listOf("output.txt"))
 
@@ -640,7 +650,7 @@ class JobManagerTest {
               ),
               "requiredCapabilities" to array(),
               "submissionId" to sid,
-              "status" to ProcessChainStatus.REGISTERED.toString(),
+              "status" to ProcessChainStatus.SUCCESS.toString(),
               "results" to obj(
                   "output_file1" to array("output.txt")
               )

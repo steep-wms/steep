@@ -349,11 +349,20 @@ class JobManager : CoroutineVerticle() {
     processChain.put("submissionId", submissionId)
 
     val id = processChain.getString("id")
+
     val status = submissionRegistry.getProcessChainStatus(id)
-    val results = submissionRegistry.getProcessChainResults(id)
     processChain.put("status", status.toString())
-    if (results != null) {
-      processChain.put("results", results)
+
+    if (status == SubmissionRegistry.ProcessChainStatus.SUCCESS) {
+      val results = submissionRegistry.getProcessChainResults(id)
+      if (results != null) {
+        processChain.put("results", results)
+      }
+    } else if (status == SubmissionRegistry.ProcessChainStatus.ERROR) {
+      val errorMessage = submissionRegistry.getProcessChainErrorMessage(id)
+      if (errorMessage != null) {
+        processChain.put("errorMessage", errorMessage)
+      }
     }
   }
 

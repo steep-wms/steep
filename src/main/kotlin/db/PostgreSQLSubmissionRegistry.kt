@@ -45,6 +45,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     private const val DATA = "data"
     private const val STATUS = "status"
     private const val RESULTS = "results"
+    private const val ERROR_MESSAGE = "errorMessage"
 
     /**
      * Identifier of a PostgreSQL advisory lock used to make atomic operations
@@ -180,7 +181,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   private suspend fun updateColumn(table: String, id: String, column: String,
-      newValue: Any, jsonb: Boolean, connection: SQLConnection) {
+      newValue: Any?, jsonb: Boolean, connection: SQLConnection) {
     val jsonbStr = if (jsonb) "::jsonb" else ""
     val updateStatement = "UPDATE $table SET $column=?$jsonbStr WHERE $ID=?"
     val updateParams = json {
@@ -193,7 +194,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   private suspend fun updateColumn(table: String, id: String, column: String,
-      newValue: Any, jsonb: Boolean) {
+      newValue: Any?, jsonb: Boolean) {
     withConnection { connection ->
       updateColumn(table, id, column, newValue, jsonb, connection)
     }
@@ -374,4 +375,12 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       r.getString(0)?.let { JsonUtils.mapper.readValue<Map<String, List<String>>>(it) }
     }
   }
+
+  override suspend fun setProcessChainErrorMessage(processChainId: String,
+      errorMessage: String?) {
+    updateColumn(PROCESS_CHAINS, processChainId, ERROR_MESSAGE, errorMessage, false)
+  }
+
+  override suspend fun getProcessChainErrorMessage(processChainId: String): String? =
+      getProcessChainColumn(processChainId, ERROR_MESSAGE) { it.getString(0) }
 }

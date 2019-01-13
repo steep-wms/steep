@@ -173,21 +173,25 @@ class SchedulerTest {
 
   @Test
   fun deallocateAgentOnError(vertx: Vertx, ctx: VertxTestContext) {
+    val message = "THIS is an ERROR"
+
     // mock agent
     val agent = mockk<Agent>()
     every { agent.id } returns "Mock agent"
-    coEvery { agent.execute(any()) } throws Exception()
+    coEvery { agent.execute(any()) } throws Exception(message)
     coEvery { agentRegistry.allocate(any()) } returns agent
     coEvery { agentRegistry.deallocate(agent) } just Runs
 
     // mock submission registry
     val pc = ProcessChain()
     coEvery { submissionRegistry.setProcessChainStatus(pc.id, ERROR) } just Runs
+    coEvery { submissionRegistry.setProcessChainErrorMessage(pc.id, message) } just Runs
 
     coEvery { agentRegistry.deallocate(agent) } answers {
       ctx.verify {
         coVerify(exactly = 1) {
           submissionRegistry.setProcessChainStatus(pc.id, ERROR)
+          submissionRegistry.setProcessChainErrorMessage(pc.id, message)
         }
       }
       ctx.completeNow()

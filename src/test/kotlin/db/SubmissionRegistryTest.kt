@@ -385,4 +385,63 @@ abstract class SubmissionRegistryTest {
       }
     }
   }
+
+  private suspend fun doSetProcessChainErrorMessage(ctx: VertxTestContext): ProcessChain {
+    val s = Submission(workflow = Workflow())
+    val pc = ProcessChain()
+
+    submissionRegistry.addSubmission(s)
+    submissionRegistry.addProcessChains(listOf(pc), s.id)
+    val pcErrorMessage1 = submissionRegistry.getProcessChainErrorMessage(pc.id)
+
+    ctx.verify {
+      assertThat(pcErrorMessage1).isNull()
+    }
+
+    val errorMessage = "THIS is an ERROR!!!!"
+    submissionRegistry.setProcessChainErrorMessage(pc.id, errorMessage)
+    val pcErrorMessage2 = submissionRegistry.getProcessChainErrorMessage(pc.id)
+
+    ctx.verify {
+      assertThat(pcErrorMessage2).isEqualTo(errorMessage)
+    }
+
+    return pc
+  }
+
+  @Test
+  fun setProcessChainErrorMessage(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      doSetProcessChainErrorMessage(ctx)
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun resetProcessChainErrorMessage(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      val pc = doSetProcessChainErrorMessage(ctx)
+
+      submissionRegistry.setProcessChainErrorMessage(pc.id, null)
+      val pcErrorMessage = submissionRegistry.getProcessChainErrorMessage(pc.id)
+
+      ctx.verify {
+        assertThat(pcErrorMessage).isNull()
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun getErrorMessageOfMissingProcessChain(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        assertThatThrownBy {
+          submissionRegistry.getProcessChainErrorMessage("MISSING")
+        }.isInstanceOf(NoSuchElementException::class.java)
+        ctx.completeNow()
+      }
+    }
+  }
 }

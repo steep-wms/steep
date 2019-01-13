@@ -48,7 +48,8 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       val processChain: ProcessChain,
       val submissionId: String,
       val status: ProcessChainStatus,
-      val results: Map<String, List<String>>? = null
+      val results: Map<String, List<String>>? = null,
+      val errorMessage: String? = null
   )
 
   private val submissions: Future<AsyncMap<String, String>>
@@ -229,4 +230,12 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
 
   override suspend fun getProcessChainResults(processChainId: String): Map<String, List<String>>? =
       getProcessChainEntryById(processChainId).results
+
+  override suspend fun setProcessChainErrorMessage(processChainId: String,
+      errorMessage: String?) {
+    updateProcessChain(processChainId) { it.copy(errorMessage = errorMessage) }
+  }
+
+  override suspend fun getProcessChainErrorMessage(processChainId: String): String? =
+      getProcessChainEntryById(processChainId).errorMessage
 }
