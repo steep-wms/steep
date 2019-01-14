@@ -25,7 +25,7 @@ class SSHClient(private val ip: String, private val username: String,
    * Otherwise return normally.
    */
   suspend fun tryConnect(timeoutSeconds: Int) {
-    val result = awaitBlocking {
+    awaitBlocking {
       execute(listOf("ssh",
           "-i", identityFile,
           "-o", "ConnectTimeout=$timeoutSeconds",
@@ -34,9 +34,6 @@ class SSHClient(private val ip: String, private val username: String,
           "-o", "UserKnownHostsFile=/dev/null",
           "$username@$ip",
           "echo ok")).trim()
-    }
-    if (result != "ok") {
-      throw IOException("Invalid result: `$result'")
     }
   }
 
