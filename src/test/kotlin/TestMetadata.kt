@@ -40,5 +40,14 @@ object TestMetadata {
           Argument.Type.OUTPUT, Cardinality(1, Int.MAX_VALUE))
   ))
 
-  val services = listOf(serviceCp, serviceCpDefaultParam, serviceJoin, serviceSplit)
+  private val serviceWithDocker = Service("serviceWithDocker", "Service With Docker",
+      "A service that requires docker", "service:latest", Service.Runtime.DOCKER, listOf(
+      ServiceParameter("input", "Input file", "An input file",
+          Argument.Type.INPUT, Cardinality(1, 1)),
+      ServiceParameter("output", "Output file", "An output file",
+          Argument.Type.OUTPUT, Cardinality(1, 1))
+  ))
+
+  val services = listOf(serviceCp, serviceCpDefaultParam, serviceJoin,
+      serviceSplit, serviceWithDocker)
 }

@@ -1,0 +1,20 @@
+{
+  "vars": [{
+    "id": "input_file1",
+    "value": "input_file.txt"
+  }, {
+    "id": "output_file1"
+  }],
+  "actions": [{
+    "type": "execute",
+    "service": "serviceWithDocker",
+    "inputs": [{
+      "id": "input",
+      "var": "input_file1"
+    }],
+    "outputs": [{
+      "id": "output",
+      "var": "output_file1"
+    }]
+  }]
+}

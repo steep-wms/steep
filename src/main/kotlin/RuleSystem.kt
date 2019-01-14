@@ -192,6 +192,26 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
       }
     }
 
-    return Executable(service.name, service.path, arguments)
+    return when (service.runtime) {
+      // Handle Docker runtime: Call Docker instead of the service executable
+      // and use the service path as Docker image.
+      Service.Runtime.DOCKER -> {
+        val path = "docker"
+        val dockerArgs = listOf(
+            Argument(id = idGenerator.next(),
+                variable = ArgumentVariable("dockerRun", "run"),
+                type = Argument.Type.ARGUMENT),
+            Argument(id = idGenerator.next(),
+                label = "-v", variable = ArgumentVariable("dockerMount", "$tmpPath:$tmpPath"),
+                type = Argument.Type.ARGUMENT),
+            Argument(id = idGenerator.next(),
+                variable = ArgumentVariable("dockerImage", service.path),
+                type = Argument.Type.ARGUMENT)
+        )
+        Executable(service.name, path, dockerArgs.plus(arguments))
+      }
+
+      else -> Executable(service.name, service.path, arguments)
+    }
   }
 }

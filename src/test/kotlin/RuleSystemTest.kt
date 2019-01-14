@@ -191,6 +191,14 @@ class RuleSystemTest {
     doTest("missingDefaultParameter")
   }
 
+  /**
+   * Test if a service requiring Docker is converted correctly
+   */
+  @Test
+  fun serviceWithDocker() {
+    doTest("serviceWithDocker")
+  }
+
 //  TODO test complex graph
 
 //  TODO test missing service metadata
