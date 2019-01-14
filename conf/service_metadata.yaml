@@ -52,3 +52,17 @@
       type: output
       cardinality: 1..1
       data_type: file
+
+- id: sleep
+  name: sleep
+  description: sleeps for the given amount of seconds
+  path: sleep
+  runtime: other
+
+  parameters:
+    - id: seconds
+      name: seconds to sleep
+      description: The number of seconds to sleep
+      type: argument
+      cardinality: 1..1
+      data_type: integer
