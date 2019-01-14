@@ -9,6 +9,13 @@ object ConfigConstants {
   const val SERVICE_METADATA_FILE = "jobmanager.serviceMetadataFile"
 
   /**
+   * A file that keeps additional configuration (overrides the main
+   * configuration). Note that configuration items in this file can still be
+   * overridden with environment variables.
+   */
+  const val OVERRIDE_CONFIG_FILE = "jobmanager.overrideConfigFile"
+
+  /**
    * Path where temporary files should be stored
    */
   const val TMP_PATH = "jobmanager.tmpPath"

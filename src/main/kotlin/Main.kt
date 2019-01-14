@@ -24,6 +24,17 @@ suspend fun main(args : Array<String>) {
   val yaml = Yaml()
   val m = yaml.load<Map<String, Any>>(confFileStr)
   val conf = JsonUtils.flatten(JsonObject(m))
+
+  // load override config file
+  val overrideConfigFile = conf.getString(ConfigConstants.OVERRIDE_CONFIG_FILE)
+  if (overrideConfigFile != null) {
+    val overrideConfFileStr = File(overrideConfigFile).readText()
+    val overrideMap = yaml.load<Map<String, Any>>(overrideConfFileStr)
+    val overrideConf = JsonUtils.flatten(JsonObject(overrideMap))
+    overrideConf.forEach { (k, v) -> conf.put(k, v) }
+  }
+
+  // override configuration with environment veriables
   overwriteWithEnvironmentVariables(conf, System.getenv())
 
   // load hazelcast config
