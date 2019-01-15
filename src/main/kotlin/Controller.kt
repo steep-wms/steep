@@ -13,6 +13,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.Submission
 import model.processchain.ProcessChain
+import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
 
 /**
@@ -93,7 +94,8 @@ class Controller : CoroutineVerticle() {
    * @param submission the submission to execute
    */
   private suspend fun runSubmission(submission: Submission) {
-    val ruleSystem = RuleSystem(submission.workflow, tmpPath,
+    val ruleSystem = RuleSystem(submission.workflow,
+        FilenameUtils.normalize("$tmpPath/${submission.id}"),
         metadataRegistry.findServices())
 
     var totalProcessChains = 0
