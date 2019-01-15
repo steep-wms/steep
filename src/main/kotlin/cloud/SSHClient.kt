@@ -1,8 +1,9 @@
 package cloud
 
+import agent.LocalAgent
 import helper.Shell.execute
 import io.vertx.core.Vertx
-import io.vertx.kotlin.coroutines.awaitBlocking
+import io.vertx.kotlin.coroutines.awaitResult
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import java.io.IOException
@@ -16,7 +17,7 @@ import kotlin.coroutines.CoroutineContext
  * @param vertx the Vert.x instance
  */
 class SSHClient(private val ip: String, private val username: String,
-    private val identityFile: String, vertx: Vertx) : CoroutineScope {
+    private val identityFile: String, private val vertx: Vertx) : CoroutineScope {
   override val coroutineContext: CoroutineContext = vertx.dispatcher()
 
   /**
@@ -25,7 +26,7 @@ class SSHClient(private val ip: String, private val username: String,
    * Otherwise return normally.
    */
   suspend fun tryConnect(timeoutSeconds: Int) {
-    awaitBlocking {
+    executeBlocking {
       execute(listOf("ssh",
           "-i", identityFile,
           "-o", "ConnectTimeout=$timeoutSeconds",
@@ -43,7 +44,7 @@ class SSHClient(private val ip: String, private val username: String,
    * @param dest the destination path on the remote machine
    */
   suspend fun uploadFile(src: String, dest: String) {
-    awaitBlocking {
+    executeBlocking {
       execute(listOf("scp",
           "-i", identityFile,
           "-o", "LogLevel=ERROR",
@@ -58,13 +59,33 @@ class SSHClient(private val ip: String, private val username: String,
    * [helper.Shell.ExecutionException] if the command was not successful.
    */
   suspend fun execute(command: String) {
-    awaitBlocking {
+    executeBlocking {
       execute(listOf("ssh",
           "-i", identityFile,
           "-o", "LogLevel=ERROR",
           "-o", "StrictHostKeyChecking=no",
           "-o", "UserKnownHostsFile=/dev/null",
           "$username@$ip", command))
+    }
+  }
+
+  private suspend fun executeBlocking(block: () -> Unit) {
+    // execute commands in a separate worker executor with a very long timeout
+    val executor = vertx.createSharedWorkerExecutor(LocalAgent::class.simpleName,
+        1, Long.MAX_VALUE)
+    try {
+      awaitResult<Unit> { handler ->
+        // call `executeBlocking` with `ordered = false` to enable
+        // parallel execution of blocking code
+        executor.executeBlocking<Unit>({ f ->
+          block()
+          f.complete()
+        }, false, { ar ->
+          handler.handle(ar)
+        })
+      }
+    } finally {
+      executor.close()
     }
   }
 }
