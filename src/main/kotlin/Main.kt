@@ -40,36 +40,47 @@ suspend fun main(args : Array<String>) {
   val hazelcastConfig = ConfigUtil.loadConfig()
 
   // set hazelcast public address
-  val publicHost = conf.getString(ConfigConstants.CLUSTER_PUBLIC_HOST)
-  if (publicHost != null) {
-    hazelcastConfig.networkConfig.publicAddress = publicHost
+  val publicAddress = conf.getString(ConfigConstants.CLUSTER_HAZELCAST_PUBLIC_ADDRESS)
+  if (publicAddress != null) {
+    hazelcastConfig.networkConfig.publicAddress = publicAddress
+  }
+
+  // set hazelcast port
+  val port = conf.getInteger(ConfigConstants.CLUSTER_HAZELCAST_PORT)
+  if (port != null) {
+    hazelcastConfig.networkConfig.port = port
+    hazelcastConfig.networkConfig.portCount = 1
   }
 
   // set hazelcast interfaces
-  val interfaces = conf.getJsonArray(ConfigConstants.CLUSTER_INTERFACES)
+  val interfaces = conf.getJsonArray(ConfigConstants.CLUSTER_HAZELCAST_INTERFACES)
   if (interfaces != null) {
     hazelcastConfig.networkConfig.interfaces.isEnabled = true
     hazelcastConfig.networkConfig.interfaces.interfaces = interfaces.map { it.toString() }
   }
 
   // replace hazelcast members
-  val members = conf.getJsonArray(ConfigConstants.CLUSTER_MEMBERS)
+  val members = conf.getJsonArray(ConfigConstants.CLUSTER_HAZELCAST_MEMBERS)
   if (members != null) {
-    hazelcastConfig.networkConfig.join.multicastConfig.isEnabled = false
-    hazelcastConfig.networkConfig.join.tcpIpConfig.isEnabled = true
     hazelcastConfig.networkConfig.join.tcpIpConfig.members = members.map { it.toString() }
   }
 
-  // configure cluster
+  // enable TCP or multicast
+  val tcpEnabled = conf.getBoolean(ConfigConstants.CLUSTER_HAZELCAST_TCPENABLED, false)
+  hazelcastConfig.networkConfig.join.multicastConfig.isEnabled = !tcpEnabled
+  hazelcastConfig.networkConfig.join.tcpIpConfig.isEnabled = tcpEnabled
+
+  // configure event bus
   val mgr = HazelcastClusterManager(hazelcastConfig)
   val options = VertxOptions().setClusterManager(mgr)
-  val clusterHost = conf.getString(ConfigConstants.CLUSTER_HOST) ?: getDefaultAddress()
-  clusterHost?.let { options.setClusterHost(it) }
-  val clusterPort = conf.getInteger(ConfigConstants.CLUSTER_PORT)
-  clusterPort?.let { options.setClusterPort(it) }
-  publicHost?.let { options.setClusterPublicHost(it) }
-  val publicPort = conf.getInteger(ConfigConstants.CLUSTER_PUBLIC_PORT)
-  publicPort?.let { options.setClusterPublicPort(it) }
+  val eventBusHost = conf.getString(ConfigConstants.CLUSTER_EVENTBUS_HOST) ?: getDefaultAddress()
+  eventBusHost?.let { options.setClusterHost(it) }
+  val eventBusPort = conf.getInteger(ConfigConstants.CLUSTER_EVENTBUS_PORT)
+  eventBusPort?.let { options.setClusterPort(it) }
+  val eventPublicHost = conf.getString(ConfigConstants.CLUSTER_EVENTBUS_PUBLIC_HOST)
+  eventPublicHost?.let { options.setClusterPublicHost(it) }
+  val eventBusPublicPort = conf.getInteger(ConfigConstants.CLUSTER_EVENTBUS_PUBLIC_PORT)
+  eventBusPublicPort?.let { options.setClusterPublicPort(it) }
 
   // start Vert.x
   val vertx = Vertx.clusteredVertxAwait(options)

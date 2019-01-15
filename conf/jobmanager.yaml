@@ -3,14 +3,21 @@ jobmanager:
   tmpPath: /tmp
 
   cluster:
-    port: 41187
-    publicHost: localhost
-    publicPort: 41187
-    interfaces:
-      # - 146.140.35-37.*
-      # - 192.168.*.*
-      # - 192.168.1.3
-    members:
+    eventBus:
+      # host:
+      # publicHost:
+      port: 41187
+      publicPort: 41187
+    hazelcast:
+      # publicAddress: localhost:5701
+      # port: 5701
+      # interfaces:
+        # - 146.140.35-37.*
+        # - 192.168.*.*
+        # - 192.168.1.3
+      # members:
+        # - 146.140.36.83
+      # tcpEnabled: false
 
   http:
     enabled: true

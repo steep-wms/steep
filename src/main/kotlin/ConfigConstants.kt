@@ -23,34 +23,51 @@ object ConfigConstants {
   /**
    * The IP address (or hostname) to bind the clustered eventbus to
    */
-  const val CLUSTER_HOST = "jobmanager.cluster.host"
+  const val CLUSTER_EVENTBUS_HOST = "jobmanager.cluster.eventBus.host"
 
   /**
    * The port the clustered eventbus should listen on
    */
-  const val CLUSTER_PORT = "jobmanager.cluster.port"
+  const val CLUSTER_EVENTBUS_PORT = "jobmanager.cluster.eventBus.port"
 
   /**
-   * The IP address (or hostname) the JobManager uses to announce itself within
+   * The IP address (or hostname) the eventbus uses to announce itself within
    * in the cluster
    */
-  const val CLUSTER_PUBLIC_HOST = "jobmanager.cluster.publicHost"
+  const val CLUSTER_EVENTBUS_PUBLIC_HOST = "jobmanager.cluster.eventBus.publicHost"
 
   /**
-   * The public port the clustered eventbus should listen on
+   * The port that the eventbus uses to announce itself within in the cluster
    */
-  const val CLUSTER_PUBLIC_PORT = "jobmanager.cluster.publicPort"
+  const val CLUSTER_EVENTBUS_PUBLIC_PORT = "jobmanager.cluster.eventBus.publicPort"
 
   /**
-   * A list of IP address patterns specifying valid interfaces the cluster
-   * manager should bind to
+   * The IP address (or hostname) and port Hazelcast uses to announce itself
+   * within in the cluster
    */
-  const val CLUSTER_INTERFACES = "jobmanager.cluster.interfaces"
+  const val CLUSTER_HAZELCAST_PUBLIC_ADDRESS = "jobmanager.cluster.hazelcast.publicAddress"
 
   /**
-   * A list of IP addresses (or hostnames) of cluster members
+   * The port that Hazelcast should listen on
    */
-  const val CLUSTER_MEMBERS = "jobmanager.cluster.members"
+  const val CLUSTER_HAZELCAST_PORT = "jobmanager.cluster.hazelcast.port"
+
+  /**
+   * A list of IP address patterns specifying valid interfaces Hazelcast
+   * should bind to
+   */
+  const val CLUSTER_HAZELCAST_INTERFACES = "jobmanager.cluster.hazelcast.interfaces"
+
+  /**
+   * A list of IP addresses (or hostnames) of Hazelcast cluster members
+   */
+  const val CLUSTER_HAZELCAST_MEMBERS = "jobmanager.cluster.hazelcast.members"
+
+  /**
+   * `true` if Hazelcast should use TCP to connect to other instances, `false`
+   * if it should use multicast
+   */
+  const val CLUSTER_HAZELCAST_TCPENABLED = "jobmanager.cluster.hazelcast.tcpEnabled"
 
   /**
    * `true` the the JobManager should deploy an HTTP server
