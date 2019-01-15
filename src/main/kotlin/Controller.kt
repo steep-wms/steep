@@ -150,29 +150,31 @@ class Controller : CoroutineVerticle() {
       Pair<Map<String, List<String>>, Int> {
     val results = mutableMapOf<String, List<String>>()
     var errors = 0
-    var finished = 0
 
-    while (finished < processChains.size) {
+    val processChainsToCheck = processChains.map { it.id }.toMutableSet()
+    while (processChainsToCheck.isNotEmpty()) {
       delay(lookupInterval)
 
-      for (processChain in processChains) {
-        val status = submissionRegistry.getProcessChainStatus(processChain.id)
+      val finishedProcessChains = mutableSetOf<String>()
+      for (processChainId in processChainsToCheck) {
+        val status = submissionRegistry.getProcessChainStatus(processChainId)
         when (status) {
           ProcessChainStatus.SUCCESS -> {
-            submissionRegistry.getProcessChainResults(processChain.id)?.let {
+            submissionRegistry.getProcessChainResults(processChainId)?.let {
               results.putAll(it)
             }
-            finished++
+            finishedProcessChains.add(processChainId)
           }
 
           ProcessChainStatus.ERROR -> {
             errors++
-            finished++
+            finishedProcessChains.add(processChainId)
           }
 
           else -> {}
         }
       }
+      processChainsToCheck.removeAll(finishedProcessChains)
     }
 
     return Pair(results, errors)
