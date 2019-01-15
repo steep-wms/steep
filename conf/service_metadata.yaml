@@ -66,3 +66,10 @@
       type: argument
       cardinality: 1..1
       data_type: integer
+
+- id: docker_hello_world
+  name: Docker hello world
+  description: Runs the hello-world Docker image
+  path: hello-world
+  runtime: docker
+  parameters: []
