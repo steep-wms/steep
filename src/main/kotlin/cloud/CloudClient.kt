@@ -27,11 +27,13 @@ interface CloudClient {
    * @param imageId the ID of the virtual machine image to deploy to the
    * block device
    * @param blockDeviceSizeGb the size of the block device in GB
+   * @param volumeType the type of the volume (may be `null` if the type
+   * should be selected automatically)
    * @param metadata the metadata to attach to the block device
    * @return the block device ID
    */
   suspend fun createBlockDevice(imageId: String, blockDeviceSizeGb: Int,
-      metadata: Map<String, String>): String
+      volumeType: String?, metadata: Map<String, String>): String
 
   /**
    * Destroy a block device

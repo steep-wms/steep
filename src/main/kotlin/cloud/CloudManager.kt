@@ -208,7 +208,7 @@ class CloudManager : CoroutineVerticle() {
 
     val imageId = cloudClient.getImageID(setup.imageName)
     val blockDeviceId = cloudClient.createBlockDevice(imageId,
-        setup.blockDeviceSizeGb, metadata)
+        setup.blockDeviceSizeGb, setup.blockDeviceVolumeType, metadata)
     try {
       return cloudClient.createVM(setup.flavor, blockDeviceId, metadata)
     } catch (t: Throwable) {

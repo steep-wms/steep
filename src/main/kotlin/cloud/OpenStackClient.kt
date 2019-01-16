@@ -116,13 +116,15 @@ class OpenStackClient(endpoint: String, username: String, password: String,
   }
 
   override suspend fun createBlockDevice(imageId: String,
-      blockDeviceSizeGb: Int, metadata: Map<String, String>): String {
+      blockDeviceSizeGb: Int, volumeType: String?,
+      metadata: Map<String, String>): String {
     log.info("Creating block device ...")
 
     val builder = Builders.volume()
         .name("fraunhofer-jobmanager-" + UniqueID.next())
         .metadata(metadata)
         .size(blockDeviceSizeGb)
+        .volumeType(volumeType)
         .bootable(true)
         .imageRef(imageId)
         .zone(availabilityZone)

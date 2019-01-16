@@ -6,6 +6,8 @@ package model.setup
  * @param flavor the VM flavor
  * @param imageName the name of the VM image to deploy
  * @param blockDeviceSizeGb the size of the VM's block device in gigabytes
+ * @param blockDeviceVolumeType the type of the VM's block device (may be
+ * `null` if the type should be selected automatically)
  * @param maxVMs the maximum number of VMs to create with this setup
  * @param provisioningScripts a list of scripts that should be executed after
  * the VM has been created to deploy software on it
@@ -18,6 +20,7 @@ data class Setup(
     val flavor: String,
     val imageName: String,
     val blockDeviceSizeGb: Int,
+    val blockDeviceVolumeType: String? = null,
     val maxVMs: Int,
     val provisioningScripts: List<String> = emptyList(),
     val providedCapabilities: List<String> = emptyList()
