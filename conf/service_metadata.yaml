@@ -1,4 +1,4 @@
-- id: 1002
+- id: knn
   name: knn
   description: An artificial neural network that classifies surfaces in point clouds
   path: "knn:latest"
