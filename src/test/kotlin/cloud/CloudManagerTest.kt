@@ -66,9 +66,9 @@ class CloudManagerTest {
     val tempDirFile = tempDir.toRealPath().toFile()
     val testSh = File(tempDirFile, "test.sh")
     testSh.writeText("{{ agentId }}")
-    testSetup = Setup("test", "myflavor", "myImage", 500000, 1,
+    testSetup = Setup("test", "myflavor", "myImage", 500000, null, 1,
         listOf(testSh.absolutePath), listOf("test1"))
-    testSetupLarge = Setup("testLarge", "myflavor", "myImage", 500000, 4,
+    testSetupLarge = Setup("testLarge", "myflavor", "myImage", 500000, "SSD", 4,
         listOf(testSh.absolutePath), listOf("test2"))
     val setupFile = File(tempDirFile, "test_setups.yaml")
     YamlUtils.mapper.writeValue(setupFile, listOf(testSetup, testSetupLarge))
@@ -120,7 +120,7 @@ class CloudManagerTest {
 
     coEvery { client.getImageID(setup.imageName) } returns setup.imageName
     coEvery { client.createBlockDevice(setup.imageName, setup.blockDeviceSizeGb,
-        metadata) } answers { UniqueID.next() }
+        setup.blockDeviceVolumeType, metadata) } answers { UniqueID.next() }
     coEvery { client.createVM(setup.flavor, any(), metadata) } answers { UniqueID.next() }
     coEvery { client.getIPAddress(any()) } answers { UniqueID.next() }
     coEvery { client.waitForVM(any()) } just Runs
@@ -163,7 +163,7 @@ class CloudManagerTest {
         coVerify(exactly = 1) {
           client.getImageID(testSetup.imageName)
           client.createBlockDevice(testSetup.imageName,
-              testSetup.blockDeviceSizeGb, any())
+              testSetup.blockDeviceSizeGb, null, any())
           client.createVM(testSetup.flavor, any(), any())
           client.getIPAddress(any())
         }
@@ -189,7 +189,7 @@ class CloudManagerTest {
         coVerify(exactly = 1) {
           client.getImageID(testSetup.imageName)
           client.createBlockDevice(testSetup.imageName,
-              testSetup.blockDeviceSizeGb, any())
+              testSetup.blockDeviceSizeGb, null, any())
           client.createVM(testSetup.flavor, any(), any())
           client.getIPAddress(any())
         }
@@ -212,7 +212,7 @@ class CloudManagerTest {
         coVerify(exactly = 1) {
           client.getImageID(testSetup.imageName)
           client.createBlockDevice(testSetup.imageName,
-              testSetup.blockDeviceSizeGb, any())
+              testSetup.blockDeviceSizeGb, null, any())
           client.createVM(testSetup.flavor, any(), any())
           client.getIPAddress(any())
         }
@@ -238,7 +238,7 @@ class CloudManagerTest {
         coVerify(exactly = 4) {
           client.getImageID(testSetupLarge.imageName)
           client.createBlockDevice(testSetupLarge.imageName,
-              testSetupLarge.blockDeviceSizeGb, any())
+              testSetupLarge.blockDeviceSizeGb, "SSD", any())
           client.createVM(testSetupLarge.flavor, any(), any())
           client.getIPAddress(any())
         }
