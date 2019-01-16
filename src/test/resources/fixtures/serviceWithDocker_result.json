@@ -1,6 +1,6 @@
 [{
   "chains": [{
-    "id": "4",
+    "id": "5",
     "executables": [{
       "id": "Service With Docker",
       "path": "docker",
@@ -16,13 +16,22 @@
         "id": "2",
         "label": "-v",
         "variable": {
+          "id": "dockerMountHack",
+          "value": "/data:/data"
+        },
+        "type": "argument",
+        "dataType": "string"
+      }, {
+        "id": "3",
+        "label": "-v",
+        "variable": {
           "id": "dockerMount",
           "value": "/tmp/:/tmp/"
         },
         "type": "argument",
         "dataType": "string"
       }, {
-        "id": "3",
+        "id": "4",
         "variable": {
           "id": "dockerImage",
           "value": "service:latest"
