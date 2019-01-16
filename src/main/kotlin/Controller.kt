@@ -15,6 +15,7 @@ import model.Submission
 import model.processchain.ProcessChain
 import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
+import java.time.Instant
 
 /**
  * The controller fetches submissions from a [SubmissionRegistry], converts
@@ -98,6 +99,8 @@ class Controller : CoroutineVerticle() {
         FilenameUtils.normalize("$tmpPath/${submission.id}"),
         metadataRegistry.findServices())
 
+    submissionRegistry.setSubmissionStartTime(submission.id, Instant.now())
+
     var totalProcessChains = 0
     var errors = 0
     var results = mapOf<String, List<String>>()
@@ -140,6 +143,7 @@ class Controller : CoroutineVerticle() {
     }
 
     submissionRegistry.setSubmissionStatus(submission.id, status)
+    submissionRegistry.setSubmissionEndTime(submission.id, Instant.now())
   }
 
   /**

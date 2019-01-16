@@ -15,6 +15,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import java.time.Instant
 
 /**
  * Tests for all [SubmissionRegistry] implementations
@@ -62,6 +63,54 @@ abstract class SubmissionRegistryTest {
         assertThat(s2).isEqualTo(s)
         assertThat(s3).isNull()
         assertThat(status).isNotNull.isEqualTo(Submission.Status.RUNNING)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun setSubmissionStartTime(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s)
+      val s1 = submissionRegistry.findSubmissionById(s.id)
+
+      ctx.verify {
+        assertThat(s1).isEqualTo(s)
+      }
+
+      val startTime = Instant.now()
+      submissionRegistry.setSubmissionStartTime(s.id, startTime)
+      val s2 = submissionRegistry.findSubmissionById(s.id)
+
+      ctx.verify {
+        assertThat(s2).isEqualTo(s.copy(startTime = startTime))
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun setSubmissionEndTime(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s)
+      val s1 = submissionRegistry.findSubmissionById(s.id)
+
+      ctx.verify {
+        assertThat(s1).isEqualTo(s)
+      }
+
+      val endTime = Instant.now()
+      submissionRegistry.setSubmissionEndTime(s.id, endTime)
+      val s2 = submissionRegistry.findSubmissionById(s.id)
+
+      ctx.verify {
+        assertThat(s2).isEqualTo(s.copy(endTime = endTime))
       }
 
       ctx.completeNow()

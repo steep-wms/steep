@@ -23,6 +23,7 @@ import io.vertx.kotlin.ext.sql.updateWithParamsAwait
 import model.Submission
 import model.processchain.ProcessChain
 import org.flywaydb.core.Flyway
+import java.time.Instant
 
 /**
  * A submission registry that keeps objects in a PostgreSQL database
@@ -43,6 +44,8 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     private const val ID = "id"
     private const val SUBMISSION_ID = "submissionId"
     private const val DATA = "data"
+    private const val START_TIME = "startTime"
+    private const val END_TIME = "endTime"
     private const val STATUS = "status"
     private const val RESULTS = "results"
     private const val ERROR_MESSAGE = "errorMessage"
@@ -221,6 +224,24 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         }
       }
     }
+  }
+
+  override suspend fun setSubmissionStartTime(submissionId: String, startTime: Instant) {
+    val newObj = json {
+      obj(
+          START_TIME to startTime
+      )
+    }
+    updateProperties(SUBMISSIONS, submissionId, newObj)
+  }
+
+  override suspend fun setSubmissionEndTime(submissionId: String, endTime: Instant) {
+    val newObj = json {
+      obj(
+          END_TIME to endTime
+      )
+    }
+    updateProperties(SUBMISSIONS, submissionId, newObj)
   }
 
   override suspend fun setSubmissionStatus(submissionId: String, status: Submission.Status) {

@@ -88,6 +88,9 @@ class ControllerTest {
 
     // mock submission registry
     coEvery { submissionRegistry.setSubmissionStatus(submission.id, Status.RUNNING) } just Runs
+    coEvery { submissionRegistry.setSubmissionStatus(submission.id, Status.SUCCESS) } just Runs
+    coEvery { submissionRegistry.setSubmissionStartTime(submission.id, any()) } just Runs
+    coEvery { submissionRegistry.setSubmissionEndTime(submission.id, any()) } just Runs
 
     val processChainsSlot = slot<List<ProcessChain>>()
     coEvery { submissionRegistry.addProcessChains(capture(processChainsSlot), submission.id) } answers {
@@ -99,11 +102,13 @@ class ControllerTest {
       }
     }
 
-    coEvery { submissionRegistry.setSubmissionStatus(submission.id, Status.SUCCESS) } answers {
+    coEvery { submissionRegistry.setSubmissionEndTime(submission.id, any()) } answers {
       ctx.verify {
         // verify that the submission was set to SUCCESS
         coVerify(exactly = 1) {
           submissionRegistry.setSubmissionStatus(submission.id, Status.SUCCESS)
+          submissionRegistry.setSubmissionStartTime(submission.id, any())
+          submissionRegistry.setSubmissionEndTime(submission.id, any())
         }
       }
       ctx.completeNow()

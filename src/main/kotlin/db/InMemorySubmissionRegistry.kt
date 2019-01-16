@@ -13,6 +13,7 @@ import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitResult
 import model.Submission
 import model.processchain.ProcessChain
+import java.time.Instant
 
 /**
  * A submission registry that keeps objects in memory
@@ -112,6 +113,14 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     } finally {
       lock.release()
     }
+  }
+
+  override suspend fun setSubmissionStartTime(submissionId: String, startTime: Instant) {
+    updateSubmission(submissionId) { it.copy(startTime = startTime) }
+  }
+
+  override suspend fun setSubmissionEndTime(submissionId: String, endTime: Instant) {
+    updateSubmission(submissionId) { it.copy(endTime = endTime) }
   }
 
   override suspend fun setSubmissionStatus(submissionId: String, status: Submission.Status) {

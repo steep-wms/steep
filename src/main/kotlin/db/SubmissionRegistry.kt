@@ -2,6 +2,7 @@ package db
 
 import model.Submission
 import model.processchain.ProcessChain
+import java.time.Instant
 
 /**
  * A registry for submissions and process chains
@@ -62,6 +63,20 @@ interface SubmissionRegistry {
    */
   suspend fun fetchNextSubmission(currentStatus: Submission.Status,
       newStatus: Submission.Status): Submission?
+
+  /**
+   * Set the start time of a submission
+   * @param submissionId the submission ID
+   * @param startTime the new end time
+   */
+  suspend fun setSubmissionStartTime(submissionId: String, startTime: Instant)
+
+  /**
+   * Set the end time of a submission
+   * @param submissionId the submission ID
+   * @param endTime the new end time
+   */
+  suspend fun setSubmissionEndTime(submissionId: String, endTime: Instant)
 
   /**
    * Set the status of a submission
