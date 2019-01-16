@@ -3,6 +3,8 @@ import ConfigConstants.SCHEDULER_LOOKUP_INTERVAL
 import agent.Agent
 import agent.AgentRegistry
 import agent.AgentRegistryFactory
+import com.google.common.cache.Cache
+import com.google.common.cache.CacheBuilder
 import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus.ERROR
 import db.SubmissionRegistry.ProcessChainStatus.REGISTERED
@@ -15,6 +17,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
+import java.util.concurrent.TimeUnit
 
 /**
  * The scheduler fetches process chains from a [SubmissionRegistry], executes
@@ -32,6 +35,9 @@ class Scheduler : CoroutineVerticle() {
 
   private lateinit var periodicLookupJob: Job
 
+  private lateinit var logFoundProcessChainCache: Cache<String, Boolean>
+  private lateinit var logNoAgentCache: Cache<String, Boolean>
+
   override suspend fun start() {
     log.info("Launching scheduler ...")
 
@@ -41,6 +47,16 @@ class Scheduler : CoroutineVerticle() {
 
     // read configuration
     val lookupInterval = config.getLong(SCHEDULER_LOOKUP_INTERVAL, 2000L)
+
+    // create simple caches to reduce repeated log output
+    logFoundProcessChainCache = CacheBuilder.newBuilder()
+        .expireAfterAccess(lookupInterval * 2, TimeUnit.MILLISECONDS)
+        .maximumSize(1000)
+        .build()
+    logNoAgentCache = CacheBuilder.newBuilder()
+        .expireAfterAccess(lookupInterval * 2, TimeUnit.MILLISECONDS)
+        .maximumSize(1000)
+        .build()
 
     // periodically look for new process chains and execute them
     periodicLookupJob = launch {
@@ -69,12 +85,18 @@ class Scheduler : CoroutineVerticle() {
     while (true) {
       // get next registered process chain
       val processChain = submissionRegistry.fetchNextProcessChain(REGISTERED, RUNNING) ?: return
-      log.info("Found registered process chain `${processChain.id}'")
+      logFoundProcessChainCache.get(processChain.id) {
+        log.info("Found registered process chain `${processChain.id}'")
+        true
+      }
 
       // allocate an agent for the process chain
       val agent = agentRegistry.allocate(processChain)
       if (agent == null) {
-        log.info("No agent available to execute process chain `${processChain.id}'")
+        logNoAgentCache.get(processChain.id) {
+          log.info("No agent available to execute process chain `${processChain.id}'")
+          true
+        }
         submissionRegistry.setProcessChainStatus(processChain.id, REGISTERED)
         return
       }
