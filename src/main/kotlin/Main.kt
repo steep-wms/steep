@@ -1,15 +1,22 @@
+import cloud.CloudManager
 import helper.JsonUtils
 import io.vertx.core.VertxOptions
 import io.vertx.core.json.JsonObject
 import io.vertx.core.spi.cluster.NodeListener
+import io.vertx.ext.shell.ShellService
+import io.vertx.ext.shell.command.Command
+import io.vertx.ext.shell.command.CommandRegistry
 import io.vertx.kotlin.core.DeploymentOptions
 import io.vertx.kotlin.core.Vertx
 import io.vertx.kotlin.core.deployVerticleAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.kotlin.ext.shell.ShellServiceOptions
+import io.vertx.kotlin.ext.shell.term.TelnetTermOptions
 import io.vertx.spi.cluster.hazelcast.ConfigUtil
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager
 import org.yaml.snakeyaml.Yaml
-import cloud.CloudManager
+import shell.AsyncMapEntries
+import shell.AsyncMapGet
 import java.io.File
 import java.net.Inet6Address
 import java.net.NetworkInterface
@@ -169,7 +176,24 @@ class Main : CoroutineVerticle() {
     val nodeId: String get() = globalNodeId
   }
 
+  /**
+   * Start the Vert.x Shell service
+   */
+  private fun createShell() {
+    val options = ShellServiceOptions(telnetOptions = TelnetTermOptions(
+        host = "localhost",
+        port = 5000
+    ))
+    ShellService.create(vertx, options).start()
+
+    val registry = CommandRegistry.getShared(vertx)
+    registry.registerCommand(Command.create(vertx, AsyncMapGet::class.java))
+    registry.registerCommand(Command.create(vertx, AsyncMapEntries::class.java))
+  }
+
   override suspend fun start() {
+    createShell()
+
     val options = DeploymentOptions(config)
     if (config.getBoolean(ConfigConstants.CLOUD_ENABLED, false)) {
       vertx.deployVerticleAwait(CloudManager::class.qualifiedName!!, options)

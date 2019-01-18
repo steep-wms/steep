@@ -35,6 +35,7 @@ dependencies {
     implementation("io.vertx:vertx-lang-kotlin:$vertxVersion")
     implementation("io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion")
     implementation("io.vertx:vertx-mongo-client:$vertxVersion")
+    implementation("io.vertx:vertx-shell:$vertxVersion")
     implementation("io.vertx:vertx-web:$vertxVersion")
     implementation("io.vertx:vertx-web-client:$vertxVersion")
 
