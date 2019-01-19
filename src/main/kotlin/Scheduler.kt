@@ -50,11 +50,11 @@ class Scheduler : CoroutineVerticle() {
 
     // create simple caches to reduce repeated log output
     logFoundProcessChainCache = CacheBuilder.newBuilder()
-        .expireAfterAccess(lookupInterval * 2, TimeUnit.MILLISECONDS)
+        .expireAfterAccess(lookupInterval * 10, TimeUnit.MILLISECONDS)
         .maximumSize(1000)
         .build()
     logNoAgentCache = CacheBuilder.newBuilder()
-        .expireAfterAccess(lookupInterval * 2, TimeUnit.MILLISECONDS)
+        .expireAfterAccess(lookupInterval * 10, TimeUnit.MILLISECONDS)
         .maximumSize(1000)
         .build()
 
