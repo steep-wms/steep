@@ -1,4 +1,3 @@
-import cloud.CloudClientFactory
 import cloud.CloudManager
 import helper.JsonUtils
 import io.vertx.core.VertxOptions
@@ -11,14 +10,10 @@ import io.vertx.kotlin.core.DeploymentOptions
 import io.vertx.kotlin.core.Vertx
 import io.vertx.kotlin.core.deployVerticleAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.kotlin.coroutines.dispatcher
 import io.vertx.kotlin.ext.shell.ShellServiceOptions
 import io.vertx.kotlin.ext.shell.term.TelnetTermOptions
 import io.vertx.spi.cluster.hazelcast.ConfigUtil
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.async
-import org.slf4j.LoggerFactory
 import org.yaml.snakeyaml.Yaml
 import shell.AsyncMapEntries
 import shell.AsyncMapGet
@@ -28,8 +23,7 @@ import java.net.NetworkInterface
 import java.net.SocketException
 import java.util.Enumeration
 
-private val log = LoggerFactory.getLogger(Main::class.java)
-private var globalNodeId: String = "localhost"
+var globalNodeId: String = "localhost"
 
 suspend fun main(args : Array<String>) {
   // load configuration
@@ -76,8 +70,6 @@ suspend fun main(args : Array<String>) {
   val members = conf.getJsonArray(ConfigConstants.CLUSTER_HAZELCAST_MEMBERS)
   if (members != null) {
     hazelcastConfig.networkConfig.join.tcpIpConfig.members = members.map { it.toString() }
-  } else if (conf.getBoolean(ConfigConstants.CLOUD_ENABLED, false)) {
-    hazelcastConfig.networkConfig.join.tcpIpConfig.members = findCloudMembers(conf)
   }
 
   // enable TCP or multicast
@@ -173,36 +165,6 @@ private fun getDefaultAddress(): String? {
   }
 
   return null
-}
-
-/**
- * Try to get IP addresses of existing VMs that were created by us earlier
- * @param conf the configuration
- * @return the list of IP addresses
- */
-private suspend fun findCloudMembers(conf: JsonObject): List<String> {
-  log.info("Trying to find possible cluster members in Cloud ...")
-  val vertx = io.vertx.core.Vertx.vertx()
-  try {
-    return GlobalScope.async(vertx.dispatcher()) {
-      for ((k, v) in conf) {
-        vertx.orCreateContext.config().put(k, v)
-      }
-      val client = CloudClientFactory.create(vertx)
-      val createdByTag = conf.getString(ConfigConstants.CLOUD_CREATED_BY_TAG)
-      if (createdByTag == null) {
-        log.warn("No `createdBy` tag configured. Cannot find members.")
-        emptyList()
-      } else {
-        val vms = client.listVMs { createdByTag == it["Created-By"] }
-        val result = vms.map { client.getIPAddress(it) }
-        log.info("Found possible cluster members: $result")
-        result
-      }
-    }.await()
-  } finally {
-    vertx.close()
-  }
 }
 
 /**
