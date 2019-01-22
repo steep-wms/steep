@@ -1,5 +1,6 @@
 package agent
 
+import AddressConstants
 import helper.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.core.impl.NoStackTraceThrowable
@@ -100,16 +101,16 @@ class RemoteAgentRegistryTest {
       val action = json.getString("action")
       when (action) {
         "inquire" -> {
-          msg.reply(json { obj("available" to true) })
           inquiryCount++
+          msg.reply(json { obj("available" to true) })
         }
         "allocate" -> {
-          msg.reply("ACK")
           allocateCount++
+          msg.reply("ACK")
         }
         "deallocate" -> {
-          msg.reply("ACK")
           deallocateCount++
+          msg.reply("ACK")
         }
         else -> ctx.failNow(NoStackTraceThrowable("Unknown action $action"))
       }
@@ -203,13 +204,13 @@ class RemoteAgentRegistryTest {
       val action = json.getString("action")
       when (action) {
         "inquire" -> {
+          inquiryCount1++
           val available = json.getJsonArray("requiredCapabilities").toSet() == reqCap1
           msg.reply(json { obj("available" to available) })
-          inquiryCount1++
         }
         "allocate" -> {
-          msg.reply("ACK")
           allocateCount1++
+          msg.reply("ACK")
         }
         else -> ctx.failNow(NoStackTraceThrowable("Unknown action $action"))
       }
@@ -220,13 +221,13 @@ class RemoteAgentRegistryTest {
       val action = json.getString("action")
       when (action) {
         "inquire" -> {
+          inquiryCount2++
           val available = json.getJsonArray("requiredCapabilities").toSet() == reqCap2
           msg.reply(json { obj("available" to available) })
-          inquiryCount2++
         }
         "allocate" -> {
-          msg.reply("ACK")
           allocateCount2++
+          msg.reply("ACK")
         }
         else -> ctx.failNow(NoStackTraceThrowable("Unknown action $action"))
       }
@@ -287,17 +288,17 @@ class RemoteAgentRegistryTest {
       val action = json.getString("action")
       when (action) {
         "inquire" -> {
+          inquiryCount1++
           msg.reply(json {
             obj(
               "available" to true,
               "lastSequence" to q1.pop()
             )
           })
-          inquiryCount1++
         }
         "allocate" -> {
-          msg.reply("ACK")
           allocateCount1++
+          msg.reply("ACK")
         }
         else -> ctx.failNow(NoStackTraceThrowable("Unknown action $action"))
       }
@@ -308,17 +309,17 @@ class RemoteAgentRegistryTest {
       val action = json.getString("action")
       when (action) {
         "inquire" -> {
+          inquiryCount2++
           msg.reply(json {
             obj(
                 "available" to true,
                 "lastSequence" to q2.pop()
             )
           })
-          inquiryCount2++
         }
         "allocate" -> {
-          msg.reply("ACK")
           allocateCount2++
+          msg.reply("ACK")
         }
         else -> ctx.failNow(NoStackTraceThrowable("Unknown action $action"))
       }
@@ -385,17 +386,17 @@ class RemoteAgentRegistryTest {
       val action = json.getString("action")
       when (action) {
         "inquire" -> {
+          inquiryCount1++
           msg.reply(json {
             obj(
                 "available" to true,
                 "lastSequence" to 0L
             )
           })
-          inquiryCount1++
         }
         "allocate" -> {
-          msg.fail(503, "Sorry, but I'm actually busy. :-(")
           allocateCount1++
+          msg.fail(503, "Sorry, but I'm actually busy. :-(")
         }
         else -> ctx.failNow(NoStackTraceThrowable("Unknown action $action"))
       }
@@ -406,17 +407,17 @@ class RemoteAgentRegistryTest {
       val action = json.getString("action")
       when (action) {
         "inquire" -> {
+          inquiryCount2++
           msg.reply(json {
             obj(
                 "available" to true,
                 "lastSequence" to 1L
             )
           })
-          inquiryCount2++
         }
         "allocate" -> {
-          msg.reply("ACK")
           allocateCount2++
+          msg.reply("ACK")
         }
         else -> ctx.failNow(NoStackTraceThrowable("Unknown action $action"))
       }
