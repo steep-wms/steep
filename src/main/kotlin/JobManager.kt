@@ -26,6 +26,7 @@ import model.Version
 import model.processchain.ProcessChain
 import model.workflow.Workflow
 import org.slf4j.LoggerFactory
+import java.time.Instant
 
 /**
  * The JobManager's main API entry point
@@ -254,7 +255,9 @@ class JobManager : CoroutineVerticle() {
    */
   private fun onGetWorkflows(ctx: RoutingContext) {
     launch {
-      val list = submissionRegistry.findSubmissions().map { submission ->
+      val list = submissionRegistry.findSubmissions()
+          .sortedWith(compareByDescending(nullsLast<Instant>()) { it.startTime })
+          .map { submission ->
         JsonUtils.toJson(submission).also {
           it.remove("workflow")
           amendSubmission(it)
