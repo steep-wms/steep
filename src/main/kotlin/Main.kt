@@ -1,8 +1,9 @@
 import cloud.CloudManager
+import com.hazelcast.core.MembershipAdapter
+import com.hazelcast.core.MembershipEvent
 import helper.JsonUtils
 import io.vertx.core.VertxOptions
 import io.vertx.core.json.JsonObject
-import io.vertx.core.spi.cluster.NodeListener
 import io.vertx.ext.shell.ShellService
 import io.vertx.ext.shell.command.Command
 import io.vertx.ext.shell.command.CommandRegistry
@@ -92,16 +93,24 @@ suspend fun main(args : Array<String>) {
   // start Vert.x
   val vertx = Vertx.clusteredVertxAwait(options)
 
-  globalNodeId = mgr.nodeID
+  globalNodeId = mgr.hazelcastInstance.cluster.localMember.uuid
 
   // listen to added and left cluster nodes
-  mgr.nodeListener(object: NodeListener {
-    override fun nodeAdded(nodeID: String?) {
-      vertx.eventBus().publish(AddressConstants.CLUSTER_NODE_ADDED, nodeID)
+  // BUGFIX: do not use mgr.nodeListener() or you will override Vert.x's
+  // internal HAManager!
+  mgr.hazelcastInstance.cluster.addMembershipListener(object: MembershipAdapter() {
+    override fun memberRemoved(membershipEvent: MembershipEvent) {
+      if (mgr.isActive) {
+        vertx.eventBus().publish(AddressConstants.CLUSTER_NODE_ADDED,
+            membershipEvent.member.uuid)
+      }
     }
 
-    override fun nodeLeft(nodeID: String?) {
-      vertx.eventBus().publish(AddressConstants.CLUSTER_NODE_LEFT, nodeID)
+    override fun memberAdded(membershipEvent: MembershipEvent) {
+      if (mgr.isActive) {
+        vertx.eventBus().publish(AddressConstants.CLUSTER_NODE_LEFT,
+            membershipEvent.member.uuid)
+      }
     }
   })
 
