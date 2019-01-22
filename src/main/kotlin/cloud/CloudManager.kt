@@ -246,6 +246,7 @@ class CloudManager : CoroutineVerticle() {
         .build()
     val context = mapOf<String, Any>(
         "config" to config.map,
+        "env" to System.getenv(),
         "ipAddress" to ipAddress,
         "agentId" to agentId,
         "agentCapabilities" to setup.providedCapabilities
