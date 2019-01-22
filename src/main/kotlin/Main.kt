@@ -99,14 +99,14 @@ suspend fun main(args : Array<String>) {
   // BUGFIX: do not use mgr.nodeListener() or you will override Vert.x's
   // internal HAManager!
   mgr.hazelcastInstance.cluster.addMembershipListener(object: MembershipAdapter() {
-    override fun memberRemoved(membershipEvent: MembershipEvent) {
+    override fun memberAdded(membershipEvent: MembershipEvent) {
       if (mgr.isActive) {
         vertx.eventBus().publish(AddressConstants.CLUSTER_NODE_ADDED,
             membershipEvent.member.uuid)
       }
     }
 
-    override fun memberAdded(membershipEvent: MembershipEvent) {
+    override fun memberRemoved(membershipEvent: MembershipEvent) {
       if (mgr.isActive) {
         vertx.eventBus().publish(AddressConstants.CLUSTER_NODE_LEFT,
             membershipEvent.member.uuid)
