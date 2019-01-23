@@ -143,6 +143,7 @@ class CloudManager : CoroutineVerticle() {
     // create new virtual machines on demand
     vertx.eventBus().consumer<JsonArray>(AddressConstants.REMOTE_AGENT_MISSING) { msg ->
       val requiredCapabilities = msg.body()
+      log.debug("Received REMOTE_AGENT_MISSING message with: $requiredCapabilities")
       if (requiredCapabilities != null) {
         launch {
           createRemoteAgent(requiredCapabilities.map { it as String }.toSet())
@@ -169,6 +170,7 @@ class CloudManager : CoroutineVerticle() {
 
     // atomically check if we're already creating a VM with this setup
     if (creatingSetups.putIfAbsentAwait(setup.id, true) == true) {
+      log.debug("We are already creating a VM with setup `${setup.id}'")
       return
     }
 
