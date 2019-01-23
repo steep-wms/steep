@@ -159,8 +159,15 @@ class CloudManager : CoroutineVerticle() {
     val existingVMs = cloudClient.listVMs { createdByTag == it[CREATED_BY] }
     for (id in existingVMs) {
       if (createdVMs.getAwait(id) == null) {
-        log.info("Found orphaned VM `$id' ...")
-        cloudClient.destroyVM(id)
+        val active = try {
+          cloudClient.isVMActive(id)
+        } catch (e: NoSuchElementException) {
+          false
+        }
+        if (active) {
+          log.info("Found orphaned VM `$id' ...")
+          cloudClient.destroyVM(id)
+        }
       }
     }
 
@@ -226,6 +233,7 @@ class CloudManager : CoroutineVerticle() {
       val vmId = createVM(setup)
       try {
         createdVMs.putAwait(vmId, setup.id)
+        cloudClient.waitForVM(vmId)
         val ipAddress = cloudClient.getIPAddress(vmId)
         provisionVM(ipAddress, vmId, setup)
         counter.incrementAndGetAwait()

@@ -42,8 +42,9 @@ interface CloudClient {
   suspend fun destroyBlockDevice(id: String)
 
   /**
-   * Create a virtual machine. The virtual machine will be available when the
-   * method returns.
+   * Create a virtual machine. The virtual machine will not be available when
+   * the method returns. You should use [waitForVM] to wait for it to become
+   * available or [isVMActive] to poll its state.
    * @param flavor the flavor to use
    * @param blockDeviceId the ID of the block device to attach
    * @param metadata the metadata to attach to the virtual machine
@@ -51,6 +52,13 @@ interface CloudClient {
    */
   suspend fun createVM(flavor: String, blockDeviceId: String,
       metadata: Map<String, String>): String
+
+  /**
+   * Check if the VM with the given ID is active
+   * @param vmId the ID of the virtual machine
+   * @return `true` if the VM is active, `false` otherwise
+   */
+  suspend fun isVMActive(vmId: String): Boolean
 
   /**
    * Wait for a virtual machine to be available (e.g. after it has been created

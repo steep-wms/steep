@@ -82,6 +82,7 @@ class CloudManagerTest {
 
     // return a VM that should be deleted when the verticle starts up
     coEvery { client.listVMs(any()) } returns listOf(MY_OLD_VM)
+    coEvery { client.isVMActive(MY_OLD_VM) } returns true
     coEvery { client.destroyVM(MY_OLD_VM) } just Runs
 
     GlobalScope.launch(vertx.dispatcher()) {

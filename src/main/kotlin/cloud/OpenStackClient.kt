@@ -110,7 +110,7 @@ class OpenStackClient(endpoint: String, username: String, password: String,
     if (images.size > 1) {
       throw IllegalStateException("Found more than one image with the name `$name'")
     } else if (images.isEmpty()) {
-      throw IllegalStateException("Could not find image `$name'")
+      throw NoSuchElementException("Could not find image `$name'")
     }
     return images[0].id
   }
@@ -163,7 +163,7 @@ class OpenStackClient(endpoint: String, username: String, password: String,
 
       myVolume = blocking { os.blockStorage().volumes().get(myVolume.id) }
       if (myVolume == null) {
-        throw IllegalStateException("Volume does not exist anymore")
+        throw NoSuchElementException("Volume does not exist anymore")
       }
     }
   }
@@ -215,16 +215,20 @@ class OpenStackClient(endpoint: String, username: String, password: String,
 
     log.info("Created VM: $server")
 
-    waitForServer(server)
-
-    log.info("VM `${server.id}' is available")
     return server.id
+  }
+
+  override suspend fun isVMActive(vmId: String): Boolean {
+    val os = this.os.await()
+    val server = blocking { os.compute().servers().get(vmId) } ?:
+        throw NoSuchElementException("VM does not exist")
+    return server.status == Server.Status.ACTIVE
   }
 
   override suspend fun waitForVM(vmId: String) {
     val os = this.os.await()
     val server = blocking { os.compute().servers().get(vmId) } ?:
-        throw IllegalStateException("VM does not exist")
+        throw NoSuchElementException("VM does not exist")
     waitForServer(server)
   }
 
@@ -252,7 +256,7 @@ class OpenStackClient(endpoint: String, username: String, password: String,
 
       myServer = blocking { os.compute().servers().get(myServer.id) }
       if (myServer == null) {
-        throw IllegalStateException("VM does not exist anymore")
+        throw NoSuchElementException("VM does not exist anymore")
       }
     }
   }
@@ -309,7 +313,7 @@ class OpenStackClient(endpoint: String, username: String, password: String,
   override suspend fun getIPAddress(vmId: String): String {
     val os = this.os.await()
     val server = blocking { os.compute().servers().get(vmId) } ?:
-        throw IllegalStateException("VM does not exist")
+        throw NoSuchElementException("VM does not exist")
 
     var type = "fixed"
     if (usePublicIp) {
