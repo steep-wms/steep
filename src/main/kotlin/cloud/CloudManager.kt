@@ -168,6 +168,8 @@ class CloudManager : CoroutineVerticle() {
     val entries = awaitResult<Map<String, String>> { createdVMs.entries(it) }
     for ((vmId, setupId) in entries) {
       if (!existingVMs.contains(vmId)) {
+        log.info("Removing deleted VM `$vmId' from internal data structures.")
+
         // remove from map of created VMs
         createdVMs.removeAwait(vmId)
 
