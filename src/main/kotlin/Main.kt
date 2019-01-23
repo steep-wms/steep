@@ -2,6 +2,7 @@ import cloud.CloudManager
 import com.hazelcast.core.MembershipAdapter
 import com.hazelcast.core.MembershipEvent
 import helper.JsonUtils
+import helper.UniqueID
 import io.vertx.core.VertxOptions
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.shell.ShellService
@@ -24,7 +25,8 @@ import java.net.NetworkInterface
 import java.net.SocketException
 import java.util.Enumeration
 
-var globalNodeId: String = "localhost"
+const val ATTR_AGENT_ID = "Agent-ID"
+var globalAgentId: String = "localhost"
 
 suspend fun main(args : Array<String>) {
   // load configuration
@@ -78,6 +80,9 @@ suspend fun main(args : Array<String>) {
   hazelcastConfig.networkConfig.join.multicastConfig.isEnabled = !tcpEnabled
   hazelcastConfig.networkConfig.join.tcpIpConfig.isEnabled = tcpEnabled
 
+  globalAgentId = conf.getString(ConfigConstants.AGENT_ID, UniqueID.next())
+  hazelcastConfig.memberAttributeConfig.setStringAttribute(ATTR_AGENT_ID, globalAgentId)
+
   // configure event bus
   val mgr = HazelcastClusterManager(hazelcastConfig)
   val options = VertxOptions().setClusterManager(mgr)
@@ -93,23 +98,21 @@ suspend fun main(args : Array<String>) {
   // start Vert.x
   val vertx = Vertx.clusteredVertxAwait(options)
 
-  globalNodeId = mgr.hazelcastInstance.cluster.localMember.uuid
-
   // listen to added and left cluster nodes
   // BUGFIX: do not use mgr.nodeListener() or you will override Vert.x's
   // internal HAManager!
   mgr.hazelcastInstance.cluster.addMembershipListener(object: MembershipAdapter() {
     override fun memberAdded(membershipEvent: MembershipEvent) {
       if (mgr.isActive) {
-        vertx.eventBus().publish(AddressConstants.CLUSTER_NODE_ADDED,
-            membershipEvent.member.uuid)
+        val agentId = membershipEvent.member.getStringAttribute(ATTR_AGENT_ID)
+        vertx.eventBus().publish(AddressConstants.CLUSTER_NODE_ADDED, agentId)
       }
     }
 
     override fun memberRemoved(membershipEvent: MembershipEvent) {
       if (mgr.isActive) {
-        vertx.eventBus().publish(AddressConstants.CLUSTER_NODE_LEFT,
-            membershipEvent.member.uuid)
+        val agentId = membershipEvent.member.getStringAttribute(ATTR_AGENT_ID)
+        vertx.eventBus().publish(AddressConstants.CLUSTER_NODE_LEFT, agentId)
       }
     }
   })
@@ -182,7 +185,7 @@ private fun getDefaultAddress(): String? {
  */
 class Main : CoroutineVerticle() {
   companion object {
-    val nodeId: String get() = globalNodeId
+    val agentId: String get() = globalAgentId
   }
 
   /**

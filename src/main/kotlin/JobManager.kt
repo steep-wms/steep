@@ -6,7 +6,6 @@ import db.SubmissionRegistry
 import db.SubmissionRegistryFactory
 import helper.JsonUtils
 import helper.Shell
-import helper.UniqueID
 import io.vertx.core.eventbus.Message
 import io.vertx.core.http.HttpServerOptions
 import io.vertx.core.impl.NoStackTraceThrowable
@@ -52,17 +51,16 @@ class JobManager : CoroutineVerticle() {
     val agentEnabled = config.getBoolean(ConfigConstants.AGENT_ENABLED, true)
     if (agentEnabled) {
       // consume process chains and run a local agent for each of them
-      val address = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + Main.nodeId
+      val address = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + Main.agentId
       vertx.eventBus().consumer<JsonObject>(address, this::onAgentMessage)
 
       // register remote agent
       val rar = RemoteAgentRegistry(vertx)
-      val agentId = config.getString(ConfigConstants.AGENT_ID, UniqueID.next())
       capabilities = config.getJsonArray(ConfigConstants.AGENT_CAPABILTIIES,
           JsonArray()).map { it as String }.toSet()
-      rar.register(Main.nodeId, agentId)
+      rar.register(Main.agentId)
 
-      log.info("Remote agent `${Main.nodeId}' successfully deployed")
+      log.info("Remote agent `${Main.agentId}' successfully deployed")
     } else {
       capabilities = emptySet()
     }

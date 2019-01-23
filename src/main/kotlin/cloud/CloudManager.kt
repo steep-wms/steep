@@ -5,6 +5,7 @@ import ConfigConstants.CLOUD_CREATED_BY_TAG
 import ConfigConstants.CLOUD_SETUPS_FILE
 import ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION
 import ConfigConstants.CLOUD_SSH_USERNAME
+import agent.RemoteAgentRegistry
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.mitchellbosecke.pebble.PebbleEngine
 import helper.YamlUtils
@@ -278,8 +279,8 @@ class CloudManager : CoroutineVerticle() {
     // register a handler that waits for the agent on the new virtual machine
     // to become available
     val future = Future.future<Unit>()
-    val consumer = vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_AVAILABLE) { msg ->
-      if (msg.body() == vmId) {
+    val consumer = vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_ADDED) { msg ->
+      if (msg.body() == RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + vmId) {
         future.complete()
       }
     }

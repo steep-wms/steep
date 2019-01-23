@@ -48,7 +48,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     private const val KEY_INITIALIZED = "Initialized"
 
     /**
-     * Name of a cluster-wide map keeping nodeIds of [RemoteAgent]s
+     * Name of a cluster-wide map keeping IDs of [RemoteAgent]s
      */
     private const val ASYNC_MAP_NAME = "RemoteAgentRegistry.Async"
   }
@@ -61,7 +61,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
   private val localMap: LocalMap<String, Boolean>
 
   /**
-   * A cluster-wide map keeping nodeIds of [RemoteAgent]s
+   * A cluster-wide map keeping IDs of [RemoteAgent]s
    */
   private val agents: Future<AsyncMap<String, Boolean>>
 
@@ -103,20 +103,19 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
   }
 
   /**
-   * Register a remote agent under the given [nodeId] unless there already is
-   * an agent under this [nodeId], in which case the method does nothing. Also
+   * Register a remote agent under the given [id] unless there already is
+   * an agent under this [id], in which case the method does nothing. Also
    * announce the availability of the agent in the cluster under the given
-   * [agentId].
+   * [id].
    *
    * The agent should already listen to messages on the eventbus address
-   * ([AGENT_ADDRESS_PREFIX]` + nodeId`). The agent registry automatically
-   * unregisters the agent when the node with the [nodeId] leaves the cluster.
+   * ([AGENT_ADDRESS_PREFIX]` + id`). The agent registry automatically
+   * unregisters the agent when the node with the [id] leaves the cluster.
    */
-  suspend fun register(nodeId: String, agentId: String) {
-    val address = AGENT_ADDRESS_PREFIX + nodeId
-    agents.await().putAwait(nodeId, true)
+  suspend fun register(id: String) {
+    val address = AGENT_ADDRESS_PREFIX + id
+    agents.await().putAwait(id, true)
     vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_ADDED, address)
-    vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_AVAILABLE, agentId)
   }
 
   override suspend fun allocate(processChain: ProcessChain): Agent? {

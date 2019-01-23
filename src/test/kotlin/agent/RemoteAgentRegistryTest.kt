@@ -47,20 +47,10 @@ class RemoteAgentRegistryTest {
   fun register(vertx: Vertx, ctx: VertxTestContext) {
     val registry = RemoteAgentRegistry(vertx)
 
-    val nodeId = UniqueID.next()
     val agentId = UniqueID.next()
-    val address = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + nodeId
+    val address = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + agentId
 
     var addedCount = 0
-    var availableCount = 0
-
-    vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_AVAILABLE) { msg ->
-      if (msg.body() == agentId) {
-        availableCount++
-      } else {
-        ctx.failNow(NoStackTraceThrowable("Unknown agentId ${msg.body()}"))
-      }
-    }
 
     vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_ADDED) { msg ->
       if (msg.body() == address) {
@@ -71,11 +61,10 @@ class RemoteAgentRegistryTest {
     }
 
     GlobalScope.launch(vertx.dispatcher()) {
-      registry.register(nodeId, agentId)
+      registry.register(agentId)
       delay(200)
       ctx.verify {
         assertThat(addedCount).isEqualTo(1)
-        assertThat(availableCount).isEqualTo(1)
       }
       ctx.completeNow()
     }
@@ -88,9 +77,8 @@ class RemoteAgentRegistryTest {
   fun allocateDellocateOneAgent(vertx: Vertx, ctx: VertxTestContext) {
     val registry = RemoteAgentRegistry(vertx)
 
-    val nodeId = UniqueID.next()
     val agentId = UniqueID.next()
-    val address = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + nodeId
+    val address = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + agentId
 
     var inquiryCount = 0
     var allocateCount = 0
@@ -117,7 +105,7 @@ class RemoteAgentRegistryTest {
     }
 
     GlobalScope.launch(vertx.dispatcher()) {
-      registry.register(nodeId, agentId)
+      registry.register(agentId)
 
       val agent = registry.allocate(ProcessChain())
       ctx.verify {
@@ -147,9 +135,8 @@ class RemoteAgentRegistryTest {
     val registry = RemoteAgentRegistry(vertx)
 
     val reqCap = setOf("docker", "gpu")
-    val nodeId = UniqueID.next()
     val agentId = UniqueID.next()
-    val address = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + nodeId
+    val address = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + agentId
 
     vertx.eventBus().consumer<JsonObject>(address) { msg ->
       val json = msg.body()
@@ -166,7 +153,7 @@ class RemoteAgentRegistryTest {
     }
 
     GlobalScope.launch(vertx.dispatcher()) {
-      registry.register(nodeId, agentId)
+      registry.register(agentId)
       val agent = registry.allocate(ProcessChain(requiredCapabilities = reqCap))
       ctx.verify {
         assertThat(agent).isNull()
@@ -185,13 +172,11 @@ class RemoteAgentRegistryTest {
     val reqCap1 = setOf("docker")
     val reqCap2 = setOf("gpu")
 
-    val nodeId1 = UniqueID.next()
     val agentId1 = UniqueID.next()
-    val address1 = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + nodeId1
+    val address1 = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + agentId1
 
-    val nodeId2 = UniqueID.next()
     val agentId2 = UniqueID.next()
-    val address2 = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + nodeId2
+    val address2 = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + agentId2
 
     var inquiryCount1 = 0
     var allocateCount1 = 0
@@ -234,8 +219,8 @@ class RemoteAgentRegistryTest {
     }
 
     GlobalScope.launch(vertx.dispatcher()) {
-      registry.register(nodeId1, agentId1)
-      registry.register(nodeId2, agentId2)
+      registry.register(agentId1)
+      registry.register(agentId2)
       val agent1 = registry.allocate(ProcessChain(requiredCapabilities = reqCap1))
       ctx.verify {
         assertThat(agent1).isNotNull
@@ -266,13 +251,11 @@ class RemoteAgentRegistryTest {
   fun sequenceBasedAllocation(vertx: Vertx, ctx: VertxTestContext) {
     val registry = RemoteAgentRegistry(vertx)
 
-    val nodeId1 = UniqueID.next()
     val agentId1 = UniqueID.next()
-    val address1 = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + nodeId1
+    val address1 = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + agentId1
 
-    val nodeId2 = UniqueID.next()
     val agentId2 = UniqueID.next()
-    val address2 = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + nodeId2
+    val address2 = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + agentId2
 
     var inquiryCount1 = 0
     var allocateCount1 = 0
@@ -326,8 +309,8 @@ class RemoteAgentRegistryTest {
     }
 
     GlobalScope.launch(vertx.dispatcher()) {
-      registry.register(nodeId1, agentId1)
-      registry.register(nodeId2, agentId2)
+      registry.register(agentId1)
+      registry.register(agentId2)
       val agent1 = registry.allocate(ProcessChain())
       ctx.verify {
         assertThat(agent1).isNotNull
@@ -367,13 +350,11 @@ class RemoteAgentRegistryTest {
   fun skipBusy(vertx: Vertx, ctx: VertxTestContext) {
     val registry = RemoteAgentRegistry(vertx)
 
-    val nodeId1 = UniqueID.next()
     val agentId1 = UniqueID.next()
-    val address1 = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + nodeId1
+    val address1 = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + agentId1
 
-    val nodeId2 = UniqueID.next()
     val agentId2 = UniqueID.next()
-    val address2 = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + nodeId2
+    val address2 = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + agentId2
 
     var inquiryCount1 = 0
     var allocateCount1 = 0
@@ -424,8 +405,8 @@ class RemoteAgentRegistryTest {
     }
 
     GlobalScope.launch(vertx.dispatcher()) {
-      registry.register(nodeId1, agentId1)
-      registry.register(nodeId2, agentId2)
+      registry.register(agentId1)
+      registry.register(agentId2)
       val agent1 = registry.allocate(ProcessChain())
       ctx.verify {
         assertThat(agent1).isNotNull
