@@ -211,10 +211,14 @@ class CloudManager : CoroutineVerticle() {
         "Could not find a setup that can satisfy the required capabilities: " +
             requiredCapabilities)
 
+    // get number of existing VMs with this setup
+    val counter = vertx.sharedData().getCounterAwait(COUNTER_PREFIX + setup.id)
+    val nBefore = counter.getAwait()
+
     // check if we're already creating a VM with this setup
     val lockName = CREATING_SETUPS_PREFIX + setup.id + ".0"
     val lock = try {
-      vertx.sharedData().getLockWithTimeoutAwait(lockName, 2000)
+      vertx.sharedData().getLockWithTimeoutAwait(lockName, 1)
     } catch (t: Throwable) {
       // Could not acquire lock. Assume someone else is already creating a VM
       // with this setup.
@@ -222,8 +226,13 @@ class CloudManager : CoroutineVerticle() {
     }
 
     try {
-      val counter = vertx.sharedData().getCounterAwait(COUNTER_PREFIX + setup.id)
-      if (counter.getAwait() >= setup.maxVMs.toLong()) {
+      val nAfter = counter.getAwait()
+      if (nAfter > nBefore) {
+        // we just finished creating a VM with this setup while we tried to
+        // acquire the lock
+        return
+      }
+      if (nAfter >= setup.maxVMs.toLong()) {
         // we already created more than enough virtual machines with this setup
         return
       }
