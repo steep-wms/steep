@@ -7,7 +7,6 @@ import ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION
 import ConfigConstants.CLOUD_SSH_USERNAME
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.mitchellbosecke.pebble.PebbleEngine
-import helper.UniqueID
 import helper.YamlUtils
 import io.vertx.core.Future
 import io.vertx.core.json.JsonArray
@@ -226,8 +225,7 @@ class CloudManager : CoroutineVerticle() {
       try {
         createdVMs.putAwait(vmId, setup.id)
         val ipAddress = cloudClient.getIPAddress(vmId)
-        val agentId = UniqueID.next()
-        provisionVM(ipAddress, vmId, agentId, setup)
+        provisionVM(ipAddress, vmId, setup)
         counter.incrementAndGetAwait()
       } catch (e: Throwable) {
         createdVMs.removeAwait(vmId)
@@ -261,11 +259,9 @@ class CloudManager : CoroutineVerticle() {
    * Provisions a virtual machine
    * @param ipAddress the VM's IP address
    * @param vmId the VM's ID
-   * @param agentId the ID the agent running on the new VM should have
    * @param setup the setup that contains information how to provision the VM
    */
-  private suspend fun provisionVM(ipAddress: String, vmId: String,
-      agentId: String, setup: Setup) {
+  private suspend fun provisionVM(ipAddress: String, vmId: String, setup: Setup) {
     val ssh = SSHClient(ipAddress, sshUsername, sshPrivateKeyLocation, vertx)
     waitForSSH(ipAddress, vmId, ssh)
 
@@ -273,7 +269,7 @@ class CloudManager : CoroutineVerticle() {
     // to become available
     val future = Future.future<Unit>()
     val consumer = vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_AVAILABLE) { msg ->
-      if (msg.body() == agentId) {
+      if (msg.body() == vmId) {
         future.complete()
       }
     }
@@ -288,7 +284,7 @@ class CloudManager : CoroutineVerticle() {
         "config" to config.map,
         "env" to System.getenv(),
         "ipAddress" to ipAddress,
-        "agentId" to agentId,
+        "agentId" to vmId,
         "agentCapabilities" to setup.providedCapabilities
     )
 
@@ -319,14 +315,14 @@ class CloudManager : CoroutineVerticle() {
     // TODO make time configurable
     val timeout = 1000 * 60 * 5L
     val timerId = vertx.setTimer(timeout) {
-      future.fail("Remote agent `$agentId' on virtual machine `$vmId' with " +
-          "IP address `$ipAddress' did not become available after $timeout ms")
+      future.fail("Remote agent `$vmId' with IP address `$ipAddress' did " +
+          "not become available after $timeout ms")
     }
 
     try {
       future.await()
-      log.info("Successfully created remote agent `$agentId' on virtual " +
-          "machine `$vmId' with IP address `$ipAddress'.")
+      log.info("Successfully created remote agent `$vmId' with IP " +
+          "address `$ipAddress'.")
     } finally {
       consumer.unregister()
       vertx.cancelTimer(timerId)
