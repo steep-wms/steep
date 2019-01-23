@@ -164,6 +164,12 @@ object ConfigConstants {
   const val CLOUD_SETUPS_FILE = "jobmanager.cloud.setupsFile"
 
   /**
+   * The number of seconds that should pass before the Cloud manager syncs
+   * its internal state with the Cloud again
+   */
+  const val CLOUD_SYNC_INTERVAL = "jobmanager.cloud.syncIntervalSeconds"
+
+  /**
    * OpenStack authentication endpoint
    */
   const val CLOUD_OPENSTACK_ENDPOINT = "jobmanager.cloud.openstack.endpoint"

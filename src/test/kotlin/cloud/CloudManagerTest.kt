@@ -21,6 +21,12 @@ import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.DeploymentOptions
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.core.shareddata.getAsyncMapAwait
+import io.vertx.kotlin.core.shareddata.getAwait
+import io.vertx.kotlin.core.shareddata.getCounterAwait
+import io.vertx.kotlin.core.shareddata.incrementAndGetAwait
+import io.vertx.kotlin.core.shareddata.putAwait
+import io.vertx.kotlin.core.shareddata.sizeAwait
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
@@ -45,6 +51,7 @@ class CloudManagerTest {
   companion object {
     private const val MY_OLD_VM = "MY_OLD_VM"
     private const val CREATED_BY_TAG = "CloudManagerTest"
+    private const val TEST_SETUP2_ID = "TestSetup2"
   }
 
   private lateinit var client: CloudClient
@@ -77,18 +84,30 @@ class CloudManagerTest {
     coEvery { client.listVMs(any()) } returns listOf(MY_OLD_VM)
     coEvery { client.destroyVM(MY_OLD_VM) } just Runs
 
-    // deploy verticle under test
-    val config = json {
-      obj(
-          ConfigConstants.CLOUD_CREATED_BY_TAG to CREATED_BY_TAG,
-          ConfigConstants.CLOUD_SSH_USERNAME to "user",
-          ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION to "myprivatekey.pem",
-          ConfigConstants.CLOUD_SETUPS_FILE to setupFile.toString()
-      )
+    GlobalScope.launch(vertx.dispatcher()) {
+      // create a counter for a second setup
+      val counter = vertx.sharedData().getCounterAwait(
+          "CloudManager.Counter.$TEST_SETUP2_ID")
+      counter.incrementAndGetAwait()
+
+      // pretend we already created a VM with the second setup
+      val createdVMs = vertx.sharedData().getAsyncMapAwait<String, String>(
+          "CloudManager.CreatedVMs")
+      createdVMs.putAwait(UniqueID.next(), TEST_SETUP2_ID)
+
+      // deploy verticle under test
+      val config = json {
+        obj(
+            ConfigConstants.CLOUD_CREATED_BY_TAG to CREATED_BY_TAG,
+            ConfigConstants.CLOUD_SSH_USERNAME to "user",
+            ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION to "myprivatekey.pem",
+            ConfigConstants.CLOUD_SETUPS_FILE to setupFile.toString()
+        )
+      }
+      val options = DeploymentOptions(config)
+      cloudManager = CloudManager()
+      vertx.deployVerticle(cloudManager, options, ctx.completing())
     }
-    val options = DeploymentOptions(config)
-    cloudManager = CloudManager()
-    vertx.deployVerticle(cloudManager, options, ctx.completing())
   }
 
   @AfterEach
@@ -106,6 +125,27 @@ class CloudManagerTest {
         coVerify(exactly = 1) {
           client.destroyVM(MY_OLD_VM)
         }
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Check if we have synced our internal maps on startup
+   */
+  @Test
+  fun removeNonExistingVM(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        // check that the counter was decreased
+        val counter = vertx.sharedData().getCounterAwait(
+            "CloudManager.Counter.$TEST_SETUP2_ID")
+        assertThat(counter.getAwait()).isEqualTo(0)
+
+        // check that the VM was removed from the internal map
+        val createdVMs = vertx.sharedData().getAsyncMapAwait<String, String>(
+            "CloudManager.CreatedVMs")
+        assertThat(createdVMs.sizeAwait()).isEqualTo(0)
       }
       ctx.completeNow()
     }

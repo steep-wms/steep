@@ -12,15 +12,17 @@ import helper.YamlUtils
 import io.vertx.core.Future
 import io.vertx.core.json.JsonArray
 import io.vertx.core.shareddata.AsyncMap
+import io.vertx.kotlin.core.shareddata.compareAndSetAwait
 import io.vertx.kotlin.core.shareddata.getAsyncMapAwait
 import io.vertx.kotlin.core.shareddata.getAwait
 import io.vertx.kotlin.core.shareddata.getCounterAwait
+import io.vertx.kotlin.core.shareddata.getLockWithTimeoutAwait
 import io.vertx.kotlin.core.shareddata.incrementAndGetAwait
 import io.vertx.kotlin.core.shareddata.putAwait
-import io.vertx.kotlin.core.shareddata.putIfAbsentAwait
 import io.vertx.kotlin.core.shareddata.removeAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.awaitResult
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.setup.Setup
@@ -51,12 +53,6 @@ class CloudManager : CoroutineVerticle() {
     private const val SETUP_ID = "Setup-Id"
 
     /**
-     * The name of a map containing IDs of setups we are currently creating a
-     * virtual machine for
-     */
-    private const val CREATING_SETUPS_MAP_NAME = "CloudManager.CreatingSetups"
-
-    /**
      * The name of a map containing IDs of created virtual machines
      */
     private const val CREATED_VMS_MAP_NAME = "CloudManager.CreatedVMs"
@@ -66,6 +62,11 @@ class CloudManager : CoroutineVerticle() {
      * with a certain setup
      */
     private const val COUNTER_PREFIX = "CloudManager.Counter."
+
+    /**
+     * Prefix for locks that keep track of which setups we are currently creating
+     */
+    private const val CREATING_SETUPS_PREFIX = "CloudManager.CreatingSetups."
   }
 
   /**
@@ -96,15 +97,10 @@ class CloudManager : CoroutineVerticle() {
   private lateinit var setups: List<Setup>
 
   /**
-   * A map containing IDs of setups we are currently creating a virtual
-   * machine for
+   * A map containing IDs of created virtual machines and the respective ID of
+   * their setup
    */
-  private lateinit var creatingSetups: AsyncMap<String, Boolean>
-
-  /**
-   * A map containing IDs of created virtual machines
-   */
-  private lateinit var createdVMs: AsyncMap<String, Boolean>
+  private lateinit var createdVMs: AsyncMap<String, String>
 
   override suspend fun start() {
     log.info("Launching cloud manager ...")
@@ -126,27 +122,65 @@ class CloudManager : CoroutineVerticle() {
 
     // initialize shared maps
     val sharedData = vertx.sharedData()
-    creatingSetups = sharedData.getAsyncMapAwait(CREATING_SETUPS_MAP_NAME)
     createdVMs = sharedData.getAsyncMapAwait(CREATED_VMS_MAP_NAME)
 
-    // destroy all virtual machines we created before to start from scratch
-    val existingVMs = cloudClient.listVMs { createdByTag == it[CREATED_BY] }
-    launch {
-      for (id in existingVMs) {
-        if (createdVMs.getAwait(id) == null) {
-          log.info("Found orphaned VM `$id' ...")
-          cloudClient.destroyVM(id)
-        }
-      }
-    }
+    // sync now and then regularly
+    sync()
+    syncTimer()
 
     // create new virtual machines on demand
     vertx.eventBus().consumer<JsonArray>(AddressConstants.REMOTE_AGENT_MISSING) { msg ->
       val requiredCapabilities = msg.body()
-      log.debug("Received REMOTE_AGENT_MISSING message with: $requiredCapabilities")
       if (requiredCapabilities != null) {
         launch {
           createRemoteAgent(requiredCapabilities.map { it as String }.toSet())
+        }
+      }
+    }
+  }
+
+  /**
+   * Start a periodic timer that synchronizes our shared maps with the Cloud
+   */
+  private fun syncTimer() {
+    val seconds = config.getLong(ConfigConstants.CLOUD_SYNC_INTERVAL, 120L)
+    vertx.setTimer(1000 * seconds) {
+      launch {
+        sync()
+        syncTimer()
+      }
+    }
+  }
+
+  /**
+   * Synchronize our shared maps with the Cloud
+   */
+  private suspend fun sync() {
+    // destroy all virtual machines that we created before but don't know anymore
+    val existingVMs = cloudClient.listVMs { createdByTag == it[CREATED_BY] }
+    for (id in existingVMs) {
+      if (createdVMs.getAwait(id) == null) {
+        log.info("Found orphaned VM `$id' ...")
+        cloudClient.destroyVM(id)
+      }
+    }
+
+    // remove virtual machines from our map if they don't exist anymore
+    val entries = awaitResult<Map<String, String>> { createdVMs.entries(it) }
+    for ((vmId, setupId) in entries) {
+      if (!existingVMs.contains(vmId)) {
+        // remove from map of created VMs
+        createdVMs.removeAwait(vmId)
+
+        // decrement counter for setup but never get below 0
+        val counter = vertx.sharedData().getCounterAwait(COUNTER_PREFIX + setupId)
+        var v = counter.getAwait()
+        var success = false
+        while (v > 0L && !success) {
+          success = counter.compareAndSetAwait(v, v - 1)
+          if (!success) {
+            v = counter.getAwait()
+          }
         }
       }
     }
@@ -168,9 +202,13 @@ class CloudManager : CoroutineVerticle() {
         "Could not find a setup that can satisfy the required capabilities: " +
             requiredCapabilities)
 
-    // atomically check if we're already creating a VM with this setup
-    if (creatingSetups.putIfAbsentAwait(setup.id, true) == true) {
-      log.debug("We are already creating a VM with setup `${setup.id}'")
+    // check if we're already creating a VM with this setup
+    val lockName = CREATING_SETUPS_PREFIX + setup.id + ".0"
+    val lock = try {
+      vertx.sharedData().getLockWithTimeoutAwait(lockName, 2000)
+    } catch (t: Throwable) {
+      // Could not acquire lock. Assume someone else is already creating a VM
+      // with this setup.
       return
     }
 
@@ -186,7 +224,7 @@ class CloudManager : CoroutineVerticle() {
 
       val vmId = createVM(setup)
       try {
-        createdVMs.putAwait(vmId, true)
+        createdVMs.putAwait(vmId, setup.id)
         val ipAddress = cloudClient.getIPAddress(vmId)
         val agentId = UniqueID.next()
         provisionVM(ipAddress, vmId, agentId, setup)
@@ -197,8 +235,8 @@ class CloudManager : CoroutineVerticle() {
         throw e
       }
     } finally {
-      // remove flag that says we're currently creating a VM with this setup
-      creatingSetups.removeAwait(setup.id)
+      // release lock that says we're currently creating a VM with this setup
+      lock.release()
     }
   }
 

@@ -160,7 +160,6 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
         // capabilities
         val arr = JsonArray()
         processChain.requiredCapabilities.forEach { arr.add(it) }
-        log.debug("Sending REMOTE_AGENT_MISSING message with: $arr")
         vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_MISSING, arr)
 
         return null

@@ -48,6 +48,7 @@ jobmanager:
     setupsFile: conf/setups.yaml
     driver: openstack
     createdByTag: JobManager
+    syncIntervalSeconds: 120
 
     openstack:
       endpoint: https://cloudapi.igd.fraunhofer.de:5000/v3
