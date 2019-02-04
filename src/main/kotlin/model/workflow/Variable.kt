@@ -16,5 +16,5 @@ import com.fasterxml.jackson.annotation.ObjectIdGenerators
 )
 data class Variable(
     val id: String = UniqueID.next(),
-    var value: Any? = null
+    val value: Any? = null
 )

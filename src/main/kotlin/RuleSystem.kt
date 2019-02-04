@@ -31,8 +31,9 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
     private val log = LoggerFactory.getLogger(RuleSystem::class.java)
   }
 
-  private val vars: Map<String, Variable> = workflow.vars.map { it.id to it }.toMap()
-  private val actions = workflow.actions.toMutableList()
+  private val actions = workflow.actions.toMutableSet()
+  private val varIds = workflow.vars.map { it.id }.toSet()
+  private val variableValues = mutableMapOf<String, Any>()
 
   /**
    * Returns `true` if the workflow has been fully converted to process chains
@@ -52,10 +53,27 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
   fun fire(results: Map<String, List<String>>? = null): List<ProcessChain> {
     // replace variable values with results
     results?.forEach { key, value ->
-      val v = vars[key]
-      v?.value = if (value.size == 1) value[0] else value
+      if (varIds.contains(key)) {
+        variableValues[key] = if (value.size == 1) value[0] else value
+      }
     }
 
+    val processChains = createProcessChains()
+
+    if (processChains.isNotEmpty()) {
+      log.debug("Generated process chains:\n" + JsonUtils.mapper.copy()
+          .enable(SerializationFeature.INDENT_OUTPUT)
+          .writeValueAsString(processChains))
+    }
+
+    return processChains
+  }
+
+  /**
+   * Create process chains for all actions that are ready to be executed (i.e.
+   * whose inputs are all available) and remove these actions from [actions].
+   */
+  private fun createProcessChains(): List<ProcessChain> {
     // build an index from input variables to actions
     val inputsToActions = IdentityHashMap<Variable, MutableList<ExecuteAction>>()
     for (action in actions) {
@@ -66,8 +84,7 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
       }
     }
 
-    // create process chains for all actions that are ready to be executed (i.e.
-    // whose inputs are all available)
+    // create process chains
     val processChains = mutableListOf<ProcessChain>()
     val actionsToRemove = Collections.newSetFromMap(IdentityHashMap<ExecuteAction, Boolean>())
     val actionsVisited = Collections.newSetFromMap(IdentityHashMap<ExecuteAction, Boolean>())
@@ -85,7 +102,7 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
         // check if all inputs are set (either because the variable has a value
         // or because the value has been calculated earlier)
         val isExecutable = nextAction.inputs.all { it.variable.value != null ||
-            argumentValues.contains(it.variable.id) }
+            it.variable.id in variableValues || it.variable.id in argumentValues }
         if (isExecutable) {
           executables.add(actionToExecutable(nextAction, capabilities, argumentValues))
 
@@ -120,12 +137,6 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
 
     // do not touch these actions again
     actions.removeAll(actionsToRemove)
-
-    if (processChains.isNotEmpty()) {
-      log.debug("Generated process chains:\n" + JsonUtils.mapper.copy()
-          .enable(SerializationFeature.INDENT_OUTPUT)
-          .writeValueAsString(processChains))
-    }
 
     return processChains
   }
@@ -180,9 +191,12 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
           FilenameUtils.normalize("$tmpPath/" +
               idGenerator.next() + (serviceParam.fileSuffix ?: ""))!!
         } else {
-          (param.variable.value ?: argumentValues[param.variable.id] ?:
-              serviceParam.default ?: throw IllegalStateException(
-                  "Parameter `${param.id}' does not have a value")).toString()
+          (param.variable.value ?:
+            variableValues[param.variable.id] ?:
+            argumentValues[param.variable.id] ?:
+            serviceParam.default ?:
+            throw IllegalStateException("Parameter `${param.id}' does not have a value")
+          ).toString()
         }
 
         argumentValues[param.variable.id] = v
