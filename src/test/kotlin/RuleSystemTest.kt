@@ -212,7 +212,7 @@ class RuleSystemTest {
    * correctly
    */
   @Test
-  fun forEachPreDefinedList() {
+  fun forEachPredefinedList() {
     doTest("forEachPredefinedList")
   }
 
@@ -221,8 +221,8 @@ class RuleSystemTest {
    * sub-actions can be unrolled correctly
    */
   @Test
-  fun forEachPreDefinedListTwoServices() {
-    doTest("forEachPreDefinedListTwoServices")
+  fun forEachPredefinedListTwoServices() {
+    doTest("forEachPredefinedListTwoServices")
   }
 
   /**
