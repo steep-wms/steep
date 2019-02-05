@@ -1,0 +1,27 @@
+{
+  "vars": [{
+    "id": "input_files",
+    "value": ["input_file1.txt", "input_file2.txt"]
+  }, {
+    "id": "i"
+  }, {
+    "id": "output_file1"
+  }],
+  "actions": [{
+    "type": "for",
+    "input": "input_files",
+    "enumerator": "i",
+    "actions": [{
+      "type": "execute",
+      "service": "cp",
+      "inputs": [{
+        "id": "input_file",
+        "var": "i"
+      }],
+      "outputs": [{
+        "id": "output_file",
+        "var": "output_file1"
+      }]
+    }]
+  }]
+}

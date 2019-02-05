@@ -199,6 +199,70 @@ class RuleSystemTest {
     doTest("serviceWithDocker")
   }
 
+  /**
+   * Test if a for-each action can be unrolled correctly
+   */
+  @Test
+  fun forEach() {
+    doTest("forEach")
+  }
+
+  /**
+   * Test if a for-each action with a pre-defined list of inputs can be unrolled
+   * correctly
+   */
+  @Test
+  fun forEachPreDefinedList() {
+    doTest("forEachPredefinedList")
+  }
+
+  /**
+   * Test if a for-each action with a pre-defined list of inputs and two
+   * sub-actions can be unrolled correctly
+   */
+  @Test
+  fun forEachPreDefinedListTwoServices() {
+    doTest("forEachPreDefinedListTwoServices")
+  }
+
+  /**
+   * Test if nested for-each actions can be unrolled correctly
+   */
+  @Test
+  fun forEachNested() {
+    doTest("forEachNested")
+  }
+
+  /**
+   * Test if nested for-each actions that iterate over pre-defined lists can be
+   * unrolled correctly (and in one step)
+   */
+  @Test
+  fun forEachNestedPredefinedList() {
+    doTest("forEachNestedPredefinedList")
+  }
+
+  /**
+   * Test if nested for-each actions that iterate over pre-defined lists can be
+   * unrolled correctly if the inner for-each action contains an action that
+   * depends on the results of an action from the outer for-each action
+   */
+  @Test
+  fun forEachNestedPredefinedDependent() {
+    doTest("forEachNestedPredefinedDependent")
+  }
+
+  /**
+   * Test if a nested for-each action that depends on the enumerator of the
+   * outer for-each action and whose actions depend on the results of actions
+   * from the outer for-each action can be unrolled (in other words: test
+   * if a complex situation with nested for-each actions can be handled)
+   */
+  @Test
+  fun forEachNestedComplex() {
+    doTest("forEachNestedComplex")
+  }
+
 //  TODO test complex graph
 
 //  TODO test missing service metadata

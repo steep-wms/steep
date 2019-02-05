@@ -10,11 +10,15 @@ import model.processchain.Argument.Type.OUTPUT
 import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import model.processchain.ProcessChain
+import model.workflow.Action
 import model.workflow.ExecuteAction
+import model.workflow.ForEachAction
+import model.workflow.StoreAction
 import model.workflow.Variable
 import model.workflow.Workflow
 import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
+import java.util.ArrayDeque
 import java.util.Collections
 import java.util.IdentityHashMap
 
@@ -32,7 +36,6 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
   }
 
   private val actions = workflow.actions.toMutableSet()
-  private val varIds = workflow.vars.map { it.id }.toSet()
   private val variableValues = mutableMapOf<String, Any>()
 
   /**
@@ -53,11 +56,10 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
   fun fire(results: Map<String, List<String>>? = null): List<ProcessChain> {
     // replace variable values with results
     results?.forEach { key, value ->
-      if (varIds.contains(key)) {
-        variableValues[key] = if (value.size == 1) value[0] else value
-      }
+      variableValues[key] = if (value.size == 1) value[0] else value
     }
 
+    unrollForEachActions()
     val processChains = createProcessChains()
 
     if (processChains.isNotEmpty()) {
@@ -67,6 +69,82 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
     }
 
     return processChains
+  }
+
+  /**
+   * Recursively unroll [ForEachAction]s whose inputs are all available.
+   * Unrolling means copying the sub-actions `n` times (once for each
+   * iteration) and then removing the [ForEachAction]. The method also takes
+   * care of avoiding collisions between identifiers of copied variables.
+   */
+  private fun unrollForEachActions() {
+    val foreachActions = ArrayDeque(actions.filterIsInstance<ForEachAction>())
+
+    while (foreachActions.isNotEmpty()) {
+      val action = foreachActions.poll()
+      val enumId = action.enumerator.id
+
+      // get inputs of for-each actions if they are available, otherwise continue
+      val input = action.input.value ?: variableValues[action.input.id] ?: continue
+      val inputCollection = if (input is Collection<*>) input else listOf(input)
+
+      // unroll for-each action
+      for ((iteration, enumValue) in inputCollection.withIndex()) {
+        // for each iteration, generate new identifier for enumerator
+        val iid = "$enumId$$iteration"
+        val substitutions = mutableMapOf(enumId to Variable(iid, enumValue))
+
+        // copy sub-actions and append them to `actions`
+        for (subAction in action.actions) {
+          val unrolledSubAction = unrollAction(subAction, substitutions, iteration)
+          actions.add(unrolledSubAction)
+
+          // recursively unroll for-each actions
+          if (unrolledSubAction is ForEachAction) {
+            foreachActions.add(unrolledSubAction)
+          }
+        }
+      }
+
+      // remove unrolled for-each action
+      actions.remove(action)
+    }
+  }
+
+  /**
+   * Recursively unroll a given [action] by appending the current [iteration] to
+   * its outputs (or enumerator if it's a for-each action) and replacing
+   * variables with the given [substitutions].
+   */
+  private fun unrollAction(action: Action, substitutions: MutableMap<String, Variable>,
+      iteration: Int): Action {
+    return when (action) {
+      is ExecuteAction -> {
+        action.copy(inputs = action.inputs.map {
+          it.copy(variable = substitutions[it.variable.id] ?: it.variable)
+        }, outputs = action.outputs.map {
+          val newVarId = "${it.variable.id}$$iteration"
+          val newVar = it.variable.copy(id = newVarId)
+          substitutions[it.variable.id] = newVar
+          it.copy(variable = newVar)
+        })
+      }
+
+      is ForEachAction -> {
+        val newEnumId = "${action.enumerator.id}$$iteration"
+        val newEnum = action.enumerator.copy(id = newEnumId)
+        substitutions[action.enumerator.id] = newEnum
+        action.copy(input = substitutions[action.input.id] ?: action.input,
+            enumerator = newEnum,
+            actions = action.actions.map { unrollAction(it, substitutions, iteration) })
+      }
+
+      is StoreAction -> {
+        action.copy(inputs = action.inputs.map { substitutions[it.id] ?: it })
+      }
+
+      else -> throw RuntimeException("Unknown action type `${action.javaClass}'")
+    }
   }
 
   /**
@@ -156,7 +234,7 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
     val service = services.find { it.id == action.service } ?: throw IllegalStateException(
         "There is no service with ID `${action.service}'")
 
-    // add capabilties
+    // add capabilities
     capabilities.addAll(service.requiredCapabilities)
 
     val arguments = service.parameters.flatMap flatMap@ { serviceParam ->
