@@ -17,7 +17,7 @@ val vertxVersion by extra("3.6.2")
 repositories {
     jcenter()
 
-    // necessary for jacoco 0.8.3-SNAPSHOT and openstack4j 3.1.1-SNAPSHOT
+    // necessary for openstack4j 3.1.1-SNAPSHOT
     maven("https://oss.sonatype.org/content/repositories/snapshots")
 }
 
@@ -67,7 +67,7 @@ application {
 }
 
 jacoco {
-    toolVersion = "0.8.3-SNAPSHOT"
+    toolVersion = "0.8.3"
 }
 
 tasks {
