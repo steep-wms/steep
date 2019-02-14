@@ -1,7 +1,5 @@
 import java.text.SimpleDateFormat
 import java.util.Date
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.jetbrains.kotlin.script.tryConstructClassFromStringArgs
 
 plugins {
     application
@@ -13,6 +11,7 @@ group = "de.fhg.igd"
 version = "3.0.0-SNAPSHOT"
 
 val vertxVersion by extra("3.6.2")
+val hazelcastVersion by extra("3.11.1")
 
 repositories {
     jcenter()
@@ -38,6 +37,7 @@ dependencies {
     implementation("io.vertx:vertx-shell:$vertxVersion")
     implementation("io.vertx:vertx-web:$vertxVersion")
     implementation("io.vertx:vertx-web-client:$vertxVersion")
+    implementation("com.hazelcast:hazelcast:$hazelcastVersion")
 
     implementation("commons-codec:commons-codec:1.11")
     implementation("commons-io:commons-io:2.6")
