@@ -62,6 +62,14 @@ class ServiceTest {
     assertThat(p2.label).isNull()
     assertThat(p2.fileSuffix).isEqualTo(".txt")
 
+    assertThat(s.runtimeArgs).hasSize(1)
+    val ra0 = s.runtimeArgs[0]
+    assertThat(ra0.id).isEqualTo("dataMount")
+    assertThat(ra0.name).isEqualTo("Data mount")
+    assertThat(ra0.description).isEqualTo("Mount data directory")
+    assertThat(ra0.label).isEqualTo("-v")
+    assertThat(ra0.value).isEqualTo("/data:/data")
+
     assertThat(s.requiredCapabilities).isEqualTo(setOf("docker", "gpu"))
   }
 }

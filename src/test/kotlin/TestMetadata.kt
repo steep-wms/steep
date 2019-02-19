@@ -1,4 +1,5 @@
 import model.metadata.Cardinality
+import model.metadata.RuntimeArgument
 import model.metadata.Service
 import model.metadata.ServiceParameter
 import model.processchain.Argument
@@ -48,6 +49,25 @@ object TestMetadata {
           Argument.Type.OUTPUT, Cardinality(1, 1))
   ))
 
+  private val serviceWithRuntimeArgs = Service(
+      id = "serviceWithRuntimeArgs",
+      name = "Service With Runtime Arguments",
+      description = "A service that requires runtime arguments",
+      path = "service:latest",
+      runtime = Service.Runtime.DOCKER,
+      parameters = listOf(
+        ServiceParameter("input", "Input file", "An input file",
+            Argument.Type.INPUT, Cardinality(1, 1)),
+        ServiceParameter("output", "Output file", "An output file",
+            Argument.Type.OUTPUT, Cardinality(1, 1))
+      ),
+      runtimeArgs = listOf(
+          RuntimeArgument("removeContainer", "Remove container", "Remove container when it exits",
+              dataType = Argument.DATA_TYPE_BOOLEAN, label = "--rm", value = "true"),
+          RuntimeArgument("dataMount", "Data mount", "Mount data directory",
+              label = "-v", value = "/data:/data")
+      ))
+
   val services = listOf(serviceCp, serviceCpDefaultParam, serviceJoin,
-      serviceSplit, serviceWithDocker)
+      serviceSplit, serviceWithDocker, serviceWithRuntimeArgs)
 }

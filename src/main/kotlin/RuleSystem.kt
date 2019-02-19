@@ -2,6 +2,7 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import helper.IDGenerator
 import helper.JsonUtils
 import helper.UniqueID
+import model.metadata.RuntimeArgument
 import model.metadata.Service
 import model.processchain.Argument
 import model.processchain.Argument.Type.ARGUMENT
@@ -292,11 +293,8 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
         val dockerArgs = listOf(
             Argument(id = idGenerator.next(),
                 variable = ArgumentVariable("dockerRun", "run"),
-                type = Argument.Type.ARGUMENT),
-            // TODO HACK: hardcoded mount path
-            Argument(id = idGenerator.next(),
-                label = "-v", variable = ArgumentVariable("dockerMountHack", "/data:/data"),
-                type = Argument.Type.ARGUMENT),
+                type = Argument.Type.ARGUMENT)
+        ) + runtimeArgsToArguments(service.runtimeArgs) + listOf(
             Argument(id = idGenerator.next(),
                 label = "-v", variable = ArgumentVariable("dockerMount", "$tmpPath:$tmpPath"),
                 type = Argument.Type.ARGUMENT),
@@ -304,10 +302,22 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
                 variable = ArgumentVariable("dockerImage", service.path),
                 type = Argument.Type.ARGUMENT)
         )
-        Executable(service.name, path, dockerArgs.plus(arguments))
+        Executable(service.name, path, dockerArgs + arguments)
       }
 
       else -> Executable(service.name, service.path, arguments)
     }
   }
+
+  /**
+   * Convert a list of [RuntimeArgument]s to a list of [Argument]s
+   */
+  private fun runtimeArgsToArguments(runtimeArgs: List<RuntimeArgument>) =
+      runtimeArgs.map {
+        Argument(id = idGenerator.next(),
+            label = it.label,
+            variable = ArgumentVariable(it.id, it.value ?: ""),
+            type = Argument.Type.ARGUMENT,
+            dataType = it.dataType)
+      }
 }

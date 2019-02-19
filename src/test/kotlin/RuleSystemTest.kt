@@ -200,6 +200,14 @@ class RuleSystemTest {
   }
 
   /**
+   * Test if a service requiring runtime arguments is converted correctly
+   */
+  @Test
+  fun serviceWithRuntimeArgs() {
+    doTest("serviceWithRuntimeArgs")
+  }
+
+  /**
    * Test if a for-each action can be unrolled correctly
    */
   @Test

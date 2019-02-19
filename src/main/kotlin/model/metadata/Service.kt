@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonValue
  * @param path relative path to the service executable in the service artifact
  * @param runtime the runtime environment
  * @param parameters list of parameters
+ * @param runtimeArgs optional list of arguments to pass to the runtime
  * @param requiredCapabilities a set of capabilities this service needs the
  * host system to have to be able to run
  * @author Michel Kraemer
@@ -22,6 +23,7 @@ data class Service(
     val path: String,
     val runtime: Runtime,
     val parameters: List<ServiceParameter>,
+    @JsonProperty("runtime_args") val runtimeArgs: List<RuntimeArgument> = emptyList(),
     @JsonProperty("required_capabilities") val requiredCapabilities: Set<String> = emptySet()
 ) {
   /**

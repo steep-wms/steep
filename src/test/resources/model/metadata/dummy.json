@@ -30,6 +30,13 @@
         "data_type": "file",
         "file_suffix": ".txt"
     }],
+    "runtime_args": [{
+        "id": "dataMount",
+        "name": "Data mount",
+        "description": "Mount data directory",
+        "label": "-v",
+        "value": "/data:/data"
+    }],
     "required_capabilities": [
         "docker",
         "gpu"

@@ -1,8 +1,8 @@
 [{
   "chains": [{
-    "id": "4",
+    "id": "6",
     "executables": [{
-      "id": "Service With Docker",
+      "id": "Service With Runtime Arguments",
       "path": "docker",
       "arguments": [{
         "id": "1",
@@ -14,6 +14,24 @@
         "dataType": "string"
       }, {
         "id": "2",
+        "label": "--rm",
+        "variable": {
+          "id": "removeContainer",
+          "value": "true"
+        },
+        "type": "argument",
+        "dataType": "boolean"
+      }, {
+        "id": "3",
+        "label": "-v",
+        "variable": {
+          "id": "dataMount",
+          "value": "/data:/data"
+        },
+        "type": "argument",
+        "dataType": "string"
+      }, {
+        "id": "4",
         "label": "-v",
         "variable": {
           "id": "dockerMount",
@@ -22,7 +40,7 @@
         "type": "argument",
         "dataType": "string"
       }, {
-        "id": "3",
+        "id": "5",
         "variable": {
           "id": "dockerImage",
           "value": "service:latest"

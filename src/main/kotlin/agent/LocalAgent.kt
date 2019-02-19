@@ -73,13 +73,13 @@ class LocalAgent(private val vertx: Vertx) : Agent {
    * @return the `mkdir` commands
    */
   private fun mkdirForOutputs(outputs: List<Argument>) =
-      listOf("mkdir", "-p").plus(outputs.map {
+      listOf("mkdir", "-p") + outputs.map {
         if (it.dataType == Argument.DATA_TYPE_DIRECTORY) {
           it.variable.value
         } else {
           File(it.variable.value).parent
         }
-      }.distinct())
+      }.distinct()
 
   /**
    * Converts the given process chain to a list of commands
