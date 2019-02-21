@@ -1,0 +1,57 @@
+{
+  "vars": [{
+    "id": "input_directory",
+    "value": "input_dir"
+  }, {
+    "id": "output_directory"
+  }, {
+    "id": "i"
+  }, {
+    "id": "output_file1"
+  }, {
+    "id": "for_output"
+  }, {
+    "id": "output_directory2"
+  }],
+  "actions": [{
+    "type": "execute",
+    "service": "cp",
+    "inputs": [{
+      "id": "input_file",
+      "var": "input_directory"
+    }],
+    "outputs": [{
+      "id": "output_file",
+      "var": "output_directory"
+    }]
+  }, {
+    "type": "for",
+    "input": "output_directory",
+    "enumerator": "i",
+    "output": "for_output",
+    "actions": [{
+      "type": "execute",
+      "service": "cp",
+      "inputs": [{
+        "id": "input_file",
+        "var": "i"
+      }],
+      "outputs": [{
+        "id": "output_file",
+        "var": "output_file1"
+      }]
+    }],
+    "yieldToOutput": "output_file1"
+  }, {
+    "type": "execute",
+    "service": "cp",
+    "inputs": [{
+      "id": "input_file",
+      "var": "for_output"
+    }],
+    "outputs": [{
+      "id": "output_file",
+      "var": "output_directory2"
+    }]
+  }]
+}

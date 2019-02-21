@@ -38,6 +38,7 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
 
   private val actions = workflow.actions.toMutableSet()
   private val variableValues = mutableMapOf<String, Any>()
+  private val forEachOutputsToBeCollected = mutableMapOf<String, List<Variable>>()
 
   /**
    * Returns `true` if the workflow has been fully converted to process chains
@@ -58,6 +59,24 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
     // replace variable values with results
     results?.forEach { key, value ->
       variableValues[key] = if (value.size == 1) value[0] else value
+    }
+
+    // collect for-each outputs
+    val i = forEachOutputsToBeCollected.iterator()
+    for ((outputId, outputsToCollect) in i) {
+      // try to get values of all outputs
+      val collectedOutputs = mutableListOf<Any>()
+      for (o in outputsToCollect) {
+        val v = o.value ?: variableValues[o.id] ?: break
+        collectedOutputs.add(v)
+      }
+
+      // if all values are available, make the for-each action's output
+      // available too and remove the item from `forEachOutputsToBeCollected`
+      if (collectedOutputs.size == outputsToCollect.size) {
+        variableValues[outputId] = collectedOutputs
+        i.remove()
+      }
     }
 
     unrollForEachActions()
@@ -90,6 +109,7 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
       val inputCollection = if (input is Collection<*>) input else listOf(input)
 
       // unroll for-each action
+      val yieldedOutputs = mutableListOf<Variable>()
       for ((iteration, enumValue) in inputCollection.withIndex()) {
         // for each iteration, generate new identifier for enumerator
         val iid = "$enumId$$iteration"
@@ -105,6 +125,18 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
             foreachActions.add(unrolledSubAction)
           }
         }
+
+        // collect yielded output
+        if (action.yieldToOutput != null) {
+          val subst = substitutions[action.yieldToOutput.id] ?: throw IllegalStateException(
+              "Cannot yield non-existing variable `${action.yieldToOutput.id}'")
+          yieldedOutputs.add(subst)
+        }
+      }
+
+      // keep track of outputs that need to be collected
+      if (action.output != null) {
+        forEachOutputsToBeCollected[action.output.id] = yieldedOutputs
       }
 
       // remove unrolled for-each action
@@ -124,20 +156,17 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
         action.copy(inputs = action.inputs.map {
           it.copy(variable = substitutions[it.variable.id] ?: it.variable)
         }, outputs = action.outputs.map {
-          val newVarId = "${it.variable.id}$$iteration"
-          val newVar = it.variable.copy(id = newVarId)
-          substitutions[it.variable.id] = newVar
-          it.copy(variable = newVar)
+          it.copy(variable = unrollVariable(it.variable, substitutions, iteration))
         })
       }
 
       is ForEachAction -> {
-        val newEnumId = "${action.enumerator.id}$$iteration"
-        val newEnum = action.enumerator.copy(id = newEnumId)
-        substitutions[action.enumerator.id] = newEnum
+        val newEnum = unrollVariable(action.enumerator, substitutions, iteration)
+        val newOutput = action.output?.let { unrollVariable(it, substitutions, iteration) }
+        val newActions = action.actions.map { unrollAction(it, substitutions, iteration) }
         action.copy(input = substitutions[action.input.id] ?: action.input,
-            enumerator = newEnum,
-            actions = action.actions.map { unrollAction(it, substitutions, iteration) })
+            enumerator = newEnum, output = newOutput, actions = newActions,
+            yieldToOutput = action.yieldToOutput?.let { substitutions[it.id] ?: it })
       }
 
       is StoreAction -> {
@@ -146,6 +175,19 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
 
       else -> throw RuntimeException("Unknown action type `${action.javaClass}'")
     }
+  }
+
+  /**
+   * Unroll a [variable] for a given [iteration]. Copies the variable, renames
+   * it, and puts the old name and the new variable into the given map of
+   * [substitutions].
+   */
+  private fun unrollVariable(variable: Variable,
+      substitutions: MutableMap<String, Variable>, iteration: Int): Variable {
+    val newVarId = "${variable.id}$$iteration"
+    val newVar = variable.copy(id = newVarId)
+    substitutions[variable.id] = newVar
+    return newVar
   }
 
   /**
@@ -270,12 +312,15 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
           FilenameUtils.normalize("$tmpPath/" +
               idGenerator.next() + (serviceParam.fileSuffix ?: ""))!!
         } else {
-          (param.variable.value ?:
+          val iv = param.variable.value ?:
             variableValues[param.variable.id] ?:
             argumentValues[param.variable.id] ?:
             serviceParam.default ?:
             throw IllegalStateException("Parameter `${param.id}' does not have a value")
-          ).toString()
+          if (iv is Collection<*>) {
+            throw IllegalStateException("Cannot cast collection to value: $iv")
+          }
+          iv.toString()
         }
 
         argumentValues[param.variable.id] = v

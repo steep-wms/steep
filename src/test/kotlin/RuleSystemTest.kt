@@ -5,6 +5,7 @@ import helper.JsonUtils
 import model.processchain.ProcessChain
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 
 /**
@@ -270,6 +271,25 @@ class RuleSystemTest {
   fun forEachNestedComplex() {
     doTest("forEachNestedComplex")
   }
+
+  /**
+   * Test for-each action with yield
+   */
+  @Test
+  fun forEachYield() {
+    doTest("forEachYield")
+  }
+
+  /**
+   * Test if a for-each action with a subsequent cp fails due to a cast error
+   */
+  @Test
+  fun forEachYieldCastError() {
+    assertThatThrownBy {
+      doTest("forEachYieldCastError")
+    }.isInstanceOf(IllegalStateException::class.java)
+  }
+
 
 //  TODO test complex graph
 
