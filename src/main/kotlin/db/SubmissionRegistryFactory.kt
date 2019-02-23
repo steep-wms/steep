@@ -33,10 +33,11 @@ object SubmissionRegistryFactory {
     val username = config.getString(ConfigConstants.DB_USERNAME)
     val password = config.getString(ConfigConstants.DB_PASSWORD)
     log.info("Using database driver: $driver")
-    return when (driver) {
+    val result = when (driver) {
       DRIVER_INMEMORY -> InMemorySubmissionRegistry(vertx)
       DRIVER_POSTGRESQL -> PostgreSQLSubmissionRegistry(vertx, url, username, password)
       else -> throw IllegalStateException("Unknown database driver `$driver'")
     }
+    return NotifyingSubmissionRegistry(result, vertx)
   }
 }

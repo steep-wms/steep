@@ -38,4 +38,44 @@ object AddressConstants {
    * an agent with the given set of capabilities
    */
   const val REMOTE_AGENT_MISSING = "jobmanager.remoteAgentRegistry.agentMissing"
+
+  /**
+   * Will be published when a submission has been added to the registry
+   */
+  const val SUBMISSION_ADDED = "jobmanager.submissionRegistry.submissionAdded"
+
+  /**
+   * Will be published when a submission's start time has changed
+   */
+  const val SUBMISSION_STARTTIME_CHANGED = "jobmanager.submissionRegistry.submissionStartTimeChanged"
+
+  /**
+   * Will be published when a submission's end time has changed
+   */
+  const val SUBMISSION_ENDTIME_CHANGED = "jobmanager.submissionRegistry.submissionEndTimeChanged"
+
+  /**
+   * Will be published when a submission's status has changed
+   */
+  const val SUBMISSION_STATUS_CHANGED = "jobmanager.submissionRegistry.submissionStatusChanged"
+
+  /**
+   * Will be published when process chains have been added to the registry
+   */
+  const val PROCESSCHAINS_ADDED = "jobmanager.submissionRegistry.processChainsAdded"
+
+  /**
+   * Will be published when a process chain's status has changed
+   */
+  const val PROCESSCHAIN_STATUS_CHANGED = "jobmanager.submissionRegistry.processChainStatusChanged"
+
+  /**
+   * Will be published when a process chain's results have changed
+   */
+  const val PROCESSCHAIN_RESULTS_CHANGED = "jobmanager.submissionRegistry.processChainResultsChanged"
+
+  /**
+   * Will be published when a process chain's error message have changed
+   */
+  const val PROCESSCHAIN_ERRORMESSAGE_CHANGED = "jobmanager.submissionRegistry.processChainErrorMessageChanged"
 }
