@@ -11,9 +11,14 @@ import io.vertx.core.http.HttpServerOptions
 import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
+import io.vertx.ext.bridge.PermittedOptions
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.BodyHandler
+import io.vertx.ext.web.handler.ResponseContentTypeHandler
+import io.vertx.ext.web.handler.StaticHandler
+import io.vertx.ext.web.handler.sockjs.BridgeOptions
+import io.vertx.ext.web.handler.sockjs.SockJSHandler
 import io.vertx.kotlin.core.http.listenAwait
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.core.json.json
@@ -80,14 +85,38 @@ class JobManager : CoroutineVerticle() {
           .setHandleFileUploads(false)
           .setBodyLimit(config.getLong(ConfigConstants.HTTP_POST_MAX_SIZE, 1024 * 1024))
 
+      router.route("/*").handler(ResponseContentTypeHandler.create())
       router.get("/").handler(this::onGet)
-      router.get("/workflows").handler(this::onGetWorkflows)
+
+      router.get("/workflows")
+          .produces("application/json")
+          .produces("text/html")
+          .handler { onGetWorkflows(it) }
+
       router.get("/workflows/:id").handler(this::onGetWorkflowById)
       router.post("/workflows")
           .handler(bodyHandler)
           .handler(this::onPostWorkflow)
       router.get("/processchains").handler(this::onGetProcessChains)
       router.get("/processchains/:id").handler(this::onGetProcessChainById)
+
+      router.get("/assets/*").handler(StaticHandler.create("assets"))
+
+      val sockJSHandler = SockJSHandler.create(vertx)
+      sockJSHandler.bridge(BridgeOptions()
+          .addOutboundPermitted(PermittedOptions()
+              .setAddress(AddressConstants.SUBMISSION_ADDED))
+          .addOutboundPermitted(PermittedOptions()
+              .setAddress(AddressConstants.SUBMISSION_STARTTIME_CHANGED))
+          .addOutboundPermitted(PermittedOptions()
+              .setAddress(AddressConstants.SUBMISSION_ENDTIME_CHANGED))
+          .addOutboundPermitted(PermittedOptions()
+              .setAddress(AddressConstants.SUBMISSION_STATUS_CHANGED))
+          .addOutboundPermitted(PermittedOptions()
+              .setAddress(AddressConstants.PROCESSCHAINS_ADDED))
+          .addOutboundPermitted(PermittedOptions()
+              .setAddress(AddressConstants.PROCESSCHAIN_STATUS_CHANGED)))
+      router.route("/eventbus/*").handler(sockJSHandler)
 
       server.requestHandler(router).listenAwait(port, host)
 
@@ -253,18 +282,43 @@ class JobManager : CoroutineVerticle() {
    */
   private fun onGetWorkflows(ctx: RoutingContext) {
     launch {
-      val list = submissionRegistry.findSubmissions()
+      val submissions = submissionRegistry.findSubmissions()
           .sortedWith(compareByDescending(nullsLast<Instant>()) { it.startTime })
-          .map { submission ->
+      val list = submissions.map { submission ->
         JsonUtils.toJson(submission).also {
           it.remove("workflow")
           amendSubmission(it)
         }
       }
-      val arr = JsonArray(list)
-      ctx.response()
-          .putHeader("content-type", "application/json")
-          .end(arr.encode())
+
+      val encodedJson = JsonArray(list).encode()
+
+      if (ctx.acceptableContentType == "text/html") {
+        val processChains = submissions.flatMap { submission ->
+          submissionRegistry.findProcessChainsBySubmissionId(submission.id).map { processChain ->
+            processChain.id to json {
+              obj(
+                  "submissionId" to submission.id,
+                  "status" to submissionRegistry.getProcessChainStatus(processChain.id).toString()
+              )
+            }
+          }
+        }.toMap()
+
+        val text = javaClass.getResource("/html/workflows/index.html")
+            .readText()
+            .replace("\$\$\$WORKFLOWS\$\$\$", encodedJson)
+            .replace("\$\$\$PROCESS_CHAINS\$\$\$", JsonObject(processChains).encode())
+        ctx.response()
+            .putHeader("content-type", "text/html")
+            .putHeader("cache-control", "no-cache, no-store, must-revalidate")
+            .putHeader("expires", "0")
+            .end(text)
+      } else {
+        ctx.response()
+            .putHeader("content-type", "application/json")
+            .end(encodedJson)
+      }
     }
   }
 

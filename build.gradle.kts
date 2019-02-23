@@ -1,3 +1,4 @@
+import com.inet.lib.less.Less
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -5,6 +6,16 @@ plugins {
     application
     jacoco
     kotlin("jvm") version "1.3.11"
+}
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+
+    dependencies {
+        classpath("de.inetsoftware:jlessc:1.7")
+    }
 }
 
 group = "de.fhg.igd"
@@ -19,6 +30,9 @@ repositories {
     // necessary for openstack4j 3.1.1-SNAPSHOT
     maven("https://oss.sonatype.org/content/repositories/snapshots")
 }
+
+val assets by configurations.creating
+val closureCompiler by configurations.creating
 
 dependencies {
     implementation("org.slf4j:jul-to-slf4j:1.7.21")
@@ -51,6 +65,24 @@ dependencies {
     implementation("org.postgresql:postgresql:42.2.5")
     implementation("org.yaml:snakeyaml:1.23")
 
+    assets("org.webjars.npm:jquery:3.3.1")
+    assets("org.webjars.npm:semantic-ui:2.4.2") {
+        isTransitive = false
+    }
+    assets("org.webjars.npm:sockjs-client:1.3.0") {
+        isTransitive = false
+    }
+    assets("org.webjars.npm:vue:2.6.6")
+    assets("org.webjars.npm:vue-moment:4.0.0") {
+        isTransitive = false
+    }
+    assets("org.webjars.npm:vue-timeago:5.0.0") {
+        isTransitive = false
+    }
+    assets("io.vertx:vertx-web:$vertxVersion:client@js")
+
+    closureCompiler("com.google.javascript:closure-compiler:v20190215")
+
     implementation(kotlin("reflect"))
     implementation(kotlin("stdlib-jdk8"))
 
@@ -82,6 +114,7 @@ tasks {
         sourceSets {
             main {
                 resources {
+                    srcDirs("$buildDir/assets")
                     srcDirs("$buildDir/generated-src/main/resources")
                 }
             }
@@ -94,7 +127,7 @@ tasks {
         }
     }
 
-    val generateVersionFile = register("generateVersionFile") {
+    val generateVersionFile by creating {
         doLast {
             val dst = File(buildDir, "generated-src/main/resources")
             dst.mkdirs()
@@ -111,7 +144,52 @@ tasks {
         }
     }
 
+    val minifyJs by creating(JavaExec::class) {
+        val inputFile = "$projectDir/src/main/resources/js/index.js"
+        val outputFile = "$buildDir/assets/assets/index.js"
+        inputs.files(files(inputFile))
+        outputs.files(files(outputFile))
+        classpath = closureCompiler
+        main = "com.google.javascript.jscomp.CommandLineRunner"
+        args = listOf("--js_output_file=$outputFile", inputFile)
+    }
+
+    val less by creating {
+        val inputFile = "$projectDir/src/main/resources/css/index.less"
+        val outputFile = "$buildDir/assets/assets/index.css"
+        inputs.files(files(inputFile))
+        outputs.files(files(outputFile))
+        doLast {
+            val r = Less.compile(file(inputFile), true)
+            file(outputFile).writeText(r)
+        }
+    }
+
+    val extractAssets by creating(Sync::class) {
+        dependsOn(assets)
+        from(assets.map { if (it.extension == "js") it else zipTree(it) })
+        include(listOf(
+            "META-INF/resources/webjars/jquery/3.3.1/dist/jquery.min.js",
+            "META-INF/resources/webjars/semantic-ui/2.4.2/dist/semantic.min.css",
+            "META-INF/resources/webjars/semantic-ui/2.4.2/dist/semantic.min.js",
+            "META-INF/resources/webjars/semantic-ui/2.4.2/dist/themes/default/**/*",
+            "META-INF/resources/webjars/sockjs-client/1.3.0/dist/sockjs.min.js",
+            "META-INF/resources/webjars/vue/2.6.6/dist/vue.min.js",
+            "META-INF/resources/webjars/vue-moment/4.0.0/dist/vue-moment.min.js",
+            "META-INF/resources/webjars/vue-timeago/5.0.0/dist/vue-timeago.min.js",
+            "vertx-web-$vertxVersion-client.js"
+        ))
+        into("$buildDir/assets/assets")
+        includeEmptyDirs = false
+        eachFile {
+            path = path.replace("META-INF/resources/webjars", "")
+        }
+    }
+
     processResources {
         dependsOn(generateVersionFile)
+        dependsOn(extractAssets)
+        dependsOn(minifyJs)
+        dependsOn(less)
     }
 }

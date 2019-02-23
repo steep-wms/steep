@@ -1,0 +1,43 @@
+#app {
+  padding-top: 4rem;
+  padding-bottom: 6rem;
+}
+
+[v-cloak] {
+  display: none !important;
+}
+
+.workflow {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  padding: 1rem 0 2rem 0;
+
+  .ui.steps .step {
+    min-width: 210px;
+    justify-content: left;
+
+    &.active .title {
+      color: rgba(0,0,0,.87);
+    }
+  }
+}
+
+.workflow-left {
+  flex: 1;
+  padding-bottom: 1rem;
+}
+
+.description.red {
+  color: #db2828 !important;
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.running.active .cog.icon {
+  animation: spin 4s linear infinite;
+}
