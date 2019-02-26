@@ -27,6 +27,8 @@
 
     <h1 class="ui header">Workflows</h1>
 
+    <div v-if="workflows.length == 0" class="ui divider"></div>
+
     <div v-for="w in workflows" class="workflows">
       <div class="ui divider"></div>
       <div class="workflow">

@@ -8,6 +8,7 @@ import helper.JsonUtils
 import helper.Shell
 import io.vertx.core.eventbus.Message
 import io.vertx.core.http.HttpServerOptions
+import io.vertx.core.http.HttpServerResponse
 import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -30,6 +31,7 @@ import model.Version
 import model.processchain.ProcessChain
 import model.workflow.Workflow
 import org.slf4j.LoggerFactory
+import java.text.SimpleDateFormat
 import java.time.Instant
 
 /**
@@ -86,12 +88,15 @@ class JobManager : CoroutineVerticle() {
           .setBodyLimit(config.getLong(ConfigConstants.HTTP_POST_MAX_SIZE, 1024 * 1024))
 
       router.route("/*").handler(ResponseContentTypeHandler.create())
-      router.get("/").handler(this::onGet)
+      router.get("/")
+          .produces("application/json")
+          .produces("text/html")
+          .handler(this::onGet)
 
       router.get("/workflows")
           .produces("application/json")
           .produces("text/html")
-          .handler { onGetWorkflows(it) }
+          .handler(this::onGetWorkflows)
 
       router.get("/workflows/:id").handler(this::onGetWorkflowById)
       router.post("/workflows")
@@ -247,13 +252,36 @@ class JobManager : CoroutineVerticle() {
   }
 
   /**
+   * Put HTTP headers that mark the [response] as non-cacheable
+   */
+  private fun putNoCacheHeaders(response: HttpServerResponse) {
+    response
+        .putHeader("cache-control", "no-cache, no-store, must-revalidate")
+        .putHeader("expires", "0")
+  }
+
+  /**
    * Get information about the JobManager
    * @param ctx the routing context
    */
   private fun onGet(ctx: RoutingContext) {
-    ctx.response()
-        .putHeader("content-type", "application/json")
-        .end(JsonUtils.toJson(version).encodePrettily())
+    if (ctx.acceptableContentType == "text/html") {
+      val format = SimpleDateFormat("d MMMMM yyyy HH:mm:ssZ")
+      val text = javaClass.getResource("/html/index.html")
+          .readText()
+          .replace("\$\$\$VERSION\$\$\$", version.version)
+          .replace("\$\$\$BUILD\$\$\$", version.build)
+          .replace("\$\$\$COMMIT\$\$\$", version.commit)
+          .replace("\$\$\$TIMESTAMP\$\$\$", format.format(version.timestamp.time))
+      putNoCacheHeaders(ctx.response())
+      ctx.response()
+          .putHeader("content-type", "text/html")
+          .end(text)
+    } else {
+      ctx.response()
+          .putHeader("content-type", "application/json")
+          .end(JsonUtils.toJson(version).encodePrettily())
+    }
   }
 
   /**
@@ -309,10 +337,9 @@ class JobManager : CoroutineVerticle() {
             .readText()
             .replace("\$\$\$WORKFLOWS\$\$\$", encodedJson)
             .replace("\$\$\$PROCESS_CHAINS\$\$\$", JsonObject(processChains).encode())
+        putNoCacheHeaders(ctx.response())
         ctx.response()
             .putHeader("content-type", "text/html")
-            .putHeader("cache-control", "no-cache, no-store, must-revalidate")
-            .putHeader("expires", "0")
             .end(text)
       } else {
         ctx.response()
