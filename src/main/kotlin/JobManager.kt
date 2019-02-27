@@ -2,6 +2,8 @@ import agent.LocalAgent
 import agent.RemoteAgentRegistry
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.mitchellbosecke.pebble.PebbleEngine
+import com.mitchellbosecke.pebble.lexer.Syntax
 import db.SubmissionRegistry
 import db.SubmissionRegistryFactory
 import helper.JsonUtils
@@ -31,7 +33,7 @@ import model.Version
 import model.processchain.ProcessChain
 import model.workflow.Workflow
 import org.slf4j.LoggerFactory
-import java.text.SimpleDateFormat
+import java.io.StringWriter
 import java.time.Instant
 
 /**
@@ -252,12 +254,22 @@ class JobManager : CoroutineVerticle() {
   }
 
   /**
-   * Put HTTP headers that mark the [response] as non-cacheable
+   * Renders an HTML template to the given HTTP response
    */
-  private fun putNoCacheHeaders(response: HttpServerResponse) {
+  private fun renderHtml(templateName: String, context: Map<String, Any>,
+      response: HttpServerResponse) {
+    val engine = PebbleEngine.Builder()
+        .strictVariables(true)
+        .syntax(Syntax("$#", "#$", "$%", "%$", "$$", "$$", "#$", "$", "-", false))
+        .build()
+    val compiledTemplate = engine.getTemplate(templateName)
+    val writer = StringWriter()
+    compiledTemplate.evaluate(writer, context)
     response
+        .putHeader("content-type", "text/html")
         .putHeader("cache-control", "no-cache, no-store, must-revalidate")
         .putHeader("expires", "0")
+        .end(writer.toString())
   }
 
   /**
@@ -266,17 +278,7 @@ class JobManager : CoroutineVerticle() {
    */
   private fun onGet(ctx: RoutingContext) {
     if (ctx.acceptableContentType == "text/html") {
-      val format = SimpleDateFormat("d MMMMM yyyy HH:mm:ssZ")
-      val text = javaClass.getResource("/html/index.html")
-          .readText()
-          .replace("\$\$\$VERSION\$\$\$", version.version)
-          .replace("\$\$\$BUILD\$\$\$", version.build)
-          .replace("\$\$\$COMMIT\$\$\$", version.commit)
-          .replace("\$\$\$TIMESTAMP\$\$\$", format.format(version.timestamp.time))
-      putNoCacheHeaders(ctx.response())
-      ctx.response()
-          .putHeader("content-type", "text/html")
-          .end(text)
+      renderHtml("html/index.html", mapOf("version" to version), ctx.response())
     } else {
       ctx.response()
           .putHeader("content-type", "application/json")
@@ -332,15 +334,10 @@ class JobManager : CoroutineVerticle() {
             }
           }
         }.toMap()
-
-        val text = javaClass.getResource("/html/workflows/index.html")
-            .readText()
-            .replace("\$\$\$WORKFLOWS\$\$\$", encodedJson)
-            .replace("\$\$\$PROCESS_CHAINS\$\$\$", JsonObject(processChains).encode())
-        putNoCacheHeaders(ctx.response())
-        ctx.response()
-            .putHeader("content-type", "text/html")
-            .end(text)
+        renderHtml("html/workflows/index.html", mapOf(
+            "workflows" to encodedJson,
+            "processChains" to JsonObject(processChains).encode()
+        ), ctx.response())
       } else {
         ctx.response()
             .putHeader("content-type", "application/json")
