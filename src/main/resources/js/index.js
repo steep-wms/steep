@@ -2,7 +2,9 @@ Vue.use(VueTimeago);
 Vue.use(vueMoment);
 
 function initWorkflow(w) {
-  delete w.workflow;
+  if (!window.singleWorkflow) {
+    delete w.workflow;
+  }
   w.runningProcessChains = w.runningProcessChains || 0;
   w.succeededProcessChains = w.succeededProcessChains || 0;
   w.failedProcessChains = w.failedProcessChains || 0;
@@ -11,12 +13,22 @@ function initWorkflow(w) {
   w.endTime = w.endTime || null;
 }
 
+if (window.singleWorkflow === undefined) {
+  window.singleWorkflow = false;
+}
+
 workflows.forEach(initWorkflow);
 
 let app = new Vue({
   el: '#app',
   data: {
-    workflows: window.workflows
+    workflows: window.workflows,
+    now: new Date()
+  },
+  created: function () {
+    setInterval(() => {
+       this.$data.now = new Date();
+    }, 1000);
   },
   methods: {
     findWorkflowById: function (id) {
@@ -29,8 +41,9 @@ let app = new Vue({
     },
 
     workflowDuration: function (w) {
+      let endTime = w.endTime || this.now;
       let duration = Math.ceil(this.$moment.duration(
-          this.$moment(w.endTime).diff(this.$moment(w.startTime))).asSeconds());
+          this.$moment(endTime).diff(this.$moment(w.startTime))).asSeconds());
       let seconds = Math.floor(duration % 60);
       let minutes = Math.floor(duration / 60 % 60);
       let hours = Math.floor(duration / 60 / 60);
@@ -51,9 +64,11 @@ let eb = new EventBus("/eventbus");
 eb.enableReconnect(true);
 eb.onopen = () => {
   eb.registerHandler("jobmanager.submissionRegistry.submissionAdded", (error, message) => {
-    let w = message.body;
-    initWorkflow(w);
-    app.workflows.unshift(w);
+    if (!window.singleWorkflow) {
+      let w = message.body;
+      initWorkflow(w);
+      app.workflows.unshift(w);
+    }
   });
 
   eb.registerHandler("jobmanager.submissionRegistry.submissionStartTimeChanged", (error, message) => {

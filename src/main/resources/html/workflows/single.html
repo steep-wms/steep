@@ -1,34 +1,42 @@
 $% extends "html/base.html" %$
 
-$% block title %$ Workflows &raquo; JobManager $% endblock %$
+$% block title %$ $$ id $$ &raquo; Workflows &raquo; JobManager $% endblock %$
+
+$% block additionalCSS %$
+<link rel="stylesheet" type="text/css" class="ui" href="/assets/highlightjs/9.8.0/styles/zenburn.css">
+$% endblock %$
 
 $% block content %$
 <div id="app">
 
   <div class="ui container" v-cloak>
 
-    <h1 class="ui header">Workflows</h1>
-
-    <div v-if="workflows.length == 0" class="ui divider"></div>
-
     <div v-for="w in workflows" class="workflows">
+      
+      <h1 class="ui header">{{ w.id }}</h1>
+
       <div class="ui divider"></div>
+      
       <div class="workflow">
         <div class="workflow-left">
-          <a class="ui header" v-bind:href="'/workflows/' + w.id">{{ w.id }}</a>
           <p v-if="w.status === 'ACCEPTED'">Workflow has not started yet</p>
-          <p v-if="w.status === 'RUNNING' && w.startTime">
-            Workflow started <span :title="w.startTime | moment('dddd, D MMMM YYYY, h:mm:ss a')">
-              <timeago :datetime="w.startTime" :auto-update="60"></timeago>
-            </span>
-          </p>
-          <p v-if="w.status !== 'ACCEPTED' && w.status !== 'RUNNING' && w.startTime && w.endTime">
-            Workflow finished <span :title="w.endTime | moment('dddd, D MMMM YYYY, h:mm:ss a')">
-              <timeago :datetime="w.endTime" :auto-update="60"></timeago>
-            </span> and took <span :title="workflowDuration(w)">
-              {{ w.endTime | moment('diff', w.startTime) | duration('humanize') }}
-            </span>
-          </p>
+          <div class="ui relaxed list">
+            <div class="item" v-if="w.status !== 'ACCEPTED' && w.startTime">
+              <div class="header">Start time:</div>
+              {{ w.startTime | moment('dddd, D MMMM YYYY, h:mm:ss a') }}
+            </div>
+            <div class="item">
+              <div class="header">End time:</div>
+              <span v-if="w.status !== 'ACCEPTED' && w.status !== 'RUNNING' && w.startTime && w.endTime">
+                {{ w.endTime | moment('dddd, D MMMM YYYY, h:mm:ss a') }}
+              </span>
+              <span v-else>&ndash;</span>
+            </div>
+            <div class="item" v-if="w.status !== 'ACCEPTED' && w.startTime">
+              <div class="header">Time elapsed:</div>
+              {{ workflowDuration(w) }}
+            </div>
+          </div>
         </div>
         <div class="workflow-right">
           <div class="ui steps">
@@ -62,22 +70,43 @@ $% block content %$
           </div>
         </div>
       </div>
+
+      <div class="ui accordion">
+        <div class="title">
+          <i class="dropdown icon"></i>
+          Workflow source
+        </div>
+        <div class="content">
+          <div class="ui code segment">
+            <pre><code class="json">{{ w.workflow }}</code></pre>
+          </div>
+        </div>
+       </div>
     </div>
-    <p v-if="workflows.length === 0">There are no workflows yet.</p>
 
   </div>
 
 </div>
+$% endblock %$
 
+$% block additionalScripts %$
 <script src="/assets/sockjs-client/1.3.0/dist/sockjs.min.js"></script>
 <script src="/assets/vertx-web-3.6.2-client.js"></script>
 <script src="/assets/vue/2.6.6/dist/vue.min.js"></script>
 <script src="/assets/vue-moment/4.0.0/dist/vue-moment.min.js"></script>
 <script src="/assets/vue-timeago/5.0.0/dist/vue-timeago.min.js"></script>
+<script src="/assets/highlightjs/9.8.0/highlight.min.js"></script>
 
 <script>
+window.singleWorkflow = true;
 window.workflows = $$ workflows | raw $$;
 window.processChains = $$ processChains | raw $$;
+
+hljs.initHighlightingOnLoad();
+
+$(function() {
+  $(".ui.accordion").accordion();
+});
 </script>
 
 <script src="/assets/index.js"></script>

@@ -65,6 +65,7 @@ dependencies {
     implementation("org.postgresql:postgresql:42.2.5")
     implementation("org.yaml:snakeyaml:1.23")
 
+    assets("org.webjars:highlightjs:9.8.0")
     assets("org.webjars.npm:jquery:3.3.1")
     assets("org.webjars.npm:semantic-ui:2.4.2") {
         isTransitive = false
@@ -169,6 +170,8 @@ tasks {
         dependsOn(assets)
         from(assets.map { if (it.extension == "js") it else zipTree(it) })
         include(listOf(
+            "META-INF/resources/webjars/highlightjs/9.8.0/styles/zenburn.css",
+            "META-INF/resources/webjars/highlightjs/9.8.0/highlight.min.js",
             "META-INF/resources/webjars/jquery/3.3.1/dist/jquery.min.js",
             "META-INF/resources/webjars/semantic-ui/2.4.2/dist/semantic.min.css",
             "META-INF/resources/webjars/semantic-ui/2.4.2/dist/semantic.min.js",

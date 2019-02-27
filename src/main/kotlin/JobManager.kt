@@ -23,6 +23,7 @@ import io.vertx.ext.web.handler.StaticHandler
 import io.vertx.ext.web.handler.sockjs.BridgeOptions
 import io.vertx.ext.web.handler.sockjs.SockJSHandler
 import io.vertx.kotlin.core.http.listenAwait
+import io.vertx.kotlin.core.json.JsonArray
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
@@ -100,10 +101,15 @@ class JobManager : CoroutineVerticle() {
           .produces("text/html")
           .handler(this::onGetWorkflows)
 
-      router.get("/workflows/:id").handler(this::onGetWorkflowById)
+      router.get("/workflows/:id")
+          .produces("application/json")
+          .produces("text/html")
+          .handler(this::onGetWorkflowById)
+
       router.post("/workflows")
           .handler(bodyHandler)
           .handler(this::onPostWorkflow)
+
       router.get("/processchains").handler(this::onGetProcessChains)
       router.get("/processchains/:id").handler(this::onGetProcessChainById)
 
@@ -307,6 +313,21 @@ class JobManager : CoroutineVerticle() {
   }
 
   /**
+   * Loads all process chains for the given submission and converts them to
+   * JSON objects suitable for our HTML templates.
+   */
+  private suspend fun getProcessChainsJsonForSubmission(submissionId: String): List<Pair<String, JsonObject>> {
+    return submissionRegistry.findProcessChainsBySubmissionId(submissionId).map { processChain ->
+      processChain.id to json {
+        obj(
+            "submissionId" to submissionId,
+            "status" to submissionRegistry.getProcessChainStatus(processChain.id).toString()
+        )
+      }
+    }
+  }
+
+  /**
    * Get list of workflows
    * @param ctx the routing context
    */
@@ -324,16 +345,7 @@ class JobManager : CoroutineVerticle() {
       val encodedJson = JsonArray(list).encode()
 
       if (ctx.acceptableContentType == "text/html") {
-        val processChains = submissions.flatMap { submission ->
-          submissionRegistry.findProcessChainsBySubmissionId(submission.id).map { processChain ->
-            processChain.id to json {
-              obj(
-                  "submissionId" to submission.id,
-                  "status" to submissionRegistry.getProcessChainStatus(processChain.id).toString()
-              )
-            }
-          }
-        }.toMap()
+        val processChains = submissions.flatMap { getProcessChainsJsonForSubmission(it.id) }.toMap()
         renderHtml("html/workflows/index.html", mapOf(
             "workflows" to encodedJson,
             "processChains" to JsonObject(processChains).encode()
@@ -361,9 +373,18 @@ class JobManager : CoroutineVerticle() {
       } else {
         val json = JsonUtils.toJson(submission)
         amendSubmission(json)
-        ctx.response()
-            .putHeader("content-type", "application/json")
-            .end(json.encode())
+        if (ctx.acceptableContentType == "text/html") {
+          val processChains = getProcessChainsJsonForSubmission(submission.id).toMap()
+          renderHtml("html/workflows/single.html", mapOf(
+              "id" to submission.id,
+              "workflows" to JsonArray(json).encode(),
+              "processChains" to JsonObject(processChains)
+          ), ctx.response())
+        } else {
+          ctx.response()
+              .putHeader("content-type", "application/json")
+              .end(json.encode())
+        }
       }
     }
   }
