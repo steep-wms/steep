@@ -2,13 +2,19 @@ FROM openjdk:8-jdk
 
 # prepare
 RUN apt-get update && \
-    apt-get install -y \
+    apt-get install -y --no-install-recommends \
       apt-transport-https \
       ca-certificates \
-      curl \
       gnupg-agent \
       software-properties-common \
     && \
+    curl -fsSL https://download.docker.com/linux/$(. /etc/os-release; echo "$ID")/gpg | apt-key add - && \
+    add-apt-repository \
+       "deb [arch=amd64] https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") \
+       $(lsb_release -cs) \
+       stable" && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends docker-ce && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     useradd -s /bin/bash -m jobmanager && \
@@ -16,17 +22,6 @@ RUN apt-get update && \
     #
     # link sh to bash (for convenience)
     ln -fs /bin/bash /bin/sh
-
-# install docker
-RUN curl -fsSL https://download.docker.com/linux/$(. /etc/os-release; echo "$ID")/gpg | apt-key add - && \
-    add-apt-repository \
-       "deb [arch=amd64] https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") \
-       $(lsb_release -cs) \
-       stable" && \
-    apt-get update && \
-    apt-get install -y docker-ce && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
 
 # copy binaries and config
 COPY build/install/jobmanager3 /jobmanager
