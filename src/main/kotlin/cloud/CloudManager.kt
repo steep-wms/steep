@@ -102,6 +102,11 @@ class CloudManager : CoroutineVerticle() {
    */
   private lateinit var createdVMs: AsyncMap<String, String>
 
+  /**
+   * A set of IDs of agents that have recently left the cluster
+   */
+  private val leftAgents = mutableSetOf<String>()
+
   override suspend fun start() {
     log.info("Launching cloud manager ...")
 
@@ -123,6 +128,18 @@ class CloudManager : CoroutineVerticle() {
     // initialize shared maps
     val sharedData = vertx.sharedData()
     createdVMs = sharedData.getAsyncMapAwait(CREATED_VMS_MAP_NAME)
+
+    // keep track of left agents
+    vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_LEFT) { msg ->
+      val agentId = msg.body().substring(RemoteAgentRegistry.AGENT_ADDRESS_PREFIX.length)
+      leftAgents.add(agentId)
+    }
+    vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_ADDED) { msg ->
+      // remove the `agentId` from `leftAgents` if the agent has returned -- in
+      // the hope that the VM has not been deleted by `sync()` in the meantime
+      val agentId = msg.body().substring(RemoteAgentRegistry.AGENT_ADDRESS_PREFIX.length)
+      leftAgents.remove(agentId)
+    }
 
     // sync now and then regularly
     sync()
@@ -156,6 +173,14 @@ class CloudManager : CoroutineVerticle() {
    * Synchronize our shared maps with the Cloud
    */
   private suspend fun sync() {
+    // destroy all virtual machines whose agents have left
+    val vmIDsToRemove = leftAgents.toList()
+    for (id in vmIDsToRemove) {
+      log.info("Destroying VM of left agent `$id' ...")
+      cloudClient.destroyVM(id)
+      leftAgents.remove(id)
+    }
+
     // destroy all virtual machines that we created before but don't know anymore
     val existingVMs = cloudClient.listVMs { createdByTag == it[CREATED_BY] }
     for (id in existingVMs) {
