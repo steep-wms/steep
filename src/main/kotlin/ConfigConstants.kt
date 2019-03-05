@@ -116,6 +116,13 @@ object ConfigConstants {
   const val AGENT_CAPABILTIIES = "jobmanager.agent.capabilities"
 
   /**
+   * The number of minutes an agent should remain idle until it shuts itself
+   * down gracefully. By default, this value is `0`, which means the agent
+   * never shuts itself down.
+   */
+  const val AGENT_AUTO_SHUTDOWN_TIMEOUT = "jobmanager.agent.autoShutdownTimeoutMinutes"
+
+  /**
    * The number of seconds that should pass before an idle agent decides
    * that it is not busy anymore
    */

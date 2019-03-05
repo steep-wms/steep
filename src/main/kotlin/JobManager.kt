@@ -54,12 +54,20 @@ class JobManager : CoroutineVerticle() {
   private var busy: Instant? = null
   private lateinit var busyTimeout: Duration
   private var lastProcessChainSequence = -1L
+  private lateinit var autoShutdownTimeout: Duration
+
+  /**
+   * The time when the last process chain finished executing
+   */
+  private var lastExecuteTime = Instant.now()
 
   override suspend fun start() {
     submissionRegistry = SubmissionRegistryFactory.create(vertx)
     version = JsonUtils.mapper.readValue(javaClass.getResource("/version.json"))
     busyTimeout = Duration.ofSeconds(config.getLong(
         ConfigConstants.AGENT_BUSY_TIMEOUT, 60L))
+    autoShutdownTimeout = Duration.ofMinutes(config.getLong(
+        ConfigConstants.AGENT_AUTO_SHUTDOWN_TIMEOUT, 0))
 
     // deploy remote agent
     val agentEnabled = config.getBoolean(ConfigConstants.AGENT_ENABLED, true)
@@ -73,6 +81,11 @@ class JobManager : CoroutineVerticle() {
       capabilities = config.getJsonArray(ConfigConstants.AGENT_CAPABILTIIES,
           JsonArray()).map { it as String }.toSet()
       rar.register(Main.agentId)
+
+      // setup automatic shutdown
+      if (autoShutdownTimeout.toMinutes() > 0) {
+        vertx.setPeriodic(1000 * 30) { checkAutoShutdown() }
+      }
 
       log.info("Remote agent `${Main.agentId}' successfully deployed")
     } else {
@@ -138,6 +151,18 @@ class JobManager : CoroutineVerticle() {
       server.requestHandler(router).listenAwait(port, host)
 
       log.info("JobManager deployed to http://$host:$port")
+    }
+  }
+
+  /**
+   * Checks if the agent has been idle for more than [autoShutdownTimeout]
+   * minutes and, if so, shuts down the Vert.x instance.
+   */
+  private fun checkAutoShutdown() {
+    if (!isBusy() && lastExecuteTime.isBefore(Instant.now().minus(autoShutdownTimeout))) {
+      log.info("Agent has been idle for more than ${autoShutdownTimeout.toMinutes()} " +
+          "minutes. Shutting down ...")
+      vertx.close()
     }
   }
 
@@ -252,6 +277,7 @@ class JobManager : CoroutineVerticle() {
           val answer = executeProcessChain(processChain)
           vertx.eventBus().send(replyAddress, answer)
         } finally {
+          lastExecuteTime = Instant.now()
           vertx.cancelTimer(busyTimer)
         }
       }
