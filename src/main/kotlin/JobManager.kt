@@ -35,6 +35,7 @@ import model.processchain.ProcessChain
 import model.workflow.Workflow
 import org.slf4j.LoggerFactory
 import java.io.StringWriter
+import java.time.Duration
 import java.time.Instant
 
 /**
@@ -50,12 +51,15 @@ class JobManager : CoroutineVerticle() {
   private lateinit var version: Version
 
   private lateinit var capabilities: Set<String>
-  private var busy = false
+  private var busy: Instant? = null
+  private lateinit var busyTimeout: Duration
   private var lastProcessChainSequence = -1L
 
   override suspend fun start() {
     submissionRegistry = SubmissionRegistryFactory.create(vertx)
     version = JsonUtils.mapper.readValue(javaClass.getResource("/version.json"))
+    busyTimeout = Duration.ofSeconds(config.getLong(
+        ConfigConstants.AGENT_BUSY_TIMEOUT, 60L))
 
     // deploy remote agent
     val agentEnabled = config.getBoolean(ConfigConstants.AGENT_ENABLED, true)
@@ -157,11 +161,35 @@ class JobManager : CoroutineVerticle() {
   }
 
   /**
+   * Returns `true` if the agent is busy
+   */
+  private fun isBusy(): Boolean {
+    val timedOut = busy?.isBefore(Instant.now().minus(busyTimeout)) ?: return false
+    if (timedOut) {
+      markBusy(false)
+      log.info("Idle agent `${Main.agentId}' was automatically marked as available again")
+      return false
+    }
+    return true
+  }
+
+  /**
+   * Marks this agent as busy or not busy
+   */
+  private fun markBusy(busy: Boolean = true) {
+    if (busy) {
+      this.busy = Instant.now()
+    } else {
+      this.busy = null
+    }
+  }
+
+  /**
    * Handle an inquiry whether we are able to handle a process chain that
    * requires a given set of capabilities
    */
   private fun onAgentInquire(msg: Message<JsonObject>) {
-    val available = if (busy) {
+    val available = if (isBusy()) {
       false
     } else {
       // we are not busy - check if we have the required capabilities
@@ -183,10 +211,10 @@ class JobManager : CoroutineVerticle() {
    * Handle an allocation message
    */
   private fun onAgentAllocate(msg: Message<JsonObject>) {
-    if (busy) {
+    if (isBusy()) {
       msg.fail(503, "Agent is busy")
     } else {
-      busy = true
+      markBusy()
       msg.reply("ACK")
     }
   }
@@ -195,7 +223,7 @@ class JobManager : CoroutineVerticle() {
    * Handle a deallocation message
    */
   private fun onAgentDeallocate(msg: Message<JsonObject>) {
-    busy = false
+    markBusy(false)
     msg.reply("ACK")
   }
 
@@ -213,10 +241,19 @@ class JobManager : CoroutineVerticle() {
       val processChain = JsonUtils.fromJson<ProcessChain>(jsonObj["processChain"])
       lastProcessChainSequence = jsonObj.getLong("sequence", -1L)
 
+      markBusy()
+      val busyTimer = vertx.setPeriodic(busyTimeout.toMillis() / 2) {
+        markBusy()
+      }
+
       // run the local agent and return its results
       launch {
-        val answer = executeProcessChain(processChain)
-        vertx.eventBus().send(replyAddress, answer)
+        try {
+          val answer = executeProcessChain(processChain)
+          vertx.eventBus().send(replyAddress, answer)
+        } finally {
+          vertx.cancelTimer(busyTimer)
+        }
       }
 
       // send acknowledgement

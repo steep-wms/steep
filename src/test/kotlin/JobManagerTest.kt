@@ -28,6 +28,7 @@ import io.vertx.kotlin.coroutines.dispatcher
 import io.vertx.kotlin.ext.web.client.sendAwait
 import io.vertx.kotlin.ext.web.client.sendJsonObjectAwait
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.Submission
 import model.processchain.Executable
@@ -67,7 +68,8 @@ class JobManagerTest {
           ConfigConstants.HTTP_HOST to "localhost",
           ConfigConstants.HTTP_PORT to port,
           ConfigConstants.HTTP_POST_MAX_SIZE to maxPostSize,
-          ConfigConstants.AGENT_CAPABILTIIES to array("docker")
+          ConfigConstants.AGENT_CAPABILTIIES to array("docker"),
+          ConfigConstants.AGENT_BUSY_TIMEOUT to 1L
       )
     }
     val options = DeploymentOptions(config)
@@ -226,6 +228,58 @@ class JobManagerTest {
         remoteAgentRegistry.deallocate(agent1!!)
         val agent3 = remoteAgentRegistry.allocate(processChain)
         assertThat(agent3).isNotNull
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if the agent becomes available again after not having received a
+   * process chain for too long
+   */
+  @Test
+  fun idle(vertx: Vertx, ctx: VertxTestContext) {
+    val processChain = ProcessChain()
+    val remoteAgentRegistry = RemoteAgentRegistry(vertx)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val agent1 = remoteAgentRegistry.allocate(processChain)
+        assertThat(agent1).isNotNull
+
+        val agent2 = remoteAgentRegistry.allocate(processChain)
+        assertThat(agent2).isNull()
+
+        delay(1001)
+
+        val agent3 = remoteAgentRegistry.allocate(processChain)
+        assertThat(agent3).isNotNull
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if the agent becomes available again after being idle for too long
+   */
+  @Test
+  fun idleAfterExecute(vertx: Vertx, ctx: VertxTestContext) {
+    val processChain = ProcessChain()
+    val remoteAgentRegistry = RemoteAgentRegistry(vertx)
+
+    mockkConstructor(LocalAgent::class)
+    coEvery { anyConstructed<LocalAgent>().execute(processChain) } returns emptyMap()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val agent = remoteAgentRegistry.allocate(processChain)
+        assertThat(agent).isNotNull
+        agent!!.execute(processChain)
+
+        delay(1001)
+
+        val agent2 = remoteAgentRegistry.allocate(processChain)
+        assertThat(agent2).isNotNull
       }
       ctx.completeNow()
     }

@@ -116,6 +116,12 @@ object ConfigConstants {
   const val AGENT_CAPABILTIIES = "jobmanager.agent.capabilities"
 
   /**
+   * The number of seconds that should pass before an idle agent decides
+   * that it is not busy anymore
+   */
+  const val AGENT_BUSY_TIMEOUT = "jobmanager.agent.busyTimeoutSeconds"
+
+  /**
    * The number of output lines to collect at most from each executed service
    * (also applies to error output)
    */
