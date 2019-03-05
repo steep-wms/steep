@@ -24,6 +24,7 @@ import java.net.Inet6Address
 import java.net.NetworkInterface
 import java.net.SocketException
 import java.util.Enumeration
+import java.util.concurrent.CountDownLatch
 
 const val ATTR_AGENT_ID = "Agent-ID"
 var globalAgentId: String = "localhost"
@@ -124,7 +125,17 @@ suspend fun main(args : Array<String>) {
   } catch (e: Exception) {
     e.printStackTrace()
     System.exit(1)
+    return
   }
+
+  // enable graceful shutdown
+  Runtime.getRuntime().addShutdownHook(Thread {
+    val l = CountDownLatch(1)
+    vertx.close {
+      l.countDown()
+    }
+    l.await()
+  })
 }
 
 /**
