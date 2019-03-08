@@ -62,22 +62,28 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
     }
 
     // collect for-each outputs
-    val i = forEachOutputsToBeCollected.iterator()
-    for ((outputId, outputsToCollect) in i) {
-      // try to get values of all outputs
-      val collectedOutputs = mutableListOf<Any>()
-      for (o in outputsToCollect) {
-        val v = o.value ?: variableValues[o.id] ?: break
-        collectedOutputs.add(v)
-      }
+    do {
+      var didCollectOutputs = false
+      val i = forEachOutputsToBeCollected.iterator()
+      for ((outputId, outputsToCollect) in i) {
+        // try to get values of all outputs
+        val collectedOutputs = mutableListOf<Any>()
+        for (o in outputsToCollect) {
+          val v = o.value ?: variableValues[o.id] ?: break
+          collectedOutputs.add(v)
+        }
 
-      // if all values are available, make the for-each action's output
-      // available too and remove the item from `forEachOutputsToBeCollected`
-      if (collectedOutputs.size == outputsToCollect.size) {
-        variableValues[outputId] = collectedOutputs
-        i.remove()
+        // if all values are available, make the for-each action's output
+        // available too and remove the item from `forEachOutputsToBeCollected`
+        if (collectedOutputs.size == outputsToCollect.size) {
+          variableValues[outputId] = collectedOutputs
+          i.remove()
+
+          // repeat until no outputs were collected anymore
+          didCollectOutputs = true
+        }
       }
-    }
+    } while (didCollectOutputs)
 
     unrollForEachActions()
     val processChains = createProcessChains()
