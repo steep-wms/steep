@@ -380,11 +380,11 @@ class JobManager : CoroutineVerticle() {
    * JSON objects suitable for our HTML templates.
    */
   private suspend fun getProcessChainsJsonForSubmission(submissionId: String): List<Pair<String, JsonObject>> {
-    return submissionRegistry.findProcessChainsBySubmissionId(submissionId).map { processChain ->
-      processChain.id to json {
+    return submissionRegistry.findProcessChainStatusesBySubmissionId(submissionId).map { (id, status) ->
+      id to json {
         obj(
             "submissionId" to submissionId,
-            "status" to submissionRegistry.getProcessChainStatus(processChain.id).toString()
+            "status" to status.toString()
         )
       }
     }
@@ -399,7 +399,10 @@ class JobManager : CoroutineVerticle() {
       val submissions = submissionRegistry.findSubmissions()
           .sortedWith(compareByDescending(nullsLast<Instant>()) { it.startTime })
       val list = submissions.map { submission ->
-        JsonUtils.toJson(submission).also {
+        // do not unnecessarily encode workflow to save time for large workflows
+        val c = submission.copy(workflow = Workflow())
+
+        JsonUtils.toJson(c).also {
           it.remove("workflow")
           amendSubmission(it)
         }

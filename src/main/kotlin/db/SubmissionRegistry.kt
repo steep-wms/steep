@@ -104,6 +104,15 @@ interface SubmissionRegistry {
   suspend fun findProcessChainsBySubmissionId(submissionId: String): Collection<ProcessChain>
 
   /**
+   * Find all process chains that belong to a given submission and return their
+   * IDs and their statuses
+   * @param submissionId the submission's ID
+   * @return a map of process chain IDs and statuses
+   */
+  suspend fun findProcessChainStatusesBySubmissionId(submissionId: String):
+      Map<String, ProcessChainStatus>
+
+  /**
    * Get a single process chain from the registry
    * @param processChainId the process chain's ID
    * @return the process chain or `null` if the process chain does not exist

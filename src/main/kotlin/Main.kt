@@ -118,7 +118,7 @@ suspend fun main(args : Array<String>) {
     }
   })
 
-  // start JobMananger's main verticle
+  // start JobManager's main verticle
   val deploymentOptions = DeploymentOptions(conf)
   try {
     vertx.deployVerticleAwait(Main::class.qualifiedName!!, deploymentOptions)

@@ -161,6 +161,12 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
           .filter { it.submissionId == submissionId }
           .map { it.processChain }
 
+  override suspend fun findProcessChainStatusesBySubmissionId(submissionId: String) =
+      findProcessChainEntries()
+          .filter { it.submissionId == submissionId }
+          .map { Pair(it.processChain.id, it.status) }
+          .toMap()
+
   override suspend fun findProcessChainById(processChainId: String): ProcessChain? {
     return processChains.await().getAwait(processChainId)?.let {
       JsonUtils.mapper.readValue<ProcessChainEntry>(it).processChain
