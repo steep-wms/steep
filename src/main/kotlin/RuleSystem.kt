@@ -294,9 +294,40 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
         ARGUMENT -> action.parameters
       }).filter { it.id == serviceParam.id }
 
-      // if there are no params but the serviceParam is required and has a
+      // convert parameters to arguments
+      val args = params.flatMap { param ->
+        val vs = if (serviceParam.type == OUTPUT) {
+          listOf(FilenameUtils.normalize("$tmpPath/" +
+              idGenerator.next() + (serviceParam.fileSuffix ?: ""))!!)
+        } else {
+          val iv = param.variable.value ?:
+            variableValues[param.variable.id] ?:
+            argumentValues[param.variable.id] ?:
+            serviceParam.default ?:
+            throw IllegalStateException("Parameter `${param.id}' does not have a value")
+          if (iv is Collection<*>) {
+            iv.map {
+              if (it is Collection<*>) {
+                throw IllegalStateException("Cannot cast collection to value: $it")
+              }
+              it.toString()
+            }
+          } else {
+            listOf(iv.toString())
+          }
+        }
+
+        vs.map { v ->
+          argumentValues[param.variable.id] = v
+          Argument(serviceParam.id, serviceParam.label,
+              ArgumentVariable(param.variable.id, v),
+              serviceParam.type, serviceParam.dataType)
+        }
+      }
+
+      // if there are no arguments but the serviceParam is required and has a
       // default value, add a new argument (does not apply to inputs or outputs!)
-      if (params.isEmpty() && serviceParam.cardinality.min == 1 &&
+      if (args.isEmpty() && serviceParam.cardinality.min == 1 &&
           serviceParam.cardinality.max == 1 && serviceParam.type == ARGUMENT &&
           serviceParam.default != null) {
         return@flatMap listOf(Argument(serviceParam.id, serviceParam.label,
@@ -305,35 +336,14 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
       }
 
       // validate cardinality
-      if (params.size < serviceParam.cardinality.min ||
-          params.size > serviceParam.cardinality.max) {
+      if (args.size < serviceParam.cardinality.min ||
+          args.size > serviceParam.cardinality.max) {
         throw IllegalStateException("Illegal number of parameters. Parameter " +
-            "`${serviceParam.id}' appears ${params.size} times but its " +
+            "`${serviceParam.id}' appears ${args.size} times but its " +
             "cardinality is defined as ${serviceParam.cardinality}.")
       }
 
-      // convert parameters to arguments
-      return@flatMap params.map { param ->
-        val v = if (serviceParam.type == OUTPUT) {
-          FilenameUtils.normalize("$tmpPath/" +
-              idGenerator.next() + (serviceParam.fileSuffix ?: ""))!!
-        } else {
-          val iv = param.variable.value ?:
-            variableValues[param.variable.id] ?:
-            argumentValues[param.variable.id] ?:
-            serviceParam.default ?:
-            throw IllegalStateException("Parameter `${param.id}' does not have a value")
-          if (iv is Collection<*>) {
-            throw IllegalStateException("Cannot cast collection to value: $iv")
-          }
-          iv.toString()
-        }
-
-        argumentValues[param.variable.id] = v
-        Argument(serviceParam.id, serviceParam.label,
-            ArgumentVariable(param.variable.id, v),
-            serviceParam.type, serviceParam.dataType)
-      }
+      return@flatMap args
     }
 
     return when (service.runtime) {

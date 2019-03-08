@@ -281,13 +281,35 @@ class RuleSystemTest {
   }
 
   /**
-   * Test if a for-each action with a subsequent cp fails due to a cast error
+   * Test for-each action with yield and subsequent join
    */
   @Test
-  fun forEachYieldCastError() {
+  fun forEachYieldJoin() {
+    doTest("forEachYieldJoin")
+  }
+
+  /**
+   * Test if a for-each action with a subsequent cp fails due to a
+   * cardinality error
+   */
+  @Test
+  fun forEachYieldCardinalityError() {
     assertThatThrownBy {
-      doTest("forEachYieldCastError")
+      doTest("forEachYieldCardinalityError")
     }.isInstanceOf(IllegalStateException::class.java)
+        .hasMessageContaining("cardinality")
+  }
+
+  /**
+   * Test if a nested for-each action with a subsequent join fails due to a
+   * cast error
+   */
+  @Test
+  fun forEachYieldForEachCastError() {
+    assertThatThrownBy {
+      doTest("forEachYieldForEachCastError")
+    }.isInstanceOf(IllegalStateException::class.java)
+        .hasMessageContaining("cast")
   }
 
 
