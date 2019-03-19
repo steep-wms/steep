@@ -95,6 +95,13 @@ object ConfigConstants {
   const val CONTROLLER_LOOKUP_INTERVAL = "jobmanager.controller.lookupIntervalMilliseconds"
 
   /**
+   * The interval in which the controller looks for orphaned running
+   * submissions (i.e. submissions that are in the status `RUNNING' but that
+   * are currently not being processed by any [Controller])
+   */
+  const val CONTROLLER_LOOKUP_ORPHANS_INTERVAL = "jobmanager.controller.lookupOrphansIntervalMilliseconds"
+
+  /**
    * The interval in which the scheduler looks for registered process chains
    */
   const val SCHEDULER_LOOKUP_INTERVAL = "jobmanager.scheduler.lookupIntervalMilliseconds"

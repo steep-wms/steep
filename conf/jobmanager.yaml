@@ -33,6 +33,7 @@ jobmanager:
 
   controller:
     lookupIntervalMilliseconds: 2000
+    lookupOrphansIntervalMilliseconds: 300000
 
   scheduler:
     lookupIntervalMilliseconds: 2000

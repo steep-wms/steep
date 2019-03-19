@@ -81,6 +81,14 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     }
   }
 
+  override suspend fun findSubmissionIdsByStatus(status: Submission.Status): Collection<String> {
+    val map = submissions.await()
+    val values = awaitResult<List<String>> { map.values(it) }
+    return values.map { JsonUtils.mapper.readValue<Submission>(it) }
+        .filter { it.status == status }
+        .map { it.id }
+  }
+
   override suspend fun fetchNextSubmission(currentStatus: Submission.Status,
       newStatus: Submission.Status): Submission? {
     val sharedData = vertx.sharedData()
@@ -125,6 +133,12 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
 
   override suspend fun setSubmissionStatus(submissionId: String, status: Submission.Status) {
     updateSubmission(submissionId) { it.copy(status = status) }
+  }
+
+  override suspend fun getSubmissionStatus(submissionId: String): Submission.Status {
+    val s = findSubmissionById(submissionId) ?: throw NoSuchElementException(
+        "There is no submission with ID `$submissionId'")
+    return s.status
   }
 
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,

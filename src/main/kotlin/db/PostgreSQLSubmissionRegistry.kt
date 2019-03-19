@@ -165,6 +165,19 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
   }
 
+  override suspend fun findSubmissionIdsByStatus(status: Submission.Status): Collection<String> {
+    return withConnection { connection ->
+      val statement = "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$STATUS'=?::jsonb"
+      val params = json {
+        array(
+            "\"$status\""
+        )
+      }
+      val rs = connection.queryWithParamsAwait(statement, params)
+      rs.results.map { it.getString(0) }
+    }
+  }
+
   private suspend fun updateProperties(table: String, id: String, newObj: JsonObject,
       connection: SQLConnection) {
     val updateStatement = "UPDATE $table SET $DATA=$DATA || ?::jsonb WHERE $ID=?"
@@ -251,6 +264,20 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       )
     }
     updateProperties(SUBMISSIONS, submissionId, newObj)
+  }
+
+  override suspend fun getSubmissionStatus(submissionId: String): Submission.Status {
+    return withConnection { connection ->
+      val statement = "SELECT $DATA->'$STATUS' FROM $SUBMISSIONS WHERE $ID=?"
+      val params = json {
+        array(
+            submissionId
+        )
+      }
+      val rs = connection.querySingleWithParamsAwait(statement, params) ?: throw NoSuchElementException(
+          "There is no submission with ID `$submissionId'")
+      Submission.Status.valueOf(JsonUtils.mapper.readValue(rs.getString(0)))
+    }
   }
 
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,

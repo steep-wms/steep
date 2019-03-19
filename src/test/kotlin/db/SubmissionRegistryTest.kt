@@ -49,6 +49,28 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun findSubmissionIdsByStatus(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
+    val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
+    val s3 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addSubmission(s3)
+
+      val ids = submissionRegistry.findSubmissionIdsByStatus(Submission.Status.RUNNING)
+      ctx.verify {
+        assertThat(ids).hasSize(2)
+        assertThat(ids).contains(s1.id)
+        assertThat(ids).contains(s3.id)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun fetchNextSubmission(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
 
@@ -151,6 +173,36 @@ abstract class SubmissionRegistryTest {
             .isNull()
         assertThat(runningSubmission2)
             .isEqualTo(s.copy(status = Submission.Status.RUNNING))
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun getSubmissionStatus(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
+    val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
+    val s3 = Submission(workflow = Workflow(), status = Submission.Status.ERROR)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addSubmission(s3)
+
+      val status1 = submissionRegistry.getSubmissionStatus(s1.id)
+      val status2 = submissionRegistry.getSubmissionStatus(s2.id)
+      val status3 = submissionRegistry.getSubmissionStatus(s3.id)
+      ctx.verify {
+        assertThat(status1).isEqualTo(s1.status)
+        assertThat(status2).isEqualTo(s2.status)
+        assertThat(status3).isEqualTo(s3.status)
+      }
+
+      submissionRegistry.setSubmissionStatus(s1.id, Submission.Status.ACCEPTED)
+      val status4 = submissionRegistry.getSubmissionStatus(s1.id)
+      ctx.verify {
+        assertThat(status4).isEqualTo(Submission.Status.ACCEPTED)
       }
 
       ctx.completeNow()

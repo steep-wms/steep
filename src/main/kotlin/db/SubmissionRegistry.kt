@@ -54,6 +54,13 @@ interface SubmissionRegistry {
   suspend fun findSubmissionById(submissionId: String): Submission?
 
   /**
+   * Get a list of the IDs of submissions that have a given status
+   * @param status the status
+   * @return the list of submission IDs
+   */
+  suspend fun findSubmissionIdsByStatus(status: Submission.Status): Collection<String>
+
+  /**
    * Atomically fetch a submission that has the given `currentStatus` and
    * set its status to `newStatus` before returning it.
    * @param currentStatus the current status of the submission
@@ -84,6 +91,14 @@ interface SubmissionRegistry {
    * @param status the new status
    */
   suspend fun setSubmissionStatus(submissionId: String, status: Submission.Status)
+
+  /**
+   * Get the status of a submission
+   * @param submissionId the submission ID
+   * @return the submission status
+   * @throws NoSuchElementException if the submission does not exist
+   */
+  suspend fun getSubmissionStatus(submissionId: String): Submission.Status
 
   /**
    * Add multiple process chains to a submission

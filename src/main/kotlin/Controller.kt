@@ -1,11 +1,14 @@
 import AddressConstants.CONTROLLER_LOOKUP_NOW
 import ConfigConstants.CONTROLLER_LOOKUP_INTERVAL
+import ConfigConstants.CONTROLLER_LOOKUP_ORPHANS_INTERVAL
 import ConfigConstants.TMP_PATH
 import db.MetadataRegistry
 import db.MetadataRegistryFactory
 import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus
 import db.SubmissionRegistryFactory
+import io.vertx.core.shareddata.Lock
+import io.vertx.kotlin.core.shareddata.getLockWithTimeoutAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
@@ -27,6 +30,8 @@ class Controller : CoroutineVerticle() {
   companion object {
     private val log = LoggerFactory.getLogger(Controller::class.java)
     private const val DEFAULT_LOOKUP_INTERVAL = 2000L
+    private const val DEFAULT_LOOKUP_ORPHANS_INTERVAL = 300_000L
+    private const val PROCESSING_SUBMISSION_LOCK_PREFIX = "Controller.ProcessingSubmission."
   }
 
   private lateinit var tmpPath: String
@@ -35,6 +40,8 @@ class Controller : CoroutineVerticle() {
 
   private var lookupInterval: Long = DEFAULT_LOOKUP_INTERVAL
   private lateinit var periodicLookupJob: Job
+  private var lookupOrphansInterval: Long = DEFAULT_LOOKUP_ORPHANS_INTERVAL
+  private lateinit var periodicLookupOrphansJob: Job
 
   override suspend fun start() {
     log.info("Launching controller ...")
@@ -47,6 +54,8 @@ class Controller : CoroutineVerticle() {
     tmpPath = config.getString(TMP_PATH) ?: throw IllegalStateException(
         "Missing configuration item `$TMP_PATH'")
     lookupInterval = config.getLong(CONTROLLER_LOOKUP_INTERVAL, lookupInterval)
+    lookupOrphansInterval = config.getLong(CONTROLLER_LOOKUP_ORPHANS_INTERVAL,
+        lookupOrphansInterval)
 
     // periodically look for new submissions and execute them
     periodicLookupJob = launch {
@@ -54,6 +63,18 @@ class Controller : CoroutineVerticle() {
         delay(lookupInterval)
         lookup()
       }
+    }
+
+    // periodically look for orphaned running submissions and re-execute them
+    periodicLookupOrphansJob = launch {
+      while (true) {
+        delay(lookupOrphansInterval)
+        lookupOrphans()
+      }
+    }
+    launch {
+      // look up for orphaned running submissions now
+      lookupOrphans()
     }
 
     vertx.eventBus().consumer<Unit>(CONTROLLER_LOOKUP_NOW) {
@@ -66,6 +87,7 @@ class Controller : CoroutineVerticle() {
   override suspend fun stop() {
     log.info("Stopping controller ...")
     periodicLookupJob.cancelAndJoin()
+    periodicLookupOrphansJob.cancelAndJoin()
   }
 
   /**
@@ -80,13 +102,44 @@ class Controller : CoroutineVerticle() {
 
       // execute submission asynchronously
       launch {
-        try {
-          runSubmission(submission)
-        } catch (e: Exception) {
-          log.error("Could not execute submission", e)
-          submissionRegistry.setSubmissionStatus(submission.id, Submission.Status.ERROR)
+        runSubmission(submission)
+      }
+    }
+  }
+
+  /**
+   * Check for orphaned running submissions and retry their execution
+   */
+  private suspend fun lookupOrphans() {
+    val ids = submissionRegistry.findSubmissionIdsByStatus(Submission.Status.RUNNING)
+    for (id in ids) {
+      val lock = tryLockSubmission(id)
+      if (lock != null) {
+        lock.release()
+        val s = submissionRegistry.findSubmissionById(id)
+        if (s != null) {
+          launch {
+            runSubmission(s)
+          }
         }
       }
+    }
+  }
+
+  /**
+   * Tries to create a lock for the submission with the given [submissionId].
+   * As long as the lock is held, the submission is being processed. The method
+   * returns `null` if the lock could not be acquired. The reason for this is
+   * most likely that the submission is already being processed.
+   */
+  private suspend fun tryLockSubmission(submissionId: String): Lock? {
+    val lockName = PROCESSING_SUBMISSION_LOCK_PREFIX + submissionId
+    return try {
+      vertx.sharedData().getLockWithTimeoutAwait(lockName, 1)
+    } catch (t: Throwable) {
+      // Could not acquire lock. Assume someone else is already processing
+      // this submission
+      null
     }
   }
 
@@ -95,55 +148,77 @@ class Controller : CoroutineVerticle() {
    * @param submission the submission to execute
    */
   private suspend fun runSubmission(submission: Submission) {
-    val ruleSystem = RuleSystem(submission.workflow,
-        FilenameUtils.normalize("$tmpPath/${submission.id}"),
-        metadataRegistry.findServices())
+    val lock = tryLockSubmission(submission.id)
+    if (lock == null) {
+      log.debug("The submission `${submission.id}' is already being executed")
+      return
+    }
 
-    submissionRegistry.setSubmissionStartTime(submission.id, Instant.now())
-
-    var totalProcessChains = 0
-    var errors = 0
-    var results = mapOf<String, List<String>>()
-    while (true) {
-      // generate process chains
-      val processChains = ruleSystem.fire(results)
-      if (processChains.isEmpty()) {
-        break
+    try {
+      // check twice - the submission may have already been processed before we
+      // were able to acquire the lock
+      val actualStatus = submissionRegistry.getSubmissionStatus(submission.id)
+      if (actualStatus != Submission.Status.RUNNING) {
+        log.debug("Expected submission to be in status `${Submission.Status.RUNNING}' " +
+            "but it was in status `$actualStatus'. Skipping execution.")
+        return
       }
 
-      // store process chains in submission registry
-      submissionRegistry.addProcessChains(processChains, submission.id)
+      val ruleSystem = RuleSystem(submission.workflow,
+          FilenameUtils.normalize("$tmpPath/${submission.id}"),
+          metadataRegistry.findServices())
 
-      // notify scheduler
-      vertx.eventBus().send(AddressConstants.SCHEDULER_LOOKUP_NOW, null)
+      submissionRegistry.setSubmissionStartTime(submission.id, Instant.now())
 
-      // wait for process chain results
-      totalProcessChains += processChains.size
-      val w = waitForProcessChains(processChains)
-      results = w.first
-      errors += w.second
-    }
+      var totalProcessChains = 0
+      var errors = 0
+      var results = mapOf<String, List<String>>()
+      while (true) {
+        // generate process chains
+        val processChains = ruleSystem.fire(results)
+        if (processChains.isEmpty()) {
+          break
+        }
 
-    val status = if (ruleSystem.isFinished()) {
-      when (errors) {
-        0 -> Submission.Status.SUCCESS
-        totalProcessChains -> Submission.Status.ERROR
-        else -> Submission.Status.PARTIAL_SUCCESS
+        // store process chains in submission registry
+        submissionRegistry.addProcessChains(processChains, submission.id)
+
+        // notify scheduler
+        vertx.eventBus().send(AddressConstants.SCHEDULER_LOOKUP_NOW, null)
+
+        // wait for process chain results
+        totalProcessChains += processChains.size
+        val w = waitForProcessChains(processChains)
+        results = w.first
+        errors += w.second
       }
-    } else {
-      log.error("Workflow was not executed completely")
-      Submission.Status.ERROR
-    }
 
-    val msg = "Submission `${submission.id}' finished with status $status"
-    when (status) {
-      Submission.Status.PARTIAL_SUCCESS -> log.warn(msg)
-      Submission.Status.ERROR -> log.error(msg)
-      else -> log.info(msg)
-    }
+      val status = if (ruleSystem.isFinished()) {
+        when (errors) {
+          0 -> Submission.Status.SUCCESS
+          totalProcessChains -> Submission.Status.ERROR
+          else -> Submission.Status.PARTIAL_SUCCESS
+        }
+      } else {
+        log.error("Submission was not executed completely")
+        Submission.Status.ERROR
+      }
 
-    submissionRegistry.setSubmissionStatus(submission.id, status)
-    submissionRegistry.setSubmissionEndTime(submission.id, Instant.now())
+      val msg = "Submission `${submission.id}' finished with status $status"
+      when (status) {
+        Submission.Status.PARTIAL_SUCCESS -> log.warn(msg)
+        Submission.Status.ERROR -> log.error(msg)
+        else -> log.info(msg)
+      }
+
+      submissionRegistry.setSubmissionStatus(submission.id, status)
+      submissionRegistry.setSubmissionEndTime(submission.id, Instant.now())
+    } catch (t: Throwable) {
+      log.error("Could not execute submission", t)
+      submissionRegistry.setSubmissionStatus(submission.id, Submission.Status.ERROR)
+    } finally {
+      lock.release()
+    }
   }
 
   /**
