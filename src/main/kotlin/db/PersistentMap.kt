@@ -8,16 +8,16 @@ package db
  * needed anymore to save memory.
  * @author Michel Kraemer
  */
-interface PersistentMap<K, V> : MutableMap<K, V> {
+interface PersistentMap<K, V> : MutableMap<K, V>, PersistentCollection {
   /**
    * Load the map contents
    */
-  suspend fun load(): PersistentMap<K, V>
+  override suspend fun load()
 
   /**
    * Persist the contents of this map
    */
-  suspend fun persist()
+  override suspend fun persist()
 }
 
 /**

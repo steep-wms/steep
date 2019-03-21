@@ -36,8 +36,10 @@ class InMemoryPersistentMapTest : PersistentMapTest() {
   override suspend fun <K, V> createMap(name: String, keySerialize: (K) -> String,
       keyDeserialize: (String) -> K, valueSerialize: (V) -> String,
       valueDeserialize: (String) -> V): PersistentMap<K, V> {
-    return InMemoryPersistentMap(name, keySerialize, keyDeserialize,
-        valueSerialize, valueDeserialize, vertx).load()
+    val r = InMemoryPersistentMap(name, keySerialize, keyDeserialize,
+        valueSerialize, valueDeserialize, vertx)
+    r.load()
+    return r
   }
 
   override suspend fun prepareLoadString(vertx: Vertx): Map<String, String> {

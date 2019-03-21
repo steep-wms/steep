@@ -77,8 +77,10 @@ class PostgreSQLPersistentMapTest : PersistentMapTest() {
       keyDeserialize: (String) -> K, valueSerialize: (V) -> String,
       valueDeserialize: (String) -> V): PersistentMap<K, V> {
     val connection = getConnection()
-    return PostgreSQLPersistentMap<K, V>(name, connection,
-        keySerialize, keyDeserialize, valueSerialize, valueDeserialize).load()
+    val r = PostgreSQLPersistentMap<K, V>(name, connection,
+        keySerialize, keyDeserialize, valueSerialize, valueDeserialize)
+    r.load()
+    return r
   }
 
   override suspend fun prepareLoadString(vertx: Vertx): Map<String, String> {

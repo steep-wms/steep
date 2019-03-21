@@ -74,7 +74,7 @@ class PostgreSQLPersistentMap<K, V>(
     return r
   }
 
-  override suspend fun load(): PersistentMap<K, V> {
+  override suspend fun load() {
     super.clear()
     log.clear()
 
@@ -86,8 +86,6 @@ class PostgreSQLPersistentMap<K, V>(
     rs.results.map {
       super.put(keyDeserialize(it.getString(0)), deserialize(it.getString(1)))
     }
-
-    return this
   }
 
   override suspend fun persist() {

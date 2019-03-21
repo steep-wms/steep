@@ -34,13 +34,12 @@ class InMemoryPersistentMap<K, V>(
   private val localMap: LocalMap<String, String> = vertx.sharedData().getLocalMap(
       PERSISTENTMAP_PREFIX + name)
 
-  override suspend fun load(): PersistentMap<K, V> {
+  override suspend fun load() {
     // transfer everything from the local map to this
     clear()
     for ((k, v) in localMap) {
       put(keyDeserialize(k), valueDeserialize(v))
     }
-    return this
   }
 
   override suspend fun persist() {
