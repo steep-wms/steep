@@ -4,17 +4,24 @@ package db
  * A mutable map that is able to persist its contents. Implementations are not
  * supposed to be thread-safe. They must only be used by one owner at the same
  * time. Also, there must only be one instance of a persistent map with a given
- * name at the same time.
+ * name at the same time. Persistent maps should be cleared when they are not
+ * needed anymore to save memory.
  * @author Michel Kraemer
  */
-abstract class PersistentMap<V> : MutableMap<String, V> by mutableMapOf<String, V>() {
+interface PersistentMap<K, V> : MutableMap<K, V> {
   /**
    * Load the map contents
    */
-  abstract suspend fun load(cls: Class<V>): PersistentMap<V>
+  suspend fun load(): PersistentMap<K, V>
 
   /**
    * Persist the contents of this map
    */
-  abstract suspend fun persist()
+  suspend fun persist()
 }
+
+/**
+ * Abstract implementation of [PersistentMap]
+ */
+abstract class PersistentMapAdapter<K, V> :
+    MutableMap<K, V> by mutableMapOf<K, V>(), PersistentMap<K, V>

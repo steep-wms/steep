@@ -1,6 +1,9 @@
 package db
 
 import coVerify
+import com.fasterxml.jackson.module.kotlin.convertValue
+import com.fasterxml.jackson.module.kotlin.readValue
+import helper.JsonUtils
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
@@ -25,12 +28,15 @@ abstract class PersistentMapTest {
   /**
    * Create a persistent map with a given [name]
    */
-  private suspend inline fun <reified V> createMap(name: String) = createMap(name, V::class.java)
+  private suspend fun createMap(name: String): PersistentMap<String, String> =
+      createMap(name, { it }, { it }, { it }, { it })
 
   /**
-   * Create a persistent map with a given [name] and value type [cls]
+   * Create a persistent map with a given [name]
    */
-  protected abstract suspend fun <V> createMap(name: String, cls: Class<V>): PersistentMap<V>
+  protected abstract suspend fun <K, V> createMap(name: String, keySerialize: (K) -> String,
+      keyDeserialize: (String) -> K, valueSerialize: (V) -> String,
+      valueDeserialize: (String) -> V): PersistentMap<K, V>
 
   /**
    * Put some [String]s into the persistent map that can then be loaded by
@@ -42,7 +48,8 @@ abstract class PersistentMapTest {
    * Put some [Variable]s into the persistent map that can then be loaded by
    * another instance. Return these entries.
    */
-  protected abstract suspend fun prepareLoadVariable(vertx: Vertx): Map<String, Variable>
+  protected abstract suspend fun prepareLoadVariable(vertx: Vertx,
+      valueSerialize: (Variable) -> String): Map<String, Variable>
 
   /**
    * Verify that the persistent map has a given size
@@ -54,14 +61,22 @@ abstract class PersistentMapTest {
    * persisted
    */
   protected abstract suspend fun <V> verifyPersist(vertx: Vertx,
-      expectedMap: Map<String, V>, expectedSize: Int = expectedMap.size)
+      expectedMap: Map<String, V>, expectedSize: Int = expectedMap.size,
+      valueSerialize: (V) -> String)
 
   /**
    * Load the map and verify that it matches the [expectedMap]
    */
-  private suspend inline fun <reified V> verifyLoad(expectedMap: Map<String, V>,
-      ctx: VertxTestContext) {
-    val m = createMap<V>(PERSISTENT_MAP_NAME)
+  private suspend fun verifyLoad(expectedMap: Map<String, String>, ctx: VertxTestContext) {
+    verifyLoad(expectedMap, { it }, { it }, ctx)
+  }
+
+  /**
+   * Load the map and verify that it matches the [expectedMap]
+   */
+  private suspend fun <V> verifyLoad(expectedMap: Map<String, V>,
+      valueSerialize: (V) -> String, valueDeserialize: (String) -> V, ctx: VertxTestContext) {
+    val m = createMap(PERSISTENT_MAP_NAME, { it }, { it }, valueSerialize, valueDeserialize)
     ctx.verify {
       Assertions.assertThat(m).hasSize(expectedMap.size)
       for (e in expectedMap) {
@@ -73,9 +88,18 @@ abstract class PersistentMapTest {
   /**
    * Add the given values to the map and then test if they have been correctly persisted
    */
-  private suspend inline fun <reified V> persist(values: Map<String, V>, vertx: Vertx,
+  private suspend fun persist(values: Map<String, String>, vertx: Vertx,
       ctx: VertxTestContext, expectSizeBefore: Int = 0, expectedSizeAfter: Int = values.size) {
-    val m = createMap<V>(PERSISTENT_MAP_NAME)
+    persist(values, { it }, { it }, vertx, ctx, expectSizeBefore, expectedSizeAfter)
+  }
+
+  /**
+   * Add the given values to the map and then test if they have been correctly persisted
+   */
+  private suspend fun <V> persist(values: Map<String, V>,
+      valueSerialize: (V) -> String, valueDeserialize: (String) -> V, vertx: Vertx,
+      ctx: VertxTestContext, expectSizeBefore: Int = 0, expectedSizeAfter: Int = values.size) {
+    val m = createMap(PERSISTENT_MAP_NAME, { it }, { it }, valueSerialize, valueDeserialize)
     for ((k, v) in values) {
       m[k] = v
     }
@@ -83,7 +107,7 @@ abstract class PersistentMapTest {
       assertThat(m).hasSize(expectedSizeAfter)
       verifySize(vertx, expectSizeBefore)
       m.persist()
-      verifyPersist(vertx, values, expectedSizeAfter)
+      verifyPersist(vertx, values, expectedSizeAfter, valueSerialize)
     }
   }
 
@@ -104,7 +128,9 @@ abstract class PersistentMapTest {
   @Test
   fun loadVariable(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch {
-      verifyLoad(prepareLoadVariable(vertx), ctx)
+      val serialize = { v: Variable -> JsonUtils.mapper.writeValueAsString(v) }
+      val deserialize = { v: String -> JsonUtils.mapper.readValue<Variable>(v) }
+      verifyLoad(prepareLoadVariable(vertx, serialize), serialize, deserialize, ctx)
       ctx.completeNow()
     }
   }
@@ -128,7 +154,8 @@ abstract class PersistentMapTest {
     val v1 = Variable(value = "B")
     val v2 = Variable(value = "C")
     GlobalScope.launch {
-      persist(mapOf("0" to v1, "1" to v2), vertx, ctx)
+      persist(mapOf("0" to v1, "1" to v2), { JsonUtils.mapper.writeValueAsString(it) },
+          { JsonUtils.mapper.convertValue(it) }, vertx, ctx)
       ctx.completeNow()
     }
   }
@@ -184,7 +211,7 @@ abstract class PersistentMapTest {
     val m = mapOf("0" to "A", "1" to "B")
     GlobalScope.launch {
       persist(m, vertx, ctx)
-      val pm = createMap<String>(PERSISTENT_MAP_NAME)
+      val pm = createMap(PERSISTENT_MAP_NAME)
       pm.remove("1")
       assertThat(pm).hasSize(1)
       verifyLoad(m, ctx)
@@ -202,12 +229,12 @@ abstract class PersistentMapTest {
     val m = mapOf("0" to "A", "1" to "B")
     GlobalScope.launch {
       persist(m, vertx, ctx)
-      val pm = createMap<String>(PERSISTENT_MAP_NAME)
+      val pm = createMap(PERSISTENT_MAP_NAME)
       pm.clear()
       assertThat(pm).isEmpty()
       verifyLoad(m, ctx)
       pm.persist()
-      verifyLoad(emptyMap<String, String>(), ctx)
+      verifyLoad(emptyMap(), ctx)
       ctx.completeNow()
     }
   }

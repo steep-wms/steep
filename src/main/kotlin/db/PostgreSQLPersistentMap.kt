@@ -1,6 +1,5 @@
 package db
 
-import helper.JsonUtils
 import io.vertx.core.json.JsonArray
 import io.vertx.ext.sql.SQLConnection
 import io.vertx.kotlin.core.json.array
@@ -12,10 +11,20 @@ import io.vertx.kotlin.ext.sql.updateWithParamsAwait
  * A mutable map that is able to persist its contents to a PostgreSQL database.
  * @param name the map's name
  * @param connection the SQL connection to persist to
+ * @param keySerialize a function that serializes keys
+ * @param keyDeserialize a function that deserializes keys
+ * @param serialize a function that serializes map values
+ * @param deserialize a function that deserializes map values
  * @author Michel Kraemer
  */
-class PostgreSQLPersistentMap<V>(private val name: String,
-    private val connection: SQLConnection) : PersistentMap<V>() {
+class PostgreSQLPersistentMap<K, V>(
+    private val name: String,
+    private val connection: SQLConnection,
+    private val keySerialize: (K) -> String,
+    private val keyDeserialize: (String) -> K,
+    private val serialize: (V) -> String,
+    private val deserialize: (String) -> V
+) : PersistentMapAdapter<K, V>() {
   companion object {
     /**
      * Table and column names
@@ -41,22 +50,22 @@ class PostgreSQLPersistentMap<V>(private val name: String,
     log.add(Pair("DELETE FROM $PERSISTENTMAP WHERE $NAME=?", params))
   }
 
-  override fun put(key: String, value: V): V? {
+  override fun put(key: K, value: V): V? {
     val r = super.put(key, value)
-    val v = JsonUtils.mapper.writeValueAsString(value)
+    val v = serialize(value)
     val params = json {
-      array(name, key, v, v)
+      array(name, keySerialize(key), v, v)
     }
     log.add(Pair("INSERT INTO $PERSISTENTMAP ($NAME, $KEY, $VALUE) VALUES (?, ?, ?) " +
         "ON CONFLICT ON CONSTRAINT $PERSISTENTMAP_NAME_KEY DO UPDATE SET $VALUE=?", params))
     return r
   }
 
-  override fun putAll(from: Map<out String, V>) {
+  override fun putAll(from: Map<out K, V>) {
     from.forEach { k, v -> put(k, v) }
   }
 
-  override fun remove(key: String): V? {
+  override fun remove(key: K): V? {
     val r = super.remove(key)
     val params = json {
       array(name, key)
@@ -65,7 +74,7 @@ class PostgreSQLPersistentMap<V>(private val name: String,
     return r
   }
 
-  override suspend fun load(cls: Class<V>): PersistentMap<V> {
+  override suspend fun load(): PersistentMap<K, V> {
     super.clear()
     log.clear()
 
@@ -75,7 +84,7 @@ class PostgreSQLPersistentMap<V>(private val name: String,
     val statement = "SELECT $KEY, $VALUE FROM $PERSISTENTMAP WHERE $NAME=?"
     val rs = connection.queryWithParamsAwait(statement, params)
     rs.results.map {
-      super.put(it.getString(0), JsonUtils.mapper.readValue(it.getString(1), cls))
+      super.put(keyDeserialize(it.getString(0)), deserialize(it.getString(1)))
     }
 
     return this

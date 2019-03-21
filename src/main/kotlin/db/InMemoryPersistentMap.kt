@@ -1,16 +1,26 @@
 package db
 
-import helper.JsonUtils
 import io.vertx.core.Vertx
 import io.vertx.core.shareddata.LocalMap
 
 /**
  * A mutable map that is able to persist its contents to a Vert.x local map.
  * @param name the map's name
+ * @param keySerialize a function that serializes keys
+ * @param keyDeserialize a function that deserializes keys
+ * @param valueSerialize a function that serializes values
+ * @param valueDeserialize a function that deserializes values
  * @param vertx the Vert.x instance
  * @author Michel Kraemer
  */
-class InMemoryPersistentMap<V>(name: String, vertx: Vertx) : PersistentMap<V>() {
+class InMemoryPersistentMap<K, V>(
+    name: String,
+    private val keySerialize: (K) -> String,
+    private val keyDeserialize: (String) -> K,
+    private val valueSerialize: (V) -> String,
+    private val valueDeserialize: (String) -> V,
+    vertx: Vertx
+) : PersistentMapAdapter<K, V>() {
   companion object {
     /**
      * A prefix used to name the local map
@@ -24,11 +34,11 @@ class InMemoryPersistentMap<V>(name: String, vertx: Vertx) : PersistentMap<V>() 
   private val localMap: LocalMap<String, String> = vertx.sharedData().getLocalMap(
       PERSISTENTMAP_PREFIX + name)
 
-  override suspend fun load(cls: Class<V>): PersistentMap<V> {
+  override suspend fun load(): PersistentMap<K, V> {
     // transfer everything from the local map to this
     clear()
     for ((k, v) in localMap) {
-      put(k, JsonUtils.mapper.readValue(v, cls))
+      put(keyDeserialize(k), valueDeserialize(v))
     }
     return this
   }
@@ -37,7 +47,7 @@ class InMemoryPersistentMap<V>(name: String, vertx: Vertx) : PersistentMap<V>() 
     // transfer everything from this to the local map
     localMap.clear()
     for ((k, v) in this) {
-      localMap[k] = JsonUtils.mapper.writeValueAsString(v)
+      localMap[keySerialize(k)] = valueSerialize(v)
     }
   }
 }

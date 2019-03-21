@@ -1,6 +1,5 @@
 package db
 
-import helper.JsonUtils
 import io.vertx.core.Vertx
 import io.vertx.ext.sql.SQLClient
 import io.vertx.ext.sql.SQLConnection
@@ -74,9 +73,12 @@ class PostgreSQLPersistentMapTest : PersistentMapTest() {
     return connection!!
   }
 
-  override suspend fun <V> createMap(name: String, cls: Class<V>): PersistentMap<V> {
+  override suspend fun <K, V> createMap(name: String, keySerialize: (K) -> String,
+      keyDeserialize: (String) -> K, valueSerialize: (V) -> String,
+      valueDeserialize: (String) -> V): PersistentMap<K, V> {
     val connection = getConnection()
-    return PostgreSQLPersistentMap<V>(name, connection).load(cls)
+    return PostgreSQLPersistentMap<K, V>(name, connection,
+        keySerialize, keyDeserialize, valueSerialize, valueDeserialize).load()
   }
 
   override suspend fun prepareLoadString(vertx: Vertx): Map<String, String> {
@@ -84,10 +86,10 @@ class PostgreSQLPersistentMapTest : PersistentMapTest() {
     val statement = "INSERT INTO persistentmap (name, k, v) VALUES (?, ?, ?)"
     val args = listOf(
         json {
-          array(PERSISTENT_MAP_NAME, "0", JsonUtils.mapper.writeValueAsString("B"))
+          array(PERSISTENT_MAP_NAME, "0", "B")
         },
         json {
-          array(PERSISTENT_MAP_NAME, "1", JsonUtils.mapper.writeValueAsString("C"))
+          array(PERSISTENT_MAP_NAME, "1", "C")
         }
     )
     val connection = client.getConnectionAwait()
@@ -99,17 +101,18 @@ class PostgreSQLPersistentMapTest : PersistentMapTest() {
     }
   }
 
-  override suspend fun prepareLoadVariable(vertx: Vertx): Map<String, Variable> {
+  override suspend fun prepareLoadVariable(vertx: Vertx,
+      valueSerialize: (Variable) -> String): Map<String, Variable> {
     val v1 = Variable(value = "A")
     val v2 = Variable(value = "B")
     val client = PostgreSQLTestUtils.createJDBCClient(vertx)
     val statement = "INSERT INTO persistentmap (name, k, v) VALUES (?, ?, ?)"
     val args = listOf(
         json {
-          array(PERSISTENT_MAP_NAME, "0", JsonUtils.mapper.writeValueAsString(v1))
+          array(PERSISTENT_MAP_NAME, "0", valueSerialize(v1))
         },
         json {
-          array(PERSISTENT_MAP_NAME, "1", JsonUtils.mapper.writeValueAsString(v2))
+          array(PERSISTENT_MAP_NAME, "1", valueSerialize(v2))
         }
     )
     val connection = client.getConnectionAwait()
@@ -132,7 +135,7 @@ class PostgreSQLPersistentMapTest : PersistentMapTest() {
   }
 
   override suspend fun <V> verifyPersist(vertx: Vertx, expectedMap: Map<String, V>,
-      expectedSize: Int) {
+      expectedSize: Int, valueSerialize: (V) -> String) {
     val client = PostgreSQLTestUtils.createJDBCClient(vertx)
     val params = json {
       array(PERSISTENT_MAP_NAME)
@@ -145,7 +148,7 @@ class PostgreSQLPersistentMapTest : PersistentMapTest() {
     }
     assertThat(lm).hasSize(expectedSize)
     for ((k, v) in expectedMap) {
-      assertThat(lm).contains(entry(k, JsonUtils.mapper.writeValueAsString(v)))
+      assertThat(lm).contains(entry(k, valueSerialize(v)))
     }
   }
 }

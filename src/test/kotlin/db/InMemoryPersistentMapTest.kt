@@ -1,7 +1,6 @@
 package db
 
 import db.InMemoryPersistentMap.Companion.PERSISTENTMAP_PREFIX
-import helper.JsonUtils
 import io.vertx.core.Vertx
 import model.workflow.Variable
 import org.assertj.core.api.Assertions.assertThat
@@ -34,25 +33,29 @@ class InMemoryPersistentMapTest : PersistentMapTest() {
     lm.clear()
   }
 
-  override suspend fun <V> createMap(name: String, cls: Class<V>): PersistentMap<V> {
-    return InMemoryPersistentMap<V>(name, vertx).load(cls)
+  override suspend fun <K, V> createMap(name: String, keySerialize: (K) -> String,
+      keyDeserialize: (String) -> K, valueSerialize: (V) -> String,
+      valueDeserialize: (String) -> V): PersistentMap<K, V> {
+    return InMemoryPersistentMap(name, keySerialize, keyDeserialize,
+        valueSerialize, valueDeserialize, vertx).load()
   }
 
   override suspend fun prepareLoadString(vertx: Vertx): Map<String, String> {
     val lm = vertx.sharedData().getLocalMap<String, String>(
         PERSISTENTMAP_PREFIX + PERSISTENT_MAP_NAME)
-    lm["0"] = JsonUtils.mapper.writeValueAsString("B")
-    lm["1"] = JsonUtils.mapper.writeValueAsString("C")
+    lm["0"] = "B"
+    lm["1"] = "C"
     return mapOf("0" to "B", "1" to "C")
   }
 
-  override suspend fun prepareLoadVariable(vertx: Vertx): Map<String, Variable> {
+  override suspend fun prepareLoadVariable(vertx: Vertx,
+      valueSerialize: (Variable) -> String): Map<String, Variable> {
     val v1 = Variable(value = "A")
     val v2 = Variable(value = "B")
     val lm = vertx.sharedData().getLocalMap<String, String>(
         PERSISTENTMAP_PREFIX + PERSISTENT_MAP_NAME)
-    lm["0"] = JsonUtils.mapper.writeValueAsString(v1)
-    lm["1"] = JsonUtils.mapper.writeValueAsString(v2)
+    lm["0"] = valueSerialize(v1)
+    lm["1"] = valueSerialize(v2)
     return mapOf("0" to v1, "1" to v2)
   }
 
@@ -63,12 +66,12 @@ class InMemoryPersistentMapTest : PersistentMapTest() {
   }
 
   override suspend fun <V> verifyPersist(vertx: Vertx, expectedMap: Map<String, V>,
-      expectedSize: Int) {
+      expectedSize: Int, valueSerialize: (V) -> String) {
     val lm = vertx.sharedData().getLocalMap<String, String>(
         PERSISTENTMAP_PREFIX + PERSISTENT_MAP_NAME)
     assertThat(lm).hasSize(expectedSize)
     for ((k, v) in expectedMap) {
-      assertThat(lm).contains(entry(k, JsonUtils.mapper.writeValueAsString(v)))
+      assertThat(lm).contains(entry(k, valueSerialize(v)))
     }
   }
 }
