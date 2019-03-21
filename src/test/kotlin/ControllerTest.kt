@@ -50,6 +50,7 @@ class ControllerTest {
     submissionRegistry = mockk()
     mockkObject(SubmissionRegistryFactory)
     every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
+    coEvery { submissionRegistry.findSubmissionIdsByStatus(Status.RUNNING) } returns emptyList()
 
     // deploy verticle under test
     val config = json {
@@ -89,6 +90,7 @@ class ControllerTest {
     // mock submission registry
     coEvery { submissionRegistry.setSubmissionStatus(submission.id, Status.RUNNING) } just Runs
     coEvery { submissionRegistry.setSubmissionStatus(submission.id, Status.SUCCESS) } just Runs
+    coEvery { submissionRegistry.getSubmissionStatus(submission.id) } returns Status.RUNNING
     coEvery { submissionRegistry.setSubmissionStartTime(submission.id, any()) } just Runs
     coEvery { submissionRegistry.setSubmissionEndTime(submission.id, any()) } just Runs
 
