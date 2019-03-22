@@ -5,10 +5,12 @@ import db.SubmissionRegistry.ProcessChainStatus
 import helper.JsonUtils
 import io.vertx.core.Future
 import io.vertx.core.Vertx
+import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.AsyncMap
 import io.vertx.kotlin.core.shareddata.getAwait
 import io.vertx.kotlin.core.shareddata.getLockAwait
 import io.vertx.kotlin.core.shareddata.putAwait
+import io.vertx.kotlin.core.shareddata.removeAwait
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitResult
 import model.Submission
@@ -33,6 +35,11 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     private const val ASYNC_MAP_PROCESS_CHAINS = "InMemorySubmissionRegistry.ProcessChains"
 
     /**
+     * Name of a cluster-wide map keeping execution states
+     */
+    private const val ASYNC_MAP_EXECUTION_STATE = "InMemorySubmissionRegistry.ExecutionStates"
+
+    /**
      * Name of a cluster-wide lock used to make atomic operations on the
      * cluster-wide map of submissions
      */
@@ -54,14 +61,17 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   )
 
   private val submissions: Future<AsyncMap<String, String>>
-  private val processChains:  Future<AsyncMap<String, String>>
+  private val processChains: Future<AsyncMap<String, String>>
+  private val executionStates: Future<AsyncMap<String, String>>
 
   init {
     val sharedData = vertx.sharedData()
     submissions = Future.future()
     processChains = Future.future()
+    executionStates = Future.future()
     sharedData.getAsyncMap(ASYNC_MAP_SUBMISSIONS, submissions)
     sharedData.getAsyncMap(ASYNC_MAP_PROCESS_CHAINS, processChains)
+    sharedData.getAsyncMap(ASYNC_MAP_EXECUTION_STATE, executionStates)
   }
 
   override suspend fun addSubmission(submission: Submission) {
@@ -139,6 +149,22 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     val s = findSubmissionById(submissionId) ?: throw NoSuchElementException(
         "There is no submission with ID `$submissionId'")
     return s.status
+  }
+
+  override suspend fun setSubmissionExecutionState(submissionId: String,
+      state: JsonObject?) {
+    submissions.await().getAwait(submissionId) ?: return
+    if (state == null) {
+      executionStates.await().removeAwait(submissionId)
+    } else {
+      executionStates.await().putAwait(submissionId, state.encode())
+    }
+  }
+
+  override suspend fun getSubmissionExecutionState(submissionId: String): JsonObject? {
+    submissions.await().getAwait(submissionId) ?: throw NoSuchElementException(
+        "There is no submission with ID `$submissionId'")
+    return executionStates.await().getAwait(submissionId)?.let { JsonObject(it) }
   }
 
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,

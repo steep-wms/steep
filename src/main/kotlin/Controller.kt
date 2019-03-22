@@ -108,7 +108,7 @@ class Controller : CoroutineVerticle() {
   }
 
   /**
-   * Check for orphaned running submissions and retry their execution
+   * Check for orphaned running submissions and resume their execution
    */
   private suspend fun lookupOrphans() {
     val ids = submissionRegistry.findSubmissionIdsByStatus(Submission.Status.RUNNING)
@@ -118,6 +118,7 @@ class Controller : CoroutineVerticle() {
         lock.release()
         val s = submissionRegistry.findSubmissionById(id)
         if (s != null) {
+          log.info("Found orphaned running submission `$id'. Trying to resume ...")
           launch {
             runSubmission(s)
           }
@@ -168,20 +169,68 @@ class Controller : CoroutineVerticle() {
           FilenameUtils.normalize("$tmpPath/${submission.id}"),
           metadataRegistry.findServices())
 
-      submissionRegistry.setSubmissionStartTime(submission.id, Instant.now())
+      // check if submission needs to be resumed
+      var processChainsToResume: Collection<ProcessChain>? = null
+      val executionState = submissionRegistry.getSubmissionExecutionState(submission.id)
+      if (executionState == null) {
+        // submission has not been started before - start it now
+        submissionRegistry.setSubmissionStartTime(submission.id, Instant.now())
+      } else {
+        log.info("Resuming submission `${submission.id}' ...")
 
+        // resume aborted submissions...
+        // load rule system state
+        ruleSystem.loadState(executionState)
+
+        // reset running process chains and repeat failed process chains
+        val runningProcessChains = submissionRegistry.countProcessChainsByStatus(submission.id,
+            ProcessChainStatus.RUNNING)
+        val failedProcessChains = submissionRegistry.countProcessChainsByStatus(submission.id,
+            ProcessChainStatus.ERROR)
+        if (runningProcessChains > 0 || failedProcessChains > 0) {
+          val pcstatuses = submissionRegistry.findProcessChainStatusesBySubmissionId(submission.id)
+          for ((pcId, pcstatus) in pcstatuses) {
+            if (pcstatus === ProcessChainStatus.RUNNING || pcstatus === ProcessChainStatus.ERROR) {
+              submissionRegistry.setProcessChainStatus(pcId, ProcessChainStatus.REGISTERED)
+            }
+            if (pcstatus === ProcessChainStatus.ERROR) {
+              submissionRegistry.setProcessChainErrorMessage(pcId, null)
+            }
+          }
+        }
+
+        // Re-load all process chains. waitForProcessChains() will only
+        // re-execute those that need to be executed but will collect the output
+        // of all process chains so it can be passed to the rule system.
+        processChainsToResume = submissionRegistry.findProcessChainsBySubmissionId(submission.id)
+      }
+
+      // main loop
       var totalProcessChains = 0
       var errors = 0
       var results = mapOf<String, List<String>>()
       while (true) {
         // generate process chains
-        val processChains = ruleSystem.fire(results)
-        if (processChains.isEmpty()) {
-          break
-        }
+        val processChains = if (processChainsToResume != null) {
+          val pcs = processChainsToResume
+          processChainsToResume = null
+          pcs
+        } else {
+          val pcs = ruleSystem.fire(results)
+          if (pcs.isEmpty()) {
+            break
+          }
 
-        // store process chains in submission registry
-        submissionRegistry.addProcessChains(processChains, submission.id)
+          // store process chains in submission registry
+          submissionRegistry.addProcessChains(pcs, submission.id)
+
+          // store the rule system's state so we are able to resume the
+          // submission later if necessary
+          submissionRegistry.setSubmissionExecutionState(submission.id,
+              ruleSystem.persistState())
+
+          pcs
+        }
 
         // notify scheduler
         vertx.eventBus().send(AddressConstants.SCHEDULER_LOOKUP_NOW, null)
@@ -193,6 +242,7 @@ class Controller : CoroutineVerticle() {
         errors += w.second
       }
 
+      // evaluate results
       val status = if (ruleSystem.isFinished()) {
         when (errors) {
           0 -> Submission.Status.SUCCESS
@@ -217,6 +267,10 @@ class Controller : CoroutineVerticle() {
       log.error("Could not execute submission", t)
       submissionRegistry.setSubmissionStatus(submission.id, Submission.Status.ERROR)
     } finally {
+      // the submission was either successful or it failed - remove the current
+      // execution state so it won't be repeated/resumed
+      submissionRegistry.setSubmissionExecutionState(submission.id, null)
+
       lock.release()
     }
   }
@@ -227,7 +281,7 @@ class Controller : CoroutineVerticle() {
    * @return a pair containing the accumulated process chain results and the
    * number of failed process chains
    */
-  private suspend fun waitForProcessChains(processChains: List<ProcessChain>):
+  private suspend fun waitForProcessChains(processChains: Collection<ProcessChain>):
       Pair<Map<String, List<String>>, Int> {
     val results = mutableMapOf<String, List<String>>()
     var errors = 0

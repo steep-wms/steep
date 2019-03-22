@@ -1,5 +1,6 @@
 package db
 
+import io.vertx.core.json.JsonObject
 import model.Submission
 import model.processchain.ProcessChain
 import java.time.Instant
@@ -99,6 +100,22 @@ interface SubmissionRegistry {
    * @throws NoSuchElementException if the submission does not exist
    */
   suspend fun getSubmissionStatus(submissionId: String): Submission.Status
+
+  /**
+   * Set a submission's execution state
+   * @param submissionId the submission ID
+   * @param state the state to set or `null` if the state should be removed
+   */
+  suspend fun setSubmissionExecutionState(submissionId: String, state: JsonObject?)
+
+  /**
+   * Get a submission's execution state
+   * @param submissionId the submission ID
+   * @return the state or `null` if the submission does not have an
+   * execution state
+   * @throws NoSuchElementException if the submission does not exist
+   */
+  suspend fun getSubmissionExecutionState(submissionId: String): JsonObject?
 
   /**
    * Add multiple process chains to a submission

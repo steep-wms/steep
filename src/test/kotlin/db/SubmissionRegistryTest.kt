@@ -5,6 +5,9 @@ import coVerify
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
+import io.vertx.kotlin.core.json.array
+import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -203,6 +206,33 @@ abstract class SubmissionRegistryTest {
       val status4 = submissionRegistry.getSubmissionStatus(s1.id)
       ctx.verify {
         assertThat(status4).isEqualTo(Submission.Status.ACCEPTED)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun setSubmissionExecutionState(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s)
+
+      ctx.coVerify {
+        assertThat(submissionRegistry.getSubmissionExecutionState(s.id)).isNull()
+
+        val state = json {
+          obj(
+              "actions" to array()
+          )
+        }
+
+        submissionRegistry.setSubmissionExecutionState(s.id, state)
+        assertThat(submissionRegistry.getSubmissionExecutionState(s.id)).isEqualTo(state)
+
+        submissionRegistry.setSubmissionExecutionState(s.id, null)
+        assertThat(submissionRegistry.getSubmissionExecutionState(s.id)).isNull()
       }
 
       ctx.completeNow()

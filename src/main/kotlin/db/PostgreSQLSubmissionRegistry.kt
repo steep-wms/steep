@@ -49,6 +49,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     private const val STATUS = "status"
     private const val RESULTS = "results"
     private const val ERROR_MESSAGE = "errorMessage"
+    private const val EXECUTION_STATE = "executionState"
 
     /**
      * Identifier of a PostgreSQL advisory lock used to make atomic operations
@@ -277,6 +278,33 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       val rs = connection.querySingleWithParamsAwait(statement, params) ?: throw NoSuchElementException(
           "There is no submission with ID `$submissionId'")
       Submission.Status.valueOf(JsonUtils.mapper.readValue(rs.getString(0)))
+    }
+  }
+
+  override suspend fun setSubmissionExecutionState(submissionId: String, state: JsonObject?) {
+    withConnection { connection ->
+      val updateStatement = "UPDATE $SUBMISSIONS SET $EXECUTION_STATE=? WHERE $ID=?"
+      val updateParams = json {
+        array(
+            state?.encode(),
+            submissionId
+        )
+      }
+      connection.updateWithParamsAwait(updateStatement, updateParams)
+    }
+  }
+
+  override suspend fun getSubmissionExecutionState(submissionId: String): JsonObject? {
+    return withConnection { connection ->
+      val statement = "SELECT $EXECUTION_STATE FROM $SUBMISSIONS WHERE $ID=?"
+      val params = json {
+        array(
+            submissionId
+        )
+      }
+      val rs = connection.querySingleWithParamsAwait(statement, params) ?: throw NoSuchElementException(
+          "There is no submission with ID `$submissionId'")
+      rs.getString(0)?.let { JsonObject(it) }
     }
   }
 
