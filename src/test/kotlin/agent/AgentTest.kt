@@ -16,8 +16,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.entry
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.junit.jupiter.api.support.io.TempDirectory
-import org.junit.jupiter.api.support.io.TempDirectory.TempDir
+import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.nio.file.Path
 
@@ -36,7 +35,6 @@ abstract class AgentTest {
    * @param ctx the test context
    */
   @Test
-  @ExtendWith(TempDirectory::class)
   open fun execute(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
     val tempDir1 = File(tempDir.toRealPath().toFile(), "src")
     val tempDir2 = File(tempDir.toRealPath().toFile(), "dst")

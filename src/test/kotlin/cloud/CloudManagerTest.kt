@@ -38,8 +38,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.junit.jupiter.api.support.io.TempDirectory
-import org.junit.jupiter.api.support.io.TempDirectory.TempDir
+import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.nio.file.Path
 
@@ -47,7 +46,7 @@ import java.nio.file.Path
  * Tests for [CloudManager]
  * @author Michel Kraemer
  */
-@ExtendWith(VertxExtension::class, TempDirectory::class)
+@ExtendWith(VertxExtension::class)
 class CloudManagerTest {
   companion object {
     private const val MY_OLD_VM = "MY_OLD_VM"

@@ -3,9 +3,7 @@ package helper
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.extension.ExtendWith
-import org.junit.jupiter.api.support.io.TempDirectory
-import org.junit.jupiter.api.support.io.TempDirectory.TempDir
+import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.nio.file.Path
 
@@ -23,10 +21,9 @@ class ShellTest {
   }
 
   /**
-   * Test that the [Shell.execute] method acutally executes something
+   * Test that the [Shell.execute] method actually executes something
    */
   @Test
-  @ExtendWith(TempDirectory::class)
   fun cp(@TempDir tempDir: Path) {
     val tempDir1 = File(tempDir.toFile(), "src")
     val tempDir2 = File(tempDir.toFile(), "dst")
