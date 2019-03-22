@@ -2,6 +2,7 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import helper.IDGenerator
 import helper.JsonUtils
 import helper.UniqueID
+import io.vertx.core.json.JsonObject
 import model.metadata.RuntimeArgument
 import model.metadata.Service
 import model.processchain.Argument
@@ -36,6 +37,7 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
     private val log = LoggerFactory.getLogger(RuleSystem::class.java)
   }
 
+  private val vars = workflow.vars.toMutableList()
   private val actions = workflow.actions.toMutableSet()
   private val variableValues = mutableMapOf<String, Any>()
   private val forEachOutputsToBeCollected = mutableMapOf<String, List<Variable>>()
@@ -381,4 +383,39 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
             type = Argument.Type.ARGUMENT,
             dataType = it.dataType)
       }
+
+  /**
+   * A helper class that is used to persist the rule system's state in [persistState]
+   */
+  private data class State(
+      val vars: List<Variable>,
+      val actions: List<Action>,
+      val variableValues: Map<String, Any>,
+      val forEachOutputsToBeCollected: Map<String, List<Variable>>
+  )
+
+  /**
+   * Persist the rule system's internal state to a JSON object
+   */
+  fun persistState(): JsonObject {
+    val s = State(vars, actions.toList(), variableValues, forEachOutputsToBeCollected)
+    return JsonUtils.toJson(s)
+  }
+
+  /**
+   * Load the rule system's internal state from a JSON object (current state
+   * will be overwritten)
+   */
+  fun loadState(state: JsonObject) {
+    vars.clear()
+    actions.clear()
+    variableValues.clear()
+    forEachOutputsToBeCollected.clear()
+
+    val s: State = JsonUtils.fromJson(state)
+    vars.addAll(s.vars)
+    actions.addAll(s.actions)
+    variableValues.putAll(s.variableValues)
+    forEachOutputsToBeCollected.putAll(s.forEachOutputsToBeCollected)
+  }
 }

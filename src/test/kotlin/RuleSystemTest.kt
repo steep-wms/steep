@@ -2,11 +2,13 @@ import TestMetadata.services
 import com.fasterxml.jackson.module.kotlin.readValue
 import helper.ConsecutiveID
 import helper.JsonUtils
+import io.vertx.core.json.JsonObject
 import model.processchain.ProcessChain
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 /**
  * Tests for [RuleSystem]
@@ -28,18 +30,39 @@ class RuleSystemTest {
     return JsonUtils.mapper.readValue(fixture)
   }
 
-  private fun doTest(workflowName: String, resultsName: String = workflowName) {
+  private fun doTest(workflowName: String, resultsName: String = workflowName,
+      persistState: Boolean = false) {
     val workflow = readWorkflow(workflowName)
     val expectedChains = readProcessChains(resultsName)
 
-    val ruleSystem = RuleSystem(workflow, "/tmp/", services, ConsecutiveID())
+    var json = JsonObject()
+    val idgen = ConsecutiveID()
+    var ruleSystem = RuleSystem(workflow, "/tmp/", services, idgen)
     assertThat(ruleSystem.isFinished()).isFalse()
+
+    if (persistState) {
+      json = ruleSystem.persistState()
+    }
 
     var results = mapOf<String, List<String>>()
     for (expected in expectedChains) {
+      if (persistState) {
+        ruleSystem = RuleSystem(workflow, "/tmp/", services, idgen)
+        ruleSystem.loadState(json)
+      }
+
       val processChains = ruleSystem.fire(results)
       assertThat(processChains).isEqualTo(expected.chains)
       results = expected.results
+
+      if (persistState) {
+        json = ruleSystem.persistState()
+      }
+    }
+
+    if (persistState) {
+      ruleSystem = RuleSystem(workflow, "/tmp/", services, idgen)
+      ruleSystem.loadState(json)
     }
 
     val processChains = ruleSystem.fire(results)
@@ -50,27 +73,30 @@ class RuleSystemTest {
   /**
    * Test if a simple workflow with a single service can be converted correctly
    */
-  @Test
-  fun singleService() {
-    doTest("singleService")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun singleService(persistState: Boolean) {
+    doTest("singleService", persistState = persistState)
   }
 
   /**
    * Test if a simple workflow with a two independent services is converted
    * to two process chains
    */
-  @Test
-  fun twoIndependentServices() {
-    doTest("twoIndependentServices")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun twoIndependentServices(persistState: Boolean) {
+    doTest("twoIndependentServices", persistState = persistState)
   }
 
   /**
    * Test if a simple workflow with a two dependent services is converted
    * to a single process chain
    */
-  @Test
-  fun twoDependentServices() {
-    doTest("twoDependentServices")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun twoDependentServices(persistState: Boolean) {
+    doTest("twoDependentServices", persistState = persistState)
   }
 
   /**
@@ -78,27 +104,30 @@ class RuleSystemTest {
    * to a single process chain even if the services are in reverse order in
    * the workflow
    */
-  @Test
-  fun twoDependentServicesReverse() {
-    doTest("twoDependentServicesReverse", "twoDependentServices")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun twoDependentServicesReverse(persistState: Boolean) {
+    doTest("twoDependentServicesReverse", "twoDependentServices", persistState)
   }
 
   /**
    * Test if a simple workflow with a three dependent services is converted
    * to a single process chain
    */
-  @Test
-  fun threeDependentServices() {
-    doTest("threeDependentServices")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun threeDependentServices(persistState: Boolean) {
+    doTest("threeDependentServices", persistState = persistState)
   }
 
   /**
-   * Test if a simple workflow with a four services is converted to two
+   * Test if a simple workflow with four services is converted to two
    * process chains
    */
-  @Test
-  fun twoProcessChains() {
-    doTest("twoProcessChains")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun twoProcessChains(persistState: Boolean) {
+    doTest("twoProcessChains", persistState = persistState)
   }
 
   /**
@@ -106,18 +135,20 @@ class RuleSystemTest {
    * process chains even if the results of the first process chain arrive
    * earlier than those of the second
    */
-  @Test
-  fun twoProcessChainsAsyncResults() {
-    doTest("twoProcessChains", "twoProcessChainsAsyncResults")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun twoProcessChainsAsyncResults(persistState: Boolean) {
+    doTest("twoProcessChains", "twoProcessChainsAsyncResults", persistState)
   }
 
   /**
    * Test if a workflow with a service that joins the results of two
    * preceding services can be converted
    */
-  @Test
-  fun join() {
-    doTest("join")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun join(persistState: Boolean) {
+    doTest("join", persistState = persistState)
   }
 
   /**
@@ -126,129 +157,144 @@ class RuleSystemTest {
    * even if the results of the first service arrive earlier than those of
    * the second.
    */
-  @Test
-  fun joinAsyncResults() {
-    doTest("join", "joinAsyncResults")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun joinAsyncResults(persistState: Boolean) {
+    doTest("join", "joinAsyncResults", persistState)
   }
 
   /**
    * Test if a simple workflow with a two independent services that read the
    * same file is converted to two process chains
    */
-  @Test
-  fun twoIndependentServicesSameFile() {
-    doTest("twoIndependentServicesSameFile")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun twoIndependentServicesSameFile(persistState: Boolean) {
+    doTest("twoIndependentServicesSameFile", persistState = persistState)
   }
 
   /**
    * Test a workflow with two services that depend on the results of one
    * preceding service
    */
-  @Test
-  fun fork() {
-    doTest("fork")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun fork(persistState: Boolean) {
+    doTest("fork", persistState = persistState)
   }
 
   /**
    * Test a workflow with a service that produces two outputs and another one
    * depending on both these outputs
    */
-  @Test
-  fun twoOutputs() {
-    doTest("twoOutputs")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun twoOutputs(persistState: Boolean) {
+    doTest("twoOutputs", persistState = persistState)
   }
 
   /**
    * Test a workflow with a service that produces two outputs and two subsequent
    * services each of them depending on one of these outputs
    */
-  @Test
-  fun twoOutputsTwoServices() {
-    doTest("twoOutputsTwoServices")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun twoOutputsTwoServices(persistState: Boolean) {
+    doTest("twoOutputsTwoServices", persistState = persistState)
   }
 
   /**
    * Test a workflow with a [fork] and a [join]
    */
-  @Test
-  fun diamond() {
-    doTest("diamond")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun diamond(persistState: Boolean) {
+    doTest("diamond", persistState = persistState)
   }
 
   /**
    * Test a small graph
    */
-  @Test
-  fun smallGraph() {
-    doTest("smallGraph")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun smallGraph(persistState: Boolean) {
+    doTest("smallGraph", persistState = persistState)
   }
 
   /**
    * Test if a missing parameter with a default value is correctly added as an
    * argument
    */
-  @Test
-  fun missingDefaultParameter() {
-    doTest("missingDefaultParameter")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun missingDefaultParameter(persistState: Boolean) {
+    doTest("missingDefaultParameter", persistState = persistState)
   }
 
   /**
    * Test if a service requiring Docker is converted correctly
    */
-  @Test
-  fun serviceWithDocker() {
-    doTest("serviceWithDocker")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun serviceWithDocker(persistState: Boolean) {
+    doTest("serviceWithDocker", persistState = persistState)
   }
 
   /**
    * Test if a service requiring runtime arguments is converted correctly
    */
-  @Test
-  fun serviceWithRuntimeArgs() {
-    doTest("serviceWithRuntimeArgs")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun serviceWithRuntimeArgs(persistState: Boolean) {
+    doTest("serviceWithRuntimeArgs", persistState = persistState)
   }
 
   /**
    * Test if a for-each action can be unrolled correctly
    */
-  @Test
-  fun forEach() {
-    doTest("forEach")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun forEach(persistState: Boolean) {
+    doTest("forEach", persistState = persistState)
   }
 
   /**
    * Test if a for-each action with a pre-defined list of inputs can be unrolled
    * correctly
    */
-  @Test
-  fun forEachPredefinedList() {
-    doTest("forEachPredefinedList")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun forEachPredefinedList(persistState: Boolean) {
+    doTest("forEachPredefinedList", persistState = persistState)
   }
 
   /**
    * Test if a for-each action with a pre-defined list of inputs and two
    * sub-actions can be unrolled correctly
    */
-  @Test
-  fun forEachPredefinedListTwoServices() {
-    doTest("forEachPredefinedListTwoServices")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun forEachPredefinedListTwoServices(persistState: Boolean) {
+    doTest("forEachPredefinedListTwoServices", persistState = persistState)
   }
 
   /**
    * Test if nested for-each actions can be unrolled correctly
    */
-  @Test
-  fun forEachNested() {
-    doTest("forEachNested")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun forEachNested(persistState: Boolean) {
+    doTest("forEachNested", persistState = persistState)
   }
 
   /**
    * Test if nested for-each actions that iterate over pre-defined lists can be
    * unrolled correctly (and in one step)
    */
-  @Test
-  fun forEachNestedPredefinedList() {
-    doTest("forEachNestedPredefinedList")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun forEachNestedPredefinedList(persistState: Boolean) {
+    doTest("forEachNestedPredefinedList", persistState = persistState)
   }
 
   /**
@@ -256,9 +302,10 @@ class RuleSystemTest {
    * unrolled correctly if the inner for-each action contains an action that
    * depends on the results of an action from the outer for-each action
    */
-  @Test
-  fun forEachNestedPredefinedDependent() {
-    doTest("forEachNestedPredefinedDependent")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun forEachNestedPredefinedDependent(persistState: Boolean) {
+    doTest("forEachNestedPredefinedDependent", persistState = persistState)
   }
 
   /**
@@ -267,35 +314,39 @@ class RuleSystemTest {
    * from the outer for-each action can be unrolled (in other words: test
    * if a complex situation with nested for-each actions can be handled)
    */
-  @Test
-  fun forEachNestedComplex() {
-    doTest("forEachNestedComplex")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun forEachNestedComplex(persistState: Boolean) {
+    doTest("forEachNestedComplex", persistState = persistState)
   }
 
   /**
    * Test for-each action with yield
    */
-  @Test
-  fun forEachYield() {
-    doTest("forEachYield")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun forEachYield(persistState: Boolean) {
+    doTest("forEachYield", persistState = persistState)
   }
 
   /**
    * Test for-each action with yield and subsequent join
    */
-  @Test
-  fun forEachYieldJoin() {
-    doTest("forEachYieldJoin")
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun forEachYieldJoin(persistState: Boolean) {
+    doTest("forEachYieldJoin", persistState = persistState)
   }
 
   /**
    * Test if a for-each action with a subsequent cp fails due to a
    * cardinality error
    */
-  @Test
-  fun forEachYieldCardinalityError() {
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun forEachYieldCardinalityError(persistState: Boolean) {
     assertThatThrownBy {
-      doTest("forEachYieldCardinalityError")
+      doTest("forEachYieldCardinalityError", persistState = persistState)
     }.isInstanceOf(IllegalStateException::class.java)
         .hasMessageContaining("cardinality")
   }
@@ -304,10 +355,11 @@ class RuleSystemTest {
    * Test if a nested for-each action with a subsequent join fails due to a
    * cast error
    */
-  @Test
-  fun forEachYieldForEachCastError() {
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun forEachYieldForEachCastError(persistState: Boolean) {
     assertThatThrownBy {
-      doTest("forEachYieldForEachCastError")
+      doTest("forEachYieldForEachCastError", persistState = persistState)
     }.isInstanceOf(IllegalStateException::class.java)
         .hasMessageContaining("cast")
   }
