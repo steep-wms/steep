@@ -91,6 +91,8 @@ class ControllerTest {
     coEvery { submissionRegistry.setSubmissionStatus(submission.id, Status.RUNNING) } just Runs
     coEvery { submissionRegistry.setSubmissionStatus(submission.id, Status.SUCCESS) } just Runs
     coEvery { submissionRegistry.getSubmissionStatus(submission.id) } returns Status.RUNNING
+    coEvery { submissionRegistry.setSubmissionExecutionState(submission.id, any()) } just Runs
+    coEvery { submissionRegistry.getSubmissionExecutionState(submission.id) } returns null
     coEvery { submissionRegistry.setSubmissionStartTime(submission.id, any()) } just Runs
     coEvery { submissionRegistry.setSubmissionEndTime(submission.id, any()) } just Runs
 
