@@ -1,4 +1,5 @@
 import AddressConstants.CONTROLLER_LOOKUP_NOW
+import AddressConstants.CONTROLLER_LOOKUP_ORPHANS_NOW
 import ConfigConstants.CONTROLLER_LOOKUP_INTERVAL
 import ConfigConstants.CONTROLLER_LOOKUP_ORPHANS_INTERVAL
 import ConfigConstants.TMP_PATH
@@ -80,6 +81,12 @@ class Controller : CoroutineVerticle() {
     vertx.eventBus().consumer<Unit>(CONTROLLER_LOOKUP_NOW) {
       launch {
         lookup()
+      }
+    }
+
+    vertx.eventBus().consumer<Unit>(CONTROLLER_LOOKUP_ORPHANS_NOW) {
+      launch {
+        lookupOrphans()
       }
     }
   }

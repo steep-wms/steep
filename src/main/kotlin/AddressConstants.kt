@@ -9,6 +9,11 @@ object AddressConstants {
   const val CONTROLLER_LOOKUP_NOW = "jobmanager.controller.lookupNow"
 
   /**
+   * Make the controller look up for orphaned running submissions now
+   */
+  const val CONTROLLER_LOOKUP_ORPHANS_NOW = "jobmanager.controller.lookupOrphansNow"
+
+  /**
    * Make the scheduler look up for new process chains now
    */
   const val SCHEDULER_LOOKUP_NOW = "jobmanager.scheduler.lookupNow"
