@@ -26,9 +26,6 @@ val hazelcastVersion by extra("3.11.1")
 
 repositories {
     jcenter()
-
-    // necessary for openstack4j 3.1.1-SNAPSHOT
-    maven("https://oss.sonatype.org/content/repositories/snapshots")
 }
 
 val assets by configurations.creating
@@ -61,7 +58,7 @@ dependencies {
     implementation("io.pebbletemplates:pebble:3.0.7")
     implementation("org.apache.commons:commons-lang3:3.8.1")
     implementation("org.flywaydb:flyway-core:5.2.4")
-    implementation("org.pacesys:openstack4j:3.1.1-SNAPSHOT")
+    implementation("org.pacesys:openstack4j:3.2.0")
     implementation("org.postgresql:postgresql:42.2.5")
     implementation("org.yaml:snakeyaml:1.23")
 
