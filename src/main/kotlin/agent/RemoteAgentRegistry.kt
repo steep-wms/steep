@@ -118,6 +118,14 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_ADDED, address)
   }
 
+  /**
+   * Get a list of registered agents
+   */
+  suspend fun getAgentIds(): Set<String> {
+    val agents = this.agents.await()
+    return awaitResult { agents.keys(it) }
+  }
+
   override suspend fun allocate(processChain: ProcessChain): Agent? {
     val requiredCapabilities = JsonArray()
     processChain.requiredCapabilities.forEach { requiredCapabilities.add(it) }

@@ -22,8 +22,10 @@ import io.vertx.ext.web.handler.ResponseContentTypeHandler
 import io.vertx.ext.web.handler.StaticHandler
 import io.vertx.ext.web.handler.sockjs.BridgeOptions
 import io.vertx.ext.web.handler.sockjs.SockJSHandler
+import io.vertx.kotlin.core.eventbus.sendAwait
 import io.vertx.kotlin.core.http.listenAwait
 import io.vertx.kotlin.core.json.JsonArray
+import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
@@ -47,6 +49,7 @@ class JobManager : CoroutineVerticle() {
     private val log = LoggerFactory.getLogger(JobManager::class.java)
   }
 
+  private lateinit var remoteAgentRegistry: RemoteAgentRegistry
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var version: Version
 
@@ -62,6 +65,7 @@ class JobManager : CoroutineVerticle() {
   private var lastExecuteTime = Instant.now()
 
   override suspend fun start() {
+    remoteAgentRegistry = RemoteAgentRegistry(vertx)
     submissionRegistry = SubmissionRegistryFactory.create(vertx)
     version = JsonUtils.mapper.readValue(javaClass.getResource("/version.json"))
     busyTimeout = Duration.ofSeconds(config.getLong(
@@ -77,10 +81,9 @@ class JobManager : CoroutineVerticle() {
       vertx.eventBus().consumer<JsonObject>(address, this::onAgentMessage)
 
       // register remote agent
-      val rar = RemoteAgentRegistry(vertx)
       capabilities = config.getJsonArray(ConfigConstants.AGENT_CAPABILTIIES,
           JsonArray()).map { it as String }.toSet()
-      rar.register(Main.agentId)
+      remoteAgentRegistry.register(Main.agentId)
 
       // setup automatic shutdown
       if (autoShutdownTimeout.toMinutes() > 0) {
@@ -112,6 +115,10 @@ class JobManager : CoroutineVerticle() {
           .produces("application/json")
           .produces("text/html")
           .handler(this::onGet)
+
+      router.get("/agents")
+          .produces("application/json")
+          .handler(this::onGetAgents)
 
       router.get("/workflows")
           .produces("application/json")
@@ -174,6 +181,7 @@ class JobManager : CoroutineVerticle() {
       val jsonObj: JsonObject = msg.body()
       val action = jsonObj.getString("action")
       when (action) {
+        "info" -> onAgentInfo(msg)
         "inquire" -> onAgentInquire(msg)
         "allocate" -> onAgentAllocate(msg)
         "deallocate" -> onAgentDeallocate(msg)
@@ -207,6 +215,20 @@ class JobManager : CoroutineVerticle() {
     } else {
       this.busy = null
     }
+  }
+
+  /**
+   * Return information about this agent
+   */
+  private fun onAgentInfo(msg: Message<JsonObject>) {
+    val reply = json {
+      obj(
+          "id" to Main.agentId,
+          "available" to !isBusy(),
+          "capabilities" to array(*capabilities.toTypedArray())
+      )
+    }
+    msg.reply(reply)
   }
 
   /**
@@ -352,6 +374,34 @@ class JobManager : CoroutineVerticle() {
       ctx.response()
           .putHeader("content-type", "application/json")
           .end(JsonUtils.toJson(version).encodePrettily())
+    }
+  }
+
+  /**
+   * Get a list of all agents
+   * @param ctx the routing context
+   */
+  private fun onGetAgents(ctx: RoutingContext) {
+    launch {
+      val agentIds = remoteAgentRegistry.getAgentIds()
+
+      val msg = json {
+        obj(
+            "action" to "info"
+        )
+      }
+      val agents = agentIds.map { vertx.eventBus().sendAwait<JsonObject>(
+          RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + it, msg) }.map { it.body() }
+
+      val result = json {
+        obj(
+            "agents" to agents
+        )
+      }
+
+      ctx.response()
+          .putHeader("content-type", "application/json")
+          .end(result.encode())
     }
   }
 
