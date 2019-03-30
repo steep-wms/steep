@@ -11,58 +11,60 @@ $% block content %$
 
     <div v-if="workflows.length == 0" class="ui divider"></div>
 
-    <div v-for="w in workflows" class="workflows">
-      <div class="ui divider"></div>
-      <div class="workflow">
-        <div class="workflow-left">
-          <a class="ui header" v-bind:href="'/workflows/' + w.id">{{ w.id }}</a>
-          <p v-if="w.status === 'ACCEPTED'">Workflow has not started yet</p>
-          <p v-if="w.status === 'RUNNING' && w.startTime">
-            Workflow started <span :title="w.startTime | moment('dddd, D MMMM YYYY, h:mm:ss a')">
-              <timeago :datetime="w.startTime" :auto-update="60"></timeago>
-            </span>
-          </p>
-          <p v-if="w.status !== 'ACCEPTED' && w.status !== 'RUNNING' && w.startTime && w.endTime">
-            Workflow finished <span :title="w.endTime | moment('dddd, D MMMM YYYY, h:mm:ss a')">
-              <timeago :datetime="w.endTime" :auto-update="60"></timeago>
-            </span> and took <span :title="workflowDuration(w)">
-              {{ w.endTime | moment('diff', w.startTime) | duration('humanize') }}
-            </span>
-          </p>
-        </div>
-        <div class="workflow-right">
-          <div class="ui steps">
-            <div class="running step" :class="{ active: w.status === 'RUNNING', disabled: w.status === 'ACCEPTED' }">
-              <i class="cog grey icon"></i>
-              <div class="content">
-                <div class="title">Running</div>
-                <div v-if="w.status === 'RUNNING'" class="description">
-                  {{ w.succeededProcessChains + w.failedProcessChains }} of
-                  {{ w.totalProcessChains }} completed
-                  ({{ w.runningProcessChains }} running)
-                </div>
-                <div v-if="w.status !== 'ACCEPTED' && w.status !== 'RUNNING'" class="description">
-                  {{ w.totalProcessChains }} completed
+    <transition-group name="list" tag="div">
+      <div v-for="w in workflows" class="workflows" v-bind:key="w.id">
+        <div class="ui divider"></div>
+        <div class="workflow">
+          <div class="workflow-left">
+            <a class="ui header" v-bind:href="'/workflows/' + w.id">{{ w.id }}</a>
+            <p v-if="w.status === 'ACCEPTED'">Workflow has not started yet</p>
+            <p v-if="w.status === 'RUNNING' && w.startTime">
+              Workflow started <span :title="w.startTime | moment('dddd, D MMMM YYYY, h:mm:ss a')">
+                <timeago :datetime="w.startTime" :auto-update="60"></timeago>
+              </span>
+            </p>
+            <p v-if="w.status !== 'ACCEPTED' && w.status !== 'RUNNING' && w.startTime && w.endTime">
+              Workflow finished <span :title="w.endTime | moment('dddd, D MMMM YYYY, h:mm:ss a')">
+                <timeago :datetime="w.endTime" :auto-update="60"></timeago>
+              </span> and took <span :title="workflowDuration(w)">
+                {{ w.endTime | moment('diff', w.startTime) | duration('humanize') }}
+              </span>
+            </p>
+          </div>
+          <div class="workflow-right">
+            <div class="ui steps">
+              <div class="running step" :class="{ active: w.status === 'RUNNING', disabled: w.status === 'ACCEPTED' }">
+                <i class="cog grey icon"></i>
+                <div class="content">
+                  <div class="title">Running</div>
+                  <div v-if="w.status === 'RUNNING'" class="description">
+                    {{ w.succeededProcessChains + w.failedProcessChains }} of
+                    {{ w.totalProcessChains }} completed
+                    ({{ w.runningProcessChains }} running)
+                  </div>
+                  <div v-if="w.status !== 'ACCEPTED' && w.status !== 'RUNNING'" class="description">
+                    {{ w.totalProcessChains }} completed
+                  </div>
                 </div>
               </div>
-            </div>
-            <div class="step" :class="{ active: w.status !== 'ACCEPTED' && w.status !== 'RUNNING', disabled: w.status === 'ACCEPTED' }">
-              <i v-if="w.status === 'ACCEPTED' || w.status === 'RUNNING'" class="flag checkered icon"></i>
-              <i v-if="w.status === 'ERROR'" class="exclamation circle red icon"></i>
-              <i v-if="w.status === 'PARTIAL_SUCCESS'" class="info circle orange icon"></i>
-              <i v-if="w.status === 'SUCCESS'" class="check circle green icon"></i>
-              <div class="content">
-                <div v-if="w.status === 'ACCEPTED' || w.status === 'RUNNING'" class="title">Finish</div>
-                <div v-if="w.status === 'ERROR'" class="title">Error</div>
-                <div v-if="w.status === 'PARTIAL_SUCCESS'" class="title">Partial success</div>
-                <div v-if="w.status === 'SUCCESS'" class="title">Success</div>
-                <div v-if="w.failedProcessChains" class="description red">{{ w.failedProcessChains }} failed</div>
+              <div class="step" :class="{ active: w.status !== 'ACCEPTED' && w.status !== 'RUNNING', disabled: w.status === 'ACCEPTED' }">
+                <i v-if="w.status === 'ACCEPTED' || w.status === 'RUNNING'" class="flag checkered icon"></i>
+                <i v-if="w.status === 'ERROR'" class="exclamation circle red icon"></i>
+                <i v-if="w.status === 'PARTIAL_SUCCESS'" class="info circle orange icon"></i>
+                <i v-if="w.status === 'SUCCESS'" class="check circle green icon"></i>
+                <div class="content">
+                  <div v-if="w.status === 'ACCEPTED' || w.status === 'RUNNING'" class="title">Finish</div>
+                  <div v-if="w.status === 'ERROR'" class="title">Error</div>
+                  <div v-if="w.status === 'PARTIAL_SUCCESS'" class="title">Partial success</div>
+                  <div v-if="w.status === 'SUCCESS'" class="title">Success</div>
+                  <div v-if="w.failedProcessChains" class="description red">{{ w.failedProcessChains }} failed</div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </transition-group>
     <p v-if="workflows.length === 0">There are no workflows yet.</p>
 
   </div>

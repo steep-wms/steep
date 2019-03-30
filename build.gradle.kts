@@ -144,24 +144,34 @@ tasks {
         }
     }
 
-    val minifyJs by creating(JavaExec::class) {
-        val inputFile = "$projectDir/src/main/resources/js/index.js"
-        val outputFile = "$buildDir/assets/assets/index.js"
-        inputs.files(files(inputFile))
-        outputs.files(files(outputFile))
-        classpath = closureCompiler
-        main = "com.google.javascript.jscomp.CommandLineRunner"
-        args = listOf("--js_output_file=$outputFile", inputFile)
+    val minifyJs by creating
+    val jsFiles = mapOf(
+        "$projectDir/src/main/resources/js/agents.js" to "$buildDir/assets/assets/agents.js",
+        "$projectDir/src/main/resources/js/index.js" to "$buildDir/assets/assets/index.js"
+    )
+    for ((i, s) in jsFiles.keys.withIndex()) {
+        val t = jsFiles[s]
+        val task = register<JavaExec>("minifyJs$i") {
+            inputs.files(files(s))
+            outputs.files(files(t))
+            classpath = closureCompiler
+            main = "com.google.javascript.jscomp.CommandLineRunner"
+            args = listOf("--js_output_file=$t", s)
+        }
+        minifyJs.dependsOn(task)
     }
 
     val less by creating {
-        val inputFile = "$projectDir/src/main/resources/css/index.less"
-        val outputFile = "$buildDir/assets/assets/index.css"
-        inputs.files(files(inputFile))
-        outputs.files(files(outputFile))
+        val cssFiles = mapOf(
+            "$projectDir/src/main/resources/css/index.less" to "$buildDir/assets/assets/index.css"
+        )
+        inputs.files(files(*cssFiles.keys.toTypedArray()))
+        outputs.files(files(*cssFiles.values.toTypedArray()))
         doLast {
-            val r = Less.compile(file(inputFile), true)
-            file(outputFile).writeText(r)
+            for ((s, t) in cssFiles) {
+                val r = Less.compile(file(s), true)
+                file(t).writeText(r)
+            }
         }
     }
 

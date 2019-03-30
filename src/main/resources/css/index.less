@@ -16,7 +16,7 @@
   display: none !important;
 }
 
-.workflow {
+.workflow, .agent {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
@@ -32,9 +32,13 @@
   }
 }
 
-.workflow-left {
+.workflow-left, .agent-left {
   flex: 1;
   padding-bottom: 1rem;
+}
+
+.agent-left .description {
+  margin-top: .5rem;
 }
 
 .description.red {
@@ -49,4 +53,12 @@
 
 .running.active .cog.icon {
   animation: spin 4s linear infinite;
+}
+
+.list-enter-active, .list-leave-active {
+  transition: opacity 500ms;
+}
+
+.list-enter, .list-leave-to {
+  opacity: 0;
 }

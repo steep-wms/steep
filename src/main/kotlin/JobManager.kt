@@ -118,6 +118,7 @@ class JobManager : CoroutineVerticle() {
 
       router.get("/agents")
           .produces("application/json")
+          .produces("text/html")
           .handler(this::onGetAgents)
 
       router.get("/workflows")
@@ -393,15 +394,15 @@ class JobManager : CoroutineVerticle() {
       val agents = agentIds.map { vertx.eventBus().sendAwait<JsonObject>(
           RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + it, msg) }.map { it.body() }
 
-      val result = json {
-        obj(
-            "agents" to agents
-        )
-      }
+      val result = JsonArray(agents).encode()
 
-      ctx.response()
-          .putHeader("content-type", "application/json")
-          .end(result.encode())
+      if (ctx.acceptableContentType == "text/html") {
+        renderHtml("html/agents/index.html", mapOf("agents" to result), ctx.response())
+      } else {
+        ctx.response()
+            .putHeader("content-type", "application/json")
+            .end(result)
+      }
     }
   }
 
