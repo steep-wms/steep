@@ -7,12 +7,11 @@ $% block content %$
 
   <div class="ui container" v-cloak>
 
-    <div v-for="a in agents" class="workflows">
+    <h1 class="ui header">$$ id $$</h1>
 
-      <h1 class="ui header">{{ a.id }}</h1>
+    <div class="ui divider"></div>
 
-      <div class="ui divider"></div>
-
+    <div v-for="a in agents" class="agents">
       <div class="agent">
         <div class="agent-left">
           <div class="description">
@@ -39,6 +38,7 @@ $% block content %$
         </div>
       </div>
     </div>
+    <p v-if="agents.length === 0">The agent has left the cluster.</p>
 
   </div>
 

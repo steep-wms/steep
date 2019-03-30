@@ -160,7 +160,11 @@ class JobManager : CoroutineVerticle() {
           .addOutboundPermitted(PermittedOptions()
               .setAddress(AddressConstants.PROCESSCHAINS_ADDED))
           .addOutboundPermitted(PermittedOptions()
-              .setAddress(AddressConstants.PROCESSCHAIN_STATUS_CHANGED)))
+              .setAddress(AddressConstants.PROCESSCHAIN_STATUS_CHANGED))
+          .addOutboundPermitted(PermittedOptions()
+              .setAddress(AddressConstants.REMOTE_AGENT_ADDED))
+          .addOutboundPermitted(PermittedOptions()
+              .setAddress(AddressConstants.REMOTE_AGENT_LEFT)))
       router.route("/eventbus/*").handler(sockJSHandler)
 
       server.requestHandler(router).listenAwait(port, host)

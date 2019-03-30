@@ -11,35 +11,37 @@ $% block content %$
 
     <div v-if="agents.length == 0" class="ui divider"></div>
 
-    <div v-for="a in agents" class="workflows">
-      <div class="ui divider"></div>
-      <div class="agent">
-        <div class="agent-left">
-          <span class="ui header">{{ a.id }}</span>
-          <div class="description">
-            <div class="ui small label" v-for="c in a.capabilities">
-              {{ c }}
-            </div>
-          </div>
-        </div>
-        <div class="agent-right">
-          <div class="ui steps">
-            <div class="step" v-if="a.available === true">
-              <i class="pause grey icon"></i>
-              <div class="content">
-                <div class="title">Idle</div>
+    <transition-group name="list" tag="div">
+      <div v-for="a in agents" class="agents" v-bind:key="a.id">
+        <div class="ui divider"></div>
+        <div class="agent">
+          <div class="agent-left">
+            <a class="ui header" v-bind:href="'/agents/' + a.id">{{ a.id }}</a>
+            <div class="description">
+              <div class="ui small label" v-for="c in a.capabilities">
+                {{ c }}
               </div>
             </div>
-            <div class="running step active" v-if="a.available !== true">
-              <i class="cog grey icon"></i>
-              <div class="content">
-                <div class="title">Busy</div>
+          </div>
+          <div class="agent-right">
+            <div class="ui steps">
+              <div class="step" v-if="a.available === true">
+                <i class="pause grey icon"></i>
+                <div class="content">
+                  <div class="title">Idle</div>
+                </div>
+              </div>
+              <div class="running step active" v-if="a.available !== true">
+                <i class="cog grey icon"></i>
+                <div class="content">
+                  <div class="title">Busy</div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </transition-group>
     <p v-if="agents.length === 0">There are no agents.</p>
 
   </div>
