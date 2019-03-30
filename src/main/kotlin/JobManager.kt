@@ -9,6 +9,8 @@ import db.SubmissionRegistryFactory
 import helper.JsonUtils
 import helper.Shell
 import io.vertx.core.eventbus.Message
+import io.vertx.core.eventbus.ReplyException
+import io.vertx.core.eventbus.ReplyFailure
 import io.vertx.core.http.HttpServerOptions
 import io.vertx.core.http.HttpServerResponse
 import io.vertx.core.impl.NoStackTraceThrowable
@@ -120,6 +122,11 @@ class JobManager : CoroutineVerticle() {
           .produces("application/json")
           .produces("text/html")
           .handler(this::onGetAgents)
+
+      router.get("/agents/:id")
+          .produces("application/json")
+          .produces("text/html")
+          .handler(this::onGetAgentById)
 
       router.get("/workflows")
           .produces("application/json")
@@ -402,6 +409,48 @@ class JobManager : CoroutineVerticle() {
         ctx.response()
             .putHeader("content-type", "application/json")
             .end(result)
+      }
+    }
+  }
+
+  /**
+   * Get a single agent by ID
+   * @param ctx the routing context
+   */
+  private fun onGetAgentById(ctx: RoutingContext) {
+    launch {
+      val id = ctx.pathParam("id")
+      val msg = json {
+        obj(
+            "action" to "info"
+        )
+      }
+
+      try {
+        val agent = vertx.eventBus().sendAwait<JsonObject>(
+            RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + id, msg).body()
+
+        if (ctx.acceptableContentType == "text/html") {
+          renderHtml("html/agents/single.html", mapOf(
+              "id" to id,
+              "agents" to JsonArray(agent).encode()
+          ), ctx.response())
+        } else {
+          ctx.response()
+              .putHeader("content-type", "application/json")
+              .end(agent.encode())
+        }
+      } catch (e: ReplyException) {
+        if (e.failureType() === ReplyFailure.NO_HANDLERS) {
+          ctx.response()
+              .setStatusCode(404)
+              .end("There is no agent with ID `$id'")
+        } else {
+          log.error("Could not get info about agent `$id'", e)
+          ctx.response()
+              .setStatusCode(500)
+              .end()
+        }
       }
     }
   }
