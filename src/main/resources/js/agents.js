@@ -31,8 +31,7 @@ eb.enableReconnect(true);
 eb.onopen = () => {
   eb.registerHandler("jobmanager.remoteAgentRegistry.agentAdded", (error, message) => {
     if (!window.singleAgent) {
-      let address = message.body;
-      let id = address.substring(AGENT_ADDRESS_PREFIX.length);
+      let id = message.body.substring(AGENT_ADDRESS_PREFIX.length);
       fetch("/agents/" + id)
         .then(response => response.json())
         .then(agent => {
@@ -47,11 +46,26 @@ eb.onopen = () => {
   });
 
   eb.registerHandler("jobmanager.remoteAgentRegistry.agentLeft", (error, message) => {
-    let address = message.body;
-    let id = address.substring(AGENT_ADDRESS_PREFIX.length);
+    let id = message.body.substring(AGENT_ADDRESS_PREFIX.length);
     let i = app.findAgentById(id);
     if (i !== -1) {
       app.agents.splice(i, 1);
+    }
+  });
+
+  eb.registerHandler("jobmanager.remoteAgentRegistry.agentBusy", (error, message) => {
+    let id = message.body.substring(AGENT_ADDRESS_PREFIX.length);
+    let i = app.findAgentById(id);
+    if (i !== -1) {
+      app.agents[i].available = false;
+    }
+  });
+
+  eb.registerHandler("jobmanager.remoteAgentRegistry.agentIdle", (error, message) => {
+    let id = message.body.substring(AGENT_ADDRESS_PREFIX.length);
+    let i = app.findAgentById(id);
+    if (i !== -1) {
+      app.agents[i].available = true;
     }
   });
 };

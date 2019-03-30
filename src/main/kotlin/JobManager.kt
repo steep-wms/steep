@@ -164,7 +164,11 @@ class JobManager : CoroutineVerticle() {
           .addOutboundPermitted(PermittedOptions()
               .setAddress(AddressConstants.REMOTE_AGENT_ADDED))
           .addOutboundPermitted(PermittedOptions()
-              .setAddress(AddressConstants.REMOTE_AGENT_LEFT)))
+              .setAddress(AddressConstants.REMOTE_AGENT_LEFT))
+          .addOutboundPermitted(PermittedOptions()
+              .setAddress(AddressConstants.REMOTE_AGENT_BUSY))
+          .addOutboundPermitted(PermittedOptions()
+              .setAddress(AddressConstants.REMOTE_AGENT_IDLE)))
       router.route("/eventbus/*").handler(sockJSHandler)
 
       server.requestHandler(router).listenAwait(port, host)
@@ -223,8 +227,16 @@ class JobManager : CoroutineVerticle() {
    */
   private fun markBusy(busy: Boolean = true) {
     if (busy) {
+      if (this.busy == null) {
+        vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_BUSY,
+            RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + Main.agentId)
+      }
       this.busy = Instant.now()
     } else {
+      if (this.busy != null) {
+        vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_IDLE,
+            RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + Main.agentId)
+      }
       this.busy = null
     }
   }

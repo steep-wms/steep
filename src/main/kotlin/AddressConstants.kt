@@ -45,6 +45,16 @@ object AddressConstants {
   const val REMOTE_AGENT_MISSING = "jobmanager.remoteAgentRegistry.agentMissing"
 
   /**
+   * Will be published by a remote agent when it becomes busy
+   */
+  const val REMOTE_AGENT_BUSY = "jobmanager.remoteAgentRegistry.agentBusy"
+
+  /**
+   * Will be published by a remote agent when it becomes idle
+   */
+  const val REMOTE_AGENT_IDLE = "jobmanager.remoteAgentRegistry.agentIdle"
+
+  /**
    * Will be published when a submission has been added to the registry
    */
   const val SUBMISSION_ADDED = "jobmanager.submissionRegistry.submissionAdded"
