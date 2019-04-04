@@ -51,6 +51,9 @@ class JobManager : CoroutineVerticle() {
     private val log = LoggerFactory.getLogger(JobManager::class.java)
   }
 
+  private val startTime = Instant.now()
+  private var stateChangedTime = startTime
+
   private lateinit var remoteAgentRegistry: RemoteAgentRegistry
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var version: Version
@@ -230,12 +233,14 @@ class JobManager : CoroutineVerticle() {
       if (this.busy == null) {
         vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_BUSY,
             RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + Main.agentId)
+        stateChangedTime = Instant.now()
       }
       this.busy = Instant.now()
     } else {
       if (this.busy != null) {
         vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_IDLE,
             RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + Main.agentId)
+        stateChangedTime = Instant.now()
       }
       this.busy = null
     }
@@ -249,7 +254,9 @@ class JobManager : CoroutineVerticle() {
       obj(
           "id" to Main.agentId,
           "available" to !isBusy(),
-          "capabilities" to array(*capabilities.toTypedArray())
+          "capabilities" to array(*capabilities.toTypedArray()),
+          "startTime" to startTime,
+          "stateChangedTime" to stateChangedTime
       )
     }
     msg.reply(reply)
