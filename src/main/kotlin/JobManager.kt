@@ -11,11 +11,14 @@ import helper.Shell
 import io.vertx.core.eventbus.Message
 import io.vertx.core.eventbus.ReplyException
 import io.vertx.core.eventbus.ReplyFailure
+import io.vertx.core.http.HttpMethod
 import io.vertx.core.http.HttpServerOptions
 import io.vertx.core.http.HttpServerResponse
+import io.vertx.core.http.impl.HttpUtils
 import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
+import io.vertx.core.net.impl.URIDecoder
 import io.vertx.ext.bridge.PermittedOptions
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
@@ -37,6 +40,8 @@ import model.Submission
 import model.Version
 import model.processchain.ProcessChain
 import model.workflow.Workflow
+import org.apache.commons.codec.digest.DigestUtils
+import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
 import java.io.StringWriter
 import java.time.Duration
@@ -49,6 +54,32 @@ import java.time.Instant
 class JobManager : CoroutineVerticle() {
   companion object {
     private val log = LoggerFactory.getLogger(JobManager::class.java)
+
+    /**
+     * A list of asset files that should have their SHA256 checksum encoded in
+     * their filename so we can cache them for a very long time in the browser
+     */
+    private val TRANSIENT_ASSETS: Map<String, String> = mapOf(
+        "indexjs" to "/assets/index.js",
+        "indexcss" to "/assets/index.css",
+        "agentsjs" to "/assets/agents.js"
+    )
+
+    /**
+     * Calculate SHA256 checksum for all [TRANSIENT_ASSETS]
+     */
+    private val ASSET_SHAS = TRANSIENT_ASSETS.mapValues { (_, v) ->
+      val sha = JobManager::class.java.getResourceAsStream(v)
+          .use { DigestUtils.sha256Hex(it) }
+      val ext = FilenameUtils.getExtension(v)
+      val basename = FilenameUtils.removeExtension(v)
+      "$basename.$sha.$ext"
+    }
+
+    /**
+     * Reverse [ASSET_SHAS] so we can quickly get the asset ID
+     */
+    private val ASSET_IDS = ASSET_SHAS.map { (k, v) -> Pair(v, k) }.toMap()
   }
 
   private val startTime = Instant.now()
@@ -148,7 +179,31 @@ class JobManager : CoroutineVerticle() {
       router.get("/processchains").handler(this::onGetProcessChains)
       router.get("/processchains/:id").handler(this::onGetProcessChainById)
 
-      router.get("/assets/*").handler(StaticHandler.create("assets"))
+      // add a handler for assets that removes SHA256 checksums from filenames
+      // and then forwards to a static handler
+      router.get("/assets/*").handler { context ->
+        val request = context.request()
+        if (request.method() != HttpMethod.GET && request.method() != HttpMethod.HEAD) {
+          context.next()
+        } else {
+          val path = HttpUtils.removeDots(URIDecoder.decodeURIComponent(context.normalisedPath(), false))
+          if (path == null) {
+            log.warn("Invalid path: " + context.request().path())
+            context.next()
+          } else {
+            val assetId = ASSET_IDS[path]
+            if (assetId != null) {
+              context.reroute(TRANSIENT_ASSETS[assetId])
+            } else {
+              context.next()
+            }
+          }
+        }
+      }
+
+      // a static handler for assets
+      router.get("/assets/*").handler(StaticHandler.create("assets")
+          .setMaxAgeSeconds(60 * 60 * 24 * 365) /* one year */)
 
       val sockJSHandler = SockJSHandler.create(vertx)
       sockJSHandler.bridge(BridgeOptions()
@@ -427,7 +482,10 @@ class JobManager : CoroutineVerticle() {
       val result = JsonArray(agents).encode()
 
       if (ctx.acceptableContentType == "text/html") {
-        renderHtml("html/agents/index.html", mapOf("agents" to result), ctx.response())
+        renderHtml("html/agents/index.html", mapOf(
+            "agents" to result,
+            "assets" to ASSET_SHAS
+        ), ctx.response())
       } else {
         ctx.response()
             .putHeader("content-type", "application/json")
@@ -456,7 +514,8 @@ class JobManager : CoroutineVerticle() {
         if (ctx.acceptableContentType == "text/html") {
           renderHtml("html/agents/single.html", mapOf(
               "id" to id,
-              "agents" to JsonArray(agent).encode()
+              "agents" to JsonArray(agent).encode(),
+              "assets" to ASSET_SHAS
           ), ctx.response())
         } else {
           ctx.response()
@@ -537,7 +596,8 @@ class JobManager : CoroutineVerticle() {
         val processChains = submissions.flatMap { getProcessChainsJsonForSubmission(it.id) }.toMap()
         renderHtml("html/workflows/index.html", mapOf(
             "workflows" to encodedJson,
-            "processChains" to JsonObject(processChains).encode()
+            "processChains" to JsonObject(processChains).encode(),
+            "assets" to ASSET_SHAS
         ), ctx.response())
       } else {
         ctx.response()
@@ -567,7 +627,8 @@ class JobManager : CoroutineVerticle() {
           renderHtml("html/workflows/single.html", mapOf(
               "id" to submission.id,
               "workflows" to JsonArray(json).encode(),
-              "processChains" to JsonObject(processChains)
+              "processChains" to JsonObject(processChains),
+              "assets" to ASSET_SHAS
           ), ctx.response())
         } else {
           ctx.response()
