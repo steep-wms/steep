@@ -231,7 +231,7 @@ class CloudManager : CoroutineVerticle() {
    * Create a virtual machine that matches the given [requiredCapabilities]
    * and deploy a remote agent to it
    */
-  internal suspend fun createRemoteAgent(requiredCapabilities: Set<String>) {
+  suspend fun createRemoteAgent(requiredCapabilities: Set<String>) {
     val setup = selectSetup(requiredCapabilities) ?: throw IllegalStateException(
         "Could not find a setup that can satisfy the required capabilities: " +
             requiredCapabilities)

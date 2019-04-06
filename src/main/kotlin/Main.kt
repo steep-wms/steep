@@ -223,6 +223,11 @@ class Main : CoroutineVerticle() {
     }
     vertx.deployVerticleAwait(Scheduler::class.qualifiedName!!, options)
     vertx.deployVerticleAwait(Controller::class.qualifiedName!!, options)
-    vertx.deployVerticleAwait(JobManager::class.qualifiedName!!, options)
+    if (config.getBoolean(ConfigConstants.AGENT_ENABLED, true)) {
+      vertx.deployVerticleAwait(JobManager::class.qualifiedName!!, options)
+    }
+    if (config.getBoolean(ConfigConstants.HTTP_ENABLED, true)) {
+      vertx.deployVerticleAwait(HttpEndpoint::class.qualifiedName!!, options)
+    }
   }
 }
