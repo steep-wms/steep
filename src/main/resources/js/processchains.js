@@ -61,9 +61,16 @@ eb.enableReconnect(true);
 eb.onopen = () => {
   eb.registerHandler("jobmanager.submissionRegistry.processChainsAdded", (error, message) => {
     if (!window.singleProcessChain) {
-      let pc = message.body;
-      initProcessChain(pc);
-      app.processChains.unshift(pc);
+      let submissionId = message.body.submissionId;
+      if (window.submissionIds.length === 0 || window.submissionIds.indexOf(submissionId) >= 0) {
+        let status = message.body.status
+        let pcs = message.body.processChains;
+        for (pc of pcs) {
+          pc.status = status;
+          initProcessChain(pc);
+          app.processChains.unshift(pc);
+        }
+      }
     }
   });
 
