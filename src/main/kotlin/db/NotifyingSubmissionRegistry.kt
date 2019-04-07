@@ -91,6 +91,26 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
     return pc
   }
 
+  override suspend fun setProcessChainStartTime(processChainId: String, startTime: Instant?) {
+    delegate.setProcessChainStartTime(processChainId, startTime)
+    vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_STARTTIME_CHANGED, json {
+      obj(
+          "processChainId" to processChainId,
+          "startTime" to startTime
+      )
+    })
+  }
+
+  override suspend fun setProcessChainEndTime(processChainId: String, endTime: Instant?) {
+    delegate.setProcessChainEndTime(processChainId, endTime)
+    vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_ENDTIME_CHANGED, json {
+      obj(
+          "processChainId" to processChainId,
+          "endTime" to endTime
+      )
+    })
+  }
+
   override suspend fun setProcessChainStatus(processChainId: String, status: ProcessChainStatus) {
     delegate.setProcessChainStatus(processChainId, status)
     vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_STATUS_CHANGED, json {

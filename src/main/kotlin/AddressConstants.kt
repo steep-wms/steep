@@ -80,6 +80,16 @@ object AddressConstants {
   const val PROCESSCHAINS_ADDED = "jobmanager.submissionRegistry.processChainsAdded"
 
   /**
+   * Will be published when a process chain's start time has changed
+   */
+  const val PROCESSCHAIN_STARTTIME_CHANGED = "jobmanager.submissionRegistry.processChainStartTimeChanged"
+
+  /**
+   * Will be published when a process chain's end time has changed
+   */
+  const val PROCESSCHAIN_ENDTIME_CHANGED = "jobmanager.submissionRegistry.processChainEndTimeChanged"
+
+  /**
    * Will be published when a process chain's status has changed
    */
   const val PROCESSCHAIN_STATUS_CHANGED = "jobmanager.submissionRegistry.processChainStatusChanged"
