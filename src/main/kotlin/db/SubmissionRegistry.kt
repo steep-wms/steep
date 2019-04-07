@@ -75,7 +75,7 @@ interface SubmissionRegistry {
   /**
    * Set the start time of a submission
    * @param submissionId the submission ID
-   * @param startTime the new end time
+   * @param startTime the new start time
    */
   suspend fun setSubmissionStartTime(submissionId: String, startTime: Instant)
 
@@ -178,6 +178,38 @@ interface SubmissionRegistry {
    */
   suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
       newStatus: ProcessChainStatus): ProcessChain?
+
+  /**
+   * Set the start time of a process chain
+   * @param processChainId the process chain ID
+   * @param startTime the new start time (may be `null` if the start time
+   * should be removed)
+   */
+  suspend fun setProcessChainStartTime(processChainId: String, startTime: Instant?)
+
+  /**
+   * Get the start time of a process chain
+   * @param processChainId the process chain ID
+   * @return the start time (may be `null` if the process chain has not
+   * started yet)
+   */
+  suspend fun getProcessChainStartTime(processChainId: String): Instant?
+
+  /**
+   * Set the end time of a process chain
+   * @param processChainId the submission ID
+   * @param endTime the new end time (may be `null` if the end time should be
+   * removed)
+   */
+  suspend fun setProcessChainEndTime(processChainId: String, endTime: Instant?)
+
+  /**
+   * Get the end time of a process chain
+   * @param processChainId the process chain ID
+   * @return the end time (may be `null` if the process chain has not
+   * finished yet)
+   */
+  suspend fun getProcessChainEndTime(processChainId: String): Instant?
 
   /**
    * Get the ID of the submission the given process chain belongs to

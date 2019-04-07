@@ -111,12 +111,16 @@ class SchedulerTest {
         registeredPcs.add(0, pc)
       }
 
+      // register mock for start and end time
+      coEvery { submissionRegistry.setProcessChainStartTime(pc.id, any()) } just Runs
+      coEvery { submissionRegistry.setProcessChainEndTime(pc.id, any()) } just Runs
+
       // register mock for results
       coEvery { submissionRegistry.setProcessChainResults(pc.id,
           mapOf("ARG1" to listOf("output-${pc.id}"))) } just Runs
     }
 
-    for (pc in allPcs.dropLast(1)) {
+    for (pc in allPcs) {
       // register mocks for all successful process chains
       coEvery { submissionRegistry.setProcessChainStatus(pc.id, SUCCESS) } answers {
         ctx.verify {
@@ -125,7 +129,7 @@ class SchedulerTest {
       }
     }
 
-    coEvery { submissionRegistry.setProcessChainStatus(allPcs.last().id, SUCCESS) } answers {
+    coEvery { submissionRegistry.setProcessChainEndTime(allPcs.last().id, any()) } answers {
       // on last successful process chain ...
       ctx.verify {
         assertThat(registeredPcs).doesNotContain(allPcs.last())
@@ -136,6 +140,8 @@ class SchedulerTest {
           for (pc in allPcs) {
             submissionRegistry.setProcessChainResults(pc.id,
                 mapOf("ARG1" to listOf("output-${pc.id}")))
+            submissionRegistry.setProcessChainStartTime(pc.id, any())
+            submissionRegistry.setProcessChainEndTime(pc.id, any())
             submissionRegistry.setProcessChainStatus(pc.id, SUCCESS)
           }
         }
@@ -185,6 +191,8 @@ class SchedulerTest {
     // mock submission registry
     val pc = ProcessChain()
     coEvery { submissionRegistry.setProcessChainStatus(pc.id, ERROR) } just Runs
+    coEvery { submissionRegistry.setProcessChainStartTime(pc.id, any()) } just Runs
+    coEvery { submissionRegistry.setProcessChainEndTime(pc.id, any()) } just Runs
     coEvery { submissionRegistry.setProcessChainErrorMessage(pc.id, message) } just Runs
 
     coEvery { agentRegistry.deallocate(agent) } answers {

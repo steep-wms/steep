@@ -457,12 +457,29 @@ class HttpEndpoint : CoroutineVerticle() {
     val status = submissionRegistry.getProcessChainStatus(id)
     processChain.put("status", status.toString())
 
+    if (status != SubmissionRegistry.ProcessChainStatus.REGISTERED) {
+      val startTime = submissionRegistry.getProcessChainStartTime(id)
+      if (startTime != null) {
+        processChain.put("startTime", startTime)
+      }
+    }
+
+    if (status == SubmissionRegistry.ProcessChainStatus.SUCCESS ||
+        status == SubmissionRegistry.ProcessChainStatus.ERROR) {
+      val endTime = submissionRegistry.getProcessChainEndTime(id)
+      if (endTime != null) {
+        processChain.put("endTime", endTime)
+      }
+    }
+
     if (status == SubmissionRegistry.ProcessChainStatus.SUCCESS) {
       val results = submissionRegistry.getProcessChainResults(id)
       if (results != null) {
         processChain.put("results", results)
       }
-    } else if (status == SubmissionRegistry.ProcessChainStatus.ERROR) {
+    }
+
+    if (status == SubmissionRegistry.ProcessChainStatus.ERROR) {
       val errorMessage = submissionRegistry.getProcessChainErrorMessage(id)
       if (errorMessage != null) {
         processChain.put("errorMessage", errorMessage)

@@ -199,9 +199,11 @@ class Controller : CoroutineVerticle() {
           for ((pcId, pcstatus) in pcstatuses) {
             if (pcstatus === ProcessChainStatus.RUNNING || pcstatus === ProcessChainStatus.ERROR) {
               submissionRegistry.setProcessChainStatus(pcId, ProcessChainStatus.REGISTERED)
+              submissionRegistry.setProcessChainStartTime(pcId, null)
             }
             if (pcstatus === ProcessChainStatus.ERROR) {
               submissionRegistry.setProcessChainErrorMessage(pcId, null)
+              submissionRegistry.setProcessChainEndTime(pcId, null)
             }
           }
         }

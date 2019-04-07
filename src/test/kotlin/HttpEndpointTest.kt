@@ -35,6 +35,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.net.ServerSocket
+import java.time.Instant
 
 /**
  * Tests for [HttpEndpoint]
@@ -332,6 +333,18 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainStatus(pc3.id) } returns ProcessChainStatus.REGISTERED
     coEvery { submissionRegistry.getProcessChainStatus(pc4.id) } returns ProcessChainStatus.ERROR
 
+    val startTime = Instant.now()
+    coEvery { submissionRegistry.getProcessChainStartTime(pc1.id) } returns startTime
+    coEvery { submissionRegistry.getProcessChainStartTime(pc2.id) } returns startTime
+    coEvery { submissionRegistry.getProcessChainStartTime(pc3.id) } returns null
+    coEvery { submissionRegistry.getProcessChainStartTime(pc4.id) } returns startTime
+
+    val endTime = Instant.now()
+    coEvery { submissionRegistry.getProcessChainEndTime(pc1.id) } returns endTime
+    coEvery { submissionRegistry.getProcessChainEndTime(pc2.id) } returns null
+    coEvery { submissionRegistry.getProcessChainEndTime(pc3.id) } returns null
+    coEvery { submissionRegistry.getProcessChainEndTime(pc4.id) } returns endTime
+
     coEvery { submissionRegistry.getProcessChainResults(pc1.id) } returns mapOf(
         "output_file1" to listOf("output.txt"))
     coEvery { submissionRegistry.getProcessChainResults(pc2.id) } returns mapOf(
@@ -362,6 +375,8 @@ class HttpEndpointTest {
                   "requiredCapabilities" to array(),
                   "submissionId" to s1.id,
                   "status" to "SUCCESS",
+                  "startTime" to startTime,
+                  "endTime" to endTime,
                   "results" to obj(
                       "output_file1" to array("output.txt")
                   )
@@ -370,7 +385,8 @@ class HttpEndpointTest {
                   "id" to pc2.id,
                   "requiredCapabilities" to array(),
                   "submissionId" to s1.id,
-                  "status" to "RUNNING"
+                  "status" to "RUNNING",
+                  "startTime" to startTime
               ),
               obj(
                   "id" to pc3.id,
@@ -383,6 +399,8 @@ class HttpEndpointTest {
                   "requiredCapabilities" to array(),
                   "submissionId" to s2.id,
                   "status" to "ERROR",
+                  "startTime" to startTime,
+                  "endTime" to endTime,
                   "errorMessage" to "THIS is an ERROR"
               )
           )
@@ -410,6 +428,14 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns ProcessChainStatus.SUCCESS
     coEvery { submissionRegistry.getProcessChainStatus(pc2.id) } returns ProcessChainStatus.RUNNING
 
+    val startTime = Instant.now()
+    coEvery { submissionRegistry.getProcessChainStartTime(pc1.id) } returns startTime
+    coEvery { submissionRegistry.getProcessChainStartTime(pc2.id) } returns startTime
+
+    val endTime = Instant.now()
+    coEvery { submissionRegistry.getProcessChainEndTime(pc1.id) } returns endTime
+    coEvery { submissionRegistry.getProcessChainEndTime(pc2.id) } returns null
+
     coEvery { submissionRegistry.getProcessChainResults(pc1.id) } returns mapOf(
         "output_file1" to listOf("output.txt"))
     coEvery { submissionRegistry.getProcessChainResults(pc2.id) } returns null
@@ -430,6 +456,8 @@ class HttpEndpointTest {
                   "requiredCapabilities" to array(),
                   "submissionId" to s1.id,
                   "status" to "SUCCESS",
+                  "startTime" to startTime,
+                  "endTime" to endTime,
                   "results" to obj(
                       "output_file1" to array("output.txt")
                   )
@@ -438,7 +466,8 @@ class HttpEndpointTest {
                   "id" to pc2.id,
                   "requiredCapabilities" to array(),
                   "submissionId" to s1.id,
-                  "status" to "RUNNING"
+                  "status" to "RUNNING",
+                  "startTime" to startTime
               )
           )
         })
@@ -462,6 +491,10 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainSubmissionId(pc1.id) } returns sid
     coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns
         ProcessChainStatus.SUCCESS
+    val startTime = Instant.now()
+    coEvery { submissionRegistry.getProcessChainStartTime(pc1.id) } returns startTime
+    val endTime = Instant.now()
+    coEvery { submissionRegistry.getProcessChainEndTime(pc1.id) } returns endTime
     coEvery { submissionRegistry.getProcessChainResults(pc1.id) } returns mapOf(
         "output_file1" to listOf("output.txt"))
 
@@ -492,6 +525,8 @@ class HttpEndpointTest {
               "requiredCapabilities" to array(),
               "submissionId" to sid,
               "status" to ProcessChainStatus.SUCCESS.toString(),
+              "startTime" to startTime,
+              "endTime" to endTime,
               "results" to obj(
                   "output_file1" to array("output.txt")
               )

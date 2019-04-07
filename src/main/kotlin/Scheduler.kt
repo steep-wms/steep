@@ -17,6 +17,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
+import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 /**
@@ -105,6 +106,7 @@ class Scheduler : CoroutineVerticle() {
       // execute process chain
       launch {
         try {
+          submissionRegistry.setProcessChainStartTime(processChain.id, Instant.now())
           val results = agent.execute(processChain)
           submissionRegistry.setProcessChainResults(processChain.id, results)
           submissionRegistry.setProcessChainStatus(processChain.id, SUCCESS)
@@ -113,6 +115,7 @@ class Scheduler : CoroutineVerticle() {
           submissionRegistry.setProcessChainStatus(processChain.id, ERROR)
         } finally {
           agentRegistry.deallocate(agent)
+          submissionRegistry.setProcessChainEndTime(processChain.id, Instant.now())
 
           // try to lookup next process chain immediately
           vertx.eventBus().send(SCHEDULER_LOOKUP_NOW, null)

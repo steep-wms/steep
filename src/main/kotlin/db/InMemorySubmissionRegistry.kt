@@ -56,6 +56,8 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       val processChain: ProcessChain,
       val submissionId: String,
       val status: ProcessChainStatus,
+      val startTime: Instant? = null,
+      val endTime: Instant? = null,
       val results: Map<String, List<String>>? = null,
       val errorMessage: String? = null
   )
@@ -266,6 +268,20 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       lock.release()
     }
   }
+
+  override suspend fun setProcessChainStartTime(processChainId: String, startTime: Instant?) {
+    updateProcessChain(processChainId) { it.copy(startTime = startTime) }
+  }
+
+  override suspend fun getProcessChainStartTime(processChainId: String): Instant? =
+      getProcessChainEntryById(processChainId).startTime
+
+  override suspend fun setProcessChainEndTime(processChainId: String, endTime: Instant?) {
+    updateProcessChain(processChainId) { it.copy(endTime = endTime) }
+  }
+
+  override suspend fun getProcessChainEndTime(processChainId: String): Instant? =
+      getProcessChainEntryById(processChainId).endTime
 
   override suspend fun getProcessChainSubmissionId(processChainId: String): String =
       getProcessChainEntryById(processChainId).submissionId

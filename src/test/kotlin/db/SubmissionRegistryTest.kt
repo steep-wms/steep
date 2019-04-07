@@ -394,6 +394,72 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun setProcessChainStartTime(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc = ProcessChain()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s)
+      submissionRegistry.addProcessChains(listOf(pc), s.id)
+      val startTime1 = submissionRegistry.getProcessChainStartTime(pc.id)
+
+      ctx.verify {
+        assertThat(startTime1).isNull()
+      }
+
+      val newStartTime = Instant.now()
+      submissionRegistry.setProcessChainStartTime(pc.id, newStartTime)
+      val startTime2 = submissionRegistry.getProcessChainStartTime(pc.id)
+
+      ctx.verify {
+        assertThat(startTime2).isEqualTo(newStartTime)
+      }
+
+      submissionRegistry.setProcessChainStartTime(pc.id, null)
+      val startTime3 = submissionRegistry.getProcessChainStartTime(pc.id)
+
+      ctx.verify {
+        assertThat(startTime3).isNull()
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun setProcessChainEndTime(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc = ProcessChain()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s)
+      submissionRegistry.addProcessChains(listOf(pc), s.id)
+      val endTime1 = submissionRegistry.getProcessChainEndTime(pc.id)
+
+      ctx.verify {
+        assertThat(endTime1).isNull()
+      }
+
+      val newEndTime = Instant.now()
+      submissionRegistry.setProcessChainEndTime(pc.id, newEndTime)
+      val endTime2 = submissionRegistry.getProcessChainEndTime(pc.id)
+
+      ctx.verify {
+        assertThat(endTime2).isEqualTo(newEndTime)
+      }
+
+      submissionRegistry.setProcessChainEndTime(pc.id, null)
+      val endTime3 = submissionRegistry.getProcessChainEndTime(pc.id)
+
+      ctx.verify {
+        assertThat(endTime3).isNull()
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun setProcessChainStatus(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()

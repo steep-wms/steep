@@ -440,6 +440,24 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
   }
 
+  override suspend fun setProcessChainStartTime(processChainId: String, startTime: Instant?) {
+    updateColumn(PROCESS_CHAINS, processChainId, START_TIME,
+        JsonUtils.mapper.writeValueAsString(startTime), false)
+  }
+
+  override suspend fun getProcessChainStartTime(processChainId: String): Instant? =
+      getProcessChainColumn(processChainId, START_TIME) { it.getString(0)?.let {
+        JsonUtils.mapper.readValue(it, Instant::class.java) } }
+
+  override suspend fun setProcessChainEndTime(processChainId: String, endTime: Instant?) {
+    updateColumn(PROCESS_CHAINS, processChainId, END_TIME,
+        JsonUtils.mapper.writeValueAsString(endTime), false)
+  }
+
+  override suspend fun getProcessChainEndTime(processChainId: String): Instant? =
+      getProcessChainColumn(processChainId, END_TIME) { it.getString(0)?.let {
+        JsonUtils.mapper.readValue(it, Instant::class.java) } }
+
   override suspend fun getProcessChainSubmissionId(processChainId: String): String =
       getProcessChainColumn(processChainId, SUBMISSION_ID) { it.getString(0) }
 
