@@ -68,23 +68,30 @@ eb.onopen = () => {
   });
 
   eb.registerHandler("jobmanager.submissionRegistry.processChainStartTimeChanged", (error, message) => {
-      let pc = app.findProcessChainById(message.body.processChainId);
-      if (pc) {
-        pc.startTime = message.body.startTime;
-      }
-    });
+    let pc = app.findProcessChainById(message.body.processChainId);
+    if (pc) {
+      pc.startTime = message.body.startTime;
+    }
+  });
 
-    eb.registerHandler("jobmanager.submissionRegistry.processChainEndTimeChanged", (error, message) => {
-      let pc = app.findProcessChainById(message.body.processChainId);
-      if (pc) {
-        pc.endTime = message.body.endTime;
-      }
-    });
+  eb.registerHandler("jobmanager.submissionRegistry.processChainEndTimeChanged", (error, message) => {
+    let pc = app.findProcessChainById(message.body.processChainId);
+    if (pc) {
+      pc.endTime = message.body.endTime;
+    }
+  });
 
   eb.registerHandler("jobmanager.submissionRegistry.processChainStatusChanged", (error, message) => {
     let pc = app.findProcessChainById(message.body.processChainId);
     if (pc) {
       pc.status = message.body.status;
+    }
+  });
+
+  eb.registerHandler("jobmanager.submissionRegistry.processChainErrorMessageChanged", (error, message) => {
+    let pc = app.findProcessChainById(message.body.processChainId);
+    if (pc) {
+      pc.errorMessage = message.body.errorMessage;
     }
   });
 };

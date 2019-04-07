@@ -118,7 +118,10 @@ class HttpEndpoint : CoroutineVerticle() {
         .produces("text/html")
         .handler(this::onGetProcessChains)
 
-    router.get("/processchains/:id").handler(this::onGetProcessChainById)
+    router.get("/processchains/:id")
+        .produces("application/json")
+        .produces("text/html")
+        .handler(this::onGetProcessChainById)
 
     router.get("/workflows")
         .produces("application/json")
@@ -178,6 +181,8 @@ class HttpEndpoint : CoroutineVerticle() {
             .setAddress(AddressConstants.PROCESSCHAIN_ENDTIME_CHANGED))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(AddressConstants.PROCESSCHAIN_STATUS_CHANGED))
+        .addOutboundPermitted(PermittedOptions()
+            .setAddress(AddressConstants.PROCESSCHAIN_ERRORMESSAGE_CHANGED))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(AddressConstants.REMOTE_AGENT_ADDED))
         .addOutboundPermitted(PermittedOptions()
@@ -553,9 +558,17 @@ class HttpEndpoint : CoroutineVerticle() {
         val json = JsonUtils.toJson(processChain)
         val submissionId = submissionRegistry.getProcessChainSubmissionId(id)
         amendProcessChain(json, submissionId)
-        ctx.response()
-            .putHeader("content-type", "application/json")
-            .end(json.encode())
+        if (ctx.acceptableContentType == "text/html") {
+          renderHtml("html/processchains/single.html", mapOf(
+              "id" to id,
+              "processChains" to JsonArray(json).encode(),
+              "assets" to ASSET_SHAS
+          ), ctx.response())
+        } else {
+          ctx.response()
+              .putHeader("content-type", "application/json")
+              .end(json.encode())
+        }
       }
     }
   }
