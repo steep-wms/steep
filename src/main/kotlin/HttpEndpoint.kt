@@ -52,9 +52,10 @@ class HttpEndpoint : CoroutineVerticle() {
      * their filename so we can cache them for a very long time in the browser
      */
     private val TRANSIENT_ASSETS: Map<String, String> = mapOf(
-        "indexjs" to "/assets/index.js",
         "indexcss" to "/assets/index.css",
-        "agentsjs" to "/assets/agents.js"
+        "agentsjs" to "/assets/agents.js",
+        "processchainsjs" to "/assets/processchains.js",
+        "workflowsjs" to "/assets/workflows.js"
     )
 
     /**
@@ -112,6 +113,13 @@ class HttpEndpoint : CoroutineVerticle() {
         .produces("text/html")
         .handler(this::onGetAgentById)
 
+    router.get("/processchains")
+        .produces("application/json")
+        .produces("text/html")
+        .handler(this::onGetProcessChains)
+
+    router.get("/processchains/:id").handler(this::onGetProcessChainById)
+
     router.get("/workflows")
         .produces("application/json")
         .produces("text/html")
@@ -125,9 +133,6 @@ class HttpEndpoint : CoroutineVerticle() {
     router.post("/workflows")
         .handler(bodyHandler)
         .handler(this::onPostWorkflow)
-
-    router.get("/processchains").handler(this::onGetProcessChains)
-    router.get("/processchains/:id").handler(this::onGetProcessChainById)
 
     // add a handler for assets that removes SHA256 checksums from filenames
     // and then forwards to a static handler
@@ -497,9 +502,11 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onGetProcessChains(ctx: RoutingContext) {
     launch {
-      var submissionIds = ctx.queryParam("submissionId") ?: emptyList()
-      if (submissionIds.isEmpty()) {
-        submissionIds = submissionRegistry.findSubmissions().map { it.id }
+      val submissionIdsParam = ctx.queryParam("submissionId") ?: emptyList()
+      val submissionIds = if (submissionIdsParam.isEmpty()) {
+        submissionRegistry.findSubmissions().map { it.id }
+      } else {
+        submissionIdsParam
       }
 
       val list = submissionIds.flatMap { submissionId ->
@@ -511,10 +518,19 @@ class HttpEndpoint : CoroutineVerticle() {
         }
       }
 
-      val arr = JsonArray(list)
-      ctx.response()
-          .putHeader("content-type", "application/json")
-          .end(arr.encode())
+      val encodedJson = JsonArray(list).encode()
+
+      if (ctx.acceptableContentType == "text/html") {
+        renderHtml("html/processchains/index.html", mapOf(
+            "submissionIds" to JsonArray(submissionIdsParam),
+            "processChains" to encodedJson,
+            "assets" to ASSET_SHAS
+        ), ctx.response())
+      } else {
+        ctx.response()
+            .putHeader("content-type", "application/json")
+            .end(encodedJson)
+      }
     }
   }
 

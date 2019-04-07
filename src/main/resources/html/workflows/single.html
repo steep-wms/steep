@@ -44,14 +44,14 @@ $% block content %$
               <i class="cog grey icon"></i>
               <div class="content">
                 <div class="title">Running</div>
-                <div v-if="w.status === 'RUNNING'" class="description">
+                <a v-bind:href="'/processchains/?submissionId=' + w.id" v-if="w.status === 'RUNNING'" class="description">
                   {{ w.succeededProcessChains + w.failedProcessChains }} of
                   {{ w.totalProcessChains }} completed
                   ({{ w.runningProcessChains }} running)
-                </div>
-                <div v-if="w.status !== 'ACCEPTED' && w.status !== 'RUNNING'" class="description">
+                </a>
+                <a v-bind:href="'/processchains/?submissionId=' + w.id" v-if="w.status !== 'ACCEPTED' && w.status !== 'RUNNING'" class="description">
                   {{ w.totalProcessChains }} completed
-                </div>
+                </a>
               </div>
             </div>
             <div class="step" :class="{ active: w.status !== 'ACCEPTED' && w.status !== 'RUNNING', disabled: w.status === 'ACCEPTED' }">
@@ -109,5 +109,5 @@ $(function() {
 });
 </script>
 
-<script src="$$ assets.indexjs $$"></script>
+<script src="$$ assets.workflowsjs $$"></script>
 $% endblock %$

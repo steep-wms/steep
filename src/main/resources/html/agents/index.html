@@ -9,7 +9,7 @@ $% block content %$
 
     <h1 class="ui header">Agents</h1>
 
-    <div v-if="agents.length == 0" class="ui divider"></div>
+    <div v-if="agents.length === 0" class="ui divider"></div>
 
     <transition-group name="list" tag="div">
       <div v-for="a in agents" class="agents" v-bind:key="a.id">
