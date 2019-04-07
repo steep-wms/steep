@@ -25,9 +25,9 @@ $% block content %$
               <div class="header">Start time:</div>
               {{ w.startTime | moment('dddd, D MMMM YYYY, h:mm:ss a') }}
             </div>
-            <div class="item">
+            <div class="item" v-if="w.status !== 'ACCEPTED' && w.startTime">
               <div class="header">End time:</div>
-              <span v-if="w.status !== 'ACCEPTED' && w.status !== 'RUNNING' && w.startTime && w.endTime">
+              <span v-if="w.status !== 'RUNNING' && w.endTime">
                 {{ w.endTime | moment('dddd, D MMMM YYYY, h:mm:ss a') }}
               </span>
               <span v-else>&ndash;</span>
