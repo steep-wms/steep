@@ -36,6 +36,14 @@ $% block content %$
               <div class="header">Time elapsed:</div>
               {{ processChainDuration(pc) }}
             </div>
+            <div class="item capabilities" v-if="pc.requiredCapabilities.length > 0">
+              <div class="header">Required capabilities:</div>
+              <div class="labels">
+                <div class="ui small label" v-for="c in pc.requiredCapabilities">
+                  {{ c }}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="processchain-right">

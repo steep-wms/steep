@@ -25,7 +25,12 @@ $% block content %$
         <div class="ui divider"></div>
         <div class="processchain">
           <div class="processchain-left">
-            <a class="ui header" v-bind:href="'/processchains/' + pc.id">{{ pc.id }}</a>
+            <div>
+              <a class="ui header" v-bind:href="'/processchains/' + pc.id">{{ pc.id }}</a>
+              <div class="ui label" v-for="c in pc.requiredCapabilities">
+                {{ c }}
+              </div>
+            </div>
             <p v-if="pc.status === 'REGISTERED'">Process chain has not started yet</p>
             <p v-if="pc.status === 'RUNNING' && pc.startTime">
               Process chain started <span :title="pc.startTime | moment('dddd, D MMMM YYYY, h:mm:ss a')">

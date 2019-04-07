@@ -19,7 +19,7 @@ $% block content %$
             <div>
               <a class="ui header" v-bind:href="'/agents/' + a.id">{{ a.id }}</a>
               <div class="ui label" v-for="c in a.capabilities">
-                  {{ c }}
+                {{ c }}
               </div>
             </div>
             <div class="description" :title="a.startTime | moment('dddd, D MMMM YYYY, h:mm:ss a')">

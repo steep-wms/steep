@@ -21,7 +21,7 @@ $% block content %$
                 {{ formatUptime(a.startTime) }}
               </span>
             </div>
-            <div class="item capabilities">
+            <div class="item capabilities" v-if="a.capabilities.length > 0">
               <div class="header">Capabilities:</div>
               <div class="labels">
                 <div class="ui small label" v-for="c in a.capabilities">
