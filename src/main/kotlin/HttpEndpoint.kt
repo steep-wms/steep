@@ -218,7 +218,10 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onGet(ctx: RoutingContext) {
     if (ctx.acceptableContentType == "text/html") {
-      renderHtml("html/index.html", mapOf("version" to VERSION), ctx.response())
+      renderHtml("html/index.html", mapOf(
+          "version" to VERSION,
+          "assets" to ASSET_SHAS
+      ), ctx.response())
     } else {
       ctx.response()
           .putHeader("content-type", "application/json")
