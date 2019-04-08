@@ -43,9 +43,14 @@ interface SubmissionRegistry {
 
   /**
    * Get a list of all submissions in the registry
+   * @param size the maximum number of submissions to return (may be negative
+   * if all submissions should be returned)
+   * @param offset the index of the first submission to return
+   * @param order a positive number if submissions should be returned in an
+   * ascending order, negative otherwise
    * @return all submissions
    */
-  suspend fun findSubmissions(): Collection<Submission>
+  suspend fun findSubmissions(size: Int = -1, offset: Int = 0, order: Int = 1): Collection<Submission>
 
   /**
    * Get a single submission from the registry
@@ -60,6 +65,12 @@ interface SubmissionRegistry {
    * @return the list of submission IDs
    */
   suspend fun findSubmissionIdsByStatus(status: Submission.Status): Collection<String>
+
+  /**
+   * Get the number of existing submissions
+   * @return the number of submissions
+   */
+  suspend fun countSubmissions(): Long
 
   /**
    * Atomically fetch a submission that has the given `currentStatus` and

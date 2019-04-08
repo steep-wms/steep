@@ -23,6 +23,7 @@ let app = new Vue({
   el: '#app',
   data: {
     workflows: window.workflows,
+    page: window.page,
     now: new Date()
   },
   created: function () {

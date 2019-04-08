@@ -11,11 +11,13 @@ import io.vertx.kotlin.core.shareddata.getAwait
 import io.vertx.kotlin.core.shareddata.getLockAwait
 import io.vertx.kotlin.core.shareddata.putAwait
 import io.vertx.kotlin.core.shareddata.removeAwait
+import io.vertx.kotlin.core.shareddata.sizeAwait
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitResult
 import model.Submission
 import model.processchain.ProcessChain
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * A submission registry that keeps objects in memory
@@ -62,6 +64,12 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       val errorMessage: String? = null
   )
 
+  private data class SubmissionEntry(
+      val serial: Int,
+      val submission: Submission
+  )
+
+  private val submissionEntryID = AtomicInteger()
   private val submissions: Future<AsyncMap<String, String>>
   private val processChains: Future<AsyncMap<String, String>>
   private val executionStates: Future<AsyncMap<String, String>>
@@ -77,28 +85,40 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   }
 
   override suspend fun addSubmission(submission: Submission) {
-    val str = JsonUtils.mapper.writeValueAsString(submission)
+    val entry = SubmissionEntry(submissionEntryID.getAndIncrement(), submission)
+    val str = JsonUtils.mapper.writeValueAsString(entry)
     submissions.await().putAwait(submission.id, str)
   }
 
-  override suspend fun findSubmissions(): List<Submission> {
+  override suspend fun findSubmissions(size: Int, offset: Int, order: Int): List<Submission> {
     val map = submissions.await()
     val values = awaitResult<List<String>> { map.values(it) }
-    return values.map { JsonUtils.mapper.readValue<Submission>(it) }
+    return values
+        .map { JsonUtils.mapper.readValue<SubmissionEntry>(it) }
+        .sortedBy { it.serial }
+        .let { if (order < 0) it.reversed() else it }
+        .drop(offset)
+        .let { if (size >= 0) it.take(size) else it }
+        .map { it.submission }
   }
 
   override suspend fun findSubmissionById(submissionId: String): Submission? {
     return submissions.await().getAwait(submissionId)?.let {
-      JsonUtils.mapper.readValue(it)
+      JsonUtils.mapper.readValue<SubmissionEntry>(it).submission
     }
   }
 
   override suspend fun findSubmissionIdsByStatus(status: Submission.Status): Collection<String> {
     val map = submissions.await()
     val values = awaitResult<List<String>> { map.values(it) }
-    return values.map { JsonUtils.mapper.readValue<Submission>(it) }
-        .filter { it.status == status }
-        .map { it.id }
+    return values.map { JsonUtils.mapper.readValue<SubmissionEntry>(it) }
+        .filter { it.submission.status == status }
+        .sortedBy { it.serial }
+        .map { it.submission.id }
+  }
+
+  override suspend fun countSubmissions(): Long {
+    return submissions.await().sizeAwait().toLong()
   }
 
   override suspend fun fetchNextSubmission(currentStatus: Submission.Status,
@@ -108,11 +128,12 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     try {
       val map = submissions.await()
       val values = awaitResult<List<String>> { map.values(it) }
-      val submission = values.map { JsonUtils.mapper.readValue<Submission>(it) }
-          .find { it.status == currentStatus }
-      return submission?.also {
-        val newSubmission = it.copy(status = newStatus)
-        map.putAwait(it.id, JsonUtils.mapper.writeValueAsString(newSubmission))
+      val entry = values.map { JsonUtils.mapper.readValue<SubmissionEntry>(it) }
+          .find { it.submission.status == currentStatus }
+      return entry?.let {
+        val newEntry = it.copy(submission = it.submission.copy(status = newStatus))
+        map.putAwait(it.submission.id, JsonUtils.mapper.writeValueAsString(newEntry))
+        it.submission
       }
     } finally {
       lock.release()
@@ -126,9 +147,10 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     try {
       val map = submissions.await()
       map.getAwait(submissionId)?.let {
-        val entry = JsonUtils.mapper.readValue<Submission>(it)
-        val newSubmission = updater(entry)
-        map.putAwait(submissionId, JsonUtils.mapper.writeValueAsString(newSubmission))
+        val oldEntry = JsonUtils.mapper.readValue<SubmissionEntry>(it)
+        val newSubmission = updater(oldEntry.submission)
+        val newEntry = oldEntry.copy(submission = newSubmission)
+        map.putAwait(submissionId, JsonUtils.mapper.writeValueAsString(newEntry))
       }
     } finally {
       lock.release()

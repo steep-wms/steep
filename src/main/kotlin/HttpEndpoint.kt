@@ -37,7 +37,6 @@ import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
 import java.io.StringWriter
-import java.time.Instant
 
 /**
  * The JobManager's main API entry point
@@ -349,8 +348,19 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onGetWorkflows(ctx: RoutingContext) {
     launch {
-      val submissions = submissionRegistry.findSubmissions()
-          .sortedWith(compareByDescending(nullsLast<Instant>()) { it.startTime })
+      val isHtml = ctx.acceptableContentType == "text/html"
+      val offset = ctx.request().getParam("offset")?.toIntOrNull() ?: 0
+      val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
+
+      val total = submissionRegistry.countSubmissions()
+
+      // TODO also use `size` and `offset` for json result
+      val submissions = if (isHtml) {
+        submissionRegistry.findSubmissions(size, offset, -1)
+      } else {
+        submissionRegistry.findSubmissions(order = -1)
+      }
+
       val list = submissions.map { submission ->
         // do not unnecessarily encode workflow to save time for large workflows
         val c = submission.copy(workflow = Workflow())
@@ -363,16 +373,24 @@ class HttpEndpoint : CoroutineVerticle() {
 
       val encodedJson = JsonArray(list).encode()
 
-      if (ctx.acceptableContentType == "text/html") {
+      if (isHtml) {
         val processChains = submissions.flatMap { getProcessChainsJsonForSubmission(it.id) }.toMap()
         renderHtml("html/workflows/index.html", mapOf(
             "workflows" to encodedJson,
             "processChains" to JsonObject(processChains).encode(),
-            "assets" to ASSET_SHAS
+            "assets" to ASSET_SHAS,
+            "page" to mapOf(
+                "size" to size,
+                "offset" to offset,
+                "total" to total
+            )
         ), ctx.response())
       } else {
         ctx.response()
             .putHeader("content-type", "application/json")
+            .putHeader("x-page-size", size.toString())
+            .putHeader("x-page-offset", offset.toString())
+            .putHeader("x-page-total", total.toString())
             .end(encodedJson)
       }
     }

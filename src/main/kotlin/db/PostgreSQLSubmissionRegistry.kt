@@ -17,6 +17,7 @@ import io.vertx.kotlin.ext.sql.closeAwait
 import io.vertx.kotlin.ext.sql.executeAwait
 import io.vertx.kotlin.ext.sql.getConnectionAwait
 import io.vertx.kotlin.ext.sql.queryAwait
+import io.vertx.kotlin.ext.sql.querySingleAwait
 import io.vertx.kotlin.ext.sql.querySingleWithParamsAwait
 import io.vertx.kotlin.ext.sql.queryWithParamsAwait
 import io.vertx.kotlin.ext.sql.updateWithParamsAwait
@@ -50,6 +51,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     private const val RESULTS = "results"
     private const val ERROR_MESSAGE = "errorMessage"
     private const val EXECUTION_STATE = "executionState"
+    private const val SERIAL = "serial"
 
     /**
      * Identifier of a PostgreSQL advisory lock used to make atomic operations
@@ -146,9 +148,12 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
   }
 
-  override suspend fun findSubmissions(): Collection<Submission> {
+  override suspend fun findSubmissions(size: Int, offset: Int, order: Int): Collection<Submission> {
+    val asc = if (order >= 0) "ASC" else "DESC"
+    val limit = if (size < 0) "ALL" else size.toString()
     return withConnection { connection ->
-      val rs = connection.queryAwait("SELECT $DATA FROM $SUBMISSIONS")
+      val rs = connection.queryAwait("SELECT $DATA FROM $SUBMISSIONS " +
+          "ORDER BY $SERIAL $asc LIMIT $limit OFFSET $offset")
       rs.results.map { JsonUtils.mapper.readValue<Submission>(it.getString(0)) }
     }
   }
@@ -168,7 +173,8 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
   override suspend fun findSubmissionIdsByStatus(status: Submission.Status): Collection<String> {
     return withConnection { connection ->
-      val statement = "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$STATUS'=?::jsonb"
+      val statement = "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$STATUS'=?::jsonb " +
+          "ORDER BY $SERIAL"
       val params = json {
         array(
             "\"$status\""
@@ -176,6 +182,13 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       }
       val rs = connection.queryWithParamsAwait(statement, params)
       rs.results.map { it.getString(0) }
+    }
+  }
+
+  override suspend fun countSubmissions(): Long {
+    return withConnection { connection ->
+      val rs = connection.querySingleAwait("SELECT COUNT(*) FROM $SUBMISSIONS")
+      rs?.getLong(0) ?: 0L
     }
   }
 
@@ -220,7 +233,8 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   override suspend fun fetchNextSubmission(currentStatus: Submission.Status,
       newStatus: Submission.Status): Submission? {
     return withLocks { connection ->
-      val statement = "SELECT $DATA FROM $SUBMISSIONS WHERE $DATA->'$STATUS'=?::jsonb LIMIT 1"
+      val statement = "SELECT $DATA FROM $SUBMISSIONS WHERE " +
+          "$DATA->'$STATUS'=?::jsonb LIMIT 1"
       val params = json {
         array(
             "\"$currentStatus\""
@@ -339,7 +353,8 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
   override suspend fun findProcessChainsBySubmissionId(submissionId: String): Collection<ProcessChain> {
     return withConnection { connection ->
-      val statement = "SELECT $DATA FROM $PROCESS_CHAINS WHERE $SUBMISSION_ID=?"
+      val statement = "SELECT $DATA FROM $PROCESS_CHAINS WHERE $SUBMISSION_ID=? " +
+          "ORDER BY $SERIAL"
       val params = json {
         array(
             submissionId
@@ -353,7 +368,8 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   override suspend fun findProcessChainStatusesBySubmissionId(submissionId: String):
       Map<String, ProcessChainStatus> {
     return withConnection { connection ->
-      val statement = "SELECT $ID, $STATUS FROM $PROCESS_CHAINS WHERE $SUBMISSION_ID=?"
+      val statement = "SELECT $ID, $STATUS FROM $PROCESS_CHAINS " +
+          "WHERE $SUBMISSION_ID=? ORDER BY $SERIAL"
       val params = json {
         array(
             submissionId
