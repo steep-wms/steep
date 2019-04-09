@@ -21,6 +21,7 @@ workflows.forEach(initWorkflow);
 
 let app = new Vue({
   el: '#app',
+  mixins: [paginationMixin],
   data: {
     workflows: window.workflows,
     page: window.page,
@@ -64,13 +65,13 @@ let app = new Vue({
 let eb = new EventBus("/eventbus");
 eb.enableReconnect(true);
 eb.onopen = () => {
-  eb.registerHandler("jobmanager.submissionRegistry.submissionAdded", (error, message) => {
-    if (!window.singleWorkflow) {
+  if (!window.singleWorkflow) {
+    eb.registerHandler("jobmanager.submissionRegistry.submissionAdded", (error, message) => {
       let w = message.body;
       initWorkflow(w);
       app.workflows.unshift(w);
-    }
-  });
+    });
+  }
 
   eb.registerHandler("jobmanager.submissionRegistry.submissionStartTimeChanged", (error, message) => {
     let w = app.findWorkflowById(message.body.submissionId);

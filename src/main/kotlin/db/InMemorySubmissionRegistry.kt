@@ -55,6 +55,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   }
 
   private data class ProcessChainEntry(
+      val serial: Int,
       val processChain: ProcessChain,
       val submissionId: String,
       val status: ProcessChainStatus,
@@ -69,7 +70,9 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       val submission: Submission
   )
 
+  private val processChainEntryID = AtomicInteger()
   private val submissionEntryID = AtomicInteger()
+
   private val submissions: Future<AsyncMap<String, String>>
   private val processChains: Future<AsyncMap<String, String>>
   private val executionStates: Future<AsyncMap<String, String>>
@@ -203,7 +206,8 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
         }
         val map = this.processChains.await()
         for (processChain in processChains) {
-          val e = ProcessChainEntry(processChain, submissionId, status)
+          val e = ProcessChainEntry(processChainEntryID.getAndIncrement(),
+              processChain, submissionId, status)
           map.putAwait(processChain.id, JsonUtils.mapper.writeValueAsString(e))
         }
       } finally {
@@ -218,11 +222,24 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     val map = processChains.await()
     val values = awaitResult<List<String>> { map.values(it) }
     return values.map { JsonUtils.mapper.readValue<ProcessChainEntry>(it) }
+        .sortedBy { it.serial }
   }
 
-  override suspend fun findProcessChainsBySubmissionId(submissionId: String) =
+  override suspend fun findProcessChains(size: Int, offset: Int, order: Int):
+      Collection<Pair<ProcessChain, String>> =
+      findProcessChainEntries()
+          .let { if (order < 0) it.reversed() else it }
+          .drop(offset)
+          .let { if (size >= 0) it.take(size) else it }
+          .map { Pair(it.processChain, it.submissionId) }
+
+  override suspend fun findProcessChainsBySubmissionId(submissionId: String,
+      size: Int, offset: Int, order: Int) =
       findProcessChainEntries()
           .filter { it.submissionId == submissionId }
+          .let { if (order < 0) it.reversed() else it }
+          .drop(offset)
+          .let { if (size >= 0) it.take(size) else it }
           .map { it.processChain }
 
   override suspend fun findProcessChainStatusesBySubmissionId(submissionId: String) =
@@ -236,6 +253,9 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       JsonUtils.mapper.readValue<ProcessChainEntry>(it).processChain
     }
   }
+
+  override suspend fun countProcessChains(): Long =
+      findProcessChainEntries().count().toLong()
 
   override suspend fun countProcessChainsBySubmissionId(submissionId: String): Long =
       findProcessChainEntries()

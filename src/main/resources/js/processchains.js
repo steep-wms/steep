@@ -17,8 +17,10 @@ processChains.forEach(initProcessChain);
 
 let app = new Vue({
   el: '#app',
+  mixins: [paginationMixin],
   data: {
     processChains: window.processChains,
+    page: window.page,
     now: new Date()
   },
   created: function () {
@@ -59,8 +61,8 @@ let app = new Vue({
 let eb = new EventBus("/eventbus");
 eb.enableReconnect(true);
 eb.onopen = () => {
-  eb.registerHandler("jobmanager.submissionRegistry.processChainsAdded", (error, message) => {
-    if (!window.singleProcessChain) {
+  if (!window.singleProcessChain) {
+    eb.registerHandler("jobmanager.submissionRegistry.processChainsAdded", (error, message) => {
       let submissionId = message.body.submissionId;
       if (window.submissionIds.length === 0 || window.submissionIds.indexOf(submissionId) >= 0) {
         let status = message.body.status
@@ -71,8 +73,8 @@ eb.onopen = () => {
           app.processChains.unshift(pc);
         }
       }
-    }
-  });
+    });
+  }
 
   eb.registerHandler("jobmanager.submissionRegistry.processChainStartTimeChanged", (error, message) => {
     let pc = app.findProcessChainById(message.body.processChainId);

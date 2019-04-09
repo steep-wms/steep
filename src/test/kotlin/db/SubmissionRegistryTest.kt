@@ -335,6 +335,131 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun findProcessChainsPage(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
+    val pc11 = ProcessChain()
+    val pc12 = ProcessChain()
+    val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
+    val pc21 = ProcessChain()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addProcessChains(listOf(pc11, pc12), s1.id)
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addProcessChains(listOf(pc21), s2.id)
+
+      // check if order is correct
+      val r1 = submissionRegistry.findProcessChains()
+      ctx.verify {
+        assertThat(r1).isEqualTo(listOf(Pair(pc11, s1.id), Pair(pc12, s1.id), Pair(pc21, s2.id)))
+      }
+
+      // check if order can be reversed
+      val r2 = submissionRegistry.findProcessChains(order = -1)
+      ctx.verify {
+        assertThat(r2).isEqualTo(listOf(Pair(pc21, s2.id), Pair(pc12, s1.id), Pair(pc11, s1.id)))
+      }
+
+      // check if we can query pages
+      val r3 = submissionRegistry.findProcessChains(size = 1, offset = 0)
+      val r4 = submissionRegistry.findProcessChains(size = 2, offset = 1)
+      ctx.verify {
+        assertThat(r3).isEqualTo(listOf(Pair(pc11, s1.id)))
+        assertThat(r4).isEqualTo(listOf(Pair(pc12, s1.id), Pair(pc21, s2.id)))
+      }
+
+      // check if we can query pages with reversed order
+      val r5 = submissionRegistry.findProcessChains(size = 1, offset = 0, order = -1)
+      val r6 = submissionRegistry.findProcessChains(size = 2, offset = 1, order = -1)
+      ctx.verify {
+        assertThat(r5).isEqualTo(listOf(Pair(pc21, s2.id)))
+        assertThat(r6).isEqualTo(listOf(Pair(pc12, s1.id), Pair(pc11, s1.id)))
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun findProcessChainsBySubmissionPage(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
+    val pc1 = ProcessChain()
+    val pc2 = ProcessChain()
+    val pc3 = ProcessChain()
+    val s2 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
+    val pc4 = ProcessChain()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addProcessChains(listOf(pc1, pc2, pc3), s1.id)
+      submissionRegistry.addProcessChains(listOf(pc4), s2.id)
+
+      // check if order is correct
+      val r1 = submissionRegistry.findProcessChainsBySubmissionId(s1.id)
+      ctx.verify {
+        assertThat(r1).isEqualTo(listOf(pc1, pc2, pc3))
+      }
+
+      // check if order can be reversed
+      val r2 = submissionRegistry.findProcessChainsBySubmissionId(s1.id, order = -1)
+      ctx.verify {
+        assertThat(r2).isEqualTo(listOf(pc3, pc2, pc1))
+      }
+
+      // check if we can query pages
+      val r3 = submissionRegistry.findProcessChainsBySubmissionId(s1.id, size = 1, offset = 0)
+      val r4 = submissionRegistry.findProcessChainsBySubmissionId(s1.id, size = 2, offset = 1)
+      ctx.verify {
+        assertThat(r3).isEqualTo(listOf(pc1))
+        assertThat(r4).isEqualTo(listOf(pc2, pc3))
+      }
+
+      // check if we can query pages with reversed order
+      val r5 = submissionRegistry.findProcessChainsBySubmissionId(s1.id, size = 1, offset = 0, order = -1)
+      val r6 = submissionRegistry.findProcessChainsBySubmissionId(s1.id, size = 2, offset = 1, order = -1)
+      ctx.verify {
+        assertThat(r5).isEqualTo(listOf(pc3))
+        assertThat(r6).isEqualTo(listOf(pc2, pc1))
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun countProcessChains(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
+    val pc11 = ProcessChain()
+    val pc12 = ProcessChain()
+    val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
+    val pc21 = ProcessChain()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      val r1 = submissionRegistry.countProcessChains()
+      ctx.verify {
+        assertThat(r1).isEqualTo(0)
+      }
+
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addProcessChains(listOf(pc11, pc12), s1.id)
+      val r2 = submissionRegistry.countProcessChains()
+      ctx.verify {
+        assertThat(r2).isEqualTo(2)
+      }
+
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addProcessChains(listOf(pc21), s2.id)
+      val r3 = submissionRegistry.countProcessChains()
+      ctx.verify {
+        assertThat(r3).isEqualTo(3)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun countProcessChainsBySubmissionId(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
     val pc1 = ProcessChain()

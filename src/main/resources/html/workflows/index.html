@@ -67,20 +67,7 @@ $% block content %$
     </transition-group>
     <p v-if="workflows.length === 0">There are no workflows yet.</p>
 
-    <div class="ui pagination menu" v-if="page.offset > 0 || page.size < page.total">
-      <a class="item" v-for="n in Math.ceil(page.total / page.size)"
-         :class="{ active: Math.floor(page.offset / page.size) === (n - 1) }"
-         v-bind:href="'?size=' + page.size + '&offset=' + (n - 1) * page.size">
-        {{ n }}
-      </a>
-      <a class="item" v-if="page.offset + page.size < page.total"
-          v-bind:href="'?size=' + page.size + '&offset=' + (page.offset + page.size)">
-        &raquo;
-      </a>
-      <a class="disabled item" v-else>
-        &raquo;
-      </a>
-    </div>
+    $% include "html/includes/pagination.html" %$
 
   </div>
 
@@ -102,5 +89,6 @@ window.page = {
 };
 </script>
 
+<script src="$$ assets.paginationjs $$"></script>
 <script src="$$ assets.workflowsjs $$"></script>
 $% endblock %$

@@ -1,0 +1,27 @@
+<div class="ui pagination menu" v-if="page.offset > 0 || page.size < page.total">
+  <a class="item" :class="{ active: activePage === 1 }"
+      :href="makePageLink(1)">
+    1
+  </a>
+  <div class="disabled item" v-if="visiblePages.length > 0 && visiblePages[0] > 2">
+    &hellip;
+  </div>
+  <a class="item" v-for="n in visiblePages" :class="{ active: activePage === n }"
+      :href="makePageLink(n)">
+    {{ n }}
+  </a>
+  <div class="disabled item" v-if="visiblePages.length > 0 && visiblePages[visiblePages.length - 1] < totalPages - 1">
+    &hellip;
+  </div>
+  <a class="item" :class="{ active: activePage === totalPages }"
+      :href="makePageLink(totalPages)">
+    {{ totalPages }}
+  </a>
+  <a class="item" v-if="page.offset + page.size < page.total"
+      :href="'?size=' + page.size + '&offset=' + (page.offset + page.size)">
+    &raquo;
+  </a>
+  <a class="disabled item" v-else>
+    &raquo;
+  </a>
+</div>

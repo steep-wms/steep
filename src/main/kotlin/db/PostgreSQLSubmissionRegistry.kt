@@ -351,10 +351,24 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
   }
 
-  override suspend fun findProcessChainsBySubmissionId(submissionId: String): Collection<ProcessChain> {
+  override suspend fun findProcessChains(size: Int, offset: Int, order: Int): Collection<Pair<ProcessChain, String>> {
+    val asc = if (order >= 0) "ASC" else "DESC"
+    val limit = if (size < 0) "ALL" else size.toString()
+    return withConnection { connection ->
+      val statement = "SELECT $DATA, $SUBMISSION_ID FROM $PROCESS_CHAINS " +
+          "ORDER BY $SERIAL $asc LIMIT $limit OFFSET $offset"
+      val rs = connection.queryAwait(statement)
+      rs.results.map { Pair(JsonUtils.mapper.readValue<ProcessChain>(it.getString(0)), it.getString(1)) }
+    }
+  }
+
+  override suspend fun findProcessChainsBySubmissionId(submissionId: String,
+      size: Int, offset: Int, order: Int): Collection<ProcessChain> {
+    val asc = if (order >= 0) "ASC" else "DESC"
+    val limit = if (size < 0) "ALL" else size.toString()
     return withConnection { connection ->
       val statement = "SELECT $DATA FROM $PROCESS_CHAINS WHERE $SUBMISSION_ID=? " +
-          "ORDER BY $SERIAL"
+          "ORDER BY $SERIAL $asc LIMIT $limit OFFSET $offset"
       val params = json {
         array(
             submissionId
@@ -390,6 +404,14 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       }
       val rs = connection.querySingleWithParamsAwait(statement, params)
       rs?.let { JsonUtils.mapper.readValue<ProcessChain>(it.getString(0)) }
+    }
+  }
+
+  override suspend fun countProcessChains(): Long {
+    return withConnection { connection ->
+      val statement = "SELECT COUNT(*) FROM $PROCESS_CHAINS"
+      val rs = connection.querySingleAwait(statement)
+      rs?.getLong(0) ?: 0L
     }
   }
 

@@ -46,7 +46,7 @@ interface SubmissionRegistry {
    * @param size the maximum number of submissions to return (may be negative
    * if all submissions should be returned)
    * @param offset the index of the first submission to return
-   * @param order a positive number if submissions should be returned in an
+   * @param order a positive number if the submissions should be returned in an
    * ascending order, negative otherwise
    * @return all submissions
    */
@@ -139,12 +139,30 @@ interface SubmissionRegistry {
       submissionId: String, status: ProcessChainStatus = ProcessChainStatus.REGISTERED)
 
   /**
+   * Get a list of all process chains in the registry
+   * @param size the maximum number of process chains to return (may be negative
+   * if all process chains should be returned)
+   * @param offset the index of the first process chain to return
+   * @param order a positive number if the process chains should be returned in
+   * an ascending order, negative otherwise
+   * @return all process chains and the ID of their respective submission
+   */
+  suspend fun findProcessChains(size: Int = -1, offset: Int = 0, order: Int = 1):
+      Collection<Pair<ProcessChain, String>>
+
+  /**
    * Find all process chains that belong to a given submission
    * @param submissionId the submission's ID
+   * @param size the maximum number of process chains to return (may be negative
+   * if all process chains should be returned)
+   * @param offset the index of the first process chain to return
+   * @param order a positive number if the process chains should be returned in
+   * an ascending order, negative otherwise
    * @return the list of process chains (may be empty if the submission does not
    * exist or if it has no process chains)
    */
-  suspend fun findProcessChainsBySubmissionId(submissionId: String): Collection<ProcessChain>
+  suspend fun findProcessChainsBySubmissionId(submissionId: String,
+      size: Int = -1, offset: Int = 0, order: Int = 1): Collection<ProcessChain>
 
   /**
    * Find all process chains that belong to a given submission and return their
@@ -161,6 +179,12 @@ interface SubmissionRegistry {
    * @return the process chain or `null` if the process chain does not exist
    */
   suspend fun findProcessChainById(processChainId: String): ProcessChain?
+
+  /**
+   * Count the number of registered process chains
+   * @return the number of process chains in the registry
+   */
+  suspend fun countProcessChains(): Long
 
   /**
    * Count the number of process chains that belong to a given submission

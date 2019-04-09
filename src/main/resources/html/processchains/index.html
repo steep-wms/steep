@@ -8,11 +8,8 @@ $% block content %$
   <div class="ui container" v-cloak>
 
     <h1 class="ui header">
-      <span v-if="submissionIds.length > 0">
-        <span v-for="(id, index) in submissionIds">
-          <span v-if="index > 0">,</span>
-          <a v-bind:href="'/workflows/' + id">{{ id }}</a>
-        </span>
+      <span v-if="submissionId !== null">
+        <a v-bind:href="'/workflows/' + submissionId">{{ submissionId }}</a>
         &raquo;
       </span>
       Process Chains
@@ -70,6 +67,8 @@ $% block content %$
     </transition-group>
     <p v-if="processChains.length === 0">There are no process chains yet.</p>
 
+    $% include "html/includes/pagination.html" %$
+
   </div>
 
 </div>
@@ -81,9 +80,15 @@ $% block content %$
 <script src="/assets/vue-timeago/5.0.0/dist/vue-timeago.min.js"></script>
 
 <script>
-window.submissionIds = $$ submissionIds | raw $$;
+window.submissionId = $%if submissionId is not null %$"$$ submissionId $$"$% else %$null$% endif %$;
 window.processChains = $$ processChains | raw $$;
+window.page = {
+  size: $$ page.size $$,
+  offset: $$ page.offset $$,
+  total: $$ page.total $$
+};
 </script>
 
+<script src="$$ assets.paginationjs $$"></script>
 <script src="$$ assets.processchainsjs $$"></script>
 $% endblock %$

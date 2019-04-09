@@ -53,6 +53,7 @@ class HttpEndpoint : CoroutineVerticle() {
     private val TRANSIENT_ASSETS: Map<String, String> = mapOf(
         "indexcss" to "/assets/index.css",
         "agentsjs" to "/assets/agents.js",
+        "paginationjs" to "/assets/pagination.js",
         "processchainsjs" to "/assets/processchains.js",
         "workflowsjs" to "/assets/workflows.js"
     )
@@ -200,7 +201,7 @@ class HttpEndpoint : CoroutineVerticle() {
   /**
    * Renders an HTML template to the given HTTP response
    */
-  private fun renderHtml(templateName: String, context: Map<String, Any>,
+  private fun renderHtml(templateName: String, context: Map<String, Any?>,
       response: HttpServerResponse) {
     val engine = PebbleEngine.Builder()
         .strictVariables(true)
@@ -349,17 +350,12 @@ class HttpEndpoint : CoroutineVerticle() {
   private fun onGetWorkflows(ctx: RoutingContext) {
     launch {
       val isHtml = ctx.acceptableContentType == "text/html"
-      val offset = ctx.request().getParam("offset")?.toIntOrNull() ?: 0
-      val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
+      val offset = Math.max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
+      // TODO also use default size for json result
+      val size = ctx.request().getParam("size")?.toIntOrNull() ?: if (isHtml) 10 else -1
 
       val total = submissionRegistry.countSubmissions()
-
-      // TODO also use `size` and `offset` for json result
-      val submissions = if (isHtml) {
-        submissionRegistry.findSubmissions(size, offset, -1)
-      } else {
-        submissionRegistry.findSubmissions(order = -1)
-      }
+      val submissions = submissionRegistry.findSubmissions(size, offset, -1)
 
       val list = submissions.map { submission ->
         // do not unnecessarily encode workflow to save time for large workflows
@@ -528,33 +524,49 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onGetProcessChains(ctx: RoutingContext) {
     launch {
-      val submissionIdsParam = ctx.queryParam("submissionId") ?: emptyList()
-      val submissionIds = if (submissionIdsParam.isEmpty()) {
-        submissionRegistry.findSubmissions().map { it.id }
+      val isHtml = ctx.acceptableContentType == "text/html"
+      val offset = Math.max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
+      // TODO also use default size for json result
+      val size = ctx.request().getParam("size")?.toIntOrNull() ?: if (isHtml) 10 else -1
+
+      val submissionId: String? = ctx.request().getParam("submissionId")
+      val list = if (submissionId == null) {
+        submissionRegistry.findProcessChains(size, offset, -1)
       } else {
-        submissionIdsParam
+        submissionRegistry.findProcessChainsBySubmissionId(submissionId, size, offset, -1)
+            .map { Pair(it, submissionId) }
+      }.map { p ->
+        JsonUtils.toJson(p.first).also {
+          it.remove("executables")
+          amendProcessChain(it, p.second)
+        }
       }
 
-      val list = submissionIds.flatMap { submissionId ->
-        submissionRegistry.findProcessChainsBySubmissionId(submissionId).map { processChain ->
-          JsonUtils.toJson(processChain).also {
-            it.remove("executables")
-            amendProcessChain(it, submissionId)
-          }
-        }
+      val total = if (submissionId == null) {
+        submissionRegistry.countProcessChains()
+      } else {
+        submissionRegistry.countProcessChainsBySubmissionId(submissionId)
       }
 
       val encodedJson = JsonArray(list).encode()
 
-      if (ctx.acceptableContentType == "text/html") {
+      if (isHtml) {
         renderHtml("html/processchains/index.html", mapOf(
-            "submissionIds" to JsonArray(submissionIdsParam),
+            "submissionId" to submissionId,
             "processChains" to encodedJson,
-            "assets" to ASSET_SHAS
+            "assets" to ASSET_SHAS,
+            "page" to mapOf(
+                "size" to size,
+                "offset" to offset,
+                "total" to total
+            )
         ), ctx.response())
       } else {
         ctx.response()
             .putHeader("content-type", "application/json")
+            .putHeader("x-page-size", size.toString())
+            .putHeader("x-page-offset", offset.toString())
+            .putHeader("x-page-total", total.toString())
             .end(encodedJson)
       }
     }
