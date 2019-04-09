@@ -21,6 +21,7 @@ let app = new Vue({
   data: {
     processChains: window.processChains,
     page: window.page,
+    processChainsAdded: false,
     now: new Date()
   },
   created: function () {
@@ -58,19 +59,31 @@ let app = new Vue({
   }
 });
 
+$(".message .close").on("click", () => {
+  app.processChainsAdded = false;
+});
+
 let eb = new EventBus("/eventbus");
 eb.enableReconnect(true);
 eb.onopen = () => {
   if (!window.singleProcessChain) {
     eb.registerHandler("jobmanager.submissionRegistry.processChainsAdded", (error, message) => {
       let submissionId = message.body.submissionId;
-      if (window.submissionIds.length === 0 || window.submissionIds.indexOf(submissionId) >= 0) {
-        let status = message.body.status
-        let pcs = message.body.processChains;
-        for (pc of pcs) {
-          pc.status = status;
-          initProcessChain(pc);
-          app.processChains.unshift(pc);
+      if (window.submissionId === null || window.submissionId === submissionId) {
+        if (page.offset > 0) {
+          app.processChainsAdded = true;
+        } else {
+          let status = message.body.status
+          let pcs = message.body.processChains;
+          for (pc of pcs) {
+            pc.status = status;
+            initProcessChain(pc);
+            app.processChains.unshift(pc);
+            if (app.processChains.length > app.page.size) {
+              app.processChains.pop();
+            }
+            app.page.total++;
+          }
         }
       }
     });

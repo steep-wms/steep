@@ -65,14 +65,25 @@
   animation: spin 4s linear infinite;
 }
 
-.list-enter-active, .list-leave-active {
+.list-enter-active, .agent-list-enter-active, .agent-list-leave-active, .message-leave-active {
   transition: opacity 500ms;
 }
 
-.list-enter, .list-leave-to {
+.list-enter, .list-leave-to, .agent-list-enter, .agent-list-leave-to, .message-leave-to {
   opacity: 0;
 }
 
 .errormessage {
   margin-bottom: 1rem;
+}
+
+.new-items-message {
+  max-width: 40rem;
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+
+  .ui.message .header {
+    margin-right: 1rem;
+  }
 }

@@ -69,10 +69,25 @@ $% block content %$
 
     $% include "html/includes/pagination.html" %$
 
+    <transition-group name="message" tag="div">
+      <div class="new-items-message" v-bind:key="'message'">
+        <div class="ui floating warning message" v-if="processChainsAdded">
+          <i class="close icon"></i>
+          <div class="header">
+            New process chains have been added to the top of the list
+          </div>
+          <p>Please <a href="#" v-on:click.prevent="window.location.reload(true)">refresh this page</a>
+            or go back to the <a :href="submissionId !== null ? '?submissionId=' + submissionId + '&size=' + page.size : '?size=' + page.size">first one</a>.</p>
+        </div>
+      </div>
+    </transition-group>
+
   </div>
 
 </div>
+$% endblock %$
 
+$% block additionalScripts %$
 <script src="/assets/sockjs-client/1.3.0/dist/sockjs.min.js"></script>
 <script src="/assets/vertx-web-3.6.2-client.js"></script>
 <script src="/assets/vue/2.6.6/dist/vue.min.js"></script>

@@ -58,8 +58,6 @@ let app = new Vue({
         } else {
           result = seconds + " seconds";
         }
-      } else {
-        result = "about " + result;
       }
       return result;
     }

@@ -25,6 +25,7 @@ let app = new Vue({
   data: {
     workflows: window.workflows,
     page: window.page,
+    workflowsAdded: false,
     now: new Date()
   },
   created: function () {
@@ -62,14 +63,26 @@ let app = new Vue({
   }
 });
 
+$(".message .close").on("click", () => {
+  app.workflowsAdded = false;
+});
+
 let eb = new EventBus("/eventbus");
 eb.enableReconnect(true);
 eb.onopen = () => {
   if (!window.singleWorkflow) {
     eb.registerHandler("jobmanager.submissionRegistry.submissionAdded", (error, message) => {
-      let w = message.body;
-      initWorkflow(w);
-      app.workflows.unshift(w);
+      if (page.offset > 0) {
+        app.workflowsAdded = true;
+      } else {
+        let w = message.body;
+        initWorkflow(w);
+        app.workflows.unshift(w);
+        if (app.workflows.length > app.page.size) {
+          app.workflows.pop();
+        }
+        app.page.total++;
+      }
     });
   }
 
