@@ -119,7 +119,8 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.countProcessChainsByStatus(s2.id,
         SubmissionRegistry.ProcessChainStatus.SUCCESS) } returns 14
 
-    coEvery { submissionRegistry.findSubmissions() } returns listOf(s1, s2)
+    coEvery { submissionRegistry.findSubmissions(any(), any(), any()) } returns listOf(s1, s2)
+    coEvery { submissionRegistry.countSubmissions() } returns 2
 
     val client = WebClient.create(vertx)
     GlobalScope.launch(vertx.dispatcher()) {
@@ -129,6 +130,10 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_SUCCESS)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
+
+        assertThat(response.headers()["x-page-size"]).isEqualTo("-1")
+        assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
+        assertThat(response.headers()["x-page-total"]).isEqualTo("2")
 
         assertThat(response.body()).isEqualTo(json {
           array(
@@ -325,8 +330,9 @@ class HttpEndpointTest {
     val pc3 = ProcessChain()
     val pc4 = ProcessChain()
 
-    coEvery { submissionRegistry.findProcessChainsBySubmissionId(s1.id) } returns listOf(pc1, pc2)
-    coEvery { submissionRegistry.findProcessChainsBySubmissionId(s2.id) } returns listOf(pc3, pc4)
+    coEvery { submissionRegistry.findProcessChains(any(), any(), any()) } returns listOf(
+        Pair(pc1, s1.id), Pair(pc2, s1.id), Pair(pc3, s2.id), Pair(pc4, s2.id))
+    coEvery { submissionRegistry.countProcessChains() } returns 4
 
     coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns ProcessChainStatus.SUCCESS
     coEvery { submissionRegistry.getProcessChainStatus(pc2.id) } returns ProcessChainStatus.RUNNING
@@ -367,6 +373,10 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_SUCCESS)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
+
+        assertThat(response.headers()["x-page-size"]).isEqualTo("-1")
+        assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
+        assertThat(response.headers()["x-page-total"]).isEqualTo("4")
 
         assertThat(response.body()).isEqualTo(json {
           array(
@@ -423,7 +433,8 @@ class HttpEndpointTest {
     val pc1 = ProcessChain(executables = listOf(Executable(path = "path", arguments = emptyList())))
     val pc2 = ProcessChain()
 
-    coEvery { submissionRegistry.findProcessChainsBySubmissionId(s1.id) } returns listOf(pc1, pc2)
+    coEvery { submissionRegistry.findProcessChainsBySubmissionId(s1.id, any(), any(), any()) } returns listOf(pc1, pc2)
+    coEvery { submissionRegistry.countProcessChainsBySubmissionId(s1.id) } returns 2
 
     coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns ProcessChainStatus.SUCCESS
     coEvery { submissionRegistry.getProcessChainStatus(pc2.id) } returns ProcessChainStatus.RUNNING
@@ -448,6 +459,10 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_SUCCESS)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
+
+        assertThat(response.headers()["x-page-size"]).isEqualTo("-1")
+        assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
+        assertThat(response.headers()["x-page-total"]).isEqualTo("2")
 
         assertThat(response.body()).isEqualTo(json {
           array(
