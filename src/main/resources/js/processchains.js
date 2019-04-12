@@ -63,7 +63,7 @@ $(".message .close").on("click", () => {
   app.processChainsAdded = false;
 });
 
-let eb = new EventBus("/eventbus");
+let eb = new EventBus(basePath + "/eventbus");
 eb.enableReconnect(true);
 eb.onopen = () => {
   if (!window.singleProcessChain) {

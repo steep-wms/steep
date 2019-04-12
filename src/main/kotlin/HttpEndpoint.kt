@@ -80,6 +80,7 @@ class HttpEndpoint : CoroutineVerticle() {
 
   private lateinit var remoteAgentRegistry: RemoteAgentRegistry
   private lateinit var submissionRegistry: SubmissionRegistry
+  private lateinit var basePath: String
 
   override suspend fun start() {
     remoteAgentRegistry = RemoteAgentRegistry(vertx)
@@ -87,6 +88,19 @@ class HttpEndpoint : CoroutineVerticle() {
 
     val host = config.getString(ConfigConstants.HTTP_HOST, "localhost")
     val port = config.getInteger(ConfigConstants.HTTP_PORT, 8080)
+    basePath = config.getString(ConfigConstants.HTTP_BASE_PATH, "").let {
+      if (!it.startsWith("/")) {
+        "/$it"
+      } else {
+        it
+      }
+    }.let {
+      if (it.endsWith("/")) {
+        it.substring(0, it.length - 1)
+      } else {
+        it
+      }
+    }
 
     val options = HttpServerOptions()
         .setCompressionSupported(true)
@@ -144,14 +158,20 @@ class HttpEndpoint : CoroutineVerticle() {
       if (request.method() != HttpMethod.GET && request.method() != HttpMethod.HEAD) {
         context.next()
       } else {
-        val path = HttpUtils.removeDots(URIDecoder.decodeURIComponent(context.normalisedPath(), false))
+        val path = HttpUtils.removeDots(URIDecoder.decodeURIComponent(context.normalisedPath(), false))?.let {
+          if (it.startsWith(basePath)) {
+            it.substring(basePath.length)
+          } else {
+            it
+          }
+        }
         if (path == null) {
           log.warn("Invalid path: " + context.request().path())
           context.next()
         } else {
           val assetId = ASSET_IDS[path]
           if (assetId != null) {
-            context.reroute(TRANSIENT_ASSETS[assetId])
+            context.reroute(basePath + TRANSIENT_ASSETS[assetId])
           } else {
             context.next()
           }
@@ -193,9 +213,11 @@ class HttpEndpoint : CoroutineVerticle() {
             .setAddress(AddressConstants.REMOTE_AGENT_IDLE)))
     router.route("/eventbus/*").handler(sockJSHandler)
 
-    server.requestHandler(router).listenAwait(port, host)
+    val baseRouter = Router.router(vertx)
+    baseRouter.mountSubRouter("$basePath/", router)
+    server.requestHandler(baseRouter).listenAwait(port, host)
 
-    log.info("HTTP endpoint deployed to http://$host:$port")
+    log.info("HTTP endpoint deployed to http://$host:$port$basePath")
   }
 
   /**
@@ -209,7 +231,10 @@ class HttpEndpoint : CoroutineVerticle() {
         .build()
     val compiledTemplate = engine.getTemplate(templateName)
     val writer = StringWriter()
-    compiledTemplate.evaluate(writer, context)
+    compiledTemplate.evaluate(writer, context + mapOf(
+        "assets" to ASSET_SHAS,
+        "basePath" to basePath
+    ))
     response
         .putHeader("content-type", "text/html")
         .putHeader("cache-control", "no-cache, no-store, must-revalidate")
@@ -224,8 +249,7 @@ class HttpEndpoint : CoroutineVerticle() {
   private fun onGet(ctx: RoutingContext) {
     if (ctx.acceptableContentType == "text/html") {
       renderHtml("html/index.html", mapOf(
-          "version" to VERSION,
-          "assets" to ASSET_SHAS
+          "version" to VERSION
       ), ctx.response())
     } else {
       ctx.response()
@@ -254,8 +278,7 @@ class HttpEndpoint : CoroutineVerticle() {
 
       if (ctx.acceptableContentType == "text/html") {
         renderHtml("html/agents/index.html", mapOf(
-            "agents" to result,
-            "assets" to ASSET_SHAS
+            "agents" to result
         ), ctx.response())
       } else {
         ctx.response()
@@ -285,8 +308,7 @@ class HttpEndpoint : CoroutineVerticle() {
         if (ctx.acceptableContentType == "text/html") {
           renderHtml("html/agents/single.html", mapOf(
               "id" to id,
-              "agents" to JsonArray(agent).encode(),
-              "assets" to ASSET_SHAS
+              "agents" to JsonArray(agent).encode()
           ), ctx.response())
         } else {
           ctx.response()
@@ -374,7 +396,6 @@ class HttpEndpoint : CoroutineVerticle() {
         renderHtml("html/workflows/index.html", mapOf(
             "workflows" to encodedJson,
             "processChains" to JsonObject(processChains).encode(),
-            "assets" to ASSET_SHAS,
             "page" to mapOf(
                 "size" to size,
                 "offset" to offset,
@@ -412,8 +433,7 @@ class HttpEndpoint : CoroutineVerticle() {
           renderHtml("html/workflows/single.html", mapOf(
               "id" to submission.id,
               "workflows" to JsonArray(json).encode(),
-              "processChains" to JsonObject(processChains),
-              "assets" to ASSET_SHAS
+              "processChains" to JsonObject(processChains)
           ), ctx.response())
         } else {
           ctx.response()
@@ -554,7 +574,6 @@ class HttpEndpoint : CoroutineVerticle() {
         renderHtml("html/processchains/index.html", mapOf(
             "submissionId" to submissionId,
             "processChains" to encodedJson,
-            "assets" to ASSET_SHAS,
             "page" to mapOf(
                 "size" to size,
                 "offset" to offset,
@@ -591,8 +610,7 @@ class HttpEndpoint : CoroutineVerticle() {
         if (ctx.acceptableContentType == "text/html") {
           renderHtml("html/processchains/single.html", mapOf(
               "id" to id,
-              "processChains" to JsonArray(json).encode(),
-              "assets" to ASSET_SHAS
+              "processChains" to JsonArray(json).encode()
           ), ctx.response())
         } else {
           ctx.response()

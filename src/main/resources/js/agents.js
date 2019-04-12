@@ -64,13 +64,13 @@ let app = new Vue({
   }
 });
 
-let eb = new EventBus("/eventbus");
+let eb = new EventBus(basePath + "/eventbus");
 eb.enableReconnect(true);
 eb.onopen = () => {
   eb.registerHandler("jobmanager.remoteAgentRegistry.agentAdded", (error, message) => {
     if (!window.singleAgent) {
       let id = message.body.substring(AGENT_ADDRESS_PREFIX.length);
-      fetch("/agents/" + id)
+      fetch(basePath + "/agents/" + id)
         .then(response => response.json())
         .then(agent => {
           let i = app.findAgentById(agent.id);

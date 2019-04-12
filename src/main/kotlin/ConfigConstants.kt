@@ -90,6 +90,11 @@ object ConfigConstants {
   const val HTTP_POST_MAX_SIZE = "jobmanager.http.postMaxSize"
 
   /**
+   * The path where the JobManager endpoints should be mounted
+   */
+  const val HTTP_BASE_PATH = "jobmanager.http.basePath"
+
+  /**
    * The interval in which the controller looks for accepted submissions
    */
   const val CONTROLLER_LOOKUP_INTERVAL = "jobmanager.controller.lookupIntervalMilliseconds"

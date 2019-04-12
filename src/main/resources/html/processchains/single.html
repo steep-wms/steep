@@ -3,7 +3,7 @@ $% extends "html/base.html" %$
 $% block title %$ $$ id $$ &raquo; Process Chains &raquo; JobManager $% endblock %$
 
 $% block additionalCSS %$
-<link rel="stylesheet" type="text/css" class="ui" href="/assets/highlightjs/9.8.0/styles/zenburn.css">
+<link rel="stylesheet" type="text/css" class="ui" href="$$ basePath $$/assets/highlightjs/9.8.0/styles/zenburn.css">
 $% endblock %$
 
 $% block content %$
@@ -13,7 +13,7 @@ $% block content %$
 
     <div v-for="pc in processChains" class="processchains">
       
-      <h1 class="ui header"><a v-bind:href="'/workflows/' + pc.submissionId">{{ pc.submissionId }}</a> &raquo; {{ pc.id }}</h1>
+      <h1 class="ui header"><a v-bind:href="basePath + '/workflows/' + pc.submissionId">{{ pc.submissionId }}</a> &raquo; {{ pc.id }}</h1>
 
       <div class="ui divider"></div>
       
@@ -101,12 +101,12 @@ $% block content %$
 $% endblock %$
 
 $% block additionalScripts %$
-<script src="/assets/sockjs-client/1.3.0/dist/sockjs.min.js"></script>
-<script src="/assets/vertx-web-3.6.2-client.js"></script>
-<script src="/assets/vue/2.6.6/dist/vue.min.js"></script>
-<script src="/assets/vue-moment/4.0.0/dist/vue-moment.min.js"></script>
-<script src="/assets/vue-timeago/5.0.0/dist/vue-timeago.min.js"></script>
-<script src="/assets/highlightjs/9.8.0/highlight.min.js"></script>
+<script src="$$ basePath $$/assets/sockjs-client/1.3.0/dist/sockjs.min.js"></script>
+<script src="$$ basePath $$/assets/vertx-web-3.6.2-client.js"></script>
+<script src="$$ basePath $$/assets/vue/2.6.6/dist/vue.min.js"></script>
+<script src="$$ basePath $$/assets/vue-moment/4.0.0/dist/vue-moment.min.js"></script>
+<script src="$$ basePath $$/assets/vue-timeago/5.0.0/dist/vue-timeago.min.js"></script>
+<script src="$$ basePath $$/assets/highlightjs/9.8.0/highlight.min.js"></script>
 
 <script>
 window.singleProcessChain = true;
@@ -119,6 +119,6 @@ $(function() {
 });
 </script>
 
-<script src="$$ assets.paginationjs $$"></script>
-<script src="$$ assets.processchainsjs $$"></script>
+<script src="$$ basePath $$$$ assets.paginationjs $$"></script>
+<script src="$$ basePath $$$$ assets.processchainsjs $$"></script>
 $% endblock %$

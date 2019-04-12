@@ -8,8 +8,8 @@
 
 <title>$% block title %$ $% endblock %$</title>
 
-<link rel="stylesheet" type="text/css" class="ui" href="/assets/semantic-ui/2.4.2/dist/semantic.min.css">
-<link rel="stylesheet" type="text/css" class="ui" href="$$ assets.indexcss $$">
+<link rel="stylesheet" type="text/css" class="ui" href="$$ basePath $$/assets/semantic-ui/2.4.2/dist/semantic.min.css">
+<link rel="stylesheet" type="text/css" class="ui" href="$$ basePath $$$$ assets.indexcss $$">
 $% block additionalCSS %$
 $% endblock %$
 
@@ -18,18 +18,21 @@ $% endblock %$
 
 <div class="ui container">
   <div class="ui text top menu">
-    <a class="header item" href="/">JobManager</a>
-    <a class="item" href="/workflows">Workflows</a>
-    <a class="item" href="/processchains">Process Chains</a>
-    <a class="item" href="/agents">Agents</a>
+    <a class="header item" href="$$ basePath $$/">JobManager</a>
+    <a class="item" href="$$ basePath $$/workflows">Workflows</a>
+    <a class="item" href="$$ basePath $$/processchains">Process Chains</a>
+    <a class="item" href="$$ basePath $$/agents">Agents</a>
   </div>
 </div>
 
 $% block content %$
 $% endblock %$
 
-<script src="/assets/jquery/3.3.1/dist/jquery.min.js"></script>
-<script src="/assets/semantic-ui/2.4.2/dist/semantic.min.js"></script>
+<script src="$$ basePath $$/assets/jquery/3.3.1/dist/jquery.min.js"></script>
+<script src="$$ basePath $$/assets/semantic-ui/2.4.2/dist/semantic.min.js"></script>
+<script>
+window.basePath = "$$ basePath $$";
+</script>
 
 $% block additionalScripts %$
 $% endblock %$

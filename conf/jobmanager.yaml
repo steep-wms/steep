@@ -24,6 +24,7 @@ jobmanager:
     host: localhost
     port: 8080
     postMaxSize: 10485760  # 10 MB
+    # basePath: /jobmanager
 
   agent:
     enabled: true

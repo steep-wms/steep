@@ -16,7 +16,7 @@ $% block content %$
         <div class="ui divider"></div>
         <div class="workflow">
           <div class="workflow-left">
-            <a class="ui header" v-bind:href="'/workflows/' + w.id">{{ w.id }}</a>
+            <a class="ui header" v-bind:href="basePath + '/workflows/' + w.id">{{ w.id }}</a>
             <p v-if="w.status === 'ACCEPTED'">Workflow has not started yet</p>
             <p v-if="w.status === 'RUNNING' && w.startTime">
               Workflow started <span :title="w.startTime | moment('dddd, D MMMM YYYY, h:mm:ss a')">
@@ -37,12 +37,12 @@ $% block content %$
                 <i class="cog grey icon"></i>
                 <div class="content">
                   <div class="title">Running</div>
-                  <a v-bind:href="'/processchains/?submissionId=' + w.id" v-if="w.status === 'RUNNING'" class="description">
+                  <a v-bind:href="basePath + '/processchains/?submissionId=' + w.id" v-if="w.status === 'RUNNING'" class="description">
                     {{ w.succeededProcessChains + w.failedProcessChains }} of
                     {{ w.totalProcessChains }} completed
                     ({{ w.runningProcessChains }} running)
                   </a>
-                  <a v-bind:href="'/processchains/?submissionId=' + w.id" v-if="w.status !== 'ACCEPTED' && w.status !== 'RUNNING'" class="description">
+                  <a v-bind:href="basePath + '/processchains/?submissionId=' + w.id" v-if="w.status !== 'ACCEPTED' && w.status !== 'RUNNING'" class="description">
                     {{ w.totalProcessChains }} completed
                   </a>
                 </div>
@@ -57,7 +57,7 @@ $% block content %$
                   <div v-if="w.status === 'ERROR'" class="title">Error</div>
                   <div v-if="w.status === 'PARTIAL_SUCCESS'" class="title">Partial success</div>
                   <div v-if="w.status === 'SUCCESS'" class="title">Success</div>
-                  <a v-bind:href="'/processchains/?submissionId=' + w.id" v-if="w.failedProcessChains" class="description red">{{ w.failedProcessChains }} failed</a>
+                  <a v-bind:href="basePath + '/processchains/?submissionId=' + w.id" v-if="w.failedProcessChains" class="description red">{{ w.failedProcessChains }} failed</a>
                 </div>
               </div>
             </div>
@@ -88,11 +88,11 @@ $% block content %$
 $% endblock %$
 
 $% block additionalScripts %$
-<script src="/assets/sockjs-client/1.3.0/dist/sockjs.min.js"></script>
-<script src="/assets/vertx-web-3.6.2-client.js"></script>
-<script src="/assets/vue/2.6.6/dist/vue.min.js"></script>
-<script src="/assets/vue-moment/4.0.0/dist/vue-moment.min.js"></script>
-<script src="/assets/vue-timeago/5.0.0/dist/vue-timeago.min.js"></script>
+<script src="$$ basePath $$/assets/sockjs-client/1.3.0/dist/sockjs.min.js"></script>
+<script src="$$ basePath $$/assets/vertx-web-3.6.2-client.js"></script>
+<script src="$$ basePath $$/assets/vue/2.6.6/dist/vue.min.js"></script>
+<script src="$$ basePath $$/assets/vue-moment/4.0.0/dist/vue-moment.min.js"></script>
+<script src="$$ basePath $$/assets/vue-timeago/5.0.0/dist/vue-timeago.min.js"></script>
 
 <script>
 window.workflows = $$ workflows | raw $$;
@@ -104,6 +104,6 @@ window.page = {
 };
 </script>
 
-<script src="$$ assets.paginationjs $$"></script>
-<script src="$$ assets.workflowsjs $$"></script>
+<script src="$$ basePath $$$$ assets.paginationjs $$"></script>
+<script src="$$ basePath $$$$ assets.workflowsjs $$"></script>
 $% endblock %$
