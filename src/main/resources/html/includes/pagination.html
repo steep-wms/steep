@@ -1,4 +1,4 @@
-<div class="ui pagination menu" v-if="page.offset > 0 || page.size < page.total">
+<div class="ui pagination menu" v-if="page.size > 0 && page.offset < page.total && (page.offset > 0 || page.size < page.total)">
   <a class="item" :class="{ active: activePage === 1 }"
       :href="makePageLink(1)">
     1

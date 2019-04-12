@@ -397,7 +397,7 @@ class HttpEndpoint : CoroutineVerticle() {
             "workflows" to encodedJson,
             "processChains" to JsonObject(processChains).encode(),
             "page" to mapOf(
-                "size" to size,
+                "size" to if (size < 0) total else size,
                 "offset" to offset,
                 "total" to total
             )
@@ -575,7 +575,7 @@ class HttpEndpoint : CoroutineVerticle() {
             "submissionId" to submissionId,
             "processChains" to encodedJson,
             "page" to mapOf(
-                "size" to size,
+                "size" to if (size < 0) total else size,
                 "offset" to offset,
                 "total" to total
             )
