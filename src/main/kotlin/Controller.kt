@@ -172,7 +172,7 @@ class Controller : CoroutineVerticle() {
         return
       }
 
-      val ruleSystem = RuleSystem(submission.workflow,
+      val generator = ProcessChainGenerator(submission.workflow,
           FilenameUtils.normalize("$tmpPath/${submission.id}"),
           metadataRegistry.findServices())
 
@@ -186,8 +186,8 @@ class Controller : CoroutineVerticle() {
         log.info("Resuming submission `${submission.id}' ...")
 
         // resume aborted submissions...
-        // load rule system state
-        ruleSystem.loadState(executionState)
+        // load generator state
+        generator.loadState(executionState)
 
         // reset running process chains and repeat failed process chains
         val runningProcessChains = submissionRegistry.countProcessChainsByStatus(submission.id,
@@ -210,7 +210,7 @@ class Controller : CoroutineVerticle() {
 
         // Re-load all process chains. waitForProcessChains() will only
         // re-execute those that need to be executed but will collect the output
-        // of all process chains so it can be passed to the rule system.
+        // of all process chains so it can be passed to the generator.
         processChainsToResume = submissionRegistry.findProcessChainsBySubmissionId(submission.id)
       }
 
@@ -225,7 +225,7 @@ class Controller : CoroutineVerticle() {
           processChainsToResume = null
           pcs
         } else {
-          val pcs = ruleSystem.fire(results)
+          val pcs = generator.generate(results)
           if (pcs.isEmpty()) {
             break
           }
@@ -233,10 +233,10 @@ class Controller : CoroutineVerticle() {
           // store process chains in submission registry
           submissionRegistry.addProcessChains(pcs, submission.id)
 
-          // store the rule system's state so we are able to resume the
+          // store the generator's state so we are able to resume the
           // submission later if necessary
           submissionRegistry.setSubmissionExecutionState(submission.id,
-              ruleSystem.persistState())
+              generator.persistState())
 
           pcs
         }
@@ -252,7 +252,7 @@ class Controller : CoroutineVerticle() {
       }
 
       // evaluate results
-      val status = if (ruleSystem.isFinished()) {
+      val status = if (generator.isFinished()) {
         when (errors) {
           0 -> Submission.Status.SUCCESS
           totalProcessChains -> Submission.Status.ERROR

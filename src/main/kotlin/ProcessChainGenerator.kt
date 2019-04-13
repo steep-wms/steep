@@ -25,16 +25,15 @@ import java.util.Collections
 import java.util.IdentityHashMap
 
 /**
- * The rule system applies production rules to convert a workflow to a list
- * of process chains.
- * @param workflow the workflow to convert
+ * Generates process chains from a workflow
+ * @param workflow the workflow to convert to process chains
  * @param tmpPath a directory where temporary workflow results should be stored
  * @param services service metadata
  */
-class RuleSystem(workflow: Workflow, private val tmpPath: String,
+class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
     private val services: List<Service>, private val idGenerator: IDGenerator = UniqueID) {
   companion object {
-    private val log = LoggerFactory.getLogger(RuleSystem::class.java)
+    private val log = LoggerFactory.getLogger(ProcessChainGenerator::class.java)
   }
 
   private val vars = workflow.vars.toMutableList()
@@ -44,20 +43,16 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
 
   /**
    * Returns `true` if the workflow has been fully converted to process chains
-   * @return `true` if the rule system has finished, `false` otherwise
    */
   fun isFinished() = actions.isEmpty()
 
   /**
-   * Evaluate the production rules and create the next set of process chains.
-   * Call this method until it returns an empty list (i.e. until it does not
-   * produce more process chains). Execute the process chains after each call
-   * to this method and pass their results to the next call.
-   * @param results the results of previously generated process chains
-   * @return a list of process chains (may be empty if there are no process
-   * chains anymore)
+   * Create the next set of process chains. Call this method until it returns
+   * an empty list (i.e. until it does not produce more process chains).
+   * Execute the process chains after each call to this method and pass their
+   * [results] to the next call.
    */
-  fun fire(results: Map<String, List<String>>? = null): List<ProcessChain> {
+  fun generate(results: Map<String, List<String>>? = null): List<ProcessChain> {
     // replace variable values with results
     results?.forEach { key, value ->
       variableValues[key] = if (value.size == 1) value[0] else value
@@ -356,14 +351,14 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
         val dockerArgs = listOf(
             Argument(id = idGenerator.next(),
                 variable = ArgumentVariable("dockerRun", "run"),
-                type = Argument.Type.ARGUMENT)
+                type = ARGUMENT)
         ) + runtimeArgsToArguments(service.runtimeArgs) + listOf(
             Argument(id = idGenerator.next(),
                 label = "-v", variable = ArgumentVariable("dockerMount", "$tmpPath:$tmpPath"),
-                type = Argument.Type.ARGUMENT),
+                type = ARGUMENT),
             Argument(id = idGenerator.next(),
                 variable = ArgumentVariable("dockerImage", service.path),
-                type = Argument.Type.ARGUMENT)
+                type = ARGUMENT)
         )
         Executable(service.name, path, dockerArgs + arguments)
       }
@@ -380,12 +375,12 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
         Argument(id = idGenerator.next(),
             label = it.label,
             variable = ArgumentVariable(it.id, it.value ?: ""),
-            type = Argument.Type.ARGUMENT,
+            type = ARGUMENT,
             dataType = it.dataType)
       }
 
   /**
-   * A helper class that is used to persist the rule system's state in [persistState]
+   * A helper class that is used to persist the generator's state in [persistState]
    */
   private data class State(
       val vars: List<Variable>,
@@ -395,7 +390,7 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
   )
 
   /**
-   * Persist the rule system's internal state to a JSON object
+   * Persist the generator's internal state to a JSON object
    */
   fun persistState(): JsonObject {
     val s = State(vars, actions.toList(), variableValues, forEachOutputsToBeCollected)
@@ -403,7 +398,7 @@ class RuleSystem(workflow: Workflow, private val tmpPath: String,
   }
 
   /**
-   * Load the rule system's internal state from a JSON object (current state
+   * Load the generator's internal state from a JSON object (current state
    * will be overwritten)
    */
   fun loadState(state: JsonObject) {

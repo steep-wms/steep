@@ -14,10 +14,10 @@ import org.junit.jupiter.params.provider.ValueSource
 import java.util.stream.Stream
 
 /**
- * Tests for [RuleSystem]
+ * Tests for [ProcessChainGenerator]
  * @author Michel Kraemer
  */
-class RuleSystemTest {
+class ProcessChainGeneratorTest {
   companion object {
     private data class T(val workflowName: String, val resultsName: String = workflowName)
 
@@ -143,7 +143,11 @@ class RuleSystemTest {
 
     )
 
+    /**
+     * Provides arguments for all unit tests to JUnit
+     */
     @JvmStatic
+    @Suppress("UNUSED")
     fun argumentProvider(): Stream<Arguments> = tests.flatMap {
       listOf(
           Arguments.arguments(it.workflowName, it.resultsName, true),
@@ -176,37 +180,37 @@ class RuleSystemTest {
 
     var json = JsonObject()
     val idgen = ConsecutiveID()
-    var ruleSystem = RuleSystem(workflow, "/tmp/", services, idgen)
-    assertThat(ruleSystem.isFinished()).isFalse()
+    var generator = ProcessChainGenerator(workflow, "/tmp/", services, idgen)
+    assertThat(generator.isFinished()).isFalse()
 
     if (persistState) {
-      json = ruleSystem.persistState()
+      json = generator.persistState()
     }
 
     var results = mapOf<String, List<String>>()
     for (expected in expectedChains) {
       if (persistState) {
-        ruleSystem = RuleSystem(workflow, "/tmp/", services, idgen)
-        ruleSystem.loadState(json)
+        generator = ProcessChainGenerator(workflow, "/tmp/", services, idgen)
+        generator.loadState(json)
       }
 
-      val processChains = ruleSystem.fire(results)
+      val processChains = generator.generate(results)
       assertThat(processChains).isEqualTo(expected.chains)
       results = expected.results
 
       if (persistState) {
-        json = ruleSystem.persistState()
+        json = generator.persistState()
       }
     }
 
     if (persistState) {
-      ruleSystem = RuleSystem(workflow, "/tmp/", services, idgen)
-      ruleSystem.loadState(json)
+      generator = ProcessChainGenerator(workflow, "/tmp/", services, idgen)
+      generator.loadState(json)
     }
 
-    val processChains = ruleSystem.fire(results)
+    val processChains = generator.generate(results)
     assertThat(processChains).isEmpty()
-    assertThat(ruleSystem.isFinished()).isTrue()
+    assertThat(generator.isFinished()).isTrue()
   }
 
   /**
