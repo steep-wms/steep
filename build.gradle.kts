@@ -23,6 +23,7 @@ version = "3.1.0-SNAPSHOT"
 
 val vertxVersion by extra("3.6.2")
 val hazelcastVersion by extra("3.11.1")
+val graalVMVersion by extra("1.0.0-rc15")
 
 repositories {
     jcenter()
@@ -58,6 +59,8 @@ dependencies {
     implementation("io.pebbletemplates:pebble:3.0.7")
     implementation("org.apache.commons:commons-lang3:3.8.1")
     implementation("org.flywaydb:flyway-core:5.2.4")
+    implementation("org.graalvm.sdk:graal-sdk:$graalVMVersion")
+    implementation("org.graalvm.js:js:$graalVMVersion")
     implementation("org.pacesys:openstack4j:3.2.0")
     implementation("org.postgresql:postgresql:42.2.5")
     implementation("org.yaml:snakeyaml:1.23")
