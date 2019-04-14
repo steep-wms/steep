@@ -9,6 +9,11 @@ object ConfigConstants {
   const val SERVICE_METADATA_FILE = "jobmanager.serviceMetadataFile"
 
   /**
+   * The path to the file containing rules for the [RuleSystem]
+   */
+  const val RULE_FILE = "jobmanager.ruleFile"
+
+  /**
    * A file that keeps additional configuration (overrides the main
    * configuration). Note that configuration items in this file can still be
    * overridden with environment variables.

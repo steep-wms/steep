@@ -2,6 +2,8 @@ import TestMetadata.services
 import com.fasterxml.jackson.module.kotlin.readValue
 import db.MetadataRegistry
 import db.MetadataRegistryFactory
+import db.RuleRegistry
+import db.RuleRegistryFactory
 import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus
 import db.SubmissionRegistryFactory
@@ -16,6 +18,7 @@ import io.mockk.mockkObject
 import io.mockk.slot
 import io.mockk.unmockkAll
 import io.vertx.core.Vertx
+import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
@@ -26,13 +29,16 @@ import io.vertx.kotlin.core.json.obj
 import model.Submission
 import model.Submission.Status
 import model.processchain.ProcessChain
+import model.rules.Rule
 import model.workflow.Action
 import model.workflow.Variable
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInfo
 import org.junit.jupiter.api.extension.ExtendWith
 
 /**
@@ -41,11 +47,16 @@ import org.junit.jupiter.api.extension.ExtendWith
  */
 @ExtendWith(VertxExtension::class)
 class ControllerTest {
+  companion object {
+    private const val WITH_RULES = "withRules"
+    private const val NEW_REQUIRED_CAPABILITY = "NewRequiredCapability"
+  }
+
   private lateinit var metadataRegistry: MetadataRegistry
   private lateinit var submissionRegistry: SubmissionRegistry
 
   @BeforeEach
-  fun setUp(vertx: Vertx, ctx: VertxTestContext) {
+  fun setUp(vertx: Vertx, ctx: VertxTestContext, info: TestInfo) {
     // mock metadata registry
     metadataRegistry = mockk()
     mockkObject(MetadataRegistryFactory)
@@ -56,6 +67,21 @@ class ControllerTest {
     mockkObject(SubmissionRegistryFactory)
     every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
     coEvery { submissionRegistry.findSubmissionIdsByStatus(Status.RUNNING) } returns emptyList()
+
+    // mock rule registry
+    val ruleRegistry: RuleRegistry = mockk()
+    mockkObject(RuleRegistryFactory)
+    every { RuleRegistryFactory.create(any()) } returns ruleRegistry
+    if (info.tags.contains(WITH_RULES)) {
+      coEvery { ruleRegistry.findRules() } returns listOf(Rule(
+          name = "Add required capability",
+          target = Rule.Target.PROCESSCHAIN,
+          condition = "(obj) => true",
+          action = "(obj) => { obj.requiredCapabilities.push('$NEW_REQUIRED_CAPABILITY') }"
+      ))
+    } else {
+      coEvery { ruleRegistry.findRules() } returns emptyList()
+    }
 
     // deploy verticle under test
     val config = json {
@@ -77,14 +103,7 @@ class ControllerTest {
     return JsonUtils.mapper.readValue(fixture)
   }
 
-  /**
-   * Runs a simple test: schedules a workflow and waits until the controller
-   * has executed it
-   * @param vertx the Vert.x instance
-   * @param ctx the test context
-   */
-  @Test
-  fun simple(vertx: Vertx, ctx: VertxTestContext) {
+  private fun doSimple(vertx: Vertx, ctx: VertxTestContext, withRules: Boolean = false) {
     val workflow = readWorkflow("singleService")
     val submission = Submission(workflow = workflow)
     val acceptedSubmissions = mutableListOf(submission)
@@ -104,10 +123,16 @@ class ControllerTest {
     val processChainsSlot = slot<List<ProcessChain>>()
     coEvery { submissionRegistry.addProcessChains(capture(processChainsSlot), submission.id) } answers {
       for (processChain in processChainsSlot.captured) {
+        if (withRules) {
+          ctx.verify {
+            assertThat(processChain.requiredCapabilities).contains(NEW_REQUIRED_CAPABILITY)
+          }
+        }
         coEvery { submissionRegistry.getProcessChainStatus(processChain.id) } returns
             ProcessChainStatus.SUCCESS
         coEvery { submissionRegistry.getProcessChainResults(processChain.id) } returns
             mapOf("output_file1" to listOf("/tmp/0"))
+        coEvery { submissionRegistry.setProcessChainStartTime(processChain.id, any()) } just Runs
       }
     }
 
@@ -129,6 +154,28 @@ class ControllerTest {
     }
 
     vertx.eventBus().publish(AddressConstants.CONTROLLER_LOOKUP_NOW, null)
+  }
+
+  /**
+   * Runs a simple test: schedules a workflow and waits until the controller
+   * has executed it
+   * @param vertx the Vert.x instance
+   * @param ctx the test context
+   */
+  @Test
+  fun simple(vertx: Vertx, ctx: VertxTestContext) {
+    doSimple(vertx, ctx)
+  }
+
+  /**
+   * Similar to [simple] but modifies the process chains with rules
+   * @param vertx the Vert.x instance
+   * @param ctx the test context
+   */
+  @Test
+  @Tag(WITH_RULES)
+  fun simpleWithRules(vertx: Vertx, ctx: VertxTestContext) {
+    doSimple(vertx, ctx, true)
   }
 
   /**
@@ -196,6 +243,14 @@ class ControllerTest {
     coEvery { submissionRegistry.getProcessChainResults(processChains[2].id) } returns
         mapOf("output_file3" to listOf("/tmp/3"))
 
+    // accept process chain start and end times
+    coEvery { submissionRegistry.setProcessChainStartTime(processChains[0].id, any()) } just Runs
+    coEvery { submissionRegistry.setProcessChainStartTime(processChains[1].id, any()) } just Runs
+    coEvery { submissionRegistry.setProcessChainStartTime(processChains[2].id, any()) } just Runs
+    coEvery { submissionRegistry.setProcessChainEndTime(processChains[0].id, any()) } just Runs
+    coEvery { submissionRegistry.setProcessChainEndTime(processChains[1].id, any()) } just Runs
+    coEvery { submissionRegistry.setProcessChainEndTime(processChains[2].id, any()) } just Runs
+
     // accept the new process chain
     val processChainsSlot = slot<List<ProcessChain>>()
     coEvery { submissionRegistry.addProcessChains(capture(processChainsSlot), submission.id) } answers {
@@ -208,6 +263,8 @@ class ControllerTest {
             ProcessChainStatus.SUCCESS
         coEvery { submissionRegistry.getProcessChainResults(processChain.id) } returns
             mapOf("output_file4" to listOf("/tmp/4"))
+        coEvery { submissionRegistry.setProcessChainStartTime(processChain.id, any()) } just Runs
+        coEvery { submissionRegistry.setProcessChainEndTime(processChain.id, any()) } just Runs
       }
     }
 
@@ -223,6 +280,9 @@ class ControllerTest {
     // finish submission
     coEvery { submissionRegistry.setSubmissionStatus(submission.id, Status.SUCCESS) } answers {
       runningSubmissions.clear()
+    }
+    coEvery { submissionRegistry.setSubmissionStatus(submission.id, Status.ERROR) } answers {
+      ctx.failNow(NoStackTraceThrowable("Submission failed"))
     }
     coEvery { submissionRegistry.setSubmissionEndTime(submission.id, any()) } just Runs
     coEvery { submissionRegistry.setSubmissionExecutionState(submission.id, null) } answers {

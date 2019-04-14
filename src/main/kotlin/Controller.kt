@@ -3,11 +3,14 @@ import AddressConstants.CONTROLLER_LOOKUP_ORPHANS_NOW
 import ConfigConstants.CONTROLLER_LOOKUP_INTERVAL
 import ConfigConstants.CONTROLLER_LOOKUP_ORPHANS_INTERVAL
 import ConfigConstants.TMP_PATH
+import com.fasterxml.jackson.databind.SerializationFeature
 import db.MetadataRegistry
 import db.MetadataRegistryFactory
+import db.RuleRegistryFactory
 import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus
 import db.SubmissionRegistryFactory
+import helper.JsonUtils
 import io.vertx.core.shareddata.Lock
 import io.vertx.kotlin.core.shareddata.getLockWithTimeoutAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
@@ -38,6 +41,7 @@ class Controller : CoroutineVerticle() {
   private lateinit var tmpPath: String
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var metadataRegistry: MetadataRegistry
+  private lateinit var ruleSystem: RuleSystem
 
   private var lookupInterval: Long = DEFAULT_LOOKUP_INTERVAL
   private lateinit var periodicLookupJob: Job
@@ -50,6 +54,10 @@ class Controller : CoroutineVerticle() {
     // create registries
     submissionRegistry = SubmissionRegistryFactory.create(vertx)
     metadataRegistry = MetadataRegistryFactory.create(vertx)
+
+    // prepare rule system
+    val ruleRegistry = RuleRegistryFactory.create(vertx)
+    ruleSystem = RuleSystem(ruleRegistry.findRules())
 
     // read configuration
     tmpPath = config.getString(TMP_PATH) ?: throw IllegalStateException(
@@ -93,6 +101,7 @@ class Controller : CoroutineVerticle() {
 
   override suspend fun stop() {
     log.info("Stopping controller ...")
+    ruleSystem.close()
     periodicLookupJob.cancelAndJoin()
     periodicLookupOrphansJob.cancelAndJoin()
   }
@@ -225,10 +234,14 @@ class Controller : CoroutineVerticle() {
           processChainsToResume = null
           pcs
         } else {
-          val pcs = generator.generate(results)
+          val pcs = ruleSystem.apply(generator.generate(results))
           if (pcs.isEmpty()) {
             break
           }
+
+          log.debug("Generated process chains:\n" + JsonUtils.mapper.copy()
+              .enable(SerializationFeature.INDENT_OUTPUT)
+              .writeValueAsString(pcs))
 
           // store process chains in submission registry
           submissionRegistry.addProcessChains(pcs, submission.id)

@@ -7,8 +7,8 @@ import model.metadata.Service
 import java.io.File
 
 /**
- * A metadata registry that reads service metadata from a JSON file
- * @param path the path to the JSON file
+ * A metadata registry that reads service metadata from a JSON or YAML file
+ * @param path the path to the JSON or YAML file
  * @author Michel Kraemer
  */
 class FileMetadataRegistry(path: String) : MetadataRegistry {

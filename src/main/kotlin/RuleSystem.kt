@@ -52,7 +52,7 @@ class RuleSystem(rules: List<Rule>): AutoCloseable {
   private val stringify = ctx.getBindings("js").getMember("JSON").getMember("stringify")
 
   override fun close() {
-    ctx.close()
+    ctx.close(true)
   }
 
   /**

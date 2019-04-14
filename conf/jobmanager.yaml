@@ -1,5 +1,6 @@
 jobmanager:
   serviceMetadataFile: conf/service_metadata.yaml
+  ruleFile: conf/rules.yaml
   tmpPath: /tmp
 
   cluster:

@@ -1,4 +1,3 @@
-import com.fasterxml.jackson.databind.SerializationFeature
 import helper.IDGenerator
 import helper.JsonUtils
 import helper.UniqueID
@@ -19,7 +18,6 @@ import model.workflow.StoreAction
 import model.workflow.Variable
 import model.workflow.Workflow
 import org.apache.commons.io.FilenameUtils
-import org.slf4j.LoggerFactory
 import java.util.ArrayDeque
 import java.util.Collections
 import java.util.IdentityHashMap
@@ -32,10 +30,6 @@ import java.util.IdentityHashMap
  */
 class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
     private val services: List<Service>, private val idGenerator: IDGenerator = UniqueID) {
-  companion object {
-    private val log = LoggerFactory.getLogger(ProcessChainGenerator::class.java)
-  }
-
   private val vars = workflow.vars.toMutableList()
   private val actions = workflow.actions.toMutableSet()
   private val variableValues = mutableMapOf<String, Any>()
@@ -83,15 +77,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
     } while (didCollectOutputs)
 
     unrollForEachActions()
-    val processChains = createProcessChains()
-
-    if (processChains.isNotEmpty()) {
-      log.debug("Generated process chains:\n" + JsonUtils.mapper.copy()
-          .enable(SerializationFeature.INDENT_OUTPUT)
-          .writeValueAsString(processChains))
-    }
-
-    return processChains
+    return createProcessChains()
   }
 
   /**
