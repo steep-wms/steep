@@ -127,7 +127,7 @@ class LocalAgent(private val vertx: Vertx) : Agent {
     while (!q.isEmpty()) {
       val f = q.poll()
       if (fs.propsAwait(f).isDirectory) {
-        q.addAll(fs.readDirAwait(dirOrFile))
+        q.addAll(fs.readDirAwait(f))
       } else {
         r.add(f)
       }

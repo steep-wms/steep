@@ -37,8 +37,7 @@ class RemoteAgentTest : AgentTest() {
   override fun createAgent(vertx: Vertx): Agent =
       RemoteAgent(ADDRESS, vertx)
 
-  @Test
-  override fun execute(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
+  private fun registerConsumer(vertx: Vertx) {
     vertx.eventBus().consumer<JsonObject>(ADDRESS) consumer@ { msg ->
       val jsonObj: JsonObject = msg.body()
       val action: String = jsonObj["action"]
@@ -67,8 +66,18 @@ class RemoteAgentTest : AgentTest() {
 
       msg.reply("ACK")
     }
+  }
 
+  @Test
+  override fun execute(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
+    registerConsumer(vertx)
     super.execute(vertx, ctx, tempDir)
+  }
+
+  @Test
+  override fun recursive(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
+    registerConsumer(vertx)
+    super.recursive(vertx, ctx, tempDir)
   }
 
   /**
