@@ -81,8 +81,7 @@ class JobManager : CoroutineVerticle() {
   private fun onAgentMessage(msg: Message<JsonObject>) {
     try {
       val jsonObj: JsonObject = msg.body()
-      val action = jsonObj.getString("action")
-      when (action) {
+      when (val action = jsonObj.getString("action")) {
         "info" -> onAgentInfo(msg)
         "inquire" -> onAgentInquire(msg)
         "allocate" -> onAgentAllocate(msg)

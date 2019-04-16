@@ -116,15 +116,7 @@ eb.onopen = () => {
       return;
     }
 
-    for (let pc of pcs) {
-      window.processChains[pc.id] = {
-        submissionId: submissionId,
-        status: status
-      };
-    }
-
     w.totalProcessChains += pcs.length;
-
     if (status === "RUNNING") {
       w.runningProcessChains += pcs.length;
     } else if (status === "ERROR") {
@@ -136,24 +128,21 @@ eb.onopen = () => {
 
   eb.registerHandler("jobmanager.submissionRegistry.processChainStatusChanged", (error, message) => {
     let processChainId = message.body.processChainId;
+    let submissionId = message.body.submissionId;
     let status = message.body.status;
-    let pc = window.processChains[processChainId];
-    if (!pc) {
-      return;
-    }
-
-    let w = app.findWorkflowById(pc.submissionId);
+    let previousStatus = message.body.previousStatus;
+    let w = app.findWorkflowById(submissionId);
     if (!w) {
       return;
     }
 
-    if (pc.status !== status) {
-      if (pc.status === "RUNNING") {
-        w.runningProcessChains--;
-      } else if (pc.status === "ERROR") {
-        w.failedProcessChains--;
-      } else if (pc.status === "SUCCESS") {
-        w.succeededProcessChains--;
+    if (previousStatus !== status) {
+      if (previousStatus === "RUNNING") {
+        w.runningProcessChains = Math.max(w.runningProcessChains - 1, 0);
+      } else if (previousStatus === "ERROR") {
+        w.failedProcessChains = Math.max(w.failedProcessChains - 1, 0);
+      } else if (previousStatus === "SUCCESS") {
+        w.succeededProcessChains = Math.max(w.succeededProcessChains - 1, 0);
       }
 
       if (status === "RUNNING") {
@@ -163,8 +152,6 @@ eb.onopen = () => {
       } else if (status === "SUCCESS") {
         w.succeededProcessChains++;
       }
-
-      pc.status = status;
     }
   });
 };

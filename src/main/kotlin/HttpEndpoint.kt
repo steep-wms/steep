@@ -351,21 +351,6 @@ class HttpEndpoint : CoroutineVerticle() {
   }
 
   /**
-   * Loads all process chains for the given submission and converts them to
-   * JSON objects suitable for our HTML templates.
-   */
-  private suspend fun getProcessChainsJsonForSubmission(submissionId: String): List<Pair<String, JsonObject>> {
-    return submissionRegistry.findProcessChainStatusesBySubmissionId(submissionId).map { (id, status) ->
-      id to json {
-        obj(
-            "submissionId" to submissionId,
-            "status" to status.toString()
-        )
-      }
-    }
-  }
-
-  /**
    * Get list of workflows
    * @param ctx the routing context
    */
@@ -392,10 +377,8 @@ class HttpEndpoint : CoroutineVerticle() {
       val encodedJson = JsonArray(list).encode()
 
       if (isHtml) {
-        val processChains = submissions.flatMap { getProcessChainsJsonForSubmission(it.id) }.toMap()
         renderHtml("html/workflows/index.html", mapOf(
             "workflows" to encodedJson,
-            "processChains" to JsonObject(processChains).encode(),
             "page" to mapOf(
                 "size" to if (size < 0) total else size,
                 "offset" to offset,
@@ -429,11 +412,9 @@ class HttpEndpoint : CoroutineVerticle() {
         val json = JsonUtils.toJson(submission)
         amendSubmission(json)
         if (ctx.acceptableContentType == "text/html") {
-          val processChains = getProcessChainsJsonForSubmission(submission.id).toMap()
           renderHtml("html/workflows/single.html", mapOf(
               "id" to submission.id,
-              "workflows" to JsonArray(json).encode(),
-              "processChains" to JsonObject(processChains)
+              "workflows" to JsonArray(json).encode()
           ), ctx.response())
         } else {
           ctx.response()
