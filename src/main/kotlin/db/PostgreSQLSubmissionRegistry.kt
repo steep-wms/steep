@@ -1,6 +1,7 @@
 package db
 
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.google.common.cache.CacheBuilder
 import db.SubmissionRegistry.ProcessChainStatus
 import helper.JsonUtils
 import io.vertx.core.Vertx
@@ -25,6 +26,7 @@ import model.Submission
 import model.processchain.ProcessChain
 import org.flywaydb.core.Flyway
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 
 /**
  * A submission registry that keeps objects in a PostgreSQL database
@@ -73,6 +75,15 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   private val client: JDBCClient
+
+  /**
+   * A small cache that reduces the number of database requests for an
+   * attribute that never changes
+   */
+  private val processChainSubmissionIds = CacheBuilder.newBuilder()
+      .expireAfterAccess(60, TimeUnit.SECONDS)
+      .maximumSize(10000)
+      .build<String, String>()
 
   init {
     migrate(url, username, password)
@@ -496,19 +507,22 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       getProcessChainColumn(processChainId, END_TIME) { it.getString(0)?.let {
         JsonUtils.mapper.readValue(it, Instant::class.java) } }
 
-  override suspend fun getProcessChainSubmissionId(processChainId: String): String =
-      getProcessChainColumn(processChainId, SUBMISSION_ID) { it.getString(0) }
+  override suspend fun getProcessChainSubmissionId(processChainId: String): String {
+    return processChainSubmissionIds.getIfPresent(processChainId) ?: run {
+      val sid = getProcessChainColumn(processChainId, SUBMISSION_ID) { it.getString(0) }
+      processChainSubmissionIds.put(processChainId, sid)
+      sid
+    }
+  }
 
   override suspend fun setProcessChainStatus(processChainId: String,
       status: ProcessChainStatus) {
     updateColumn(PROCESS_CHAINS, processChainId, STATUS, status.toString(), false)
   }
 
-  override suspend fun getProcessChainStatus(processChainId: String): ProcessChainStatus {
-    return getProcessChainColumn(processChainId, STATUS) { r ->
-      r.getString(0).let { ProcessChainStatus.valueOf(it) }
-    }
-  }
+  override suspend fun getProcessChainStatus(processChainId: String): ProcessChainStatus =
+      getProcessChainColumn(processChainId, STATUS) { r ->
+        r.getString(0).let { ProcessChainStatus.valueOf(it) } }
 
   override suspend fun setProcessChainResults(processChainId: String,
       results: Map<String, List<String>>?) {
@@ -516,11 +530,9 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         JsonUtils.mapper.writeValueAsString(results), true)
   }
 
-  override suspend fun getProcessChainResults(processChainId: String): Map<String, List<String>>? {
-    return getProcessChainColumn(processChainId, RESULTS) { r ->
-      r.getString(0)?.let { JsonUtils.mapper.readValue<Map<String, List<String>>>(it) }
-    }
-  }
+  override suspend fun getProcessChainResults(processChainId: String): Map<String, List<String>>? =
+      getProcessChainColumn(processChainId, RESULTS) { r ->
+        r.getString(0)?.let { JsonUtils.mapper.readValue<Map<String, List<String>>>(it) } }
 
   override suspend fun setProcessChainErrorMessage(processChainId: String,
       errorMessage: String?) {

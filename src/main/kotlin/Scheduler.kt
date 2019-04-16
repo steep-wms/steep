@@ -47,7 +47,7 @@ class Scheduler : CoroutineVerticle() {
     agentRegistry = AgentRegistryFactory.create(vertx)
 
     // read configuration
-    val lookupInterval = config.getLong(SCHEDULER_LOOKUP_INTERVAL, 2000L)
+    val lookupInterval = config.getLong(SCHEDULER_LOOKUP_INTERVAL, 20000L)
 
     // create simple caches to reduce repeated log output
     logFoundProcessChainCache = CacheBuilder.newBuilder()
@@ -67,9 +67,10 @@ class Scheduler : CoroutineVerticle() {
       }
     }
 
-    vertx.eventBus().consumer<Unit>(SCHEDULER_LOOKUP_NOW) {
+    vertx.eventBus().consumer<Int?>(SCHEDULER_LOOKUP_NOW) { msg ->
+      val maxLookups = msg.body() ?: Int.MAX_VALUE
       launch {
-        lookup()
+        lookup(maxLookups)
       }
     }
   }
@@ -81,9 +82,10 @@ class Scheduler : CoroutineVerticle() {
 
   /**
    * Get registered process chains and execute them asynchronously
+   * @param maxLookups the maximum number of lookups to perform
    */
-  private suspend fun lookup() {
-    while (true) {
+  private suspend fun lookup(maxLookups: Int = Int.MAX_VALUE) {
+    for (i in 0 until maxLookups) {
       // get next registered process chain
       val processChain = submissionRegistry.fetchNextProcessChain(REGISTERED, RUNNING) ?: return
       logFoundProcessChainCache.get(processChain.id) {
@@ -118,7 +120,7 @@ class Scheduler : CoroutineVerticle() {
           submissionRegistry.setProcessChainEndTime(processChain.id, Instant.now())
 
           // try to lookup next process chain immediately
-          vertx.eventBus().send(SCHEDULER_LOOKUP_NOW, null)
+          vertx.eventBus().send(SCHEDULER_LOOKUP_NOW, 1)
         }
       }
     }

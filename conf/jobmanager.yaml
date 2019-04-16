@@ -38,7 +38,7 @@ jobmanager:
     lookupOrphansIntervalMilliseconds: 300000
 
   scheduler:
-    lookupIntervalMilliseconds: 2000
+    lookupIntervalMilliseconds: 20000
 
   db:
     driver: inmemory

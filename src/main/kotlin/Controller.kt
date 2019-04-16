@@ -254,8 +254,8 @@ class Controller : CoroutineVerticle() {
           pcs
         }
 
-        // notify scheduler
-        vertx.eventBus().send(AddressConstants.SCHEDULER_LOOKUP_NOW, null)
+        // notify scheduler(s)
+        vertx.eventBus().publish(AddressConstants.SCHEDULER_LOOKUP_NOW, null)
 
         // wait for process chain results
         totalProcessChains += processChains.size
@@ -315,20 +315,19 @@ class Controller : CoroutineVerticle() {
       val finishedProcessChains = mutableSetOf<String>()
       for (processChainId in processChainsToCheck) {
         val status = submissionRegistry.getProcessChainStatus(processChainId)
-        when (status) {
-          ProcessChainStatus.SUCCESS -> {
-            submissionRegistry.getProcessChainResults(processChainId)?.let {
-              results.putAll(it)
-            }
-            finishedProcessChains.add(processChainId)
+        if (status === ProcessChainStatus.SUCCESS) {
+          submissionRegistry.getProcessChainResults(processChainId)?.let {
+            results.putAll(it)
           }
-
-          ProcessChainStatus.ERROR -> {
-            errors++
-            finishedProcessChains.add(processChainId)
-          }
-
-          else -> {}
+          finishedProcessChains.add(processChainId)
+        } else if (status === ProcessChainStatus.ERROR) {
+          errors++
+          finishedProcessChains.add(processChainId)
+        } else {
+          // since we're waiting for all process chains to finish anyhow, we
+          // can stop looking as soon as we find a process chain that has not
+          // finished yet and wait for the next interval
+          break
         }
       }
       processChainsToCheck.removeAll(finishedProcessChains)
