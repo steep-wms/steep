@@ -101,9 +101,10 @@ class Controller : CoroutineVerticle() {
 
   override suspend fun stop() {
     log.info("Stopping controller ...")
-    ruleSystem.close()
     periodicLookupJob.cancelAndJoin()
     periodicLookupOrphansJob.cancelAndJoin()
+    submissionRegistry.close()
+    ruleSystem.close()
   }
 
   /**

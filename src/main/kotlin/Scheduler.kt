@@ -78,6 +78,7 @@ class Scheduler : CoroutineVerticle() {
   override suspend fun stop() {
     log.info("Stopping scheduler ...")
     periodicLookupJob.cancelAndJoin()
+    submissionRegistry.close()
   }
 
   /**

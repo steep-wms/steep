@@ -2,10 +2,12 @@ package db
 
 import io.vertx.core.Vertx
 import io.vertx.ext.jdbc.JDBCClient
+import io.vertx.ext.jdbc.spi.impl.HikariCPDataSourceProvider
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
+import io.vertx.kotlin.ext.sql.closeAwait
 import io.vertx.kotlin.ext.sql.updateAwait
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -32,6 +34,7 @@ class PostgreSQLSubmissionRegistryTest : SubmissionRegistryTest() {
      */
     @AfterAll
     @JvmStatic
+    @Suppress("UNUSED")
     fun shutdown() {
       ContainerDatabaseDriver.killContainer(URL)
     }
@@ -45,11 +48,12 @@ class PostgreSQLSubmissionRegistryTest : SubmissionRegistryTest() {
    * Clear database after each test
    */
   @AfterEach
-  fun clearDatabase(vertx: Vertx, ctx: VertxTestContext) {
+  override fun tearDown(vertx: Vertx, ctx: VertxTestContext) {
     val jdbcConfig = json {
       obj(
-          "url" to URL,
-          "user" to "user",
+          "provider_class" to HikariCPDataSourceProvider::class.java.name,
+          "jdbcUrl" to URL,
+          "username" to "user",
           "password" to "password"
       )
     }
@@ -58,7 +62,8 @@ class PostgreSQLSubmissionRegistryTest : SubmissionRegistryTest() {
     GlobalScope.launch(vertx.dispatcher()) {
       client.updateAwait("DELETE FROM submissions")
       client.updateAwait("DELETE FROM processchains")
-      ctx.completeNow()
+      client.closeAwait()
+      super.tearDown(vertx, ctx)
     }
   }
 }

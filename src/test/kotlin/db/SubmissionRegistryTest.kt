@@ -15,6 +15,7 @@ import model.Submission
 import model.processchain.ProcessChain
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -33,6 +34,14 @@ abstract class SubmissionRegistryTest {
   @BeforeEach
   fun setUp(vertx: Vertx) {
     submissionRegistry = createRegistry(vertx)
+  }
+
+  @AfterEach
+  open fun tearDown(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.close()
+      ctx.completeNow()
+    }
   }
 
   @Test

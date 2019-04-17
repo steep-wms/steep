@@ -36,6 +36,11 @@ interface SubmissionRegistry {
   }
 
   /**
+   * Close the registry and release all resources
+   */
+  suspend fun close()
+
+  /**
    * Add a submission to the registry
    * @param submission the submission to add
    */

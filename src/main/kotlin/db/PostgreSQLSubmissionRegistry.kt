@@ -8,6 +8,7 @@ import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.jdbc.JDBCClient
+import io.vertx.ext.jdbc.spi.impl.HikariCPDataSourceProvider
 import io.vertx.ext.sql.SQLConnection
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
@@ -90,12 +91,17 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
     val jdbcConfig = json {
       obj(
-          "url" to url,
-          "user" to username,
+          "provider_class" to HikariCPDataSourceProvider::class.java.name,
+          "jdbcUrl" to url,
+          "username" to username,
           "password" to password
       )
     }
     client = JDBCClient.createShared(vertx, jdbcConfig)
+  }
+
+  override suspend fun close() {
+    client.closeAwait()
   }
 
   /**

@@ -56,6 +56,7 @@ dependencies {
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.9.8")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.8")
     implementation("com.google.guava:guava:27.0.1-jre")
+    implementation("com.zaxxer:HikariCP:3.3.1")
     implementation("io.pebbletemplates:pebble:3.0.7")
     implementation("org.apache.commons:commons-lang3:3.8.1")
     implementation("org.flywaydb:flyway-core:5.2.4")

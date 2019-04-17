@@ -220,6 +220,10 @@ class HttpEndpoint : CoroutineVerticle() {
     log.info("HTTP endpoint deployed to http://$host:$port$basePath")
   }
 
+  override suspend fun stop() {
+    submissionRegistry.close()
+  }
+
   /**
    * Renders an HTML template to the given HTTP response
    */

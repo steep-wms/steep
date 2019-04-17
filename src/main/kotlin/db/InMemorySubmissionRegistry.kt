@@ -87,6 +87,10 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     sharedData.getAsyncMap(ASYNC_MAP_EXECUTION_STATE, executionStates)
   }
 
+  override suspend fun close() {
+    // nothing to do here
+  }
+
   override suspend fun addSubmission(submission: Submission) {
     val entry = SubmissionEntry(submissionEntryID.getAndIncrement(), submission)
     val str = JsonUtils.mapper.writeValueAsString(entry)
