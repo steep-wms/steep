@@ -94,7 +94,9 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
           "provider_class" to HikariCPDataSourceProvider::class.java.name,
           "jdbcUrl" to url,
           "username" to username,
-          "password" to password
+          "password" to password,
+          "minimumIdle" to 0,
+          "maximumPoolSize" to 5
       )
     }
     client = JDBCClient.createShared(vertx, jdbcConfig)
@@ -501,8 +503,8 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun getProcessChainStartTime(processChainId: String): Instant? =
-      getProcessChainColumn(processChainId, START_TIME) { it.getString(0)?.let {
-        JsonUtils.mapper.readValue(it, Instant::class.java) } }
+      getProcessChainColumn(processChainId, START_TIME) { it.getString(0)?.let { s ->
+        JsonUtils.mapper.readValue(s, Instant::class.java) } }
 
   override suspend fun setProcessChainEndTime(processChainId: String, endTime: Instant?) {
     updateColumn(PROCESS_CHAINS, processChainId, END_TIME,
@@ -510,8 +512,8 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun getProcessChainEndTime(processChainId: String): Instant? =
-      getProcessChainColumn(processChainId, END_TIME) { it.getString(0)?.let {
-        JsonUtils.mapper.readValue(it, Instant::class.java) } }
+      getProcessChainColumn(processChainId, END_TIME) { it.getString(0)?.let { s ->
+        JsonUtils.mapper.readValue(s, Instant::class.java) } }
 
   override suspend fun getProcessChainSubmissionId(processChainId: String): String {
     return processChainSubmissionIds.getIfPresent(processChainId) ?: run {
