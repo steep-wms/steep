@@ -22,6 +22,11 @@ object SubmissionRegistryFactory {
   const val DRIVER_POSTGRESQL = "postgresql"
 
   /**
+   * The MongoDB database driver
+   */
+  const val DRIVER_MONGODB = "mongodb"
+
+  /**
    * Create a new [SubmissionRegistry]
    * @param vertx the current Vert.x instance
    * @return the [SubmissionRegistry]
@@ -36,6 +41,7 @@ object SubmissionRegistryFactory {
     val result = when (driver) {
       DRIVER_INMEMORY -> InMemorySubmissionRegistry(vertx)
       DRIVER_POSTGRESQL -> PostgreSQLSubmissionRegistry(vertx, url, username, password)
+      DRIVER_MONGODB -> MongoDBSubmissionRegistry(vertx, url)
       else -> throw IllegalStateException("Unknown database driver `$driver'")
     }
     return NotifyingSubmissionRegistry(result, vertx)

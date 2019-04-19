@@ -61,6 +61,17 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun findSubmissionByIdNull(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      val s = submissionRegistry.findSubmissionById("DOES_NOT_EXIST")
+      ctx.verify {
+        assertThat(s).isNull()
+      }
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun findSubmissionsPage(vertx: Vertx, ctx: VertxTestContext) {
     val s1 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
     val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
@@ -430,6 +441,41 @@ abstract class SubmissionRegistryTest {
       ctx.verify {
         assertThat(r5).isEqualTo(listOf(pc3))
         assertThat(r6).isEqualTo(listOf(pc2, pc1))
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun findProcessChainStatusesBySubmissionId(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow())
+    val pc1 = ProcessChain()
+    val pc2 = ProcessChain()
+    val pc3 = ProcessChain()
+    val s2 = Submission(workflow = Workflow())
+    val pc4 = ProcessChain()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addProcessChains(listOf(pc1, pc2), s1.id,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      submissionRegistry.addProcessChains(listOf(pc3), s1.id,
+          SubmissionRegistry.ProcessChainStatus.SUCCESS)
+      submissionRegistry.addProcessChains(listOf(pc4), s2.id)
+
+      val statuses1 = submissionRegistry.findProcessChainStatusesBySubmissionId(s1.id)
+      val statuses2 = submissionRegistry.findProcessChainStatusesBySubmissionId(s2.id)
+      ctx.verify {
+        assertThat(statuses1).isEqualTo(mapOf(
+            pc1.id to SubmissionRegistry.ProcessChainStatus.RUNNING,
+            pc2.id to SubmissionRegistry.ProcessChainStatus.RUNNING,
+            pc3.id to SubmissionRegistry.ProcessChainStatus.SUCCESS
+        ))
+        assertThat(statuses2).isEqualTo(mapOf(
+            pc4.id to SubmissionRegistry.ProcessChainStatus.REGISTERED
+        ))
       }
 
       ctx.completeNow()

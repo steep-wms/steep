@@ -42,7 +42,10 @@ jobmanager:
 
   db:
     driver: inmemory
+    # driver: postgresql
+    # driver: mongodb
     url: jdbc:postgresql://localhost:5432/jobmanager?currentSchema=jobmanager
+    # url: mongodb://localhost:27017/jobmanager
     username: postgres
     password: mysecretpassword
 
