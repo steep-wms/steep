@@ -240,9 +240,19 @@ class Controller : CoroutineVerticle() {
             break
           }
 
-          log.debug("Generated process chains:\n" + JsonUtils.mapper.copy()
-              .enable(SerializationFeature.INDENT_OUTPUT)
-              .writeValueAsString(pcs))
+          // log first 100 lines of process chains
+          if (log.isDebugEnabled) {
+            val serializedProcessChains = JsonUtils.mapper.copy()
+                .enable(SerializationFeature.INDENT_OUTPUT)
+                .writeValueAsString(pcs)
+            val lines = serializedProcessChains.lineSequence().take(101).toList()
+            if (lines.size <= 100) {
+              log.debug("Generated process chains:\n" + lines.joinToString("\n"))
+            } else {
+              log.debug("Generated process chains (first 100 lines):\n" +
+                  lines.take(100).joinToString("\n") + "\n...")
+            }
+          }
 
           // store process chains in submission registry
           submissionRegistry.addProcessChains(pcs, submission.id)

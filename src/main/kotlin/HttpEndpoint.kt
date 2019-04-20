@@ -461,9 +461,17 @@ class HttpEndpoint : CoroutineVerticle() {
       return
     }
 
-    log.info("Received workflow:\n" + JsonUtils.mapper.copy()
+    // log first 100 lines of workflow
+    val serializedWorkflow = JsonUtils.mapper.copy()
         .enable(SerializationFeature.INDENT_OUTPUT)
-        .writeValueAsString(workflow))
+        .writeValueAsString(workflow)
+    val lines = serializedWorkflow.lineSequence().take(101).toList()
+    if (lines.size <= 100) {
+      log.info("Received workflow:\n" + lines.joinToString("\n"))
+    } else {
+      log.info("Received workflow (first 100 lines):\n" +
+          lines.take(100).joinToString("\n") + "\n...")
+    }
 
     // store submission in registry
     val submission = Submission(workflow = workflow)
