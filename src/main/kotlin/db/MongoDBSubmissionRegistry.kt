@@ -5,12 +5,14 @@ import helper.JsonUtils
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
+import io.vertx.ext.mongo.BulkOperation
 import io.vertx.ext.mongo.MongoClient
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.ext.mongo.FindOptions
 import io.vertx.kotlin.ext.mongo.UpdateOptions
+import io.vertx.kotlin.ext.mongo.bulkWriteAwait
 import io.vertx.kotlin.ext.mongo.countAwait
 import io.vertx.kotlin.ext.mongo.findOneAndUpdateWithOptionsAwait
 import io.vertx.kotlin.ext.mongo.findOneAwait
@@ -164,9 +166,9 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   }
 
   /**
-   * Get a next sequential number for a given [collection]
+   * Get a next [n] sequential numbers for a given [collection]
    */
-  private suspend fun getNextSequence(collection: String): Long {
+  private suspend fun getNextSequence(collection: String, n: Int = 1): Long {
     val doc: JsonObject? = client.findOneAndUpdateWithOptionsAwait(COLL_SEQUENCE, json {
       obj(
           INTERNAL_ID to collection
@@ -174,7 +176,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     }, json {
       obj(
           "\$inc" to obj(
-            VALUE to 1
+            VALUE to n
           )
       )
     }, FindOptions(), UpdateOptions(upsert = true))
@@ -359,16 +361,17 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       throw NoSuchElementException("There is no submission with ID `$submissionId'")
     }
 
-    for (pc in processChains) {
-      val sequence = getNextSequence(COLL_PROCESS_CHAINS)
+    val sequence = getNextSequence(COLL_PROCESS_CHAINS, processChains.size)
+    val ops = processChains.mapIndexed { i, pc ->
       val doc = JsonUtils.toJson(pc)
       doc.put(INTERNAL_ID, pc.id)
       doc.remove(ID)
-      doc.put(SEQUENCE, sequence)
+      doc.put(SEQUENCE, sequence + i)
       doc.put(SUBMISSION_ID, submissionId)
       doc.put(STATUS, status.toString())
-      client.insertAwait(COLL_PROCESS_CHAINS, doc)
+      BulkOperation.createInsert(doc)
     }
+    client.bulkWriteAwait(COLL_PROCESS_CHAINS, ops)
   }
 
   /**
