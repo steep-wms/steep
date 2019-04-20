@@ -30,10 +30,11 @@ import java.time.format.DateTimeFormatter.ISO_INSTANT
  * @param vertx the current Vert.x instance
  * @param connectionString the MongoDB connection string (e.g.
  * `mongodb://localhost:27017/database`)
+ * @param createIndexes `true` if indexes should be created
  * @author Michel Kraemer
  */
 class MongoDBSubmissionRegistry(private val vertx: Vertx,
-    connectionString: String) : SubmissionRegistry {
+    connectionString: String, createIndexes: Boolean = true) : SubmissionRegistry {
   companion object {
     private val log = LoggerFactory.getLogger(MongoDBSubmissionRegistry::class.java)
 
@@ -92,64 +93,68 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     }
     client = MongoClient.createShared(vertx, config)
 
-    // create indexes for `submission` collection
-    client.runCommand("createIndexes", json {
-      obj(
-          "createIndexes" to COLL_SUBMISSIONS,
-          "indexes" to array(
-              obj(
-                  "name" to "${STATUS}_",
-                  "key" to obj(
-                      STATUS to 1
-                  ),
-                  "background" to true
-              ),
-              obj (
-                  "name" to "${SEQUENCE}_",
-                  "key" to obj(
-                      SEQUENCE to 1
-                  ),
-                  "background" to true
-              )
-          )
-      )
-    }) { ar ->
-      if (ar.failed()) {
-        log.error("Could not create indexes on collection `$COLL_SUBMISSIONS'", ar.cause())
+    if (createIndexes) {
+      // create indexes for `submission` collection
+      client.runCommand("createIndexes", json {
+        obj(
+            "createIndexes" to COLL_SUBMISSIONS,
+            "indexes" to array(
+                obj(
+                    "name" to "${STATUS}_",
+                    "key" to obj(
+                        STATUS to 1
+                    ),
+                    "background" to true
+                ),
+                obj (
+                    "name" to "${SEQUENCE}_",
+                    "key" to obj(
+                        SEQUENCE to 1
+                    ),
+                    "background" to true
+                )
+            )
+        )
+      }) { ar ->
+        if (ar.failed()) {
+          log.error("Could not create indexes on collection " +
+              "`$COLL_SUBMISSIONS'", ar.cause())
+        }
       }
-    }
 
-    // create indexes for `processChains` collection
-    client.runCommand("createIndexes", json {
-      obj(
-          "createIndexes" to COLL_PROCESS_CHAINS,
-          "indexes" to array(
-              obj(
-                  "name" to "${SUBMISSION_ID}_",
-                  "key" to obj(
-                      SUBMISSION_ID to 1
-                  ),
-                  "background" to true
-              ),
-              obj(
-                  "name" to "${STATUS}_",
-                  "key" to obj(
-                      STATUS to 1
-                  ),
-                  "background" to true
-              ),
-              obj (
-                  "name" to "${SEQUENCE}_",
-                  "key" to obj(
-                      SEQUENCE to 1
-                  ),
-                  "background" to true
-              )
-          )
-      )
-    }) { ar ->
-      if (ar.failed()) {
-        log.error("Could not create indexes on collection `$COLL_PROCESS_CHAINS'", ar.cause())
+      // create indexes for `processChains` collection
+      client.runCommand("createIndexes", json {
+        obj(
+            "createIndexes" to COLL_PROCESS_CHAINS,
+            "indexes" to array(
+                obj(
+                    "name" to "${SUBMISSION_ID}_",
+                    "key" to obj(
+                        SUBMISSION_ID to 1
+                    ),
+                    "background" to true
+                ),
+                obj(
+                    "name" to "${STATUS}_",
+                    "key" to obj(
+                        STATUS to 1
+                    ),
+                    "background" to true
+                ),
+                obj (
+                    "name" to "${SEQUENCE}_",
+                    "key" to obj(
+                        SEQUENCE to 1
+                    ),
+                    "background" to true
+                )
+            )
+        )
+      }) { ar ->
+        if (ar.failed()) {
+          log.error("Could not create indexes on collection " +
+              "`$COLL_PROCESS_CHAINS'", ar.cause())
+        }
       }
     }
   }

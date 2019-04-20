@@ -73,5 +73,5 @@ class MongoDBSubmissionRegistryTest : SubmissionRegistryTest() {
   }
 
   override fun createRegistry(vertx: Vertx) = MongoDBSubmissionRegistry(
-      vertx, CONNECTION_STRING)
+      vertx, CONNECTION_STRING, false)
 }
