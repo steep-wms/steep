@@ -102,6 +102,13 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
                       STATUS to 1
                   ),
                   "background" to true
+              ),
+              obj (
+                  "name" to "${SEQUENCE}_",
+                  "key" to obj(
+                      SEQUENCE to 1
+                  ),
+                  "background" to true
               )
           )
       )
@@ -127,6 +134,13 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
                   "name" to "${STATUS}_",
                   "key" to obj(
                       STATUS to 1
+                  ),
+                  "background" to true
+              ),
+              obj (
+                  "name" to "${SEQUENCE}_",
+                  "key" to obj(
+                      SEQUENCE to 1
                   ),
                   "background" to true
               )
