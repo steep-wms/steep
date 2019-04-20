@@ -16,6 +16,8 @@ import io.vertx.kotlin.ext.mongo.findOneAndUpdateWithOptionsAwait
 import io.vertx.kotlin.ext.mongo.findOneAwait
 import io.vertx.kotlin.ext.mongo.findWithOptionsAwait
 import io.vertx.kotlin.ext.mongo.insertAwait
+import io.vertx.kotlin.ext.mongo.removeDocumentAwait
+import io.vertx.kotlin.ext.mongo.saveAwait
 import io.vertx.kotlin.ext.mongo.updateCollectionAwait
 import model.Submission
 import model.processchain.ProcessChain
@@ -41,6 +43,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     private const val COLL_SEQUENCE = "sequence"
     private const val COLL_SUBMISSIONS = "submissions"
     private const val COLL_PROCESS_CHAINS = "processChains"
+    private const val COLL_EXECUTION_STATES = "executionStates"
     private const val INTERNAL_ID = "_id"
     private const val ID = "id"
     private const val SUBMISSION_ID = "submissionId"
@@ -49,7 +52,6 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     private const val STATUS = "status"
     private const val RESULTS = "results"
     private const val ERROR_MESSAGE = "errorMessage"
-    private const val EXECUTION_STATE = "executionState"
     private const val SEQUENCE = "sequence"
     private const val VALUE = "value"
 
@@ -58,8 +60,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
      */
     private val SUBMISSION_EXCLUDES = json {
       obj(
-          SEQUENCE to 0,
-          EXECUTION_STATE to 0
+          SEQUENCE to 0
       )
     }
 
@@ -191,7 +192,6 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     document.remove(SEQUENCE)
     document.put(ID, document.getString(INTERNAL_ID))
     document.remove(INTERNAL_ID)
-    document.remove(EXECUTION_STATE)
     return JsonUtils.fromJson(document)
   }
 
@@ -319,11 +319,29 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       }
 
   override suspend fun setSubmissionExecutionState(submissionId: String, state: JsonObject?) {
-    updateField(COLL_SUBMISSIONS, submissionId, EXECUTION_STATE, state)
+    if (state != null) {
+      val doc = state.copy()
+      doc.put(INTERNAL_ID, submissionId)
+      client.saveAwait(COLL_EXECUTION_STATES, doc)
+    } else {
+      client.removeDocumentAwait(COLL_EXECUTION_STATES, json {
+        obj(
+            INTERNAL_ID to submissionId
+        )
+      })
+    }
   }
 
   override suspend fun getSubmissionExecutionState(submissionId: String): JsonObject? =
-      getSubmissionField(submissionId, EXECUTION_STATE)
+      client.findOneAwait(COLL_EXECUTION_STATES, json {
+        obj(
+            INTERNAL_ID to submissionId
+        )
+      }, json {
+        obj(
+            INTERNAL_ID to 0
+        )
+      })
 
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,
       submissionId: String, status: ProcessChainStatus) {
