@@ -87,3 +87,60 @@
     margin-right: 1rem;
   }
 }
+
+#workflow-graph {
+  position: absolute;
+  left: 10000px;
+  top: 0px;
+
+  margin-bottom: 1rem;
+
+  g.file > rect {
+    fill: #fff;
+  }
+
+  g.execute > rect {
+    fill: #f3f4f4;
+  }
+
+  text {
+    fill: #212121;
+  }
+
+  .node rect {
+    fill: #fff;
+    stroke: #dfdfdf;
+    stroke-width: 1px;
+  }
+
+  .cluster rect {
+    fill: #fff;
+    stroke: #dfdfdf;
+    stroke-width: 3px;
+  }
+
+  .edgePath path {
+    fill: #757575;
+    stroke: #757575;
+    stroke-width: 1px;
+  }
+
+  path.arrowhead {
+    stroke: none;
+  }
+
+  .icon-container {
+    display: inline-block;
+    width: 1.1em;
+    height: 1rem;
+
+    i.icon {
+      display: inline;
+      margin-right: 0;
+    }
+
+    .file.icon {
+      margin-left: 2px;
+    }
+  }
+}

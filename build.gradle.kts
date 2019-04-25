@@ -67,7 +67,22 @@ dependencies {
     implementation("org.yaml:snakeyaml:1.23")
 
     assets("org.webjars:highlightjs:9.8.0")
+    assets("org.webjars.npm:d3:5.9.2") {
+        isTransitive = false
+    }
+    assets("org.webjars.npm:dagre:0.8.4") {
+        isTransitive = false
+    }
+    assets("org.webjars.npm:dagre-d3:0.6.3") {
+        isTransitive = false
+    }
+    assets("org.webjars.npm:graphlib:2.1.7") {
+        isTransitive = false
+    }
     assets("org.webjars.npm:jquery:3.3.1")
+    assets("org.webjars.npm:lodash:4.17.11") {
+        isTransitive = false
+    }
     assets("org.webjars.npm:semantic-ui:2.4.2") {
         isTransitive = false
     }
@@ -186,9 +201,14 @@ tasks {
         dependsOn(assets)
         from(assets.map { if (it.extension == "js") it else zipTree(it) })
         include(listOf(
+            "META-INF/resources/webjars/d3/5.9.2/dist/d3.min.js",
+            "META-INF/resources/webjars/dagre/0.8.4/dist/dagre.core.min.js",
+            "META-INF/resources/webjars/dagre-d3/0.6.3/dist/dagre-d3.core.min.js",
+            "META-INF/resources/webjars/graphlib/2.1.7/dist/graphlib.core.min.js",
             "META-INF/resources/webjars/highlightjs/9.8.0/styles/zenburn.css",
             "META-INF/resources/webjars/highlightjs/9.8.0/highlight.min.js",
             "META-INF/resources/webjars/jquery/3.3.1/dist/jquery.min.js",
+            "META-INF/resources/webjars/lodash/4.17.11/lodash.min.js",
             "META-INF/resources/webjars/semantic-ui/2.4.2/dist/semantic.min.css",
             "META-INF/resources/webjars/semantic-ui/2.4.2/dist/semantic.min.js",
             "META-INF/resources/webjars/semantic-ui/2.4.2/dist/themes/default/**/*",
