@@ -6,6 +6,8 @@ import com.mitchellbosecke.pebble.lexer.Syntax
 import db.SubmissionRegistry
 import db.SubmissionRegistryFactory
 import helper.JsonUtils
+import io.prometheus.client.hotspot.DefaultExports
+import io.prometheus.client.vertx.MetricsHandler
 import io.vertx.core.eventbus.ReplyException
 import io.vertx.core.eventbus.ReplyFailure
 import io.vertx.core.http.HttpMethod
@@ -150,6 +152,10 @@ class HttpEndpoint : CoroutineVerticle() {
     router.post("/workflows")
         .handler(bodyHandler)
         .handler(this::onPostWorkflow)
+
+    router.route("/metrics")
+        .handler(MetricsHandler())
+    DefaultExports.initialize()
 
     // add a handler for assets that removes SHA256 checksums from filenames
     // and then forwards to a static handler

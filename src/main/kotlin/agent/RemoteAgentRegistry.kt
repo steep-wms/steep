@@ -1,6 +1,7 @@
 package agent
 
 import AddressConstants
+import io.prometheus.client.Gauge
 import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.core.impl.NoStackTraceThrowable
@@ -51,6 +52,14 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
      * Name of a cluster-wide map keeping IDs of [RemoteAgent]s
      */
     private const val ASYNC_MAP_NAME = "RemoteAgentRegistry.Async"
+
+    /**
+     * The current number of registered remote agents
+     */
+    private val gaugeAgents = Gauge.build()
+        .name("remote_agents")
+        .help("Number of registered remote agents")
+        .register()
   }
 
   override val coroutineContext: CoroutineContext = vertx.dispatcher()
@@ -78,7 +87,9 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
       vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_ADDED) { msg ->
         log.info("Remote agent `${msg.body()}' has been added.")
         launch {
-          log.info("New total number of remote agents: " + agents.await().sizeAwait())
+          val size = agents.await().sizeAwait()
+          log.info("New total number of remote agents: $size")
+          gaugeAgents.set(size.toDouble())
         }
       }
 
@@ -86,7 +97,9 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
       vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_LEFT) { msg ->
         log.info("Remote agent `${msg.body()}' has left.")
         launch {
-          log.info("New total number of remote agents: " + agents.await().sizeAwait())
+          val size = agents.await().sizeAwait()
+          log.info("New total number of remote agents: $size")
+          gaugeAgents.set(size.toDouble())
         }
       }
 
