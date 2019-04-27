@@ -90,13 +90,11 @@ let app = new Vue({
 
       // make a graph node that represents a file
       function makeFile(g, id, parent) {
-        if (!g.hasNode(id)) {
-          makeNode(g, id, {
-            label: makeIconLabel("file outline", id),
-            labelType: "html",
-            class: "file"
-          }, parent);
-        }
+        makeNode(g, id, {
+          label: makeIconLabel("file outline", id),
+          labelType: "html",
+          class: "file"
+        }, parent);
       }
 
       // convert a list of actions to graph nodes
@@ -114,7 +112,7 @@ let app = new Vue({
             let inputs = a.inputs || [];
             let outputs = a.outputs || [];
             for (let i of inputs) {
-              makeFile(g, varToId(i.var), parent);
+              makeFile(g, varToId(i.var), undefined /* never override parent for inputs */);
               g.setEdge(varToId(i.var), id, {}, id + "$$" + i.id);
             }
             for (let o of outputs) {
@@ -130,7 +128,7 @@ let app = new Vue({
             }, parent);
             actionsToGraph(a.actions, g, id);
             if (typeof a.input !== "undefined" && typeof a.enumerator !== "undefined") {
-              makeFile(g, a.input, parent);
+              makeFile(g, a.input, undefined /* never override parent for inputs */);
               makeFile(g, a.enumerator, id);
               g.setEdge(a.input, a.enumerator, {});
             }
