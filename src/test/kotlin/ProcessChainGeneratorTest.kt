@@ -129,7 +129,14 @@ class ProcessChainGeneratorTest {
         T("forEachYield"),
 
         // Test for-each action with yield and subsequent join
-        T("forEachYieldJoin")
+        T("forEachYieldJoin"),
+
+        // Test if a subsequent action can receive a list of files as directory
+        T("directoryInput"),
+
+        // Test if a subsequent action in a separate process chain can receive
+        // a list of files as directory
+        T("directoryInputProcessChains")
 
         //  TODO test complex graph
 

@@ -66,8 +66,40 @@ object TestMetadata {
               dataType = Argument.DATA_TYPE_BOOLEAN, label = "--rm", value = "true"),
           RuntimeArgument("dataMount", "Data mount", "Mount data directory",
               label = "-v", value = "/data:/data")
-      ))
+      )
+  )
+
+  private val serviceSplitToDir = Service(
+      id = "splitToDir",
+      name = "splitToDir",
+      description = "Split to directory",
+      path = "splitToDir.sh",
+      runtime = Service.Runtime.OTHER,
+      parameters = listOf(
+        ServiceParameter("i", "Input file", "A single input file",
+            Argument.Type.INPUT, Cardinality(1, 1)),
+        ServiceParameter("o", "Output directory", "Output directory",
+            Argument.Type.OUTPUT, Cardinality(1, 1), Argument.DATA_TYPE_DIRECTORY)
+      )
+  )
+
+  private val serviceJoinFromDir = Service(
+      id = "joinFromDir",
+      name = "joinFromDir",
+      description = "Join files from directory",
+      path = "joinFromDir.sh",
+      runtime = Service.Runtime.OTHER,
+      parameters = listOf(
+          ServiceParameter("i", "Input directory", "Input directory",
+              Argument.Type.INPUT, Cardinality(1, 1), Argument.DATA_TYPE_DIRECTORY),
+          ServiceParameter("f", "Input files", "An optional list of input files",
+              Argument.Type.INPUT, Cardinality(0, Int.MAX_VALUE)),
+          ServiceParameter("o", "Output file", "Output file",
+              Argument.Type.OUTPUT, Cardinality(1, 1))
+      )
+  )
 
   val services = listOf(serviceCp, serviceCpDefaultParam, serviceJoin,
-      serviceSplit, serviceWithDocker, serviceWithRuntimeArgs)
+      serviceSplit, serviceWithDocker, serviceWithRuntimeArgs,
+      serviceSplitToDir, serviceJoinFromDir)
 }
