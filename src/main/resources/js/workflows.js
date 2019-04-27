@@ -207,8 +207,8 @@ let app = new Vue({
       render(inner, g);
 
       // set svg viewBox but add 2 pixels so that borders are drawn correctly
-      let w = Math.ceil(g.graph().width) + 2;
-      let h = Math.ceil(g.graph().height) + 2;
+      let w = Math.ceil(Math.max(g.graph().width, svg.node().getBBox().width)) + 2;
+      let h = Math.ceil(Math.max(g.graph().height, svg.node().getBBox().height)) + 2;
       svg.call(zoom.transform, d3.zoomIdentity.translate(1, 1));
       svg.attr("viewBox", "0 0 " + w + " " + h);
       svg.style("max-width", w + "px");
