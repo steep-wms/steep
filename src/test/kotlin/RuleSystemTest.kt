@@ -236,4 +236,58 @@ class RuleSystemTest {
           id = opcs[0].id, executables = listOf(executable2))))
     }
   }
+
+  /**
+   * Test if process chain results can be added
+   */
+  @Test
+  fun addProcessChainResults() {
+    val rules = listOf(
+        Rule(
+            "Add results", Rule.Target.PROCESSCHAIN_RESULTS,
+            "(results, pc) => pc.executables.some(e => e.path.endsWith('myExe'))",
+            """
+              function(results, pc) {
+                let exes = pc.executables.filter(e => e.path.endsWith("myExe"));
+                exes.forEach(e => {
+                  e.arguments.forEach(a => {
+                    if (a.type === "output") {
+                      let id = a.variable.id;
+                      results[id] = results[id].flatMap(r => [r, r + ".bak"]);
+                    }
+                  });
+                });
+              }
+            """.trimIndent()
+        )
+    )
+
+    // should not change anything
+    RuleSystem(rules).use {
+      val opc = ProcessChain(executables = listOf(
+          Executable(path = "anotherExe", arguments = listOf(
+              Argument(variable = ArgumentVariable("anotherResult", "/tmp/"),
+                  type = Argument.Type.OUTPUT)
+          ))
+      ))
+      val or = mapOf("anotherResult" to listOf("/tmp/1", "/tmp/2"))
+      val nor = it.apply(or, opc)
+      assertThat(nor).isSameAs(or)
+    }
+
+    // should apply
+    RuleSystem(rules).use {
+      val opc = ProcessChain(executables = listOf(
+          Executable(path = "myExe", arguments = listOf(
+              Argument(variable = ArgumentVariable("myResult", "/tmp/"),
+                  type = Argument.Type.OUTPUT)
+          ))
+      ))
+      val or = mapOf("myResult" to listOf("/tmp/1", "/tmp/2"))
+      val nor = it.apply(or, opc)
+      assertThat(nor).isEqualTo(mapOf("myResult" to listOf(
+          "/tmp/1", "/tmp/1.bak", "/tmp/2", "/tmp/2.bak"
+      )))
+    }
+  }
 }

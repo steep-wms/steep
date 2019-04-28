@@ -1,6 +1,8 @@
 import agent.Agent
 import agent.AgentRegistry
 import agent.AgentRegistryFactory
+import db.RuleRegistry
+import db.RuleRegistryFactory
 import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus.ERROR
 import db.SubmissionRegistry.ProcessChainStatus.REGISTERED
@@ -21,10 +23,13 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import kotlinx.coroutines.delay
 import model.processchain.ProcessChain
+import model.rules.Rule
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInfo
 import org.junit.jupiter.api.extension.ExtendWith
 
 /**
@@ -33,15 +38,41 @@ import org.junit.jupiter.api.extension.ExtendWith
  */
 @ExtendWith(VertxExtension::class)
 class SchedulerTest {
+  companion object {
+    private const val WITH_RULES = "withRules"
+  }
+
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var agentRegistry: AgentRegistry
 
   @BeforeEach
-  fun setUp(vertx: Vertx, ctx: VertxTestContext) {
+  fun setUp(vertx: Vertx, ctx: VertxTestContext, info: TestInfo) {
     // mock submission registry
     submissionRegistry = mockk()
     mockkObject(SubmissionRegistryFactory)
     every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
+    coEvery { submissionRegistry.close() } just Runs
+
+    // mock rule registry
+    val ruleRegistry: RuleRegistry = mockk()
+    mockkObject(RuleRegistryFactory)
+    every { RuleRegistryFactory.create(any()) } returns ruleRegistry
+    if (info.tags.contains(WITH_RULES)) {
+      coEvery { ruleRegistry.findRules() } returns listOf(Rule(
+          name = "Modify results",
+          target = Rule.Target.PROCESSCHAIN_RESULTS,
+          condition = "(results, pc) => true",
+          action = """
+              function(results, pc) {
+                Object.keys(results).forEach(id => {
+                  results[id] = results[id].flatMap(r => [r, r + ".bak"]);
+                });
+              }
+            """.trimIndent()
+      ))
+    } else {
+      coEvery { ruleRegistry.findRules() } returns emptyList()
+    }
 
     // mock agent registry
     agentRegistry = mockk()
@@ -67,7 +98,8 @@ class SchedulerTest {
    * @param vertx the Vert.x instance
    * @param ctx the test context
    */
-  private fun testSimple(nProcessChains: Int, nAgents: Int, vertx: Vertx, ctx: VertxTestContext) {
+  private fun testSimple(nProcessChains: Int, nAgents: Int, vertx: Vertx,
+      ctx: VertxTestContext, withRules: Boolean = false) {
     // mock agents
     val allAgents = (1..nAgents).map { n ->
       val a = mockk<Agent>()
@@ -116,8 +148,13 @@ class SchedulerTest {
       coEvery { submissionRegistry.setProcessChainEndTime(pc.id, any()) } just Runs
 
       // register mock for results
-      coEvery { submissionRegistry.setProcessChainResults(pc.id,
-          mapOf("ARG1" to listOf("output-${pc.id}"))) } just Runs
+      if (withRules) {
+        coEvery { submissionRegistry.setProcessChainResults(pc.id,
+            mapOf("ARG1" to listOf("output-${pc.id}", "output-${pc.id}.bak"))) } just Runs
+      } else {
+        coEvery { submissionRegistry.setProcessChainResults(pc.id,
+            mapOf("ARG1" to listOf("output-${pc.id}"))) } just Runs
+      }
     }
 
     for (pc in allPcs) {
@@ -138,8 +175,13 @@ class SchedulerTest {
         // and that the results were set correctly
         coVerify(exactly = 1) {
           for (pc in allPcs) {
-            submissionRegistry.setProcessChainResults(pc.id,
-                mapOf("ARG1" to listOf("output-${pc.id}")))
+            if (withRules) {
+              submissionRegistry.setProcessChainResults(pc.id,
+                  mapOf("ARG1" to listOf("output-${pc.id}", "output-${pc.id}.bak")))
+            } else {
+              submissionRegistry.setProcessChainResults(pc.id,
+                  mapOf("ARG1" to listOf("output-${pc.id}")))
+            }
             submissionRegistry.setProcessChainStartTime(pc.id, any())
             submissionRegistry.setProcessChainEndTime(pc.id, any())
             submissionRegistry.setProcessChainStatus(pc.id, SUCCESS)
@@ -160,6 +202,12 @@ class SchedulerTest {
   @Test
   fun oneChainOneAgent(vertx: Vertx, ctx: VertxTestContext) {
     testSimple(1, 1, vertx, ctx)
+  }
+
+  @Test
+  @Tag(WITH_RULES)
+  fun oneChainOneAgentWithRule(vertx: Vertx, ctx: VertxTestContext) {
+    testSimple(1, 1, vertx, ctx, true)
   }
 
   @Test

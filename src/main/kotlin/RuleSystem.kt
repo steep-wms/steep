@@ -56,19 +56,40 @@ class RuleSystem(rules: List<Rule>): AutoCloseable {
   }
 
   /**
-   * Apply a [rule] to a [value] (JavaScript object). Return `true` if the
-   * rule's action was called, `false` if the rule's condition was not satisfied.
+   * Apply a [rule] to a [value] (JavaScript object) and optional [otherValues].
+   * Return `true` if the rule's action was called, `false` if the rule's
+   * condition was not satisfied.
    */
-  private fun applyRule(rule: CompiledRule, value: Value): Boolean {
-    val conditionResult = rule.condition.getMember("call").execute(value, value)
+  private fun applyRule(rule: CompiledRule, value: Value, vararg otherValues: Value): Boolean {
+    val args = arrayOf(value, value) + otherValues
+    val conditionResult = rule.condition.getMember("call").execute(*args)
     if (!conditionResult.isBoolean) {
       throw IllegalStateException("Condition must return a boolean value")
     }
     if (conditionResult.asBoolean()) {
-      rule.action.getMember("call").executeVoid(value, value)
+      rule.action.getMember("call").executeVoid(*args)
       return true
     }
     return false
+  }
+
+  /**
+   * Convert an [object] to a JavaScript value
+   */
+  private fun objectToValue(`object`: Any): Value {
+    val json = JsonUtils.mapper.writeValueAsString(`object`)
+    val source = Source.newBuilder("js", "($json)", "parseMyJSON")
+        .cached(false) // we'll most likely never convert the same object again
+        .build()
+    return ctx.eval(source)
+  }
+
+  /**
+   * Convert a JavaScript [value] to an object
+   */
+  private inline fun <reified T> valueToObject(value: Value): T {
+    val str = stringify.execute(value)
+    return JsonUtils.mapper.readValue(str.asString())
   }
 
   /**
@@ -76,15 +97,7 @@ class RuleSystem(rules: List<Rule>): AutoCloseable {
    * modified process chains.
    */
   fun apply(processChains: List<ProcessChain>): List<ProcessChain> {
-    // convert process chains to JavaScript objects
-    val processChainValues = mutableListOf<Value>()
-    for (processChain in processChains) {
-      val obj = JsonUtils.mapper.writeValueAsString(processChain)
-      val source = Source.newBuilder("js", "($obj)", "parseProcessChainJSON")
-          .cached(false) // we'll most likely never convert the same object again
-          .build()
-      processChainValues.add(ctx.eval(source))
-    }
+    val processChainValues = processChains.map { objectToValue(it) }
 
     // apply all rules
     var changed = false
@@ -103,6 +116,8 @@ class RuleSystem(rules: List<Rule>): AutoCloseable {
             }
             c2
           }
+
+          else -> false
         }
 
         changed = c || changed
@@ -111,12 +126,37 @@ class RuleSystem(rules: List<Rule>): AutoCloseable {
 
     // convert JS objects back to process chains if necessary
     return if (changed) {
-      processChainValues.map {
-        val str = stringify.execute(it)
-        JsonUtils.mapper.readValue<ProcessChain>(str.asString())
-      }
+      processChainValues.map { valueToObject<ProcessChain>(it) }
     } else {
       processChains
+    }
+  }
+
+  /**
+   * Apply all rules to the given [processChain] and its [results]. Return
+   * the modified results.
+   */
+  fun apply(results: Map<String, List<String>>, processChain: ProcessChain):
+      Map<String, List<String>> {
+    val processChainValue = objectToValue(processChain)
+    val resultsValue = objectToValue(results)
+
+    // apply all rules
+    var changed = false
+    for (rule in compiledRules) {
+      val c = when (rule.target) {
+        Rule.Target.PROCESSCHAIN_RESULTS -> applyRule(rule,
+            resultsValue, processChainValue)
+        else -> false
+      }
+
+      changed = c || changed
+    }
+
+    return if (changed) {
+      valueToObject(resultsValue)
+    } else {
+      results
     }
   }
 }

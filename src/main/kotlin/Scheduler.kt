@@ -5,6 +5,7 @@ import agent.AgentRegistry
 import agent.AgentRegistryFactory
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
+import db.RuleRegistryFactory
 import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus.ERROR
 import db.SubmissionRegistry.ProcessChainStatus.REGISTERED
@@ -33,6 +34,7 @@ class Scheduler : CoroutineVerticle() {
 
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var agentRegistry: AgentRegistry
+  private lateinit var ruleSystem: RuleSystem
 
   private lateinit var periodicLookupJob: Job
 
@@ -45,6 +47,10 @@ class Scheduler : CoroutineVerticle() {
     // create registries
     submissionRegistry = SubmissionRegistryFactory.create(vertx)
     agentRegistry = AgentRegistryFactory.create(vertx)
+
+    // prepare rule system
+    val ruleRegistry = RuleRegistryFactory.create(vertx)
+    ruleSystem = RuleSystem(ruleRegistry.findRules())
 
     // read configuration
     val lookupInterval = config.getLong(SCHEDULER_LOOKUP_INTERVAL, 20000L)
@@ -79,6 +85,7 @@ class Scheduler : CoroutineVerticle() {
     log.info("Stopping scheduler ...")
     periodicLookupJob.cancelAndJoin()
     submissionRegistry.close()
+    ruleSystem.close()
   }
 
   /**
@@ -110,7 +117,7 @@ class Scheduler : CoroutineVerticle() {
       launch {
         try {
           submissionRegistry.setProcessChainStartTime(processChain.id, Instant.now())
-          val results = agent.execute(processChain)
+          val results = ruleSystem.apply(agent.execute(processChain), processChain)
           submissionRegistry.setProcessChainResults(processChain.id, results)
           submissionRegistry.setProcessChainStatus(processChain.id, SUCCESS)
         } catch (t: Throwable) {

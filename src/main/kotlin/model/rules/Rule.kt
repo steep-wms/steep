@@ -15,6 +15,7 @@ data class Rule(
 ) {
   enum class Target(@JsonValue val target: String) {
     PROCESSCHAIN("processChain"),
-    EXECUTABLE("executable")
+    EXECUTABLE("executable"),
+    PROCESSCHAIN_RESULTS("processChainResults")
   }
 }

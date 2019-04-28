@@ -67,6 +67,7 @@ class ControllerTest {
     mockkObject(SubmissionRegistryFactory)
     every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
     coEvery { submissionRegistry.findSubmissionIdsByStatus(Status.RUNNING) } returns emptyList()
+    coEvery { submissionRegistry.close() } just Runs
 
     // mock rule registry
     val ruleRegistry: RuleRegistry = mockk()
