@@ -205,10 +205,12 @@ let app = new Vue({
       render(inner, g);
 
       // set svg viewBox but add 2 pixels so that borders are drawn correctly
+      let l = Math.floor(Math.min(0, svg.node().getBBox().x));
+      let t = Math.floor(Math.min(0, svg.node().getBBox().y));
       let w = Math.ceil(Math.max(g.graph().width, svg.node().getBBox().width)) + 2;
       let h = Math.ceil(Math.max(g.graph().height, svg.node().getBBox().height)) + 2;
       svg.call(zoom.transform, d3.zoomIdentity.translate(1, 1));
-      svg.attr("viewBox", "0 0 " + w + " " + h);
+      svg.attr("viewBox", l + " " + t + " " + w + " " + h);
       svg.style("max-width", w + "px");
 
       // move cluster labels to top-left
