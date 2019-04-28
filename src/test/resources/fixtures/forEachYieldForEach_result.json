@@ -24,7 +24,7 @@
     }]
   }],
   "results": {
-    "output_directory": ["input_file1.txt", "input_file2.txt"]
+    "output_directory": ["/tmp/0/input_file1.txt", "/tmp/0/input_file2.txt"]
   }
 }, {
   "chains": [{
@@ -36,7 +36,7 @@
         "id": "input_file",
         "variable": {
           "id": "j$0$0",
-          "value": "input_file1.txt"
+          "value": "/tmp/0/input_file1.txt"
         },
         "type": "input",
         "dataType": "string"
@@ -59,7 +59,7 @@
         "id": "input_file",
         "variable": {
           "id": "j$1$0",
-          "value": "input_file2.txt"
+          "value": "/tmp/0/input_file2.txt"
         },
         "type": "input",
         "dataType": "string"
@@ -80,46 +80,31 @@
   }
 }, {
   "chains": [{
-    "id": "3",
+    "id": "7",
     "executables": [{
-      "id": "cp",
-      "path": "cp",
+      "id": "join",
+      "path": "join.sh",
       "arguments": [{
-        "id": "input_file",
+        "id": "i",
         "variable": {
-          "id": "i$0",
-          "value": "input_file1.txt"
+          "id": "for_output",
+          "value": "/tmp/2"
         },
         "type": "input",
         "dataType": "string"
       }, {
-        "id": "output_file",
+        "id": "i",
         "variable": {
-          "id": "output_file1$0$0",
+          "id": "for_output",
+          "value": "/tmp/4"
+        },
+        "type": "input",
+        "dataType": "string"
+      }, {
+        "id": "o",
+        "variable": {
+          "id": "output_file2",
           "value": "/tmp/6"
-        },
-        "type": "output",
-        "dataType": "string"
-      }]
-    }]
-  }, {
-    "id": "5",
-    "executables": [{
-      "id": "cp",
-      "path": "cp",
-      "arguments": [{
-        "id": "input_file",
-        "variable": {
-          "id": "i$1",
-          "value": "input_file2.txt"
-        },
-        "type": "input",
-        "dataType": "string"
-      }, {
-        "id": "output_file",
-        "variable": {
-          "id": "output_file1$1$0",
-          "value": "/tmp/7"
         },
         "type": "output",
         "dataType": "string"
@@ -127,7 +112,6 @@
     }]
   }],
   "results": {
-    "output_file1$0": ["/tmp/6"],
-    "output_file1$1": ["/tmp/7"]
+    "output_file2": ["/tmp/6"]
   }
 }]

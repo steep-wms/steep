@@ -136,7 +136,11 @@ class ProcessChainGeneratorTest {
 
         // Test if a subsequent action in a separate process chain can receive
         // a list of files as directory
-        T("directoryInputProcessChains")
+        T("directoryInputProcessChains"),
+
+        // Test that the results of a nested for action can be merged to a
+        // subsequent join
+        T("forEachYieldForEach")
 
         //  TODO test complex graph
 
@@ -231,18 +235,5 @@ class ProcessChainGeneratorTest {
       testAll("forEachYieldCardinalityError", persistState = persistState)
     }.isInstanceOf(IllegalStateException::class.java)
         .hasMessageContaining("cardinality")
-  }
-
-  /**
-   * Test if a nested for-each action with a subsequent join fails due to a
-   * cast error
-   */
-  @ParameterizedTest
-  @ValueSource(strings = ["false", "true"])
-  fun forEachYieldForEachCastError(persistState: Boolean) {
-    assertThatThrownBy {
-      testAll("forEachYieldForEachCastError", persistState = persistState)
-    }.isInstanceOf(IllegalStateException::class.java)
-        .hasMessageContaining("cast")
   }
 }

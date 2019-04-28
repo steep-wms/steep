@@ -356,15 +356,15 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
   }
 
   /**
-   * Convert a flat [collection] of values to a flat list of strings. Fail if
-   * the collection contains a nested collection.
+   * Convert a [collection] of values to a flat list of strings
    */
   private fun toStringCollection(collection: Collection<*>): Collection<String> =
-      collection.map {
+      collection.flatMap {
         if (it is Collection<*>) {
-          throw IllegalStateException("Cannot cast collection to value: $it")
+          toStringCollection(it)
+        } else {
+          listOf(it.toString())
         }
-        it.toString()
       }
 
   /**
