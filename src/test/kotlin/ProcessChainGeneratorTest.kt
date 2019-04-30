@@ -140,7 +140,10 @@ class ProcessChainGeneratorTest {
 
         // Test that the results of a nested for action can be merged to a
         // subsequent join
-        T("forEachYieldForEach")
+        T("forEachYieldForEach"),
+
+        // Test if output variables can have prefixes defined
+        T("outputPrefix")
 
         //  TODO test complex graph
 

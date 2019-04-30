@@ -10,7 +10,7 @@ package model.workflow
  */
 data class ExecuteAction(
     val service: String,
-    val inputs: List<Parameter> = emptyList(),
-    val outputs: List<Parameter> = emptyList(),
-    val parameters: List<Parameter> = emptyList()
+    val inputs: List<GenericParameter> = emptyList(),
+    val outputs: List<OutputParameter> = emptyList(),
+    val parameters: List<GenericParameter> = emptyList()
 ) : Action

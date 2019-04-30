@@ -15,6 +15,7 @@ import model.processchain.ProcessChain
 import model.workflow.Action
 import model.workflow.ExecuteAction
 import model.workflow.ForEachAction
+import model.workflow.OutputParameter
 import model.workflow.StoreAction
 import model.workflow.Variable
 import model.workflow.Workflow
@@ -259,6 +260,23 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
   }
 
   /**
+   * Generate a value for an output argument based on a [serviceParam]
+   * definition and an optional [prefix]
+   */
+  private fun makeOutput(serviceParam: ServiceParameter, prefix: Any?): String {
+    val p = if (prefix is String) {
+      if (prefix.startsWith("/")) {
+        prefix
+      } else {
+        "$tmpPath/$prefix"
+      }
+    } else {
+      "$tmpPath/"
+    }
+    return FilenameUtils.normalize(p + idGenerator.next() + (serviceParam.fileSuffix ?: ""))
+  }
+
+  /**
    * Converts an [ExecuteAction] to an [Executable].
    * @param action the [ExecuteAction] to convert
    * @param capabilities a set that will be filled with the capabilities that
@@ -287,8 +305,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       // convert parameters to arguments
       val args = params.flatMap { param ->
         val vs = if (serviceParam.type == OUTPUT) {
-          listOf(FilenameUtils.normalize("$tmpPath/" +
-              idGenerator.next() + (serviceParam.fileSuffix ?: ""))!!)
+          listOf(makeOutput(serviceParam, (param as OutputParameter).prefix))
         } else {
           val iv = param.variable.value ?:
             mergeToDir(variableValues[param.variable.id], serviceParam) ?:

@@ -451,10 +451,10 @@ class HttpEndpoint : CoroutineVerticle() {
     }
 
     val api = workflowJson.getValue("api")
-    if ("3.0.0" != api) {
+    if ("3.1.0" != api && "3.0.0" != api) {
       ctx.response()
           .setStatusCode(400)
-          .end("Invalid workflow api version: $api")
+          .end("Invalid workflow api version: $api. Supported versions are [3.0.0, 3.1.0].")
       return
     }
 

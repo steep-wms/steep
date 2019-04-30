@@ -10,7 +10,7 @@ import helper.UniqueID
  * @author Michel Kraemer
  */
 data class Workflow(
-    val api: String = "3.0.0",
+    val api: String = "3.1.0",
     val name: String? = null,
     val vars: List<Variable> = emptyList(),
     val actions: List<Action> = emptyList()
