@@ -1,0 +1,27 @@
+{
+  "vars": [{
+    "id": "input_files",
+    "value": [["input_file1.txt", "input_file2.txt"], ["input_file3.txt", "input_file4.txt"]]
+  }, {
+    "id": "i"
+  }, {
+    "id": "output_file1"
+  }],
+  "actions": [{
+    "type": "for",
+    "input": "input_files",
+    "enumerator": "i",
+    "actions": [{
+      "type": "execute",
+      "service": "join",
+      "inputs": [{
+        "id": "i",
+        "var": "i"
+      }],
+      "outputs": [{
+        "id": "o",
+        "var": "output_file1"
+      }]
+    }]
+  }]
+}
