@@ -1,11 +1,13 @@
 import agent.RemoteAgentRegistry
 import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.mitchellbosecke.pebble.PebbleEngine
 import com.mitchellbosecke.pebble.lexer.Syntax
 import db.SubmissionRegistry
 import db.SubmissionRegistryFactory
 import helper.JsonUtils
+import helper.YamlUtils
 import io.prometheus.client.hotspot.DefaultExports
 import io.prometheus.client.vertx.MetricsHandler
 import io.vertx.core.eventbus.ReplyException
@@ -441,8 +443,13 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onPostWorkflow(ctx: RoutingContext) {
     // parse workflow
-    val workflowJson = try {
-      ctx.bodyAsJson
+    val workflowJson: Map<String, Any> = try {
+      val str = ctx.bodyAsString.trim()
+      if (str[0] == '{') {
+        JsonUtils.mapper.readValue(str)
+      } else {
+        YamlUtils.mapper.readValue(str)
+      }
     } catch (e: Exception) {
       ctx.response()
           .setStatusCode(400)
@@ -450,7 +457,7 @@ class HttpEndpoint : CoroutineVerticle() {
       return
     }
 
-    val api = workflowJson.getValue("api")
+    val api = workflowJson["api"]
     if ("3.1.0" != api && "3.0.0" != api) {
       ctx.response()
           .setStatusCode(400)
@@ -459,7 +466,7 @@ class HttpEndpoint : CoroutineVerticle() {
     }
 
     val workflow = try {
-      JsonUtils.fromJson<Workflow>(workflowJson)
+      JsonUtils.mapper.convertValue<Workflow>(workflowJson)
     } catch (e: Exception) {
       ctx.response()
           .setStatusCode(400)

@@ -3,13 +3,17 @@ import db.SubmissionRegistry.ProcessChainStatus
 import db.SubmissionRegistryFactory
 import helper.JsonUtils
 import helper.UniqueID
+import helper.YamlUtils
+import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.slot
 import io.mockk.unmockkAll
 import io.vertx.core.Vertx
+import io.vertx.core.buffer.Buffer
 import io.vertx.ext.web.client.WebClient
 import io.vertx.ext.web.client.predicate.ResponsePredicate
 import io.vertx.ext.web.codec.BodyCodec
@@ -22,6 +26,7 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
 import io.vertx.kotlin.ext.web.client.sendAwait
+import io.vertx.kotlin.ext.web.client.sendBufferAwait
 import io.vertx.kotlin.ext.web.client.sendJsonObjectAwait
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -55,6 +60,7 @@ class HttpEndpointTest {
     submissionRegistry = mockk()
     mockkObject(SubmissionRegistryFactory)
     every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
+    coEvery { submissionRegistry.close() } just Runs
 
     // deploy verticle under test
     val config = json {
@@ -100,24 +106,24 @@ class HttpEndpointTest {
     val s1 = Submission(workflow = Workflow())
     coEvery { submissionRegistry.countProcessChainsBySubmissionId(s1.id) } returns 10
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
-        SubmissionRegistry.ProcessChainStatus.REGISTERED) } returns 1
+        ProcessChainStatus.REGISTERED) } returns 1
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
-        SubmissionRegistry.ProcessChainStatus.RUNNING) } returns 2
+        ProcessChainStatus.RUNNING) } returns 2
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
-        SubmissionRegistry.ProcessChainStatus.ERROR) } returns 3
+        ProcessChainStatus.ERROR) } returns 3
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
-        SubmissionRegistry.ProcessChainStatus.SUCCESS) } returns 4
+        ProcessChainStatus.SUCCESS) } returns 4
 
     val s2 = Submission(workflow = Workflow())
     coEvery { submissionRegistry.countProcessChainsBySubmissionId(s2.id) } returns 50
     coEvery { submissionRegistry.countProcessChainsByStatus(s2.id,
-        SubmissionRegistry.ProcessChainStatus.REGISTERED) } returns 11
+        ProcessChainStatus.REGISTERED) } returns 11
     coEvery { submissionRegistry.countProcessChainsByStatus(s2.id,
-        SubmissionRegistry.ProcessChainStatus.RUNNING) } returns 12
+        ProcessChainStatus.RUNNING) } returns 12
     coEvery { submissionRegistry.countProcessChainsByStatus(s2.id,
-        SubmissionRegistry.ProcessChainStatus.ERROR) } returns 13
+        ProcessChainStatus.ERROR) } returns 13
     coEvery { submissionRegistry.countProcessChainsByStatus(s2.id,
-        SubmissionRegistry.ProcessChainStatus.SUCCESS) } returns 14
+        ProcessChainStatus.SUCCESS) } returns 14
 
     coEvery { submissionRegistry.findSubmissions(any(), any(), any()) } returns listOf(s1, s2)
     coEvery { submissionRegistry.countSubmissions() } returns 2
@@ -168,13 +174,13 @@ class HttpEndpointTest {
     val s1 = Submission(workflow = Workflow())
     coEvery { submissionRegistry.countProcessChainsBySubmissionId(s1.id) } returns 10
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
-        SubmissionRegistry.ProcessChainStatus.REGISTERED) } returns 1
+        ProcessChainStatus.REGISTERED) } returns 1
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
-        SubmissionRegistry.ProcessChainStatus.RUNNING) } returns 2
+        ProcessChainStatus.RUNNING) } returns 2
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
-        SubmissionRegistry.ProcessChainStatus.ERROR) } returns 3
+        ProcessChainStatus.ERROR) } returns 3
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
-        SubmissionRegistry.ProcessChainStatus.SUCCESS) } returns 4
+        ProcessChainStatus.SUCCESS) } returns 4
 
     coEvery { submissionRegistry.findSubmissionById(s1.id) } returns s1
     coEvery { submissionRegistry.findSubmissionById(neq(s1.id)) } returns null
@@ -278,11 +284,7 @@ class HttpEndpointTest {
     }
   }
 
-  /**
-   * Test that a workflow can be successfully posted
-   */
-  @Test
-  fun postWorkflow(vertx: Vertx, ctx: VertxTestContext) {
+  private fun doPostWorkflow(vertx: Vertx, ctx: VertxTestContext, json: Boolean) {
     val w = Workflow()
 
     val submissionSlot = slot<Submission>()
@@ -301,7 +303,13 @@ class HttpEndpointTest {
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_ACCEPTED)
             .expect(ResponsePredicate.JSON)
-            .sendJsonObjectAwait(JsonUtils.toJson(w))
+            .let {
+              if (json) {
+                it.sendJsonObjectAwait(JsonUtils.toJson(w))
+              } else {
+                it.sendBufferAwait(Buffer.buffer(YamlUtils.mapper.writeValueAsString(w)))
+              }
+            }
 
         assertThat(response.body()).isEqualTo(json {
           obj(
@@ -314,6 +322,22 @@ class HttpEndpointTest {
 
       ctx.completeNow()
     }
+  }
+
+  /**
+   * Test that a workflow can be successfully posted
+   */
+  @Test
+  fun postWorkflow(vertx: Vertx, ctx: VertxTestContext) {
+    doPostWorkflow(vertx, ctx, true)
+  }
+
+  /**
+   * Test that a workflow can be successfully posted as YAML
+   */
+  @Test
+  fun postWorkflowYaml(vertx: Vertx, ctx: VertxTestContext) {
+    doPostWorkflow(vertx, ctx, false)
   }
 
   /**
