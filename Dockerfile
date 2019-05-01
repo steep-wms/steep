@@ -19,15 +19,14 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     useradd -s /bin/bash -m jobmanager && \
     mkdir /jobmanager && \
+    chown jobmanager:root /jobmanager && \
     #
     # link sh to bash (for convenience)
     ln -fs /bin/bash /bin/sh
 
 # copy binaries and config
-COPY build/install/jobmanager3 /jobmanager
-COPY conf /jobmanager/conf
-RUN chown -R jobmanager:root /jobmanager && \
-    chmod -R g+rw /jobmanager
+COPY --chown=jobmanager:root build/install/jobmanager3 /jobmanager
+COPY --chown=jobmanager:root conf /jobmanager/conf
 WORKDIR /jobmanager
 
 USER jobmanager
