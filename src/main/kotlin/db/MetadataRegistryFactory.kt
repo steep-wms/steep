@@ -1,7 +1,7 @@
 package db
 
 import io.vertx.core.Vertx
-import java.lang.IllegalStateException
+import io.vertx.core.json.JsonArray
 
 /**
  * Creates [MetadataRegistry] objects
@@ -14,9 +14,15 @@ object MetadataRegistryFactory {
    * @return the [MetadataRegistry]
    */
   fun create(vertx: Vertx): MetadataRegistry {
-    val path = vertx.orCreateContext.config().getString(
-        ConfigConstants.SERVICE_METADATA_FILE) ?: throw IllegalStateException(
-        "Missing configuration item `" + ConfigConstants.SERVICE_METADATA_FILE + "'")
-    return FileMetadataRegistry(path)
+    val paths = vertx.orCreateContext.config().getValue(
+        ConfigConstants.SERVICES) ?: throw IllegalStateException(
+        "Missing configuration item `${ConfigConstants.SERVICES}'")
+    val pathList = when (paths) {
+      is JsonArray -> paths.list.map { it as String }
+      is String -> listOf(paths)
+      else -> throw IllegalStateException("Configuration item " +
+          "`${ConfigConstants.SERVICES}' must either be a string or an array")
+    }
+    return FileMetadataRegistry(pathList, vertx)
   }
 }

@@ -1,19 +1,16 @@
 package agent
 
 import ConfigConstants
+import helper.FileSystemUtils.readRecursive
 import helper.Shell
 import helper.UniqueID
 import io.vertx.core.Vertx
-import io.vertx.core.file.FileSystem
-import io.vertx.kotlin.core.file.propsAwait
-import io.vertx.kotlin.core.file.readDirAwait
 import io.vertx.kotlin.coroutines.awaitResult
 import model.processchain.Argument
 import model.processchain.ProcessChain
 import org.apache.commons.lang3.BooleanUtils
 import org.slf4j.LoggerFactory
 import java.io.File
-import java.util.ArrayDeque
 import java.util.ArrayList
 
 /**
@@ -111,27 +108,5 @@ class LocalAgent(private val vertx: Vertx) : Agent {
 
     log.debug("----- END OF PROCESS CHAIN ${processChain.id}")
     return result
-  }
-
-  /**
-   * Recursively get all files from the given path. If the path is a file, the
-   * method will return a list with only one entry: the file itself.
-   * @param dirOrFile a directory or a file
-   * @param fs the Vert.x file system
-   * @return the list of files found
-   */
-  private suspend fun readRecursive(dirOrFile: String, fs: FileSystem): List<String> {
-    val r = mutableListOf<String>()
-    val q = ArrayDeque<String>()
-    q.add(dirOrFile)
-    while (!q.isEmpty()) {
-      val f = q.poll()
-      if (fs.propsAwait(f).isDirectory) {
-        q.addAll(fs.readDirAwait(f))
-      } else {
-        r.add(f)
-      }
-    }
-    return r
   }
 }

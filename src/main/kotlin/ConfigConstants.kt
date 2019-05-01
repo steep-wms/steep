@@ -4,14 +4,18 @@
  */
 object ConfigConstants {
   /**
-   * The path to the service metadata JSON file
+   * The path to the files containing service metadata. Either a string
+   * pointing to a single file or a glob (e.g. &#42;&#42;&#47;&#42;.yaml) or
+   * an array of files or globs.
    */
-  const val SERVICE_METADATA_FILE = "jobmanager.serviceMetadataFile"
+  const val SERVICES = "jobmanager.services"
 
   /**
-   * The path to the file containing rules for the [RuleSystem]
+   * The path to the file(s) containing rules for the [RuleSystem]. Either
+   * a string pointing to a single file or a file pattern (e.g.
+   * &#42;&#42;&#47;&#42;.yaml) or an array of files or globs.
    */
-  const val RULE_FILE = "jobmanager.ruleFile"
+  const val RULES = "jobmanager.rules"
 
   /**
    * A file that keeps additional configuration (overrides the main

@@ -1,22 +1,22 @@
 package db
 
-import com.fasterxml.jackson.module.kotlin.readValue
-import helper.JsonUtils
-import helper.YamlUtils
+import io.vertx.core.Vertx
 import model.metadata.Service
-import java.io.File
 
 /**
- * A metadata registry that reads service metadata from a JSON or YAML file
- * @param path the path to the JSON or YAML file
+ * A metadata registry that reads service metadata from JSON or YAML files
+ * @param paths the paths or globs to the JSON or YAML files
+ * @param vertx the Vert.x instance
  * @author Michel Kraemer
  */
-class FileMetadataRegistry(path: String) : MetadataRegistry {
-  private val services: List<Service> = if (path.toLowerCase().endsWith(".json")) {
-    JsonUtils.mapper.readValue(File(path))
-  } else {
-    YamlUtils.mapper.readValue(File(path))
-  }
+class FileMetadataRegistry(private val paths: List<String>, private val vertx: Vertx) :
+    MetadataRegistry, AbstractFileRegistry() {
+  private var services: List<Service>? = null
 
-  override suspend fun findServices(): List<Service> = services
+  override suspend fun findServices(): List<Service> {
+    if (services == null) {
+      services = find(paths, vertx)
+    }
+    return services!!
+  }
 }
