@@ -227,7 +227,7 @@ class Controller : CoroutineVerticle() {
       // main loop
       var totalProcessChains = 0
       var errors = 0
-      var results = mapOf<String, List<String>>()
+      var results = mapOf<String, List<Any>>()
       while (true) {
         // generate process chains
         val processChains = if (processChainsToResume != null) {
@@ -315,8 +315,8 @@ class Controller : CoroutineVerticle() {
    * number of failed process chains
    */
   private suspend fun waitForProcessChains(processChains: Collection<ProcessChain>):
-      Pair<Map<String, List<String>>, Int> {
-    val results = mutableMapOf<String, List<String>>()
+      Pair<Map<String, List<Any>>, Int> {
+    val results = mutableMapOf<String, List<Any>>()
     var errors = 0
 
     val processChainsToCheck = processChains.map { it.id }.toMutableSet()

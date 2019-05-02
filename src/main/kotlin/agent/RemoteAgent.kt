@@ -44,7 +44,7 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
     sharedData.getCounter(COUNTER_NAME, counter)
   }
 
-  override suspend fun execute(processChain: ProcessChain): Map<String, List<String>> {
+  override suspend fun execute(processChain: ProcessChain): Map<String, List<Any>> {
     // create reply handler
     val replyAddress = id + "." + UniqueID.next()
     val adapter = vertx.receiveChannelHandler<Message<JsonObject>>()

@@ -61,7 +61,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       val status: ProcessChainStatus,
       val startTime: Instant? = null,
       val endTime: Instant? = null,
-      val results: Map<String, List<String>>? = null,
+      val results: Map<String, List<Any>>? = null,
       val errorMessage: String? = null
   )
 
@@ -341,11 +341,11 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       getProcessChainEntryById(processChainId).status
 
   override suspend fun setProcessChainResults(processChainId: String,
-      results: Map<String, List<String>>?) {
+      results: Map<String, List<Any>>?) {
     updateProcessChain(processChainId) { it.copy(results = results) }
   }
 
-  override suspend fun getProcessChainResults(processChainId: String): Map<String, List<String>>? =
+  override suspend fun getProcessChainResults(processChainId: String): Map<String, List<Any>>? =
       getProcessChainEntryById(processChainId).results
 
   override suspend fun setProcessChainErrorMessage(processChainId: String,

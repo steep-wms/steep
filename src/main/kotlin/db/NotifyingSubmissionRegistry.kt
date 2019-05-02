@@ -66,7 +66,8 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
     })
   }
 
-  override suspend fun addProcessChains(processChains: Collection<ProcessChain>, submissionId: String, status: SubmissionRegistry.ProcessChainStatus) {
+  override suspend fun addProcessChains(processChains: Collection<ProcessChain>,
+      submissionId: String, status: ProcessChainStatus) {
     delegate.addProcessChains(processChains, submissionId, status)
     vertx.eventBus().publish(AddressConstants.PROCESSCHAINS_ADDED, json {
       obj(
@@ -126,7 +127,7 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
     })
   }
 
-  override suspend fun setProcessChainResults(processChainId: String, results: Map<String, List<String>>?) {
+  override suspend fun setProcessChainResults(processChainId: String, results: Map<String, List<Any>>?) {
     delegate.setProcessChainResults(processChainId, results)
     vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_RESULTS_CHANGED, json {
       obj(

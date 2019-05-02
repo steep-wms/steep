@@ -30,7 +30,7 @@ class LocalAgent(private val vertx: Vertx) : Agent {
   private val outputLinesToCollect = vertx.orCreateContext.config()
       .getInteger(ConfigConstants.AGENT_OUTPUT_LINES_TO_COLLECT, 100)
 
-  override suspend fun execute(processChain: ProcessChain): Map<String, List<String>> {
+  override suspend fun execute(processChain: ProcessChain): Map<String, List<Any>> {
     // prepare commands
     val outputs = processChain.executables
         .flatMap { it.arguments }

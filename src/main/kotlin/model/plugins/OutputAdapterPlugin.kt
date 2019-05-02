@@ -13,7 +13,7 @@ import kotlin.reflect.full.callSuspend
  * signature:
  *
  *     suspend fun myOutputAdapter(output: model.processchain.Argument,
- *       processChain: model.processchain.ProcessChain, io.vertx.core.vertx: Vertx): List<String>
+ *       processChain: model.processchain.ProcessChain, io.vertx.core.vertx: Vertx): List<Any>
  *
  * It takes an output argument extracted from the executed process chain, the
  * process chain, and the Vert.x instance. It returns the generated process
@@ -35,7 +35,7 @@ data class OutputAdapterPlugin(
 ) : Plugin
 
 suspend fun OutputAdapterPlugin.call(output: Argument,
-    processChain: ProcessChain, vertx: Vertx): List<String> {
+    processChain: ProcessChain, vertx: Vertx): List<Any> {
   if (this.compiledFunction == null) {
     throw RuntimeException("Plugin must be compiled first")
   }

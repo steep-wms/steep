@@ -776,7 +776,8 @@ abstract class SubmissionRegistryTest {
     }
   }
 
-  private suspend fun doSetProcessChainResults(ctx: VertxTestContext): ProcessChain {
+  private suspend fun doSetProcessChainResults(ctx: VertxTestContext,
+      results: Map<String, List<Any>> = mapOf("ARG1" to listOf("output.txt"))): ProcessChain {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()
 
@@ -788,7 +789,6 @@ abstract class SubmissionRegistryTest {
       assertThat(pcResults1).isNull()
     }
 
-    val results = mapOf("ARG1" to listOf("output.txt"))
     submissionRegistry.setProcessChainResults(pc.id, results)
     val pcResults2 = submissionRegistry.getProcessChainResults(pc.id)
 
@@ -803,6 +803,16 @@ abstract class SubmissionRegistryTest {
   fun setProcessChainResults(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
       doSetProcessChainResults(ctx)
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun setProcessChainResultsNested(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      doSetProcessChainResults(ctx, mapOf("ARG1" to listOf(
+          listOf("output1.txt", "output2.txt")
+      )))
       ctx.completeNow()
     }
   }

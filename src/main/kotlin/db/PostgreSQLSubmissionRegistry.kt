@@ -533,14 +533,14 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         r.getString(0).let { ProcessChainStatus.valueOf(it) } }
 
   override suspend fun setProcessChainResults(processChainId: String,
-      results: Map<String, List<String>>?) {
+      results: Map<String, List<Any>>?) {
     updateColumn(PROCESS_CHAINS, processChainId, RESULTS,
         JsonUtils.mapper.writeValueAsString(results), true)
   }
 
-  override suspend fun getProcessChainResults(processChainId: String): Map<String, List<String>>? =
+  override suspend fun getProcessChainResults(processChainId: String): Map<String, List<Any>>? =
       getProcessChainColumn(processChainId, RESULTS) { r ->
-        r.getString(0)?.let { JsonUtils.mapper.readValue<Map<String, List<String>>>(it) } }
+        r.getString(0)?.let { JsonUtils.mapper.readValue<Map<String, List<Any>>>(it) } }
 
   override suspend fun setProcessChainErrorMessage(processChainId: String,
       errorMessage: String?) {

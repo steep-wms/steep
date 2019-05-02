@@ -501,14 +501,13 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       }
 
   override suspend fun setProcessChainResults(processChainId: String,
-      results: Map<String, List<String>>?) {
+      results: Map<String, List<Any>>?) {
     updateField(COLL_PROCESS_CHAINS, processChainId, RESULTS,
         results?.let{ JsonObject(it) })
   }
 
-  override suspend fun getProcessChainResults(processChainId: String): Map<String, List<String>>? =
-      getProcessChainField<JsonObject?>(processChainId, RESULTS)?.map?.mapValues { (_, v) ->
-        (v as JsonArray).list.map { it as String } }
+  override suspend fun getProcessChainResults(processChainId: String): Map<String, List<Any>>? =
+      getProcessChainField<JsonObject?>(processChainId, RESULTS)?.let { JsonUtils.fromJson(it) }
 
   override suspend fun setProcessChainErrorMessage(processChainId: String, errorMessage: String?) {
     updateField(COLL_PROCESS_CHAINS, processChainId, ERROR_MESSAGE, errorMessage)

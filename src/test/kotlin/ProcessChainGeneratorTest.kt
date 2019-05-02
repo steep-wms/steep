@@ -181,7 +181,7 @@ class ProcessChainGeneratorTest {
 
   data class Expected(
       val chains: List<ProcessChain>,
-      val results: Map<String, List<String>>
+      val results: Map<String, List<Any>>
   )
 
   private fun readWorkflow(name: String): Workflow {
@@ -210,7 +210,7 @@ class ProcessChainGeneratorTest {
       json = generator.persistState()
     }
 
-    var results = mapOf<String, List<String>>()
+    var results = mapOf<String, List<Any>>()
     for (expected in expectedChains) {
       if (persistState) {
         generator = ProcessChainGenerator(workflow, "/tmp/", services, idgen)

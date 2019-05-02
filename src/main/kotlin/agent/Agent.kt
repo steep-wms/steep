@@ -18,5 +18,5 @@ interface Agent {
    * @return the process chain results (i.e. result files grouped by output
    * argument IDs)
    */
-  suspend fun execute(processChain: ProcessChain): Map<String, List<String>>
+  suspend fun execute(processChain: ProcessChain): Map<String, List<Any>>
 }

@@ -248,6 +248,7 @@ class JobManager : CoroutineVerticle() {
         ${t.lastOutput}
       """.trimIndent()
     } else {
+      log.debug("Could not execute process chain", t)
       t.message
     }
     json {
