@@ -116,8 +116,6 @@ class RuleSystem(rules: List<Rule>): AutoCloseable {
             }
             c2
           }
-
-          else -> false
         }
 
         changed = c || changed
@@ -129,34 +127,6 @@ class RuleSystem(rules: List<Rule>): AutoCloseable {
       processChainValues.map { valueToObject<ProcessChain>(it) }
     } else {
       processChains
-    }
-  }
-
-  /**
-   * Apply all rules to the given [processChain] and its [results]. Return
-   * the modified results.
-   */
-  fun apply(results: Map<String, List<String>>, processChain: ProcessChain):
-      Map<String, List<String>> {
-    val processChainValue = objectToValue(processChain)
-    val resultsValue = objectToValue(results)
-
-    // apply all rules
-    var changed = false
-    for (rule in compiledRules) {
-      val c = when (rule.target) {
-        Rule.Target.PROCESSCHAIN_RESULTS -> applyRule(rule,
-            resultsValue, processChainValue)
-        else -> false
-      }
-
-      changed = c || changed
-    }
-
-    return if (changed) {
-      valueToObject(resultsValue)
-    } else {
-      results
     }
   }
 }
