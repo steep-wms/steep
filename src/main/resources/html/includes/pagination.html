@@ -18,7 +18,7 @@
     {{ totalPages }}
   </a>
   <a class="item" v-if="page.offset + page.size < page.total"
-      :href="'?size=' + page.size + '&offset=' + (page.offset + page.size)">
+      :href="makePageLink(activePage + 1)">
     &raquo;
   </a>
   <a class="disabled item" v-else>
