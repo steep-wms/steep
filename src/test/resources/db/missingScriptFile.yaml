@@ -1,0 +1,4 @@
+- name: missingScriptFile
+  type: outputAdapter
+  scriptFile: db/missingScriptFile.kts
+  supportedDataType: dummy

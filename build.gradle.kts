@@ -66,6 +66,7 @@ dependencies {
     implementation("org.flywaydb:flyway-core:5.2.4")
     implementation("org.graalvm.sdk:graal-sdk:$graalVMVersion")
     implementation("org.graalvm.js:js:$graalVMVersion")
+    implementation("org.jetbrains.kotlin:kotlin-scripting-jvm-host-embeddable:1.3.30")
     implementation("org.pacesys:openstack4j:3.2.0")
     implementation("org.postgresql:postgresql:42.2.5")
     implementation("org.yaml:snakeyaml:1.23")

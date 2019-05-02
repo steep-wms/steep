@@ -1,11 +1,13 @@
 package agent
 
 import ConfigConstants
+import db.PluginRegistryFactory
 import helper.FileSystemUtils.readRecursive
 import helper.Shell
 import helper.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.awaitResult
+import model.plugins.call
 import model.processchain.Argument
 import model.processchain.ProcessChain
 import org.apache.commons.lang3.BooleanUtils
@@ -24,6 +26,7 @@ class LocalAgent(private val vertx: Vertx) : Agent {
 
   override val id: String = UniqueID.next()
 
+  private val pluginRegistry = PluginRegistryFactory.create()
   private val outputLinesToCollect = vertx.orCreateContext.config()
       .getInteger(ConfigConstants.AGENT_OUTPUT_LINES_TO_COLLECT, 100)
 
@@ -61,7 +64,11 @@ class LocalAgent(private val vertx: Vertx) : Agent {
 
     // create list of results
     val fs = vertx.fileSystem()
-    return outputs.map { it.variable.id to readRecursive(it.variable.value, fs) }.toMap()
+    return outputs.associate {
+      val outputAdapter = pluginRegistry.findOutputAdapter(it.dataType)
+      it.variable.id to (outputAdapter?.call(it, processChain, vertx) ?:
+          readRecursive(it.variable.value, fs))
+    }
   }
 
   /**

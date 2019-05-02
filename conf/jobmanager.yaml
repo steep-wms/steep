@@ -2,6 +2,7 @@ jobmanager:
   # overrideConfigFile: conf/jobmanager-override.yaml
   services: conf/services/*.yaml
   rules: conf/rules/*.yaml
+  plugins: conf/plugins/*.yaml
   tmpPath: /tmp
 
   cluster:

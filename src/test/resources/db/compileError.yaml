@@ -1,0 +1,4 @@
+- name: compileError
+  type: outputAdapter
+  scriptFile: db/compileError.kts.invalid
+  supportedDataType: dummy

@@ -1,6 +1,7 @@
 import cloud.CloudManager
 import com.hazelcast.core.MembershipAdapter
 import com.hazelcast.core.MembershipEvent
+import db.PluginRegistryFactory
 import helper.JsonUtils
 import helper.UniqueID
 import io.vertx.core.VertxOptions
@@ -216,6 +217,8 @@ class Main : CoroutineVerticle() {
 
   override suspend fun start() {
     createShell()
+
+    PluginRegistryFactory.initialize(vertx)
 
     val options = DeploymentOptions(config)
     if (config.getBoolean(ConfigConstants.CLOUD_ENABLED, false)) {

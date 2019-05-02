@@ -1,0 +1,5 @@
+# An output adapter that creates a dummy list of files
+- name: dummyOutputAdapter
+  type: outputAdapter
+  scriptFile: db/dummyOutputAdapter.kts
+  supportedDataType: dummy
