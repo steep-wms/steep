@@ -1,8 +1,15 @@
 import TestMetadata.services
 import com.fasterxml.jackson.module.kotlin.readValue
+import db.PluginRegistry
+import db.PluginRegistryFactory
 import helper.ConsecutiveID
 import helper.JsonUtils
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkAll
 import io.vertx.core.json.JsonObject
+import model.plugins.OutputAdapterPlugin
 import model.processchain.ProcessChain
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
@@ -247,5 +254,27 @@ class ProcessChainGeneratorTest {
       testAll("forEachYieldCardinalityError", persistState = persistState)
     }.isInstanceOf(IllegalStateException::class.java)
         .hasMessageContaining("cardinality")
+  }
+
+  /**
+   * Test a custom output adapter splits a process chain
+   */
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun outputAdapter(persistState: Boolean) {
+    val pluginRegistry: PluginRegistry = mockk()
+    mockkObject(PluginRegistryFactory)
+    every { PluginRegistryFactory.create() } returns pluginRegistry
+
+    val p = OutputAdapterPlugin(name = "custom", scriptFile = "custom.kts",
+        supportedDataType = "custom")
+    every { pluginRegistry.findOutputAdapter(any()) } returns null
+    every { pluginRegistry.findOutputAdapter("custom") } returns p
+
+    try {
+      testAll("outputAdapter", persistState = persistState)
+    } finally {
+      unmockkAll()
+    }
   }
 }

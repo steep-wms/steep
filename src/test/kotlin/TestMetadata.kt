@@ -16,6 +16,15 @@ object TestMetadata {
           Argument.Type.OUTPUT, Cardinality(1, 1))
   ))
 
+  private val serviceCpCustom = Service("cp_custom", "cp_custom", "Copy", "cp",
+      Service.Runtime.OTHER, listOf(
+          ServiceParameter("input_file", "Input file", "Input file",
+              Argument.Type.INPUT, Cardinality(1, 1)),
+          ServiceParameter("output_file", "Output file", "Output file",
+              Argument.Type.OUTPUT, Cardinality(1, 1), "custom")
+      )
+  )
+
   private val serviceCpDefaultParam = Service("cpDefaultParam", "cp", "Copy", "cp",
       Service.Runtime.OTHER, listOf(
       ServiceParameter("no_overwrite", "No overwrite", "Do not overwrite existing file",
@@ -99,7 +108,7 @@ object TestMetadata {
       )
   )
 
-  val services = listOf(serviceCp, serviceCpDefaultParam, serviceJoin,
-      serviceSplit, serviceWithDocker, serviceWithRuntimeArgs,
+  val services = listOf(serviceCp, serviceCpCustom, serviceCpDefaultParam,
+      serviceJoin, serviceSplit, serviceWithDocker, serviceWithRuntimeArgs,
       serviceSplitToDir, serviceJoinFromDir)
 }

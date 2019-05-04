@@ -1,3 +1,4 @@
+import db.PluginRegistryFactory
 import helper.IDGenerator
 import helper.JsonUtils
 import helper.UniqueID
@@ -42,6 +43,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
   private val actions = workflow.actions.toMutableSet()
   private val variableValues = mutableMapOf<String, Any>()
   private val forEachOutputsToBeCollected = mutableMapOf<String, List<Variable>>()
+  private val pluginRegistry = PluginRegistryFactory.create()
 
   /**
    * Returns `true` if the workflow has been fully converted to process chains
@@ -222,11 +224,19 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
         val isExecutable = nextAction.inputs.all { it.variable.value != null ||
             it.variable.id in variableValues || it.variable.id in argumentValues }
         if (isExecutable) {
-          executables.add(actionToExecutable(nextAction, capabilities, argumentValues))
+          val newExecutable = actionToExecutable(nextAction, capabilities, argumentValues)
+          executables.add(newExecutable)
 
           // do not visit this action again
           actionsToRemove.add(nextAction)
           actionsVisited.add(nextAction)
+
+          if (newExecutable.arguments.any { it.type == OUTPUT &&
+                  pluginRegistry.findOutputAdapter(it.dataType) != null }) {
+            // stop here if the new executable's output would be modified
+            // by an output adapter
+            break
+          }
 
           // try to find next action
           val moreActions = nextAction.outputs.map { it.variable }.flatMap {
