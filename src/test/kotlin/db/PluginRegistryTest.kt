@@ -62,8 +62,9 @@ class PluginRegistryTest {
   fun findOutputAdapter() {
     val adapter1 = OutputAdapterPlugin("a", "file.kts", "dataType")
     val adapter2 = OutputAdapterPlugin("b", "file2.kts", "dataType")
-    val pr = PluginRegistry(listOf(adapter1, adapter2))
-    assertThat(pr.findOutputAdapter("dataType")).isSameAs(adapter1)
+    val adapter3 = OutputAdapterPlugin("c", "file3.kts", "custom")
+    val pr = PluginRegistry(listOf(adapter1, adapter2, adapter3))
+    assertThat(pr.findOutputAdapter("dataType")).isSameAs(adapter2)
     assertThat(pr.findOutputAdapter("wrongDataType")).isNull()
   }
 

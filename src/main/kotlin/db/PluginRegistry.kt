@@ -9,11 +9,10 @@ import model.plugins.Plugin
  */
 class PluginRegistry(compiledPlugins: List<Plugin>) {
   private val outputAdapters = compiledPlugins.filterIsInstance(
-      OutputAdapterPlugin::class.java)
+      OutputAdapterPlugin::class.java).associateBy { it.supportedDataType }
 
   /**
-   * Get the first output adapter that supports the given [dataType]
+   * Get an output adapter that supports the given [dataType]
    */
-  fun findOutputAdapter(dataType: String) = outputAdapters.find {
-    it.supportedDataType == dataType }
+  fun findOutputAdapter(dataType: String) = outputAdapters[dataType]
 }
