@@ -57,7 +57,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
      * The current number of registered remote agents
      */
     private val gaugeAgents = Gauge.build()
-        .name("remote_agents")
+        .name("jobmanager_remote_agents")
         .help("Number of registered remote agents")
         .register()
   }

@@ -11,6 +11,7 @@ import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus
 import db.SubmissionRegistryFactory
 import helper.JsonUtils
+import io.prometheus.client.Gauge
 import io.vertx.core.shareddata.Lock
 import io.vertx.kotlin.core.shareddata.getLockWithTimeoutAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
@@ -36,6 +37,14 @@ class Controller : CoroutineVerticle() {
     private const val DEFAULT_LOOKUP_INTERVAL = 2000L
     private const val DEFAULT_LOOKUP_ORPHANS_INTERVAL = 300_000L
     private const val PROCESSING_SUBMISSION_LOCK_PREFIX = "Controller.ProcessingSubmission."
+
+    /**
+     * The current number of process chains we are currently waiting for
+     */
+    private val gaugeProcessChains = Gauge.build()
+        .name("jobmanager_controller_process_chains")
+        .help("Number of process chains the controller is waiting for")
+        .register()
   }
 
   private lateinit var tmpPath: String
@@ -320,28 +329,35 @@ class Controller : CoroutineVerticle() {
     var errors = 0
 
     val processChainsToCheck = processChains.map { it.id }.toMutableSet()
-    while (processChainsToCheck.isNotEmpty()) {
-      delay(lookupInterval)
+    gaugeProcessChains.inc(processChainsToCheck.size.toDouble())
+    try {
+      while (processChainsToCheck.isNotEmpty()) {
+        delay(lookupInterval)
 
-      val finishedProcessChains = mutableSetOf<String>()
-      for (processChainId in processChainsToCheck) {
-        val status = submissionRegistry.getProcessChainStatus(processChainId)
-        if (status === ProcessChainStatus.SUCCESS) {
-          submissionRegistry.getProcessChainResults(processChainId)?.let {
-            results.putAll(it)
+        val finishedProcessChains = mutableSetOf<String>()
+        for (processChainId in processChainsToCheck) {
+          val status = submissionRegistry.getProcessChainStatus(processChainId)
+          if (status === ProcessChainStatus.SUCCESS) {
+            submissionRegistry.getProcessChainResults(processChainId)?.let {
+              results.putAll(it)
+            }
+            finishedProcessChains.add(processChainId)
+          } else if (status === ProcessChainStatus.ERROR) {
+            errors++
+            finishedProcessChains.add(processChainId)
+          } else {
+            // since we're waiting for all process chains to finish anyhow, we
+            // can stop looking as soon as we find a process chain that has not
+            // finished yet and wait for the next interval
+            break
           }
-          finishedProcessChains.add(processChainId)
-        } else if (status === ProcessChainStatus.ERROR) {
-          errors++
-          finishedProcessChains.add(processChainId)
-        } else {
-          // since we're waiting for all process chains to finish anyhow, we
-          // can stop looking as soon as we find a process chain that has not
-          // finished yet and wait for the next interval
-          break
         }
+
+        processChainsToCheck.removeAll(finishedProcessChains)
+        gaugeProcessChains.dec(finishedProcessChains.size.toDouble())
       }
-      processChainsToCheck.removeAll(finishedProcessChains)
+    } finally {
+      gaugeProcessChains.dec(processChainsToCheck.size.toDouble())
     }
 
     return Pair(results, errors)
