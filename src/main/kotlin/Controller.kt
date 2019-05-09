@@ -12,6 +12,7 @@ import db.SubmissionRegistry.ProcessChainStatus
 import db.SubmissionRegistryFactory
 import helper.JsonUtils
 import io.prometheus.client.Gauge
+import io.vertx.core.json.JsonArray
 import io.vertx.core.shareddata.Lock
 import io.vertx.kotlin.core.shareddata.getLockWithTimeoutAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
@@ -48,6 +49,7 @@ class Controller : CoroutineVerticle() {
   }
 
   private lateinit var tmpPath: String
+  private lateinit var additionalDockerVolumes: List<String>
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var metadataRegistry: MetadataRegistry
   private lateinit var ruleSystem: RuleSystem
@@ -71,6 +73,8 @@ class Controller : CoroutineVerticle() {
     // read configuration
     tmpPath = config.getString(TMP_PATH) ?: throw IllegalStateException(
         "Missing configuration item `$TMP_PATH'")
+    additionalDockerVolumes = config.getJsonArray(ConfigConstants.RUNTIMES_DOCKER_VOLUMES,
+        JsonArray()).map { it.toString() }
     lookupInterval = config.getLong(CONTROLLER_LOOKUP_INTERVAL, lookupInterval)
     lookupOrphansInterval = config.getLong(CONTROLLER_LOOKUP_ORPHANS_INTERVAL,
         lookupOrphansInterval)
@@ -193,7 +197,7 @@ class Controller : CoroutineVerticle() {
 
       val generator = ProcessChainGenerator(submission.workflow,
           FilenameUtils.normalize("$tmpPath/${submission.id}"),
-          metadataRegistry.findServices())
+          metadataRegistry.findServices(), additionalDockerVolumes)
 
       // check if submission needs to be resumed
       var processChainsToResume: Collection<ProcessChain>? = null

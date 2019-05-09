@@ -163,6 +163,11 @@ object ConfigConstants {
   const val AGENT_OUTPUT_LINES_TO_COLLECT = "jobmanager.agent.outputLinesToCollect"
 
   /**
+   * Additional volume mounts to be passed to the Docker runtime
+   */
+  const val RUNTIMES_DOCKER_VOLUMES= "jobmanager.runtimes.docker.volumes"
+
+  /**
    * The database driver (see [db.SubmissionRegistryFactory] for valid values)
    */
   const val DB_DRIVER = "jobmanager.db.driver"

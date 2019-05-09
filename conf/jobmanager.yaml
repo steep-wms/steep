@@ -35,6 +35,11 @@ jobmanager:
     # capabilities:
     outputLinesToCollect: 100
 
+  runtimes:
+    docker:
+      volumes:
+        # - /data:/data
+
   controller:
     lookupIntervalMilliseconds: 2000
     lookupOrphansIntervalMilliseconds: 300000
