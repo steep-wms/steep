@@ -37,7 +37,7 @@ jobmanager:
 
   runtimes:
     docker:
-      volumes:
+      volumes: []
         # - /data:/data
 
   controller:
