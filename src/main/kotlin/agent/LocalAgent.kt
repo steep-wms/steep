@@ -1,6 +1,7 @@
 package agent
 
 import ConfigConstants
+import com.google.common.cache.CacheBuilder
 import db.PluginRegistryFactory
 import helper.FileSystemUtils.readRecursive
 import helper.UniqueID
@@ -16,6 +17,7 @@ import model.processchain.ProcessChain
 import runtime.DockerRuntime
 import runtime.OtherRuntime
 import java.io.File
+import java.util.concurrent.TimeUnit
 import kotlin.reflect.full.callSuspend
 
 /**
@@ -23,6 +25,16 @@ import kotlin.reflect.full.callSuspend
  * @author Michel Kraemer
  */
 class LocalAgent(private val vertx: Vertx) : Agent {
+  companion object {
+    /**
+     * A cache that tracks which directories we already created
+     */
+    private val mkdirCache = CacheBuilder.newBuilder()
+        .expireAfterAccess(1, TimeUnit.MINUTES)
+        .maximumSize(1000)
+        .build<String, Boolean>()
+  }
+
   override val id: String = UniqueID.next()
 
   private val pluginRegistry = PluginRegistryFactory.create()
@@ -100,7 +112,14 @@ class LocalAgent(private val vertx: Vertx) : Agent {
       } else {
         File(it.variable.value).parent
       }
-    }.distinct()
+    }.filter { path ->
+      if (mkdirCache.getIfPresent(path) == null) {
+        mkdirCache.put(path, true)
+        true
+      } else {
+        false
+      }
+    }
 
     return so.chunked(100).map { w ->
       Executable(
