@@ -31,13 +31,10 @@ import java.util.IdentityHashMap
  * Generates process chains from a workflow
  * @param workflow the workflow to convert to process chains
  * @param tmpPath a directory where temporary workflow results should be stored
- * @param additionalDockerVolumes additional volume mounts to be passed to the
- * Docker runtime
  * @param services service metadata
  */
 class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
-    private val services: List<Service>, private val additionalDockerVolumes: List<String>,
-    private val idGenerator: IDGenerator = UniqueID) {
+    private val services: List<Service>, private val idGenerator: IDGenerator = UniqueID) {
   companion object {
     private val log = LoggerFactory.getLogger(ProcessChainGenerator::class.java)
   }
@@ -361,33 +358,8 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       return@flatMap args
     }
 
-    return when (service.runtime) {
-      // Handle Docker runtime: Call Docker instead of the service executable
-      // and use the service path as Docker image.
-      Service.Runtime.DOCKER -> {
-        val path = "docker"
-        val additionalVolumes = additionalDockerVolumes.map {
-          Argument(id = idGenerator.next(),
-              label = "-v", variable = ArgumentVariable(idGenerator.next(), it),
-              type = ARGUMENT)
-        }
-        val dockerArgs = listOf(
-            Argument(id = idGenerator.next(),
-                variable = ArgumentVariable("dockerRun", "run"),
-                type = ARGUMENT)
-        ) + runtimeArgsToArguments(service.runtimeArgs) + additionalVolumes + listOf(
-            Argument(id = idGenerator.next(),
-                label = "-v", variable = ArgumentVariable("dockerMount", "$tmpPath:$tmpPath"),
-                type = ARGUMENT),
-            Argument(id = idGenerator.next(),
-                variable = ArgumentVariable("dockerImage", service.path),
-                type = ARGUMENT)
-        )
-        Executable(service.name, path, dockerArgs + arguments)
-      }
-
-      else -> Executable(service.name, service.path, arguments)
-    }
+    return Executable(service.name, service.path, arguments,
+        service.runtime, runtimeArgsToArguments(service.runtimeArgs))
   }
 
   /**

@@ -558,7 +558,9 @@ class HttpEndpointTest {
                   obj(
                       "id" to eid,
                       "path" to "path",
-                      "arguments" to array()
+                      "arguments" to array(),
+                      "runtime" to "other",
+                      "runtimeArgs" to array()
                   )
               ),
               "requiredCapabilities" to array(),

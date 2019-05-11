@@ -1,35 +1,10 @@
 [{
   "chains": [{
-    "id": "4",
+    "id": "1",
     "executables": [{
       "id": "Service With Docker",
-      "path": "docker",
+      "path": "service:latest",
       "arguments": [{
-        "id": "1",
-        "variable": {
-          "id": "dockerRun",
-          "value": "run"
-        },
-        "type": "argument",
-        "dataType": "string"
-      }, {
-        "id": "2",
-        "label": "-v",
-        "variable": {
-          "id": "dockerMount",
-          "value": "/tmp/:/tmp/"
-        },
-        "type": "argument",
-        "dataType": "string"
-      }, {
-        "id": "3",
-        "variable": {
-          "id": "dockerImage",
-          "value": "service:latest"
-        },
-        "type": "argument",
-        "dataType": "string"
-      }, {
         "id": "input",
         "variable": {
           "id": "input_file1",
@@ -45,7 +20,8 @@
         },
         "type": "output",
         "dataType": "string"
-      }]
+      }],
+      "runtime": "docker"
     }]
   }],
   "results": {
