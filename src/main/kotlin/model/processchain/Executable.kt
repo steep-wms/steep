@@ -15,6 +15,6 @@ data class Executable(
     val id: String = UniqueID.next(),
     val path: String,
     val arguments: List<Argument>,
-    val runtime: Service.Runtime = Service.Runtime.OTHER,
+    val runtime: String = Service.RUNTIME_OTHER,
     val runtimeArgs: List<Argument> = emptyList()
 )

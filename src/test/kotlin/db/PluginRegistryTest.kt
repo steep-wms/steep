@@ -13,9 +13,11 @@ import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import model.plugins.OutputAdapterPlugin
+import model.plugins.RuntimePlugin
 import model.plugins.call
 import model.processchain.Argument
 import model.processchain.ArgumentVariable
+import model.processchain.Executable
 import model.processchain.ProcessChain
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -66,6 +68,46 @@ class PluginRegistryTest {
     val pr = PluginRegistry(listOf(adapter1, adapter2, adapter3))
     assertThat(pr.findOutputAdapter("dataType")).isSameAs(adapter2)
     assertThat(pr.findOutputAdapter("wrongDataType")).isNull()
+  }
+
+  /**
+   * Test if a simple runtime can be compiled and executed
+   */
+  @Test
+  fun compileDummyRuntime(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      val config = json {
+        obj(
+            ConfigConstants.PLUGINS to "src/**/db/dummyRuntime.yaml"
+        )
+      }
+      PluginRegistryFactory.initialize(vertx, config)
+
+      val pr = PluginRegistryFactory.create()
+      val runtime = pr.findRuntime("dummy")
+      ctx.coVerify {
+        assertThat(runtime).isNotNull
+        assertThat(runtime!!.compiledFunction.call(Executable(
+            path = "path",
+            arguments = emptyList()
+        ), 100, vertx)).isEqualTo("DUMMY")
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if [PluginRegistry.findRuntime] works correctly
+   */
+  @Test
+  fun findRuntime() {
+    val adapter1 = RuntimePlugin("a", "file.kts", "ssh")
+    val adapter2 = RuntimePlugin("b", "file2.kts", "ssh")
+    val adapter3 = RuntimePlugin("c", "file3.kts", "http")
+    val pr = PluginRegistry(listOf(adapter1, adapter2, adapter3))
+    assertThat(pr.findRuntime("ssh")).isSameAs(adapter2)
+    assertThat(pr.findRuntime("wrongRuntime")).isNull()
   }
 
   /**

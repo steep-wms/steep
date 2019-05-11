@@ -1,0 +1,5 @@
+# A dummy runtime
+- name: dummyRuntime
+  type: runtime
+  scriptFile: db/dummyRuntime.kts
+  supportedRuntime: dummy

@@ -16,6 +16,7 @@ import model.processchain.ProcessChain
 import runtime.DockerRuntime
 import runtime.OtherRuntime
 import java.io.File
+import kotlin.reflect.full.callSuspend
 
 /**
  * An agent that executes process chains locally
@@ -58,16 +59,28 @@ class LocalAgent(private val vertx: Vertx) : Agent {
   }
 
   private suspend fun execute(exec: Executable, executor: WorkerExecutor) {
+    if (exec.runtime == Service.RUNTIME_DOCKER) {
+      executeBlocking(executor) { dockerRuntime.execute(exec, outputLinesToCollect) }
+    } else if (exec.runtime == Service.RUNTIME_OTHER) {
+      executeBlocking(executor) { otherRuntime.execute(exec, outputLinesToCollect) }
+    } else {
+      val r = pluginRegistry.findRuntime(exec.runtime) ?:
+          throw IllegalStateException("Unknown runtime: `${exec.runtime}'")
+      if (r.compiledFunction.isSuspend) {
+        r.compiledFunction.callSuspend(exec, outputLinesToCollect, vertx)
+      } else {
+        executeBlocking(executor) { r.compiledFunction.call(exec, outputLinesToCollect, vertx) }
+      }
+    }
+  }
+
+  private suspend fun executeBlocking(executor: WorkerExecutor, block: () -> Unit) {
     awaitResult<Unit> { handler ->
       // IMPORTANT: call `executeBlocking` with `ordered = false`! Otherwise,
       // we will block other calls to `executeBlocking` in the same Vert.x
       // context, because Vert.x tries to execute them all sequentially.
       executor.executeBlocking<Unit>({ f ->
-        val runtime = when (exec.runtime) {
-          Service.Runtime.DOCKER -> dockerRuntime
-          Service.Runtime.OTHER -> otherRuntime
-        }
-        runtime.execute(exec, outputLinesToCollect)
+        block()
         f.complete()
       }, false, { ar ->
         handler.handle(ar)

@@ -1,7 +1,6 @@
 package model.metadata
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.annotation.JsonValue
 
 /**
  * Service metadata
@@ -21,16 +20,16 @@ data class Service(
     val name: String,
     val description: String,
     val path: String,
-    val runtime: Runtime,
+    val runtime: String,
     val parameters: List<ServiceParameter>,
     @JsonProperty("runtime_args") val runtimeArgs: List<RuntimeArgument> = emptyList(),
     @JsonProperty("required_capabilities") val requiredCapabilities: Set<String> = emptySet()
 ) {
-  /**
-   * The list of currently supported runtime environments
-   */
-  enum class Runtime(@JsonValue val runtime: String) {
-    DOCKER("docker"),
-    OTHER("other")
+  companion object {
+    /**
+     * A list of built-in runtime environments
+     */
+    const val RUNTIME_DOCKER = "docker"
+    const val RUNTIME_OTHER = "other"
   }
 }

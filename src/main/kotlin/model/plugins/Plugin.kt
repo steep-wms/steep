@@ -14,7 +14,8 @@ import kotlin.reflect.KFunction
     include = JsonTypeInfo.As.PROPERTY,
     property = "type")
 @JsonSubTypes(
-    JsonSubTypes.Type(value = OutputAdapterPlugin::class, name = "outputAdapter")
+    JsonSubTypes.Type(value = OutputAdapterPlugin::class, name = "outputAdapter"),
+    JsonSubTypes.Type(value = RuntimePlugin::class, name = "runtime")
 )
 interface Plugin {
   /**
@@ -30,5 +31,14 @@ interface Plugin {
   /**
    * The compiled plugin
    */
-  val compiledFunction: KFunction<*>?
+  val compiledFunction: KFunction<*>
+}
+
+inline fun <reified T> throwPluginNeedsCompile(): KFunction<T> {
+  val a = object {
+    fun i(): T {
+      throw NotImplementedError("The plugin must be compiled first")
+    }
+  }
+  return a::i
 }

@@ -26,7 +26,7 @@ class ServiceTest {
     assertThat(s.name).isEqualTo("dummy")
     assertThat(s.description).isEqualTo("A dummy service that has all attributes")
     assertThat(s.path).isEqualTo("dummy")
-    assertThat(s.runtime).isEqualTo(Service.Runtime.OTHER)
+    assertThat(s.runtime).isEqualTo(Service.RUNTIME_OTHER)
 
     assertThat(s.parameters).hasSize(3)
     val p0 = s.parameters[0]

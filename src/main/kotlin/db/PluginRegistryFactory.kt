@@ -9,6 +9,7 @@ import io.vertx.kotlin.core.executeBlockingAwait
 import io.vertx.kotlin.core.file.readFileAwait
 import model.plugins.OutputAdapterPlugin
 import model.plugins.Plugin
+import model.plugins.RuntimePlugin
 import org.slf4j.LoggerFactory
 import javax.script.ScriptEngine
 import javax.script.ScriptEngineManager
@@ -68,6 +69,7 @@ object PluginRegistryFactory {
     @Suppress("UNCHECKED_CAST")
     return when (plugin) {
       is OutputAdapterPlugin -> plugin.copy(compiledFunction = f as KFunction<List<String>>)
+      is RuntimePlugin -> plugin.copy(compiledFunction = f as KFunction<String>)
       else -> throw RuntimeException("Unknown plugin type: ${plugin::class.java}")
     }
   }
