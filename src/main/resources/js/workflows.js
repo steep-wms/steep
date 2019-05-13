@@ -275,8 +275,8 @@ eb.onopen = () => {
     }
   });
 
-  eb.registerHandler("jobmanager.submissionRegistry.processChainsAdded", (error, message) => {
-    let pcs = message.body.processChains;
+  eb.registerHandler("jobmanager.submissionRegistry.processChainsAddedSize", (error, message) => {
+    let pcsSize = message.body.processChainsSize;
     let submissionId = message.body.submissionId;
     let status = message.body.status;
     let w = app.findWorkflowById(submissionId);
@@ -284,13 +284,13 @@ eb.onopen = () => {
       return;
     }
 
-    w.totalProcessChains += pcs.length;
+    w.totalProcessChains += pcsSize;
     if (status === "RUNNING") {
-      w.runningProcessChains += pcs.length;
+      w.runningProcessChains += pcsSize;
     } else if (status === "ERROR") {
-      w.failedProcessChains += pcs.length;
+      w.failedProcessChains += pcsSize;
     } else if (status === "SUCCESS") {
-      w.succeededProcessChains += pcs.length;
+      w.succeededProcessChains += pcsSize;
     }
   });
 

@@ -80,6 +80,12 @@ object AddressConstants {
   const val PROCESSCHAINS_ADDED = "jobmanager.submissionRegistry.processChainsAdded"
 
   /**
+   * Similar to [PROCESSCHAINS_ADDED] but only the number of the added process
+   * chains will be transferred and not the process chains themselves
+   */
+  const val PROCESSCHAINS_ADDED_SIZE = "jobmanager.submissionRegistry.processChainsAddedSize"
+
+  /**
    * Will be published when a process chain's start time has changed
    */
   const val PROCESSCHAIN_STARTTIME_CHANGED = "jobmanager.submissionRegistry.processChainStartTimeChanged"

@@ -4,10 +4,12 @@ import AddressConstants
 import db.SubmissionRegistry.ProcessChainStatus
 import helper.JsonUtils
 import io.vertx.core.Vertx
+import io.vertx.kotlin.core.eventbus.DeliveryOptions
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import model.Submission
 import model.processchain.ProcessChain
+import model.workflow.Workflow
 import java.time.Instant
 
 /**
@@ -19,7 +21,10 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
     SubmissionRegistry by delegate {
   override suspend fun addSubmission(submission: Submission) {
     delegate.addSubmission(submission)
-    vertx.eventBus().publish(AddressConstants.SUBMISSION_ADDED, JsonUtils.toJson(submission))
+    vertx.eventBus().publish(AddressConstants.SUBMISSION_ADDED, {
+      // do not serialize workflow
+      JsonUtils.toJson(submission.copy(workflow = Workflow())).also { it.remove("workflow") }
+    }, DeliveryOptions(codecName = "lazyjsonobject"))
   }
 
   override suspend fun fetchNextSubmission(currentStatus: Submission.Status,
@@ -69,13 +74,31 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,
       submissionId: String, status: ProcessChainStatus) {
     delegate.addProcessChains(processChains, submissionId, status)
-    vertx.eventBus().publish(AddressConstants.PROCESSCHAINS_ADDED, json {
-      obj(
-          "processChains" to processChains.map { JsonUtils.toJson(it) },
-          "submissionId" to submissionId,
-          "status" to status.name
-      )
-    })
+
+    val options = DeliveryOptions(codecName = "lazyjsonobject")
+    vertx.eventBus().publish(AddressConstants.PROCESSCHAINS_ADDED, {
+      json {
+        obj(
+            "processChains" to processChains.map { pc ->
+              // do not serialize executables
+              JsonUtils.toJson(pc.copy(executables = emptyList()))
+                  .also { it.remove("executables") }
+            },
+            "submissionId" to submissionId,
+            "status" to status.name
+        )
+      }
+    }, options)
+
+    vertx.eventBus().publish(AddressConstants.PROCESSCHAINS_ADDED_SIZE, {
+      json {
+        obj(
+            "processChainsSize" to processChains.size,
+            "submissionId" to submissionId,
+            "status" to status.name
+        )
+      }
+    }, options)
   }
 
   override suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,

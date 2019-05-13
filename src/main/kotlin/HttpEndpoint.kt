@@ -204,6 +204,8 @@ class HttpEndpoint : CoroutineVerticle() {
         .addOutboundPermitted(PermittedOptions()
             .setAddress(AddressConstants.PROCESSCHAINS_ADDED))
         .addOutboundPermitted(PermittedOptions()
+            .setAddress(AddressConstants.PROCESSCHAINS_ADDED_SIZE))
+        .addOutboundPermitted(PermittedOptions()
             .setAddress(AddressConstants.PROCESSCHAIN_STARTTIME_CHANGED))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(AddressConstants.PROCESSCHAIN_ENDTIME_CHANGED))

@@ -3,6 +3,7 @@ import com.hazelcast.core.MembershipAdapter
 import com.hazelcast.core.MembershipEvent
 import db.PluginRegistryFactory
 import helper.JsonUtils
+import helper.LazyJsonObjectMessageCodec
 import helper.UniqueID
 import io.vertx.core.VertxOptions
 import io.vertx.core.json.JsonObject
@@ -30,7 +31,7 @@ import java.util.concurrent.CountDownLatch
 const val ATTR_AGENT_ID = "Agent-ID"
 var globalAgentId: String = "localhost"
 
-suspend fun main(args : Array<String>) {
+suspend fun main() {
   // load configuration
   val confFileStr = File("conf/jobmanager.yaml").readText()
   val yaml = Yaml()
@@ -150,7 +151,7 @@ private fun overwriteWithEnvironmentVariables(conf: JsonObject,
     env: Map<String, String>) {
   val names = ConfigConstants.getConfigKeys().map {
     it.toUpperCase().replace(".", "_") to it }.toMap()
-  env.forEach { k, v ->
+  env.forEach { (k, v) ->
     val name = names[k.toUpperCase()]
     if (name != null) {
       val yaml = Yaml()
@@ -216,6 +217,8 @@ class Main : CoroutineVerticle() {
   }
 
   override suspend fun start() {
+    vertx.eventBus().registerCodec(LazyJsonObjectMessageCodec())
+
     createShell()
 
     PluginRegistryFactory.initialize(vertx)
