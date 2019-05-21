@@ -6,3 +6,6 @@
 
 # also include conf files
 !conf
+
+# and files needed for the docker image
+!docker

@@ -5,7 +5,9 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       apt-transport-https \
       ca-certificates \
+      gettext \
       gnupg-agent \
+      libnss-wrapper \
       software-properties-common \
     && \
     curl -fsSL https://download.docker.com/linux/$(. /etc/os-release; echo "$ID")/gpg | apt-key add - && \
@@ -20,11 +22,14 @@ RUN apt-get update && \
     useradd -s /bin/bash -m jobmanager && \
     mkdir /jobmanager && \
     chown jobmanager:root /jobmanager && \
+    chmod g+rwx /jobmanager && \
     #
     # link sh to bash (for convenience)
     ln -fs /bin/bash /bin/sh
 
 # copy binaries and config
+COPY --chown=jobmanager:root docker/passwd.template /jobmanager/passwd.template
+COPY --chown=jobmanager:root docker/entrypoint.sh /jobmanager/entrypoint.sh
 COPY --chown=jobmanager:root build/install/jobmanager3 /jobmanager
 COPY --chown=jobmanager:root conf /jobmanager/conf
 WORKDIR /jobmanager
@@ -33,4 +38,4 @@ USER jobmanager
 
 ENV JAVA_OPTS="-Xmx4096m -Xms1024m -Dvertx.disableDnsResolver=true"
 
-CMD ["bin/jobmanager3"]
+CMD ["./entrypoint.sh"]
