@@ -142,14 +142,14 @@ suspend fun main() {
 
 /**
  * Match every environment variable against the config keys from
- * [ConfigConstants.getConfigKeys] and save the found values using
- * the config key in the config object.
+ * [ConfigConstants.getConfigKeys] and from [conf] and save the found values
+ * using the config key in the config object.
  * @param conf the config object
  * @param env the map with the environment variables
  */
 private fun overwriteWithEnvironmentVariables(conf: JsonObject,
     env: Map<String, String>) {
-  val names = ConfigConstants.getConfigKeys().map {
+  val names = (ConfigConstants.getConfigKeys() + conf.fieldNames()).map {
     it.toUpperCase().replace(".", "_") to it }.toMap()
   env.forEach { (k, v) ->
     val name = names[k.toUpperCase()]
