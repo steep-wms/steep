@@ -19,7 +19,7 @@ buildscript {
 }
 
 group = "de.fhg.igd"
-version = "3.1.4-SNAPSHOT"
+version = "3.1.4"
 
 val vertxVersion by extra("3.6.2")
 val hazelcastVersion by extra("3.11.1")
