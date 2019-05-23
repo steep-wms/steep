@@ -1,6 +1,5 @@
 package cloud
 
-import agent.LocalAgent
 import helper.Shell.execute
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.awaitResult
@@ -71,7 +70,7 @@ class SSHClient(private val ip: String, private val username: String,
 
   private suspend fun executeBlocking(block: () -> Unit) {
     // execute commands in a separate worker executor with a very long timeout
-    val executor = vertx.createSharedWorkerExecutor(LocalAgent::class.simpleName,
+    val executor = vertx.createSharedWorkerExecutor(SSHClient::class.simpleName,
         1, Long.MAX_VALUE)
     try {
       awaitResult<Unit> { handler ->
