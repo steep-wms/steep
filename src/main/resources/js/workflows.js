@@ -144,13 +144,43 @@ let app = new Vue({
       actionsToGraph(workflow.actions, g);
     },
 
-    initWorkflowGraph: function () {
-      let g = new dagreD3.graphlib.Graph({
+    createNewGraph: function () {
+      return new dagreD3.graphlib.Graph({
         multigraph: true,
         compound: true
       }).setGraph({});
+    },
 
-      this.workflowToGraph(this.workflows[0].workflow, g);
+    initWorkflowGraph: function () {
+      let invalidGraph = false;
+      let g = this.createNewGraph();
+
+      // limit number of nodes and edges
+      const MAX_NODES = 500;
+      const MAX_EDGES = 500;
+      let oldSetNode = g.setNode;
+      let oldSetEdge = g.setEdge;
+      g.setNode = function() {
+        if (g.nodeCount() > MAX_NODES) {
+          throw "Too many nodes";
+        }
+        oldSetNode.apply(g, arguments);
+      };
+      g.setEdge = function() {
+        if (g.edgeCount() > MAX_EDGES) {
+          throw "Too many edges";
+        }
+        oldSetEdge.apply(g, arguments);
+      }
+
+      // convert workflow to graph
+      try {
+        this.workflowToGraph(this.workflows[0].workflow, g);
+      } catch (e) {
+        // reset graph
+        g = this.createNewGraph();
+        invalidGraph = true;
+      }
 
       // configure nodes
       g.nodes().forEach(v => {
@@ -227,6 +257,18 @@ let app = new Vue({
         return this.appendChild(document.getElementById("workflow-graph"))
       });
       d3.select("#workflow-graph").style("position", "relative").style("left", 0);
+
+      // limit graph to a reasonable size
+      const MAX_WIDTH = 5000;
+      const MAX_HEIGHT = 20000;
+      if (w > MAX_WIDTH || h > MAX_HEIGHT) {
+        invalidGraph = true;
+      }
+
+      if (invalidGraph) {
+        d3.select("#workflow-graph").html('<div class="ui ignored warning message">' +
+          'Workflow graph is too large to be displayed.</div>');
+      }
     }
   }
 });
