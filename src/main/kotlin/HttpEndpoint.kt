@@ -2,6 +2,8 @@ import agent.RemoteAgentRegistry
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.github.zafarkhaja.semver.expr.CompositeExpression.Helper.gte
+import com.github.zafarkhaja.semver.expr.CompositeExpression.Helper.lte
 import com.mitchellbosecke.pebble.PebbleEngine
 import com.mitchellbosecke.pebble.lexer.Syntax
 import db.SubmissionRegistry
@@ -41,6 +43,7 @@ import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
 import java.io.StringWriter
+import com.github.zafarkhaja.semver.Version as SemVersion
 
 /**
  * The JobManager's main API entry point
@@ -459,8 +462,15 @@ class HttpEndpoint : CoroutineVerticle() {
       return
     }
 
-    val api = workflowJson["api"]
-    if ("3.1.0" != api && "3.0.0" != api) {
+    val api = try {
+      SemVersion.valueOf(workflowJson["api"].toString())
+    } catch (e: Exception) {
+      ctx.response()
+          .setStatusCode(400)
+          .end("Invalid workflow api version: " + e.message)
+      return
+    }
+    if (!api.satisfies(gte("3.0.0").and(lte("3.1.0")))) {
       ctx.response()
           .setStatusCode(400)
           .end("Invalid workflow api version: $api. Supported versions are [3.0.0, 3.1.0].")

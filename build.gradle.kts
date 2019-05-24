@@ -56,6 +56,7 @@ dependencies {
     implementation("commons-io:commons-io:2.6")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.9.8")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.8")
+    implementation("com.github.zafarkhaja:java-semver:0.9.0")
     implementation("com.google.guava:guava:27.0.1-jre")
     implementation("com.zaxxer:HikariCP:3.3.1")
     implementation("io.pebbletemplates:pebble:3.0.7")
