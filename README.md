@@ -5,9 +5,10 @@ This is the third major version of the JobManager.
 
 **Key features:**
 
-* *Dynamic and scalable workflow management* without apriori design-time
-  knowledge through incremental conversion of workflow graphs to so-called
-  process chains
+* *Dynamic and scalable workflow management* without apriori ~~design-time~~
+  runtime-time knowledge through incremental conversion of workflow graphs to
+  so-called process chains
+* Support for cyclic workflow graphs (i.e. *recursive for-each actions*)
 * Optimized *process chain scheduling* through parallelization and distribution
   to multiple agents (i.e. JobManager instances running in the Cloud or in a
   cluster)
