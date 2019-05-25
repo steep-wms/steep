@@ -1,0 +1,260 @@
+[{
+  "chains": [{
+    "id": 1,
+    "executables": [{
+      "id": "cp",
+      "path": "cp",
+      "arguments": [{
+        "id": "input_file",
+        "variable": {
+          "id": "input_directory",
+          "value": "/data"
+        },
+        "type": "input",
+        "dataType": "string"
+      }, {
+        "id": "output_file",
+        "variable": {
+          "id": "files",
+          "value": "/tmp/0"
+        },
+        "type": "output",
+        "dataType": "string"
+      }]
+    }]
+  }, {
+    "id": 3,
+    "executables": [{
+      "id": "cp",
+      "path": "cp",
+      "arguments": [{
+        "id": "input_file",
+        "variable": {
+          "id": "cp_input_1",
+          "value": "input1.txt"
+        },
+        "type": "input",
+        "dataType": "string"
+      }, {
+        "id": "output_file",
+        "variable": {
+          "id": "cp_output_1",
+          "value": "/tmp/2"
+        },
+        "type": "output",
+        "dataType": "string"
+      }]
+    }]
+  }, {
+    "id": 5,
+    "executables": [{
+      "id": "cp",
+      "path": "cp",
+      "arguments": [{
+        "id": "input_file",
+        "variable": {
+          "id": "cp_input_2",
+          "value": "input2.txt"
+        },
+        "type": "input",
+        "dataType": "string"
+      }, {
+        "id": "output_file",
+        "variable": {
+          "id": "cp_output_2",
+          "value": "/tmp/4"
+        },
+        "type": "output",
+        "dataType": "string"
+      }]
+    }]
+  }],
+  "results": {
+    "files": ["test1.txt", "test2.txt"],
+    "cp_output_1": ["/tmp/2"],
+    "cp_output_2": ["/tmp/4"]
+  }
+}, {
+  "chains": [{
+    "id": 7,
+    "executables": [{
+      "id": "join",
+      "path": "join.sh",
+      "arguments": [{
+        "id": "i",
+        "variable": {
+          "id": "files",
+          "value": "test1.txt"
+        },
+        "type": "input",
+        "dataType": "string"
+      }, {
+        "id": "i",
+        "variable": {
+          "id": "files",
+          "value": "test2.txt"
+        },
+        "type": "input",
+        "dataType": "string"
+      }, {
+        "id": "i",
+        "variable": {
+          "id": "cp_output_1",
+          "value": "/tmp/2"
+        },
+        "type": "input",
+        "dataType": "string"
+      }, {
+        "id": "i",
+        "variable": {
+          "id": "cp_output_2",
+          "value": "/tmp/4"
+        },
+        "type": "input",
+        "dataType": "string"
+      }, {
+        "id": "o",
+        "variable": {
+          "id": "joined_output",
+          "value": "/tmp/6"
+        },
+        "type": "output",
+        "dataType": "string"
+      }]
+    }]
+  }, {
+    "id": 9,
+    "executables": [{
+      "id": "cp",
+      "path": "cp",
+      "arguments": [{
+        "id": "input_file",
+        "variable": {
+          "id": "i$0",
+          "value": "test1.txt"
+        },
+        "type": "input",
+        "dataType": "string"
+      }, {
+        "id": "output_file",
+        "variable": {
+          "id": "o$0",
+          "value": "/tmp/8"
+        },
+        "type": "output",
+        "dataType": "string"
+      }]
+    }]
+  }, {
+    "id": 11,
+    "executables": [{
+      "id": "cp",
+      "path": "cp",
+      "arguments": [{
+        "id": "input_file",
+        "variable": {
+          "id": "i$1",
+          "value": "test2.txt"
+        },
+        "type": "input",
+        "dataType": "string"
+      }, {
+        "id": "output_file",
+        "variable": {
+          "id": "o$1",
+          "value": "/tmp/10"
+        },
+        "type": "output",
+        "dataType": "string"
+      }]
+    }]
+  }],
+  "results": {
+    "joined_output": ["/tmp/6"],
+    "o$0": ["copy1.txt"],
+    "o$1": ["copy2.txt"]
+  }
+}, {
+  "chains": [{
+    "id": 13,
+    "executables": [{
+      "id": "cp",
+      "path": "cp",
+      "arguments": [{
+        "id": "input_file",
+        "variable": {
+          "id": "i$2",
+          "value": "copy1.txt"
+        },
+        "type": "input",
+        "dataType": "string"
+      }, {
+        "id": "output_file",
+        "variable": {
+          "id": "o$2",
+          "value": "/tmp/12"
+        },
+        "type": "output",
+        "dataType": "string"
+      }]
+    }]
+  }, {
+    "id": 15,
+    "executables": [{
+      "id": "cp",
+      "path": "cp",
+      "arguments": [{
+        "id": "input_file",
+        "variable": {
+          "id": "i$3",
+          "value": "copy2.txt"
+        },
+        "type": "input",
+        "dataType": "string"
+      }, {
+        "id": "output_file",
+        "variable": {
+          "id": "o$3",
+          "value": "/tmp/14"
+        },
+        "type": "output",
+        "dataType": "string"
+      }]
+    }]
+  }],
+  "results": {
+    "o$2": [],
+    "o$3": ["dummy2.txt"]
+  }
+}, {
+  "chains": [{
+    "id": 17,
+    "executables": [{
+      "id": "cp",
+      "path": "cp",
+      "arguments": [{
+        "id": "input_file",
+        "variable": {
+          "id": "i$4",
+          "value": "dummy2.txt"
+        },
+        "type": "input",
+        "dataType": "string"
+      }, {
+        "id": "output_file",
+        "variable": {
+          "id": "o$4",
+          "value": "/tmp/16"
+        },
+        "type": "output",
+        "dataType": "string"
+      }]
+    }]
+  }],
+  "results": {
+    "o$4": []
+  }
+}, {
+  "chains": [],
+  "results": {}
+}]

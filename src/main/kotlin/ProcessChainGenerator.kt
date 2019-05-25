@@ -43,6 +43,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
   private val actions = workflow.actions.toMutableSet()
   private val variableValues = mutableMapOf<String, Any>()
   private val forEachOutputsToBeCollected = mutableMapOf<String, List<Variable>>()
+  private val iterations = mutableMapOf<String, Int>()
   private val pluginRegistry = PluginRegistryFactory.create()
 
   /**
@@ -77,7 +78,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
         // if all values are available, make the for-each action's output
         // available too and remove the item from `forEachOutputsToBeCollected`
         if (collectedOutputs.size == outputsToCollect.size) {
-          variableValues[outputId] = collectedOutputs
+          variableValues[outputId] = yieldTo(variableValues[outputId], collectedOutputs)
           i.remove()
 
           // repeat until no outputs were collected anymore
@@ -104,12 +105,20 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       val enumId = action.enumerator.id
 
       // get inputs of for-each actions if they are available, otherwise continue
-      val input = action.input.value ?: variableValues[action.input.id] ?: continue
+      val recursiveInput = "${action.input.id}$$enumId" // unique for this action
+      val input = variableValues[recursiveInput] ?:
+          variableValues[action.input.id] ?: action.input.value ?: continue
       val inputCollection = if (input is Collection<*>) input else listOf(input)
 
       // unroll for-each action
-      val yieldedOutputs = mutableListOf<Variable>()
-      for ((iteration, enumValue) in inputCollection.withIndex()) {
+      val yieldToOutputs = mutableListOf<Variable>()
+      val yieldToInputs = mutableListOf<Variable>()
+      for (enumValue in inputCollection) {
+        // since the for-each action might be recursive, we must calculate a
+        // global index of all iterations instead of just using
+        // `inputCollection.withIndex()`
+        val iteration = nextIteration(enumId)
+
         // for each iteration, generate new identifier for enumerator
         val iid = "$enumId$$iteration"
         val substitutions = mutableMapOf(enumId to Variable(iid, enumValue))
@@ -129,17 +138,50 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
         if (action.yieldToOutput != null) {
           val subst = substitutions[action.yieldToOutput.id] ?: throw IllegalStateException(
               "Cannot yield non-existing variable `${action.yieldToOutput.id}'")
-          yieldedOutputs.add(subst)
+          yieldToOutputs.add(subst)
+        }
+        if (action.yieldToInput != null) {
+          val subst = substitutions[action.yieldToInput.id] ?: throw IllegalStateException(
+              "Cannot yield non-existing variable `${action.yieldToInput.id}'")
+          yieldToInputs.add(subst)
         }
       }
 
-      // keep track of outputs that need to be collected
+      // keep track of outputs that need to be collected. rename output
+      // variable to avoid triggering subsequent actions until the for-each
+      // action has been removed
       if (action.output != null) {
-        forEachOutputsToBeCollected[action.output.id] = yieldedOutputs
+        forEachOutputsToBeCollected[action.output.id + "$$"] = yieldToOutputs
       }
 
-      // remove unrolled for-each action
-      actions.remove(action)
+      if (yieldToInputs.isEmpty()) {
+        // remove unrolled for-each action
+        actions.remove(action)
+
+        // rename output variable so subsequent actions can be triggered
+        if (action.output != null) {
+          val tmpName = action.output.id + "$$"
+          val c = forEachOutputsToBeCollected[tmpName]
+          if (c != null) {
+            forEachOutputsToBeCollected[action.output.id] = c
+            forEachOutputsToBeCollected.remove(tmpName)
+          }
+          val v = variableValues[tmpName]
+          if (v != null) {
+            variableValues[action.output.id] = v
+            variableValues.remove(tmpName)
+          }
+        }
+
+        if (action.yieldToInput != null) {
+          forEachOutputsToBeCollected.remove(recursiveInput)
+        }
+      } else {
+        // keep the for-each action for the next iteration but set temporary
+        // input variable to an empty list, so we can yield into it
+        variableValues[recursiveInput] = emptyList<String>()
+        forEachOutputsToBeCollected[recursiveInput] = yieldToInputs
+      }
     }
   }
 
@@ -363,6 +405,12 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
   }
 
   /**
+   * Get the next iteration for the given [enumId]
+   */
+  private fun nextIteration(enumId: String) =
+      iterations.merge(enumId, 0) { i, _ -> i + 1 } ?: 0
+
+  /**
    * Convert a [collection] of values to a flat list of strings
    */
   private fun toStringCollection(collection: Collection<*>): Collection<String> =
@@ -373,6 +421,47 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
           listOf(it.toString())
         }
       }
+
+  /**
+   * Append the items from [outputs] to [dest]. If [dest] is an object, it will
+   * be converted to a list. If it is `null`, it will be converted to an empty
+   * list. Each item from [outputs] will then be appended to [dest] but empty
+   * lists will be removed and nested lists will be flattened. If [outputs] is
+   * empty, [dest] will be returned as is.
+   *
+   * Examples:
+   *
+   *     null + [] -> []
+   *     null + ["b"] -> ["b"]
+   *     "a" + [] -> "a"
+   *     "a" + ["b"] -> ["a", "b"]
+   *     [] + [] -> []
+   *     [] + ["b"] -> ["b"]
+   *     ["a"] + ["b"] -> ["a", "b"]
+   *     "a" + ["b", [], "c"] -> ["a", "b", "c"]
+   *     ["a", "b"] + ["c", [], ["d", "e"]] -> ["a", "b", "c", "d", "e"]
+   *     ["a", "b"] + ["c", [], ["d", ["e"]]] -> ["a", "b", "c", "d", ["e"]]
+   */
+  private fun yieldTo(dest: Any?, outputs: Collection<Any>): Any {
+    if (outputs.isEmpty()) {
+      return dest ?: emptyList<String>()
+    }
+
+    val result: MutableList<Any?> = when (dest) {
+      null -> mutableListOf()
+      is Collection<*> -> dest.toMutableList()
+      else -> mutableListOf(dest)
+    }
+
+    for (o in outputs) {
+      when (o) {
+        is Collection<*> -> result.addAll(o)
+        else -> result.add(o)
+      }
+    }
+
+    return result
+  }
 
   /**
    * If the given [serviceParam] is an input directory, get the common directory
@@ -424,14 +513,16 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       val vars: List<Variable>,
       val actions: List<Action>,
       val variableValues: Map<String, Any>,
-      val forEachOutputsToBeCollected: Map<String, List<Variable>>
+      val forEachOutputsToBeCollected: Map<String, List<Variable>>,
+      val iterations: Map<String, Int>
   )
 
   /**
    * Persist the generator's internal state to a JSON object
    */
   fun persistState(): JsonObject {
-    val s = State(vars, actions.toList(), variableValues, forEachOutputsToBeCollected)
+    val s = State(vars, actions.toList(), variableValues,
+        forEachOutputsToBeCollected, iterations)
     return JsonUtils.toJson(s)
   }
 
@@ -444,11 +535,13 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
     actions.clear()
     variableValues.clear()
     forEachOutputsToBeCollected.clear()
+    iterations.clear()
 
     val s: State = JsonUtils.fromJson(state)
     vars.addAll(s.vars)
     actions.addAll(s.actions)
     variableValues.putAll(s.variableValues)
     forEachOutputsToBeCollected.putAll(s.forEachOutputsToBeCollected)
+    iterations.putAll(s.iterations)
   }
 }

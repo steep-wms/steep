@@ -159,7 +159,45 @@ class ProcessChainGeneratorTest {
         T("forEachYieldForEach"),
 
         // Test if output variables can have prefixes defined
-        T("outputPrefix")
+        T("outputPrefix"),
+
+        // Test if we can yield an output of a sub-action back to the for-each
+        // action's input
+        T("forEachYieldToInput"),
+
+        // Test if a recursive for-each action can contain another for-each
+        // action
+        T("forEachYieldToInputNested"),
+
+        // Test if a join action can follow a recursive for-each action
+        T("forEachYieldToInputJoin"),
+
+        // Test if a recursive for-each action and an execute action can have
+        // the same input
+        T("forEachYieldToInputSameInput"),
+
+        // Test if a recursive for-each action and an execute action can have
+        // the same input, even if the execute action depends on two other
+        // actions and will therefore only be executed during the second
+        // iteration of [ProcessChainGenerator.generate]
+        T("forEachYieldToInputSameInputDeferred"),
+
+        // Same as `forEachYieldToInputSameInputDeferred` but with a predefined
+        // list of inputs
+        T("forEachYieldToInputSameInputDeferredPredefined"),
+
+        // Test if a recursive for-each action and an execute action can have
+        // the same input, even if the execute action depends on two other
+        // actions that in turn also depend on an action, so that the execute
+        // action will therefore only be executed during the third iteration
+        // of [ProcessChainGenerator.generate] (i.e. when the input should have
+        // definitely be forged by the recursive for-each action)
+        T("forEachYieldToInputSameInputDeferredMore"),
+
+        // Same as `forEachYieldToInputSameInputDeferredMore` but with a
+        // predefined list of inputs
+        T("forEachYieldToInputSameInputDeferredMorePredefined")
+
 
         //  TODO test complex graph
 

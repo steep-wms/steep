@@ -194,7 +194,8 @@ class ControllerTest {
 
     data class SmallState(val vars: List<Variable>, val actions: List<Action>,
         val variableValues: Map<String, Any> = emptyMap(),
-        val forEachOutputsToBeCollected: Map<String, List<Variable>> = emptyMap())
+        val forEachOutputsToBeCollected: Map<String, List<Variable>> = emptyMap(),
+        val iterations: Map<String, Int> = emptyMap())
     val executionState = SmallState(workflow.vars, listOf(workflow.actions[3]))
 
     // mock metadata registry

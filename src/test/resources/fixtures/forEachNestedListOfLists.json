@@ -16,8 +16,6 @@
     "id": "j"
   }, {
     "id": "output_file1"
-  }, {
-    "id": "k"
   }],
   "actions": [{
     "type": "execute",
@@ -56,20 +54,15 @@
     }],
     "yieldToOutput": "for_output2"
   }, {
-    "type": "for",
-    "input": "for_output",
-    "enumerator": "k",
-    "actions": [{
-      "type": "execute",
-      "service": "join",
-      "inputs": [{
-        "id": "i",
-        "var": "k"
-      }],
-      "outputs": [{
-        "id": "o",
-        "var": "output_file1"
-      }]
+    "type": "execute",
+    "service": "join",
+    "inputs": [{
+      "id": "i",
+      "var": "for_output"
+    }],
+    "outputs": [{
+      "id": "o",
+      "var": "output_file1"
     }]
   }]
 }
