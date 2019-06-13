@@ -132,12 +132,14 @@ class CloudManager : CoroutineVerticle() {
     // keep track of left agents
     vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_LEFT) { msg ->
       val agentId = msg.body().substring(RemoteAgentRegistry.AGENT_ADDRESS_PREFIX.length)
+      log.info("Agent $agentId has left the cluster. Scheduling deletion of its VM ...")
       leftAgents.add(agentId)
     }
     vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_ADDED) { msg ->
       // remove the `agentId` from `leftAgents` if the agent has returned -- in
       // the hope that the VM has not been deleted by `sync()` in the meantime
       val agentId = msg.body().substring(RemoteAgentRegistry.AGENT_ADDRESS_PREFIX.length)
+      log.info("Agent $agentId has joined the cluster.")
       leftAgents.remove(agentId)
     }
 
@@ -173,6 +175,8 @@ class CloudManager : CoroutineVerticle() {
    * Synchronize our shared maps with the Cloud
    */
   private suspend fun sync() {
+    log.debug("Syncing VMs ...")
+
     // destroy all virtual machines whose agents have left
     val vmIDsToRemove = leftAgents.toList()
     for (id in vmIDsToRemove) {
