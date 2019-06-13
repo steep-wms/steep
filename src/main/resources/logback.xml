@@ -31,6 +31,7 @@
     <logger name="org.jboss.resteasy" level="INFO" />
     <logger name="org.openstack4j.core.transport.internal" level="INFO" />
     <logger name="com.hazelcast" level="INFO" />
+    <logger name="com.zaxxer.hikari.pool" level="INFO" />
 
     <variable name="JOBMANAGER_LOG_LEVEL" value="${JOBMANAGER_LOG_LEVEL:-DEBUG}" />
     <root level="${JOBMANAGER_LOG_LEVEL}">
