@@ -143,9 +143,7 @@ class CloudManager : CoroutineVerticle() {
       leftAgents.remove(agentId)
     }
 
-    // sync now and then regularly
-    sync()
-    syncTimer()
+    syncTimerStart()
 
     // create new virtual machines on demand
     vertx.eventBus().consumer<JsonArray>(AddressConstants.REMOTE_AGENT_MISSING) { msg ->
@@ -159,14 +157,25 @@ class CloudManager : CoroutineVerticle() {
   }
 
   /**
+   * Sync now and then regularly
+   */
+  private suspend fun syncTimerStart() {
+    try {
+      sync()
+    } catch (t: Throwable) {
+      log.error("Could not sync state with Cloud", t)
+    }
+    syncTimer()
+  }
+
+  /**
    * Start a periodic timer that synchronizes our shared maps with the Cloud
    */
   private fun syncTimer() {
     val seconds = config.getLong(ConfigConstants.CLOUD_SYNC_INTERVAL, 120L)
     vertx.setTimer(1000 * seconds) {
       launch {
-        sync()
-        syncTimer()
+        syncTimerStart()
       }
     }
   }
