@@ -1,28 +1,3 @@
-- id: knn
-  name: knn
-  description: An artificial neural network that classifies surfaces in point clouds
-  path: "knn:latest"
-  runtime: docker
-
-  required_capabilities:
-    - docker
-    - gpu
-
-  parameters:
-    - id: input_directory
-      name: Input directory
-      description: A directory containing the point clouds to classify
-      type: input
-      cardinality: 1..1
-      data_type: directory
-
-    - id: output_directory
-      name: Output directory
-      description: An output directory for the classification results
-      type: output
-      cardinality: 1..1
-      data_type: directory
-
 - id: cp
   name: cp
   description: Copies files
