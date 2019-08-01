@@ -3,7 +3,6 @@ package db
 import db.SubmissionRegistry.ProcessChainStatus
 import helper.JsonUtils
 import io.vertx.core.Vertx
-import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.mongo.BulkOperation
 import io.vertx.ext.mongo.MongoClient
@@ -14,12 +13,11 @@ import io.vertx.kotlin.ext.mongo.FindOptions
 import io.vertx.kotlin.ext.mongo.UpdateOptions
 import io.vertx.kotlin.ext.mongo.bulkWriteAwait
 import io.vertx.kotlin.ext.mongo.countAwait
+import io.vertx.kotlin.ext.mongo.findAwait
 import io.vertx.kotlin.ext.mongo.findOneAndUpdateWithOptionsAwait
 import io.vertx.kotlin.ext.mongo.findOneAwait
 import io.vertx.kotlin.ext.mongo.findWithOptionsAwait
 import io.vertx.kotlin.ext.mongo.insertAwait
-import io.vertx.kotlin.ext.mongo.removeDocumentAwait
-import io.vertx.kotlin.ext.mongo.saveAwait
 import io.vertx.kotlin.ext.mongo.updateCollectionAwait
 import model.Submission
 import model.processchain.ProcessChain
@@ -57,6 +55,8 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     private const val ERROR_MESSAGE = "errorMessage"
     private const val SEQUENCE = "sequence"
     private const val VALUE = "value"
+    private const val STATE_CHUNK = "stateChunk"
+    private const val CHUNK_NUMBER = "chunkNumber"
 
     /**
      * Fields to exclude when querying the `submissions` collection
@@ -326,29 +326,49 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       }
 
   override suspend fun setSubmissionExecutionState(submissionId: String, state: JsonObject?) {
-    if (state != null) {
-      val doc = state.copy()
-      doc.put(INTERNAL_ID, submissionId)
-      client.saveAwait(COLL_EXECUTION_STATES, doc)
-    } else {
-      client.removeDocumentAwait(COLL_EXECUTION_STATES, json {
-        obj(
-            INTERNAL_ID to submissionId
-        )
-      })
+    // delete current state
+    val operations = mutableListOf<BulkOperation>()
+    val deleteFilter = json {
+      obj(
+          SUBMISSION_ID to submissionId
+      )
     }
+    operations.add(BulkOperation.createDelete(deleteFilter).setMulti(true))
+
+    // insert new state
+    if (state != null) {
+      val stateStr = state.encode()
+      val chunks = stateStr.chunked(1024 * 1024 * 12)
+      for ((index, chunk) in chunks.withIndex()) {
+        val doc = JsonObject()
+        doc.put(SUBMISSION_ID, submissionId)
+        doc.put(STATE_CHUNK, chunk)
+        doc.put(CHUNK_NUMBER, index)
+        operations.add(BulkOperation.createInsert(doc))
+      }
+    }
+
+    // perform all operations in bulk
+    client.bulkWriteAwait(COLL_EXECUTION_STATES, operations)
   }
 
-  override suspend fun getSubmissionExecutionState(submissionId: String): JsonObject? =
-      client.findOneAwait(COLL_EXECUTION_STATES, json {
-        obj(
-            INTERNAL_ID to submissionId
-        )
-      }, json {
-        obj(
-            INTERNAL_ID to 0
-        )
-      })
+  override suspend fun getSubmissionExecutionState(submissionId: String): JsonObject? {
+    val docs = client.findAwait(COLL_EXECUTION_STATES, json {
+      obj(
+          SUBMISSION_ID to submissionId
+      )
+    })
+
+    return if (docs.isEmpty()) {
+      null
+    } else {
+      // sort here instead of while peforming the query because MongoDB
+      // might need too much memory for sorting without an index
+      val stateStr = docs.sortedBy { it.getInteger(CHUNK_NUMBER) }
+          .joinToString("") { it.getString(STATE_CHUNK) }
+      JsonObject(stateStr)
+    }
+  }
 
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,
       submissionId: String, status: ProcessChainStatus) {
