@@ -343,7 +343,7 @@ abstract class SubmissionRegistryTest {
       ctx.coVerify {
         assertThat(submissionRegistry.getSubmissionExecutionState(s.id)).isNull()
 
-        val actions = (1..500000).map { JsonUtils.toJson(ExecuteAction("service$it")) }
+        val actions = (1..20).map { JsonUtils.toJson(ExecuteAction("service$it")) }
         val state = json {
           obj(
               "actions" to actions

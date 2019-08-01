@@ -31,10 +31,15 @@ import java.time.format.DateTimeFormatter.ISO_INSTANT
  * @param connectionString the MongoDB connection string (e.g.
  * `mongodb://localhost:27017/database`)
  * @param createIndexes `true` if indexes should be created
+ * @param maxExecutionStateSize the maximum size of serialized execution state
+ * chunks. Each execution state passed to [setSubmissionExecutionState] that
+ * exceeds this size will be chunked into smaller pieces so that we don't hit
+ * MongoDB's maximum document size.
  * @author Michel Kraemer
  */
 class MongoDBSubmissionRegistry(private val vertx: Vertx,
-    connectionString: String, createIndexes: Boolean = true) : SubmissionRegistry {
+    connectionString: String, createIndexes: Boolean = true,
+    private val maxExecutionStateSize: Int = 1024 * 1024 * 12) : SubmissionRegistry {
   companion object {
     private val log = LoggerFactory.getLogger(MongoDBSubmissionRegistry::class.java)
 
@@ -338,7 +343,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     // insert new state
     if (state != null) {
       val stateStr = state.encode()
-      val chunks = stateStr.chunked(1024 * 1024 * 12)
+      val chunks = stateStr.chunked(maxExecutionStateSize)
       for ((index, chunk) in chunks.withIndex()) {
         val doc = JsonObject()
         doc.put(SUBMISSION_ID, submissionId)
