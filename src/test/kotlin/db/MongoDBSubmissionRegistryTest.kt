@@ -1,17 +1,16 @@
 package db
 
+import com.mongodb.ConnectionString
+import com.mongodb.reactivestreams.client.MongoClients
 import de.flapdoodle.embed.mongo.MongodExecutable
 import de.flapdoodle.embed.mongo.MongodProcess
 import de.flapdoodle.embed.mongo.MongodStarter
 import de.flapdoodle.embed.mongo.config.MongodConfigBuilder
 import de.flapdoodle.embed.mongo.distribution.Version
+import helper.dropAwait
 import io.vertx.core.Vertx
-import io.vertx.ext.mongo.MongoClient
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
-import io.vertx.kotlin.ext.mongo.runCommandAwait
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.junit.jupiter.api.AfterAll
@@ -54,19 +53,11 @@ class MongoDBSubmissionRegistryTest : SubmissionRegistryTest() {
 
   @AfterEach
   override fun tearDown(vertx: Vertx, ctx: VertxTestContext) {
-    val config = json {
-      obj(
-          "connection_string" to CONNECTION_STRING
-      )
-    }
-    val client = MongoClient.createShared(vertx, config)
+    val cs = ConnectionString(CONNECTION_STRING)
+    val client = MongoClients.create(cs)
 
     GlobalScope.launch(vertx.dispatcher()) {
-      client.runCommandAwait("dropDatabase", json {
-        obj(
-            "dropDatabase" to 1
-        )
-      })
+      client.getDatabase(cs.database).dropAwait()
       client.close()
       super.tearDown(vertx, ctx)
     }

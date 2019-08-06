@@ -1,29 +1,46 @@
 package db
 
+import com.mongodb.ConnectionString
+import com.mongodb.MongoClientSettings
+import com.mongodb.client.model.DeleteManyModel
+import com.mongodb.client.model.FindOneAndUpdateOptions
+import com.mongodb.client.model.IndexModel
+import com.mongodb.client.model.IndexOptions
+import com.mongodb.client.model.Indexes
+import com.mongodb.client.model.InsertOneModel
+import com.mongodb.client.model.WriteModel
+import com.mongodb.reactivestreams.client.MongoClient
+import com.mongodb.reactivestreams.client.MongoClients
+import com.mongodb.reactivestreams.client.MongoCollection
+import com.mongodb.reactivestreams.client.MongoDatabase
 import db.SubmissionRegistry.ProcessChainStatus
+import helper.DefaultSubscriber
 import helper.JsonUtils
+import helper.bulkWriteAwait
+import helper.countDocumentsAwait
+import helper.findAwait
+import helper.findOneAndUpdateAwait
+import helper.findOneAwait
+import helper.insertOneAwait
+import helper.updateOneAwait
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
-import io.vertx.ext.mongo.BulkOperation
-import io.vertx.ext.mongo.MongoClient
-import io.vertx.kotlin.core.json.array
+import io.vertx.ext.mongo.impl.codec.json.JsonObjectCodec
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
-import io.vertx.kotlin.ext.mongo.FindOptions
-import io.vertx.kotlin.ext.mongo.UpdateOptions
-import io.vertx.kotlin.ext.mongo.bulkWriteAwait
-import io.vertx.kotlin.ext.mongo.countAwait
-import io.vertx.kotlin.ext.mongo.findAwait
-import io.vertx.kotlin.ext.mongo.findOneAndUpdateWithOptionsAwait
-import io.vertx.kotlin.ext.mongo.findOneAwait
-import io.vertx.kotlin.ext.mongo.findWithOptionsAwait
-import io.vertx.kotlin.ext.mongo.insertAwait
-import io.vertx.kotlin.ext.mongo.updateCollectionAwait
 import model.Submission
 import model.processchain.ProcessChain
+import org.bson.codecs.BooleanCodec
+import org.bson.codecs.BsonDocumentCodec
+import org.bson.codecs.DoubleCodec
+import org.bson.codecs.IntegerCodec
+import org.bson.codecs.LongCodec
+import org.bson.codecs.StringCodec
+import org.bson.codecs.configuration.CodecRegistries
 import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.time.format.DateTimeFormatter.ISO_INSTANT
+import io.vertx.ext.mongo.impl.JsonObjectBsonAdapter as wrap
 
 /**
  * A submission registry that keeps objects in a MongoDB database
@@ -91,78 +108,51 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   }
 
   private val client: MongoClient
+  private val db: MongoDatabase
+  private val collSequence: MongoCollection<JsonObject>
+  private val collSubmissions: MongoCollection<JsonObject>
+  private val collProcessChains: MongoCollection<JsonObject>
+  private val collExecutionStates: MongoCollection<JsonObject>
 
   init {
-    val config = json {
-      obj(
-          "connection_string" to connectionString
-      )
-    }
-    client = MongoClient.createShared(vertx, config)
+    val cs = ConnectionString(connectionString)
+    val settings = MongoClientSettings.builder()
+        .codecRegistry(CodecRegistries.fromCodecs(
+            StringCodec(), IntegerCodec(), BooleanCodec(),
+            DoubleCodec(), LongCodec(), BsonDocumentCodec(),
+            JsonObjectCodec(JsonObject())
+        ))
+        .applyConnectionString(cs)
+        .build()
+
+    client = MongoClients.create(settings)
+    db = client.getDatabase(cs.database)
+    collSequence = db.getCollection(COLL_SEQUENCE, JsonObject::class.java)
+    collSubmissions = db.getCollection(COLL_SUBMISSIONS, JsonObject::class.java)
+    collProcessChains = db.getCollection(COLL_PROCESS_CHAINS, JsonObject::class.java)
+    collExecutionStates = db.getCollection(COLL_EXECUTION_STATES, JsonObject::class.java)
 
     if (createIndexes) {
       // create indexes for `submission` collection
-      client.runCommand("createIndexes", json {
-        obj(
-            "createIndexes" to COLL_SUBMISSIONS,
-            "indexes" to array(
-                obj(
-                    "name" to "${STATUS}_",
-                    "key" to obj(
-                        STATUS to 1
-                    ),
-                    "background" to true
-                ),
-                obj (
-                    "name" to "${SEQUENCE}_",
-                    "key" to obj(
-                        SEQUENCE to 1
-                    ),
-                    "background" to true
-                )
-            )
-        )
-      }) { ar ->
-        if (ar.failed()) {
-          log.error("Could not create indexes on collection " +
-              "`$COLL_SUBMISSIONS'", ar.cause())
+      collSubmissions.createIndexes(listOf(
+          IndexModel(Indexes.ascending(STATUS), IndexOptions().background(true)),
+          IndexModel(Indexes.ascending(SEQUENCE), IndexOptions().background(true))
+      )).subscribe(object : DefaultSubscriber<String>() {
+        override fun onError(t: Throwable) {
+          log.error("Could not create index on collection `$COLL_SUBMISSIONS'", t)
         }
-      }
+      })
 
       // create indexes for `processChains` collection
-      client.runCommand("createIndexes", json {
-        obj(
-            "createIndexes" to COLL_PROCESS_CHAINS,
-            "indexes" to array(
-                obj(
-                    "name" to "${SUBMISSION_ID}_",
-                    "key" to obj(
-                        SUBMISSION_ID to 1
-                    ),
-                    "background" to true
-                ),
-                obj(
-                    "name" to "${STATUS}_",
-                    "key" to obj(
-                        STATUS to 1
-                    ),
-                    "background" to true
-                ),
-                obj (
-                    "name" to "${SEQUENCE}_",
-                    "key" to obj(
-                        SEQUENCE to 1
-                    ),
-                    "background" to true
-                )
-            )
-        )
-      }) { ar ->
-        if (ar.failed()) {
-          log.error("Could not create indexes on collection " +
-              "`$COLL_PROCESS_CHAINS'", ar.cause())
+      collProcessChains.createIndexes(listOf(
+          IndexModel(Indexes.ascending(SUBMISSION_ID), IndexOptions().background(true)),
+          IndexModel(Indexes.ascending(STATUS), IndexOptions().background(true)),
+          IndexModel(Indexes.ascending(SEQUENCE), IndexOptions().background(true))
+      )).subscribe(object : DefaultSubscriber<String>() {
+        override fun onError(t: Throwable) {
+          log.error("Could not create index on collection `$COLL_PROCESS_CHAINS'", t)
         }
-      }
+      })
     }
   }
 
@@ -174,17 +164,17 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
    * Get a next [n] sequential numbers for a given [collection]
    */
   private suspend fun getNextSequence(collection: String, n: Int = 1): Long {
-    val doc: JsonObject? = client.findOneAndUpdateWithOptionsAwait(COLL_SEQUENCE, json {
+    val doc = collSequence.findOneAndUpdateAwait(json {
       obj(
           INTERNAL_ID to collection
       )
     }, json {
       obj(
           "\$inc" to obj(
-            VALUE to n
+              VALUE to n.toLong()
           )
       )
-    }, FindOptions(), UpdateOptions(upsert = true))
+    }, FindOneAndUpdateOptions().upsert(true))
     return doc?.getLong(VALUE, 0L) ?: 0L
   }
 
@@ -194,7 +184,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     doc.put(INTERNAL_ID, submission.id)
     doc.remove(ID)
     doc.put(SEQUENCE, sequence)
-    client.insertAwait(COLL_SUBMISSIONS, doc)
+    collSubmissions.insertOneAwait(doc)
   }
 
   /**
@@ -209,17 +199,16 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   override suspend fun findSubmissions(size: Int, offset: Int, order: Int):
       Collection<Submission> {
-    val docs = client.findWithOptionsAwait(COLL_SUBMISSIONS, JsonObject(),
-        FindOptions(limit = size, skip = offset, sort = json {
-          obj(
-              SEQUENCE to order
-          )
-        }, fields = SUBMISSION_EXCLUDES))
+    val docs = collSubmissions.findAwait(JsonObject(), size, offset, json {
+      obj(
+          SEQUENCE to order
+      )
+    }, SUBMISSION_EXCLUDES)
     return docs.map { deserializeSubmission(it) }
   }
 
   override suspend fun findSubmissionById(submissionId: String): Submission? {
-    val doc: JsonObject? = client.findOneAwait(COLL_SUBMISSIONS, json {
+    val doc = collSubmissions.findOneAwait(json {
       obj(
           INTERNAL_ID to submissionId
       )
@@ -228,25 +217,26 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   }
 
   override suspend fun findSubmissionIdsByStatus(status: Submission.Status) =
-      client.findWithOptionsAwait(COLL_SUBMISSIONS, json {
+      collSubmissions.findAwait(json {
         obj(
             STATUS to status.toString()
         )
-      }, FindOptions(fields = json {
+      }, projection = json {
         obj(
             INTERNAL_ID to 1
         )
-      })).map { it.getString(INTERNAL_ID) }
+      }).map { it.getString(INTERNAL_ID) }
 
   override suspend fun countSubmissions() =
-      client.countAwait(COLL_SUBMISSIONS, JsonObject())
+      collSubmissions.countDocumentsAwait(JsonObject())
 
   /**
    * Set a [field] of a document with a given [id] in the given [collection] to
    * a specified [value]
    */
-  private suspend fun updateField(collection: String, id: String, field: String, value: Any?) {
-    client.updateCollectionAwait(collection, json {
+  private suspend fun updateField(collection: MongoCollection<JsonObject>,
+      id: String, field: String, value: Any?) {
+    collection.updateOneAwait(json {
       obj(
           INTERNAL_ID to id
       )
@@ -269,9 +259,9 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
    * Get the value of a [field] of a document with the given [id] and [type]
    * from the given [collection]
    */
-  private suspend fun <T> getField(collection: String, type: String,
-      id: String, field: String): T {
-    val doc: JsonObject? = client.findOneAwait(collection, json {
+  private suspend inline fun <reified T> getField(collection: MongoCollection<JsonObject>,
+      type: String, id: String, field: String): T {
+    val doc = collection.findOneAwait(json {
       obj(
           INTERNAL_ID to id
       )
@@ -286,19 +276,18 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       throw NoSuchElementException("There is no $type with ID `$id'")
     }
 
-    @Suppress("UNCHECKED_CAST")
     return doc.getValue(field) as T
   }
 
-  private suspend fun <T> getSubmissionField(id: String, field: String): T =
-      getField(COLL_SUBMISSIONS, "submission", id, field)
+  private suspend inline fun <reified T> getSubmissionField(id: String, field: String): T =
+      getField(collSubmissions, "submission", id, field)
 
-  private suspend fun <T> getProcessChainField(id: String, field: String): T =
-      getField(COLL_PROCESS_CHAINS, "process chain", id, field)
+  private suspend inline fun <reified T> getProcessChainField(id: String, field: String): T =
+      getField(collProcessChains, "process chain", id, field)
 
   override suspend fun fetchNextSubmission(currentStatus: Submission.Status,
       newStatus: Submission.Status): Submission? {
-    val doc: JsonObject? = client.findOneAndUpdateWithOptionsAwait(COLL_SUBMISSIONS, json {
+    val doc: JsonObject? = collSubmissions.findOneAndUpdateAwait(json {
       obj(
           STATUS to currentStatus.toString()
       )
@@ -308,21 +297,21 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
               STATUS to newStatus.toString()
           )
       )
-    }, FindOptions(fields = SUBMISSION_EXCLUDES), UpdateOptions())
+    }, FindOneAndUpdateOptions().projection(wrap(SUBMISSION_EXCLUDES)))
     return doc?.let { deserializeSubmission(it) }
   }
 
   override suspend fun setSubmissionStartTime(submissionId: String, startTime: Instant) {
-    updateField(COLL_SUBMISSIONS, submissionId, START_TIME, startTime)
+    updateField(collSubmissions, submissionId, START_TIME, startTime)
   }
 
   override suspend fun setSubmissionEndTime(submissionId: String, endTime: Instant) {
-    updateField(COLL_SUBMISSIONS, submissionId, END_TIME, endTime)
+    updateField(collSubmissions, submissionId, END_TIME, endTime)
   }
 
   override suspend fun setSubmissionStatus(submissionId: String,
       status: Submission.Status) {
-    updateField(COLL_SUBMISSIONS, submissionId, STATUS, status.toString())
+    updateField(collSubmissions, submissionId, STATUS, status.toString())
   }
 
   override suspend fun getSubmissionStatus(submissionId: String) =
@@ -332,13 +321,13 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   override suspend fun setSubmissionExecutionState(submissionId: String, state: JsonObject?) {
     // delete current state
-    val operations = mutableListOf<BulkOperation>()
+    val requests = mutableListOf<WriteModel<JsonObject>>()
     val deleteFilter = json {
       obj(
           SUBMISSION_ID to submissionId
       )
     }
-    operations.add(BulkOperation.createDelete(deleteFilter).setMulti(true))
+    requests.add(DeleteManyModel(wrap(deleteFilter)))
 
     // insert new state
     if (state != null) {
@@ -349,16 +338,16 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         doc.put(SUBMISSION_ID, submissionId)
         doc.put(STATE_CHUNK, chunk)
         doc.put(CHUNK_NUMBER, index)
-        operations.add(BulkOperation.createInsert(doc))
+        requests.add(InsertOneModel(doc))
       }
     }
 
     // perform all operations in bulk
-    client.bulkWriteAwait(COLL_EXECUTION_STATES, operations)
+    collExecutionStates.bulkWriteAwait(requests)
   }
 
   override suspend fun getSubmissionExecutionState(submissionId: String): JsonObject? {
-    val docs = client.findAwait(COLL_EXECUTION_STATES, json {
+    val docs = collExecutionStates.findAwait(json {
       obj(
           SUBMISSION_ID to submissionId
       )
@@ -377,7 +366,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,
       submissionId: String, status: ProcessChainStatus) {
-    val submissionCount = client.countAwait(COLL_SUBMISSIONS, json {
+    val submissionCount = collSubmissions.countDocumentsAwait(json {
       obj(
           INTERNAL_ID to submissionId
       )
@@ -387,16 +376,16 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     }
 
     val sequence = getNextSequence(COLL_PROCESS_CHAINS, processChains.size)
-    val ops = processChains.mapIndexed { i, pc ->
+    val requests = processChains.mapIndexed { i, pc ->
       val doc = JsonUtils.toJson(pc)
       doc.put(INTERNAL_ID, pc.id)
       doc.remove(ID)
       doc.put(SEQUENCE, sequence + i)
       doc.put(SUBMISSION_ID, submissionId)
       doc.put(STATUS, status.toString())
-      BulkOperation.createInsert(doc)
+      InsertOneModel(doc)
     }
-    client.bulkWriteAwait(COLL_PROCESS_CHAINS, ops)
+    collProcessChains.bulkWriteAwait(requests)
   }
 
   /**
@@ -412,46 +401,46 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   }
 
   override suspend fun findProcessChains(size: Int, offset: Int, order: Int) =
-      client.findWithOptionsAwait(COLL_PROCESS_CHAINS, JsonObject(),
-          FindOptions(limit = size, skip = offset, sort = json {
+      collProcessChains.findAwait(JsonObject(), size, offset,
+          json {
             obj(
                 SEQUENCE to order
             )
-          }, fields = PROCESS_CHAIN_EXCLUDES_BUT_SUBMISSION_ID))
+          }, PROCESS_CHAIN_EXCLUDES_BUT_SUBMISSION_ID)
           .map { deserializeProcessChain(it) }
 
   override suspend fun findProcessChainsBySubmissionId(submissionId: String,
       size: Int, offset: Int, order: Int) =
-      client.findWithOptionsAwait(COLL_PROCESS_CHAINS, json {
+      collProcessChains.findAwait(json {
         obj(
             SUBMISSION_ID to submissionId
         )
-      }, FindOptions(limit = size, skip = offset, sort = json {
+      }, size, offset, json {
         obj(
             SEQUENCE to order
         )
-      }, fields = PROCESS_CHAIN_EXCLUDES))
+      }, PROCESS_CHAIN_EXCLUDES)
           .map { deserializeProcessChain(it).first }
 
   override suspend fun findProcessChainStatusesBySubmissionId(submissionId: String) =
-      client.findWithOptionsAwait(COLL_PROCESS_CHAINS, json {
+      collProcessChains.findAwait(json {
         obj(
             SUBMISSION_ID to submissionId
         )
-      }, FindOptions(sort = json {
+      }, sort = json {
         obj(
             SEQUENCE to 1
         )
-      }, fields = json {
+      }, projection = json {
         obj(
             INTERNAL_ID to 1,
             STATUS to 1
         )
-      })).associateBy({ it.getString(INTERNAL_ID) }, {
+      }).associateBy({ it.getString(INTERNAL_ID) }, {
         ProcessChainStatus.valueOf(it.getString(STATUS)) })
 
   override suspend fun findProcessChainById(processChainId: String): ProcessChain? {
-    val doc: JsonObject? = client.findOneAwait(COLL_PROCESS_CHAINS, json {
+    val doc = collProcessChains.findOneAwait(json {
       obj(
           INTERNAL_ID to processChainId
       )
@@ -460,10 +449,10 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   }
 
   override suspend fun countProcessChains() =
-      client.countAwait(COLL_PROCESS_CHAINS, JsonObject())
+      collProcessChains.countDocumentsAwait(JsonObject())
 
   override suspend fun countProcessChainsBySubmissionId(submissionId: String) =
-      client.countAwait(COLL_PROCESS_CHAINS, json {
+      collProcessChains.countDocumentsAwait(json {
         obj(
             SUBMISSION_ID to submissionId
         )
@@ -471,7 +460,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   override suspend fun countProcessChainsByStatus(submissionId: String,
       status: ProcessChainStatus) =
-      client.countAwait(COLL_PROCESS_CHAINS, json {
+      collProcessChains.countDocumentsAwait(json {
         obj(
             SUBMISSION_ID to submissionId,
             STATUS to status.toString()
@@ -480,7 +469,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   override suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
       newStatus: ProcessChainStatus): ProcessChain? {
-    val doc: JsonObject? = client.findOneAndUpdateWithOptionsAwait(COLL_PROCESS_CHAINS, json {
+    val doc = collProcessChains.findOneAndUpdateAwait(json {
       obj(
           STATUS to currentStatus.toString()
       )
@@ -490,12 +479,12 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
               STATUS to newStatus.toString()
           )
       )
-    }, FindOptions(fields = PROCESS_CHAIN_EXCLUDES), UpdateOptions())
+    }, FindOneAndUpdateOptions().projection(wrap(PROCESS_CHAIN_EXCLUDES)))
     return doc?.let { deserializeProcessChain(it).first }
   }
 
   override suspend fun setProcessChainStartTime(processChainId: String, startTime: Instant?) {
-    updateField(COLL_PROCESS_CHAINS, processChainId, START_TIME, startTime)
+    updateField(collProcessChains, processChainId, START_TIME, startTime)
   }
 
   override suspend fun getProcessChainStartTime(processChainId: String): Instant? =
@@ -504,7 +493,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       }
 
   override suspend fun setProcessChainEndTime(processChainId: String, endTime: Instant?) {
-    updateField(COLL_PROCESS_CHAINS, processChainId, END_TIME, endTime)
+    updateField(collProcessChains, processChainId, END_TIME, endTime)
   }
 
   override suspend fun getProcessChainEndTime(processChainId: String): Instant? =
@@ -517,7 +506,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   override suspend fun setProcessChainStatus(processChainId: String,
       status: ProcessChainStatus) {
-    updateField(COLL_PROCESS_CHAINS, processChainId, STATUS, status.toString())
+    updateField(collProcessChains, processChainId, STATUS, status.toString())
   }
 
   override suspend fun getProcessChainStatus(processChainId: String) =
@@ -527,7 +516,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   override suspend fun setProcessChainResults(processChainId: String,
       results: Map<String, List<Any>>?) {
-    updateField(COLL_PROCESS_CHAINS, processChainId, RESULTS,
+    updateField(collProcessChains, processChainId, RESULTS,
         results?.let{ JsonObject(it) })
   }
 
@@ -535,7 +524,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       getProcessChainField<JsonObject?>(processChainId, RESULTS)?.let { JsonUtils.fromJson(it) }
 
   override suspend fun setProcessChainErrorMessage(processChainId: String, errorMessage: String?) {
-    updateField(COLL_PROCESS_CHAINS, processChainId, ERROR_MESSAGE, errorMessage)
+    updateField(collProcessChains, processChainId, ERROR_MESSAGE, errorMessage)
   }
 
   override suspend fun getProcessChainErrorMessage(processChainId: String): String? =
