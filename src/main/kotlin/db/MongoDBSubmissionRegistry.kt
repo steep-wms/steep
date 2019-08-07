@@ -1,5 +1,6 @@
 package db
 
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.mongodb.ConnectionString
 import com.mongodb.MongoClientSettings
 import com.mongodb.client.model.FindOneAndUpdateOptions
@@ -66,6 +67,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     private const val COLL_SEQUENCE = "sequence"
     private const val COLL_SUBMISSIONS = "submissions"
     private const val COLL_PROCESS_CHAINS = "processChains"
+    private const val BUCKET_PROCESS_CHAINS = "processChains"
     private const val BUCKET_EXECUTION_STATES = "executionStates"
     private const val INTERNAL_ID = "_id"
     private const val ID = "id"
@@ -110,6 +112,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   private val collSequence: MongoCollection<JsonObject>
   private val collSubmissions: MongoCollection<JsonObject>
   private val collProcessChains: MongoCollection<JsonObject>
+  private val bucketProcessChains: GridFSBucket
   private val bucketExecutionStates: GridFSBucket
 
   init {
@@ -125,9 +128,12 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
     client = MongoClients.create(settings)
     db = client.getDatabase(cs.database)
+
     collSequence = db.getCollection(COLL_SEQUENCE, JsonObject::class.java)
     collSubmissions = db.getCollection(COLL_SUBMISSIONS, JsonObject::class.java)
     collProcessChains = db.getCollection(COLL_PROCESS_CHAINS, JsonObject::class.java)
+
+    bucketProcessChains = GridFSBuckets.create(db, BUCKET_PROCESS_CHAINS)
     bucketExecutionStates = GridFSBuckets.create(db, BUCKET_EXECUTION_STATES)
 
     if (createIndexes) {
@@ -368,27 +374,45 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
     val sequence = getNextSequence(COLL_PROCESS_CHAINS, processChains.size)
     val requests = processChains.mapIndexed { i, pc ->
-      val doc = JsonUtils.toJson(pc)
-      doc.put(INTERNAL_ID, pc.id)
-      doc.remove(ID)
-      doc.put(SEQUENCE, sequence + i)
-      doc.put(SUBMISSION_ID, submissionId)
-      doc.put(STATUS, status.toString())
+      val pcStr = JsonUtils.toJson(pc).encode()
+      val stream = bucketProcessChains.openUploadStream(pc.id)
+      stream.writeAwait(ByteBuffer.wrap(pcStr.toByteArray()))
+      stream.closeAwait()
+
+      val doc = json {
+        obj(
+            INTERNAL_ID to pc.id,
+            SEQUENCE to sequence + i,
+            SUBMISSION_ID to submissionId,
+            STATUS to status.toString()
+        )
+      }
       InsertOneModel(doc)
     }
+
     collProcessChains.bulkWriteAwait(requests)
   }
 
   /**
-   * Deserialize a database [document] to a process chain
+   * Handle process chain metadata [document] and read corresponding process
+   * chain from GridFS. Return pair of process chain and submission ID
    */
-  private fun deserializeProcessChain(document: JsonObject): Pair<ProcessChain, String> {
-    document.remove(STATUS)
-    val submissionId = (document.remove(SUBMISSION_ID) as String?) ?: ""
-    document.remove(SEQUENCE)
-    document.put(ID, document.getString(INTERNAL_ID))
-    document.remove(INTERNAL_ID)
-    return Pair(JsonUtils.fromJson(document), submissionId)
+  private suspend fun readProcessChain(document: JsonObject): Pair<ProcessChain, String> {
+    val submissionId = document.getString(SUBMISSION_ID, "")
+    val id = document.getString(INTERNAL_ID)
+
+    val file = bucketProcessChains.findAwait(json {
+      obj(
+          "filename" to id
+      )
+    }) ?: throw IllegalStateException("Got process chain metadata with " +
+        "ID `$id' but could not find corresponding object in GridFS bucket.")
+
+    val stream = bucketProcessChains.openDownloadStream(file.id)
+    val buf = ByteBuffer.allocate(file.length.toInt())
+    stream.readAwait(buf)
+    stream.closeAwait()
+    return Pair(JsonUtils.mapper.readValue(buf.array()), submissionId)
   }
 
   override suspend fun findProcessChains(size: Int, offset: Int, order: Int) =
@@ -398,7 +422,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
                 SEQUENCE to order
             )
           }, PROCESS_CHAIN_EXCLUDES_BUT_SUBMISSION_ID)
-          .map { deserializeProcessChain(it) }
+          .map { readProcessChain(it) }
 
   override suspend fun findProcessChainsBySubmissionId(submissionId: String,
       size: Int, offset: Int, order: Int) =
@@ -411,7 +435,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
             SEQUENCE to order
         )
       }, PROCESS_CHAIN_EXCLUDES)
-          .map { deserializeProcessChain(it).first }
+          .map { readProcessChain(it).first }
 
   override suspend fun findProcessChainStatusesBySubmissionId(submissionId: String) =
       collProcessChains.findAwait(json {
@@ -436,7 +460,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
           INTERNAL_ID to processChainId
       )
     }, PROCESS_CHAIN_EXCLUDES)
-    return doc?.let { deserializeProcessChain(it).first }
+    return doc?.let { readProcessChain(it).first }
   }
 
   override suspend fun countProcessChains() =
@@ -471,7 +495,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
           )
       )
     }, FindOneAndUpdateOptions().projection(wrap(PROCESS_CHAIN_EXCLUDES)))
-    return doc?.let { deserializeProcessChain(it).first }
+    return doc?.let { readProcessChain(it).first }
   }
 
   override suspend fun setProcessChainStartTime(processChainId: String, startTime: Instant?) {
