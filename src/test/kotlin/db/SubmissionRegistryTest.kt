@@ -334,34 +334,6 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  fun setVeryLargeSubmissionExecutionState(vertx: Vertx, ctx: VertxTestContext) {
-    val s = Submission(workflow = Workflow())
-
-    GlobalScope.launch(vertx.dispatcher()) {
-      submissionRegistry.addSubmission(s)
-
-      ctx.coVerify {
-        assertThat(submissionRegistry.getSubmissionExecutionState(s.id)).isNull()
-
-        val actions = (1..20).map { JsonUtils.toJson(ExecuteAction("service$it")) }
-        val state = json {
-          obj(
-              "actions" to actions
-          )
-        }
-
-        submissionRegistry.setSubmissionExecutionState(s.id, state)
-        assertThat(submissionRegistry.getSubmissionExecutionState(s.id)).isEqualTo(state)
-
-        submissionRegistry.setSubmissionExecutionState(s.id, null)
-        assertThat(submissionRegistry.getSubmissionExecutionState(s.id)).isNull()
-      }
-
-      ctx.completeNow()
-    }
-  }
-
-  @Test
   fun addProcessChain(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()

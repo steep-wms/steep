@@ -1,17 +1,23 @@
 package helper
 
 import com.mongodb.bulk.BulkWriteResult
+import com.mongodb.client.gridfs.model.GridFSFile
 import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.WriteModel
 import com.mongodb.client.result.UpdateResult
 import com.mongodb.reactivestreams.client.MongoCollection
 import com.mongodb.reactivestreams.client.MongoDatabase
+import com.mongodb.reactivestreams.client.gridfs.GridFSBucket
+import com.mongodb.reactivestreams.client.gridfs.GridFSDownloadStream
+import com.mongodb.reactivestreams.client.gridfs.GridFSUploadStream
 import io.vertx.core.json.JsonObject
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
+import org.bson.BsonValue
 import org.reactivestreams.Publisher
 import org.reactivestreams.Subscriber
 import org.reactivestreams.Subscription
+import java.nio.ByteBuffer
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import io.vertx.ext.mongo.impl.JsonObjectBsonAdapter as wrap
@@ -145,4 +151,40 @@ suspend fun <T> MongoCollection<T>.updateOneAwait(filter: JsonObject,
   return wrapCoroutine {
     updateOne(wrap(filter), wrap(update))
   } ?: throw IllegalStateException("Update operation did not produce a result")
+}
+
+suspend fun GridFSBucket.findAwait(filter: JsonObject): GridFSFile? {
+  return wrapCoroutine {
+    find(wrap(filter)).first()
+  }
+}
+
+suspend fun GridFSBucket.deleteAwait(id: BsonValue) {
+  wrapCoroutine {
+    delete(id)
+  }
+}
+
+suspend fun GridFSUploadStream.writeAwait(src: ByteBuffer): Int {
+  return wrapCoroutine {
+    write(src)
+  } ?: throw IllegalStateException("Write operation did not produce a result")
+}
+
+suspend fun GridFSUploadStream.closeAwait() {
+  wrapCoroutine {
+    close()
+  }
+}
+
+suspend fun GridFSDownloadStream.readAwait(dst: ByteBuffer): Int {
+  return wrapCoroutine {
+    read(dst)
+  } ?: throw IllegalStateException("Write operation did not produce a result")
+}
+
+suspend fun GridFSDownloadStream.closeAwait() {
+  wrapCoroutine {
+    close()
+  }
 }

@@ -2,27 +2,31 @@ package db
 
 import com.mongodb.ConnectionString
 import com.mongodb.MongoClientSettings
-import com.mongodb.client.model.DeleteManyModel
 import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.IndexModel
 import com.mongodb.client.model.IndexOptions
 import com.mongodb.client.model.Indexes
 import com.mongodb.client.model.InsertOneModel
-import com.mongodb.client.model.WriteModel
 import com.mongodb.reactivestreams.client.MongoClient
 import com.mongodb.reactivestreams.client.MongoClients
 import com.mongodb.reactivestreams.client.MongoCollection
 import com.mongodb.reactivestreams.client.MongoDatabase
+import com.mongodb.reactivestreams.client.gridfs.GridFSBucket
+import com.mongodb.reactivestreams.client.gridfs.GridFSBuckets
 import db.SubmissionRegistry.ProcessChainStatus
 import helper.DefaultSubscriber
 import helper.JsonUtils
 import helper.bulkWriteAwait
+import helper.closeAwait
 import helper.countDocumentsAwait
+import helper.deleteAwait
 import helper.findAwait
 import helper.findOneAndUpdateAwait
 import helper.findOneAwait
 import helper.insertOneAwait
+import helper.readAwait
 import helper.updateOneAwait
+import helper.writeAwait
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.mongo.impl.codec.json.JsonObjectCodec
@@ -38,6 +42,7 @@ import org.bson.codecs.LongCodec
 import org.bson.codecs.StringCodec
 import org.bson.codecs.configuration.CodecRegistries
 import org.slf4j.LoggerFactory
+import java.nio.ByteBuffer
 import java.time.Instant
 import java.time.format.DateTimeFormatter.ISO_INSTANT
 import io.vertx.ext.mongo.impl.JsonObjectBsonAdapter as wrap
@@ -48,15 +53,10 @@ import io.vertx.ext.mongo.impl.JsonObjectBsonAdapter as wrap
  * @param connectionString the MongoDB connection string (e.g.
  * `mongodb://localhost:27017/database`)
  * @param createIndexes `true` if indexes should be created
- * @param maxExecutionStateSize the maximum size of serialized execution state
- * chunks. Each execution state passed to [setSubmissionExecutionState] that
- * exceeds this size will be chunked into smaller pieces so that we don't hit
- * MongoDB's maximum document size.
  * @author Michel Kraemer
  */
 class MongoDBSubmissionRegistry(private val vertx: Vertx,
-    connectionString: String, createIndexes: Boolean = true,
-    private val maxExecutionStateSize: Int = 1024 * 1024 * 12) : SubmissionRegistry {
+    connectionString: String, createIndexes: Boolean = true) : SubmissionRegistry {
   companion object {
     private val log = LoggerFactory.getLogger(MongoDBSubmissionRegistry::class.java)
 
@@ -66,7 +66,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     private const val COLL_SEQUENCE = "sequence"
     private const val COLL_SUBMISSIONS = "submissions"
     private const val COLL_PROCESS_CHAINS = "processChains"
-    private const val COLL_EXECUTION_STATES = "executionStates"
+    private const val BUCKET_EXECUTION_STATES = "executionStates"
     private const val INTERNAL_ID = "_id"
     private const val ID = "id"
     private const val SUBMISSION_ID = "submissionId"
@@ -77,8 +77,6 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     private const val ERROR_MESSAGE = "errorMessage"
     private const val SEQUENCE = "sequence"
     private const val VALUE = "value"
-    private const val STATE_CHUNK = "stateChunk"
-    private const val CHUNK_NUMBER = "chunkNumber"
 
     /**
      * Fields to exclude when querying the `submissions` collection
@@ -112,7 +110,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   private val collSequence: MongoCollection<JsonObject>
   private val collSubmissions: MongoCollection<JsonObject>
   private val collProcessChains: MongoCollection<JsonObject>
-  private val collExecutionStates: MongoCollection<JsonObject>
+  private val bucketExecutionStates: GridFSBucket
 
   init {
     val cs = ConnectionString(connectionString)
@@ -130,7 +128,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     collSequence = db.getCollection(COLL_SEQUENCE, JsonObject::class.java)
     collSubmissions = db.getCollection(COLL_SUBMISSIONS, JsonObject::class.java)
     collProcessChains = db.getCollection(COLL_PROCESS_CHAINS, JsonObject::class.java)
-    collExecutionStates = db.getCollection(COLL_EXECUTION_STATES, JsonObject::class.java)
+    bucketExecutionStates = GridFSBuckets.create(db, BUCKET_EXECUTION_STATES)
 
     if (createIndexes) {
       // create indexes for `submission` collection
@@ -320,46 +318,39 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       }
 
   override suspend fun setSubmissionExecutionState(submissionId: String, state: JsonObject?) {
-    // delete current state
-    val requests = mutableListOf<WriteModel<JsonObject>>()
-    val deleteFilter = json {
-      obj(
-          SUBMISSION_ID to submissionId
-      )
-    }
-    requests.add(DeleteManyModel(wrap(deleteFilter)))
-
-    // insert new state
-    if (state != null) {
-      val stateStr = state.encode()
-      val chunks = stateStr.chunked(maxExecutionStateSize)
-      for ((index, chunk) in chunks.withIndex()) {
-        val doc = JsonObject()
-        doc.put(SUBMISSION_ID, submissionId)
-        doc.put(STATE_CHUNK, chunk)
-        doc.put(CHUNK_NUMBER, index)
-        requests.add(InsertOneModel(doc))
+    if (state == null) {
+      // delete current state
+      bucketExecutionStates.findAwait(json {
+        obj(
+            "filename" to submissionId
+        )
+      })?.let {
+        bucketExecutionStates.deleteAwait(it.id)
       }
+    } else {
+      // insert new state
+      val stateStr = state.encode()
+      val stream = bucketExecutionStates.openUploadStream(submissionId)
+      stream.writeAwait(ByteBuffer.wrap(stateStr.toByteArray()))
+      stream.closeAwait()
     }
-
-    // perform all operations in bulk
-    collExecutionStates.bulkWriteAwait(requests)
   }
 
   override suspend fun getSubmissionExecutionState(submissionId: String): JsonObject? {
-    val docs = collExecutionStates.findAwait(json {
+    val file = bucketExecutionStates.findAwait(json {
       obj(
-          SUBMISSION_ID to submissionId
+          "filename" to submissionId
       )
     })
 
-    return if (docs.isEmpty()) {
+    return if (file == null) {
       null
     } else {
-      // sort here instead of while peforming the query because MongoDB
-      // might need too much memory for sorting without an index
-      val stateStr = docs.sortedBy { it.getInteger(CHUNK_NUMBER) }
-          .joinToString("") { it.getString(STATE_CHUNK) }
+      val stream = bucketExecutionStates.openDownloadStream(file.id)
+      val buf = ByteBuffer.allocate(file.length.toInt())
+      stream.readAwait(buf)
+      stream.closeAwait()
+      val stateStr = String(buf.array())
       JsonObject(stateStr)
     }
   }
