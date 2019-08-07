@@ -68,6 +68,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     private const val COLL_SUBMISSIONS = "submissions"
     private const val COLL_PROCESS_CHAINS = "processChains"
     private const val BUCKET_PROCESS_CHAINS = "processChains"
+    private const val BUCKET_PROCESS_CHAIN_RESULTS = "processChainResults"
     private const val BUCKET_EXECUTION_STATES = "executionStates"
     private const val INTERNAL_ID = "_id"
     private const val ID = "id"
@@ -75,7 +76,6 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     private const val START_TIME = "startTime"
     private const val END_TIME = "endTime"
     private const val STATUS = "status"
-    private const val RESULTS = "results"
     private const val ERROR_MESSAGE = "errorMessage"
     private const val SEQUENCE = "sequence"
     private const val VALUE = "value"
@@ -98,7 +98,6 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
           STATUS to 0,
           START_TIME to 0,
           END_TIME to 0,
-          RESULTS to 0,
           ERROR_MESSAGE to 0,
           SEQUENCE to 0
       )
@@ -113,6 +112,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   private val collSubmissions: MongoCollection<JsonObject>
   private val collProcessChains: MongoCollection<JsonObject>
   private val bucketProcessChains: GridFSBucket
+  private val bucketProcessChainResults: GridFSBucket
   private val bucketExecutionStates: GridFSBucket
 
   init {
@@ -134,6 +134,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     collProcessChains = db.getCollection(COLL_PROCESS_CHAINS, JsonObject::class.java)
 
     bucketProcessChains = GridFSBuckets.create(db, BUCKET_PROCESS_CHAINS)
+    bucketProcessChainResults = GridFSBuckets.create(db, BUCKET_PROCESS_CHAIN_RESULTS)
     bucketExecutionStates = GridFSBuckets.create(db, BUCKET_EXECUTION_STATES)
 
     if (createIndexes) {
@@ -323,42 +324,47 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         Submission.Status.valueOf(it)
       }
 
-  override suspend fun setSubmissionExecutionState(submissionId: String, state: JsonObject?) {
-    if (state == null) {
-      // delete current state
-      bucketExecutionStates.findAwait(json {
+  private suspend fun writeGridFSDocument(bucket: GridFSBucket, id: String,
+      obj: JsonObject?) {
+    if (obj == null) {
+      bucket.findAwait(json {
         obj(
-            "filename" to submissionId
+            "filename" to id
         )
       })?.let {
-        bucketExecutionStates.deleteAwait(it.id)
+        bucket.deleteAwait(it.id)
       }
     } else {
-      // insert new state
-      val stateStr = state.encode()
-      val stream = bucketExecutionStates.openUploadStream(submissionId)
-      stream.writeAwait(ByteBuffer.wrap(stateStr.toByteArray()))
+      val str = obj.encode()
+      val stream = bucket.openUploadStream(id)
+      stream.writeAwait(ByteBuffer.wrap(str.toByteArray()))
       stream.closeAwait()
     }
   }
 
-  override suspend fun getSubmissionExecutionState(submissionId: String): JsonObject? {
-    val file = bucketExecutionStates.findAwait(json {
+  private suspend fun readGridFSDocument(bucket: GridFSBucket, id: String): ByteBuffer? {
+    val file = bucket.findAwait(json {
       obj(
-          "filename" to submissionId
+          "filename" to id
       )
     })
 
-    return if (file == null) {
-      null
-    } else {
-      val stream = bucketExecutionStates.openDownloadStream(file.id)
-      val buf = ByteBuffer.allocate(file.length.toInt())
+    return file?.let {
+      val stream = bucket.openDownloadStream(it.id)
+      val buf = ByteBuffer.allocate(it.length.toInt())
       stream.readAwait(buf)
       stream.closeAwait()
-      val stateStr = String(buf.array())
-      JsonObject(stateStr)
+      buf
     }
+  }
+
+  override suspend fun setSubmissionExecutionState(submissionId: String, state: JsonObject?) {
+    writeGridFSDocument(bucketExecutionStates, submissionId, state)
+  }
+
+  override suspend fun getSubmissionExecutionState(submissionId: String): JsonObject? {
+    val buf = readGridFSDocument(bucketExecutionStates, submissionId)
+    return buf?.let { JsonObject(String(it.array())) }
   }
 
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,
@@ -374,11 +380,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
     val sequence = getNextSequence(COLL_PROCESS_CHAINS, processChains.size)
     val requests = processChains.mapIndexed { i, pc ->
-      val pcStr = JsonUtils.toJson(pc).encode()
-      val stream = bucketProcessChains.openUploadStream(pc.id)
-      stream.writeAwait(ByteBuffer.wrap(pcStr.toByteArray()))
-      stream.closeAwait()
-
+      writeGridFSDocument(bucketProcessChains, pc.id, JsonUtils.toJson(pc))
       val doc = json {
         obj(
             INTERNAL_ID to pc.id,
@@ -401,17 +403,9 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     val submissionId = document.getString(SUBMISSION_ID, "")
     val id = document.getString(INTERNAL_ID)
 
-    val file = bucketProcessChains.findAwait(json {
-      obj(
-          "filename" to id
-      )
-    }) ?: throw IllegalStateException("Got process chain metadata with " +
-        "ID `$id' but could not find corresponding object in GridFS bucket.")
-
-    val stream = bucketProcessChains.openDownloadStream(file.id)
-    val buf = ByteBuffer.allocate(file.length.toInt())
-    stream.readAwait(buf)
-    stream.closeAwait()
+    val buf = readGridFSDocument(bucketProcessChains, id)
+        ?: throw IllegalStateException("Got process chain metadata with " +
+            "ID `$id' but could not find corresponding object in GridFS bucket.")
     return Pair(JsonUtils.mapper.readValue(buf.array()), submissionId)
   }
 
@@ -531,12 +525,23 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   override suspend fun setProcessChainResults(processChainId: String,
       results: Map<String, List<Any>>?) {
-    updateField(collProcessChains, processChainId, RESULTS,
+    writeGridFSDocument(bucketProcessChainResults, processChainId,
         results?.let{ JsonObject(it) })
   }
 
-  override suspend fun getProcessChainResults(processChainId: String): Map<String, List<Any>>? =
-      getProcessChainField<JsonObject?>(processChainId, RESULTS)?.let { JsonUtils.fromJson(it) }
+  override suspend fun getProcessChainResults(processChainId: String): Map<String, List<Any>>? {
+    val processChainCount = collProcessChains.countDocumentsAwait(json {
+      obj(
+          INTERNAL_ID to processChainId
+      )
+    })
+    if (processChainCount == 0L) {
+      throw NoSuchElementException("There is no process chain with ID `$processChainId'")
+    }
+
+    val buf = readGridFSDocument(bucketProcessChainResults, processChainId)
+    return buf?.let { JsonUtils.mapper.readValue(it.array()) }
+  }
 
   override suspend fun setProcessChainErrorMessage(processChainId: String, errorMessage: String?) {
     updateField(collProcessChains, processChainId, ERROR_MESSAGE, errorMessage)
