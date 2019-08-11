@@ -2,14 +2,12 @@ package db
 
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.mongodb.ConnectionString
-import com.mongodb.MongoClientSettings
 import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.IndexModel
 import com.mongodb.client.model.IndexOptions
 import com.mongodb.client.model.Indexes
 import com.mongodb.client.model.InsertOneModel
 import com.mongodb.reactivestreams.client.MongoClient
-import com.mongodb.reactivestreams.client.MongoClients
 import com.mongodb.reactivestreams.client.MongoCollection
 import com.mongodb.reactivestreams.client.MongoDatabase
 import com.mongodb.reactivestreams.client.gridfs.GridFSBucket
@@ -30,18 +28,10 @@ import helper.updateOneAwait
 import helper.writeAwait
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
-import io.vertx.ext.mongo.impl.codec.json.JsonObjectCodec
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import model.Submission
 import model.processchain.ProcessChain
-import org.bson.codecs.BooleanCodec
-import org.bson.codecs.BsonDocumentCodec
-import org.bson.codecs.DoubleCodec
-import org.bson.codecs.IntegerCodec
-import org.bson.codecs.LongCodec
-import org.bson.codecs.StringCodec
-import org.bson.codecs.configuration.CodecRegistries
 import org.slf4j.LoggerFactory
 import java.nio.ByteBuffer
 import java.time.Instant
@@ -117,16 +107,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   init {
     val cs = ConnectionString(connectionString)
-    val settings = MongoClientSettings.builder()
-        .codecRegistry(CodecRegistries.fromCodecs(
-            StringCodec(), IntegerCodec(), BooleanCodec(),
-            DoubleCodec(), LongCodec(), BsonDocumentCodec(),
-            JsonObjectCodec(JsonObject())
-        ))
-        .applyConnectionString(cs)
-        .build()
-
-    client = MongoClients.create(settings)
+    client = SharedMongoClient.create(cs)
     db = client.getDatabase(cs.database)
 
     collSequence = db.getCollection(COLL_SEQUENCE, JsonObject::class.java)
