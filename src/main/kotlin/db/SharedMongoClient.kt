@@ -37,7 +37,6 @@ class SharedMongoClient(private val key: ConnectionString,
         }
 
         result.instanceCount++
-        println("XXXXXXXX " + result.instanceCount)
         result
       }
     }
@@ -46,7 +45,6 @@ class SharedMongoClient(private val key: ConnectionString,
   override fun close() {
     synchronized(SharedMongoClient) {
       instanceCount--
-      println("XXXXXXX $instanceCount")
       if (instanceCount == 0) {
         client.close()
         SharedMongoClient.sharedInstances.remove(key)
