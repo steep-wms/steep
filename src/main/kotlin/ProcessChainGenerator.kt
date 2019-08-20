@@ -151,10 +151,19 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       // variable to avoid triggering subsequent actions until the for-each
       // action has been removed
       if (action.output != null) {
-        forEachOutputsToBeCollected[action.output.id + "$$"] = yieldToOutputs
+        val outputId = action.output.id + "$$"
+        val oldList = forEachOutputsToBeCollected[outputId] ?: emptyList()
+        forEachOutputsToBeCollected[outputId] = oldList + yieldToOutputs
       }
 
       if (yieldToInputs.isEmpty()) {
+        if (forEachOutputsToBeCollected[recursiveInput]?.isNotEmpty() == true) {
+          // keep for-each action until all cloned actions that could yield
+          // to input have been executed (in other words, if we are not waiting
+          // for outputs any more that should be yielded to input)
+          continue
+        }
+
         // remove unrolled for-each action
         actions.remove(action)
 
