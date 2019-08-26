@@ -31,6 +31,8 @@ import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.IOException
 import java.io.StringWriter
+import kotlin.math.max
+import kotlin.math.min
 
 /**
  * Acquires remote agents on demand. Creates virtual machines, deploys the
@@ -67,6 +69,12 @@ class CloudManager : CoroutineVerticle() {
      * Prefix for locks that keep track of which setups we are currently creating
      */
     private const val CREATING_SETUPS_PREFIX = "CloudManager.CreatingSetups."
+
+    /**
+     * The maximum number of seconds to backoff between failed attempts to
+     * create a VM
+     */
+    private const val MAX_BACKOFF_SECONDS = 60 * 60
   }
 
   /**
@@ -106,6 +114,11 @@ class CloudManager : CoroutineVerticle() {
    * A set of IDs of agents that have recently left the cluster
    */
   private val leftAgents = mutableSetOf<String>()
+
+  /**
+   * The current number of seconds to wait before the next attempt to create a VM
+   */
+  private var backoffSeconds = 0
 
   override suspend fun start() {
     log.info("Launching cloud manager ...")
@@ -278,6 +291,11 @@ class CloudManager : CoroutineVerticle() {
       log.info("Creating virtual machine with setup `${setup.id}' for " +
           "capabilities $requiredCapabilities ...")
 
+      if (backoffSeconds > 10) {
+        log.info("Backing off for $backoffSeconds seconds due to too many failed attempts.")
+        delay(backoffSeconds * 1000L)
+      }
+
       val vmId = createVM(setup)
       try {
         createdVMs.putAwait(vmId, setup.id)
@@ -285,9 +303,11 @@ class CloudManager : CoroutineVerticle() {
         val ipAddress = cloudClient.getIPAddress(vmId)
         provisionVM(ipAddress, vmId, setup)
         counter.incrementAndGetAwait()
+        backoffSeconds = 0
       } catch (e: Throwable) {
         createdVMs.removeAwait(vmId)
         cloudClient.destroyVM(vmId)
+        backoffSeconds = min(MAX_BACKOFF_SECONDS, max(backoffSeconds * 2, 2))
         throw e
       }
     } finally {
