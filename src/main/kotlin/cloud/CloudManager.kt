@@ -296,19 +296,23 @@ class CloudManager : CoroutineVerticle() {
         delay(backoffSeconds * 1000L)
       }
 
-      val vmId = createVM(setup)
       try {
-        createdVMs.putAwait(vmId, setup.id)
-        cloudClient.waitForVM(vmId)
-        val ipAddress = cloudClient.getIPAddress(vmId)
-        provisionVM(ipAddress, vmId, setup)
-        counter.incrementAndGetAwait()
+        val vmId = createVM(setup)
+        try {
+          createdVMs.putAwait(vmId, setup.id)
+          cloudClient.waitForVM(vmId)
+          val ipAddress = cloudClient.getIPAddress(vmId)
+          provisionVM(ipAddress, vmId, setup)
+          counter.incrementAndGetAwait()
+        } catch (e: Throwable) {
+          createdVMs.removeAwait(vmId)
+          cloudClient.destroyVM(vmId)
+          throw e
+        }
         backoffSeconds = 0
-      } catch (e: Throwable) {
-        createdVMs.removeAwait(vmId)
-        cloudClient.destroyVM(vmId)
+      } catch (t: Throwable) {
         backoffSeconds = min(MAX_BACKOFF_SECONDS, max(backoffSeconds * 2, 2))
-        throw e
+        throw t
       }
     } finally {
       // release lock that says we're currently creating a VM with this setup
