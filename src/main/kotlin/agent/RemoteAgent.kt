@@ -49,7 +49,10 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
     val replyAddress = id + "." + UniqueID.next()
     val adapter = vertx.receiveChannelHandler<Message<JsonObject>>()
     val replyConsumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
-        .handler(adapter)
+        .handler {
+          it.reply("ACK") // let the peer know that we received the result
+          adapter.handle(it)
+        }
 
     try {
       // abort when cluster node has left

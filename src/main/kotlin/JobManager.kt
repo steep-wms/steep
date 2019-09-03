@@ -6,11 +6,13 @@ import io.vertx.core.eventbus.Message
 import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
+import io.vertx.kotlin.core.eventbus.sendAwait
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.processchain.ProcessChain
 import org.slf4j.LoggerFactory
@@ -209,8 +211,21 @@ class JobManager : CoroutineVerticle() {
       // run the local agent and return its results
       launch {
         try {
+          log.info("Executing process chain ${processChain.id} ...")
           val answer = executeProcessChain(processChain)
-          vertx.eventBus().send(replyAddress, answer)
+          for (tries in 4 downTo 0) {
+            try {
+              log.info("Sending results of process chain ${processChain.id} " +
+                  "to $replyAddress ...")
+              vertx.eventBus().sendAwait<Any>(replyAddress, answer)
+              break
+            } catch (t: Throwable) {
+              log.error("Error sending results of process chain " +
+                  "${processChain.id} to peer. Waiting 1 second. " +
+                  "$tries retries remaining.", t)
+              delay(1000)
+            }
+          }
         } finally {
           lastExecuteTime = Instant.now()
           vertx.cancelTimer(busyTimer)
