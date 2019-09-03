@@ -101,7 +101,7 @@ class JobManager : CoroutineVerticle() {
     val timedOut = busy?.isBefore(Instant.now().minus(busyTimeout)) ?: return false
     if (timedOut) {
       markBusy(false)
-      log.info("Idle agent `${Main.agentId}' was automatically marked as available again")
+      log.error("Idle agent `${Main.agentId}' was automatically marked as available again")
       return false
     }
     return true
