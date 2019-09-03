@@ -16,6 +16,7 @@ import io.vertx.kotlin.core.shareddata.getAndIncrementAwait
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.receiveChannelHandler
 import model.processchain.ProcessChain
+import org.slf4j.LoggerFactory
 import java.rmi.RemoteException
 
 /**
@@ -30,6 +31,8 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
      * Name of a cluster-wide counter that keeps a process chain sequence number
      */
     private const val COUNTER_NAME = "RemoteAgent.Sequence"
+
+    private val log = LoggerFactory.getLogger(RemoteAgent::class.java)
   }
 
   /**
@@ -53,6 +56,7 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
           it.reply("ACK") // let the peer know that we received the result
           adapter.handle(it)
         }
+    log.info("Registered handler for replies listening on $replyAddress")
 
     try {
       // abort when cluster node has left
@@ -88,6 +92,7 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
       }
     } finally {
       replyConsumer.unregister()
+      log.info("Unregistered handler for replies listening on $replyAddress")
     }
   }
 }
