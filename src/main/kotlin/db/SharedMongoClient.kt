@@ -13,12 +13,14 @@ import org.bson.codecs.IntegerCodec
 import org.bson.codecs.LongCodec
 import org.bson.codecs.StringCodec
 import org.bson.codecs.configuration.CodecRegistries
+import java.util.concurrent.TimeUnit
 
 class SharedMongoClient(private val key: ConnectionString,
     private val client: MongoClient) : MongoClient by client {
   private var instanceCount = 0
 
   companion object {
+    private const val DEFAULT_MAX_CONNECTION_IDLE_TIME_MS = 60000L
     private val sharedInstances = mutableMapOf<ConnectionString, SharedMongoClient>()
 
     fun create(connectionString: ConnectionString): SharedMongoClient {
@@ -30,6 +32,9 @@ class SharedMongoClient(private val key: ConnectionString,
                   DoubleCodec(), LongCodec(), BsonDocumentCodec(),
                   JsonObjectCodec(JsonObject())
               ))
+              .applyToConnectionPoolSettings { builder ->
+                builder.maxConnectionIdleTime(DEFAULT_MAX_CONNECTION_IDLE_TIME_MS, TimeUnit.MILLISECONDS)
+              }
               .applyConnectionString(connectionString)
               .build()
 
@@ -47,7 +52,7 @@ class SharedMongoClient(private val key: ConnectionString,
       instanceCount--
       if (instanceCount == 0) {
         client.close()
-        SharedMongoClient.sharedInstances.remove(key)
+        sharedInstances.remove(key)
       }
     }
   }
