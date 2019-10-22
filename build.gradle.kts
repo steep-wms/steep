@@ -114,7 +114,7 @@ dependencies {
     implementation(kotlin("stdlib-jdk8"))
 
     testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:2.2.0")
-    testImplementation("io.mockk:mockk:1.8.13.kotlin13")
+    testImplementation("io.mockk:mockk:1.9.3")
     testImplementation("io.vertx:vertx-junit5:$vertxVersion")
     testImplementation("org.assertj:assertj-core:3.11.1")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.4.1")
