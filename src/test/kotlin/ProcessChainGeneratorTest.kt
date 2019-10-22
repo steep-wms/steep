@@ -253,7 +253,7 @@ class ProcessChainGeneratorTest {
 
     var json = JsonObject()
     val idgen = ConsecutiveID()
-    var generator = ProcessChainGenerator(workflow, "/tmp/", services, idgen)
+    var generator = ProcessChainGenerator(workflow, "/tmp/", "/out/", services, idgen)
     assertThat(generator.isFinished()).isFalse()
 
     if (persistState) {
@@ -263,7 +263,7 @@ class ProcessChainGeneratorTest {
     var results = mapOf<String, List<Any>>()
     for (expected in expectedChains) {
       if (persistState) {
-        generator = ProcessChainGenerator(workflow, "/tmp/", services, idgen)
+        generator = ProcessChainGenerator(workflow, "/tmp/", "/out/", services, idgen)
         generator.loadState(json)
       }
 
@@ -277,7 +277,7 @@ class ProcessChainGeneratorTest {
     }
 
     if (persistState) {
-      generator = ProcessChainGenerator(workflow, "/tmp/", services, idgen)
+      generator = ProcessChainGenerator(workflow, "/tmp/", "/out/", services, idgen)
       generator.loadState(json)
     }
 

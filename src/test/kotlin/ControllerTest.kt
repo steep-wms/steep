@@ -87,7 +87,8 @@ class ControllerTest {
     // deploy verticle under test
     val config = json {
       obj(
-          ConfigConstants.TMP_PATH to "/tmp"
+          ConfigConstants.TMP_PATH to "/tmp",
+          ConfigConstants.OUT_PATH to "/tmp/jobmanager/out"
       )
     }
     val options = DeploymentOptions(config)

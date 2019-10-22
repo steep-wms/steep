@@ -31,10 +31,12 @@ import java.util.IdentityHashMap
  * Generates process chains from a workflow
  * @param workflow the workflow to convert to process chains
  * @param tmpPath a directory where temporary workflow results should be stored
+ * @param outPath a directory where final workflow results should be stored
  * @param services service metadata
  */
 class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
-    private val services: List<Service>, private val idGenerator: IDGenerator = UniqueID) {
+    private val outPath: String, private val services: List<Service>,
+    private val idGenerator: IDGenerator = UniqueID) {
   companion object {
     private val log = LoggerFactory.getLogger(ProcessChainGenerator::class.java)
   }

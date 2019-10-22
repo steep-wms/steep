@@ -37,6 +37,11 @@ object ConfigConstants {
   const val TMP_PATH = "jobmanager.tmpPath"
 
   /**
+   * Path where output files should be stored
+   */
+  const val OUT_PATH = "jobmanager.outPath"
+
+  /**
    * The IP address (or hostname) to bind the clustered eventbus to
    */
   const val CLUSTER_EVENTBUS_HOST = "jobmanager.cluster.eventBus.host"
