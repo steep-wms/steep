@@ -1,0 +1,5 @@
+# interprets a missing file as an empty list
+- name: fileOrEmptyList
+  type: outputAdapter
+  scriptFile: conf/plugins/fileOrEmptyList.kts
+  supportedDataType: fileOrEmptyList
