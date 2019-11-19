@@ -20,7 +20,7 @@
   display: none !important;
 }
 
-.workflow, .agent, .processchain {
+.workflow, .agent, .processchain, .service {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
@@ -36,18 +36,53 @@
   }
 }
 
-.workflow-left, .agent-left, .processchain-left {
+.workflow-left, .agent-left, .processchain-left, .service-left {
   flex: 1;
   padding-bottom: 1rem;
 }
 
-.agent-left, .processchain-left {
+.agent-left, .processchain-left, .service-left {
   .header {
     margin-right: .5rem;
   }
 
-  .capabilities .labels {
+  .capabilities .labels, .runtime .labels {
     margin-top: .3rem;
+  }
+}
+
+.service-left {
+  .description {
+    margin-bottom: 2rem;
+  }
+
+  .parameters {
+    margin-top: 2rem;
+  }
+
+  .ui.header .sub.header {
+    font-weight: 400;
+    color: rgba(0,0,0,.6);
+  }
+
+  .ui .segment {
+    min-height: ~"calc(100% - 1rem)";
+    margin-bottom: 1rem;
+  }
+
+  .ui.grid {
+    margin-top: 1rem;
+  }
+
+  .ui.grid>.doubling.row, .ui.grid>.doubling.row>.column {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .ui.list {
+    h5.ui.header {
+      margin-top: 1rem;
+    }
   }
 }
 

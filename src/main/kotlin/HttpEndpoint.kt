@@ -6,6 +6,8 @@ import com.github.zafarkhaja.semver.expr.CompositeExpression.Helper.gte
 import com.github.zafarkhaja.semver.expr.CompositeExpression.Helper.lte
 import com.mitchellbosecke.pebble.PebbleEngine
 import com.mitchellbosecke.pebble.lexer.Syntax
+import db.MetadataRegistry
+import db.MetadataRegistryFactory
 import db.SubmissionRegistry
 import db.SubmissionRegistryFactory
 import helper.JsonUtils
@@ -60,6 +62,7 @@ class HttpEndpoint : CoroutineVerticle() {
     private val TRANSIENT_ASSETS: Map<String, String> = mapOf(
         "indexcss" to "/assets/index.css",
         "agentsjs" to "/assets/agents.js",
+        "servicesjs" to "/assets/services.js",
         "paginationjs" to "/assets/pagination.js",
         "processchainsjs" to "/assets/processchains.js",
         "workflowsjs" to "/assets/workflows.js"
@@ -85,11 +88,13 @@ class HttpEndpoint : CoroutineVerticle() {
         HttpEndpoint::class.java.getResource("/version.json"))
   }
 
+  private lateinit var metadataRegistry: MetadataRegistry
   private lateinit var remoteAgentRegistry: RemoteAgentRegistry
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var basePath: String
 
   override suspend fun start() {
+    metadataRegistry = MetadataRegistryFactory.create(vertx)
     remoteAgentRegistry = RemoteAgentRegistry(vertx)
     submissionRegistry = SubmissionRegistryFactory.create(vertx)
 
@@ -133,6 +138,16 @@ class HttpEndpoint : CoroutineVerticle() {
         .produces("application/json")
         .produces("text/html")
         .handler(this::onGetAgentById)
+
+    router.get("/services")
+        .produces("application/json")
+        .produces("text/html")
+        .handler(this::onGetServices)
+
+    router.get("/services/:id")
+        .produces("application/json")
+        .produces("text/html")
+        .handler(this::onGetServiceById)
 
     router.get("/processchains")
         .produces("application/json")
@@ -342,6 +357,58 @@ class HttpEndpoint : CoroutineVerticle() {
           ctx.response()
               .setStatusCode(500)
               .end()
+        }
+      }
+    }
+  }
+
+  /**
+   * Get a list of all services
+   * @param ctx the routing context
+   */
+  private fun onGetServices(ctx: RoutingContext) {
+    launch {
+      val services = metadataRegistry.findServices()
+      val result = JsonArray(services).encode()
+
+      if (ctx.acceptableContentType == "text/html") {
+        renderHtml("html/services/index.html", mapOf(
+            "services" to result
+        ), ctx.response())
+      } else {
+        ctx.response()
+            .putHeader("content-type", "application/json")
+            .end(result)
+      }
+    }
+  }
+
+  /**
+   * Get a single service by ID
+   * @param ctx the routing context
+   */
+  private fun onGetServiceById(ctx: RoutingContext) {
+    launch {
+      val id = ctx.pathParam("id")
+      val services = metadataRegistry.findServices()
+      val service = services.find { it.id == id }
+
+      if (service == null) {
+        ctx.response()
+            .setStatusCode(404)
+            .end("There is no service with ID `$id'")
+      } else {
+        val serviceObj = JsonUtils.toJson(service)
+        if (ctx.acceptableContentType == "text/html") {
+          renderHtml("html/services/single.html", mapOf(
+              "id" to id,
+              "name" to service.name,
+              "services" to JsonArray(serviceObj).encode()
+          ), ctx.response())
+        } else {
+          ctx.response()
+              .putHeader("content-type", "application/json")
+              .end(serviceObj.encode())
         }
       }
     }

@@ -1,0 +1,50 @@
+$% extends "html/base.html" %$
+
+$% block title %$ Services &raquo; JobManager $% endblock %$
+
+$% block content %$
+<div id="app">
+
+  <div class="ui container" v-cloak>
+
+    <h1 class="ui header">Services</h1>
+
+    <div v-if="services.length === 0" class="ui divider"></div>
+
+    <transition-group name="service-list" tag="div">
+      <div v-for="s in services" class="services" v-bind:key="s.id">
+        <div class="ui divider"></div>
+        <div class="service">
+          <div class="service-left">
+            <div>
+              <a class="ui header" v-bind:href="basePath + '/services/' + s.id">{{ s.name }}</a>
+              <div class="ui label">
+                {{ s.runtime }}
+              </div>
+            </div>
+            <div class="description">
+              {{ s.description }}
+            </div>
+          </div>
+          <div class="service-right">
+
+          </div>
+        </div>
+      </div>
+    </transition-group>
+    <p v-if="services.length === 0">There are no configured services.</p>
+
+  </div>
+
+</div>
+$% endblock %$
+
+$% block additionalScripts %$
+<script src="$$ basePath $$/assets/vue/2.6.6/dist/vue.min.js"></script>
+
+<script>
+window.services = $$ services | raw $$;
+</script>
+
+<script src="$$ basePath $$$$ assets.servicesjs $$"></script>
+$% endblock %$

@@ -177,6 +177,7 @@ tasks {
     val minifyJs by creating
     val jsFiles = mapOf(
         "$projectDir/src/main/resources/js/agents.js" to "$buildDir/assets/assets/agents.js",
+        "$projectDir/src/main/resources/js/services.js" to "$buildDir/assets/assets/services.js",
         "$projectDir/src/main/resources/js/pagination.js" to "$buildDir/assets/assets/pagination.js",
         "$projectDir/src/main/resources/js/processchains.js" to "$buildDir/assets/assets/processchains.js",
         "$projectDir/src/main/resources/js/workflows.js" to "$buildDir/assets/assets/workflows.js"
