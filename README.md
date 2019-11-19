@@ -40,7 +40,7 @@ This is the third major version of the JobManager.
 Building and running
 --------------------
 
-Make sure your java version is greater than jdk 1.8.0.
+This project requires at least JDK 11.
 
     ./gradlew build
     ./gradlew run
