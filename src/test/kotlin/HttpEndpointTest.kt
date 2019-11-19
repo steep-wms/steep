@@ -1,3 +1,6 @@
+import com.fasterxml.jackson.module.kotlin.convertValue
+import db.MetadataRegistry
+import db.MetadataRegistryFactory
 import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus
 import db.SubmissionRegistryFactory
@@ -31,6 +34,10 @@ import io.vertx.kotlin.ext.web.client.sendJsonObjectAwait
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import model.Submission
+import model.metadata.Cardinality
+import model.metadata.Service
+import model.metadata.ServiceParameter
+import model.processchain.Argument
 import model.processchain.Executable
 import model.processchain.ProcessChain
 import model.workflow.Workflow
@@ -51,6 +58,7 @@ class HttpEndpointTest {
   private val maxPostSize = 1024
   private var port: Int = 0
   private lateinit var submissionRegistry: SubmissionRegistry
+  private lateinit var metadataRegistry: MetadataRegistry
 
   @BeforeEach
   fun setUp(vertx: Vertx, ctx: VertxTestContext) {
@@ -61,6 +69,11 @@ class HttpEndpointTest {
     mockkObject(SubmissionRegistryFactory)
     every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
     coEvery { submissionRegistry.close() } just Runs
+
+    // mock metadata registry
+    metadataRegistry = mockk()
+    mockkObject(MetadataRegistryFactory)
+    every { MetadataRegistryFactory.create(any()) } returns metadataRegistry
 
     // deploy verticle under test
     val config = json {
@@ -95,6 +108,72 @@ class HttpEndpointTest {
         assertThat(response.body().map).containsKey("version")
       }
       ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that the endpoint returns a list of services
+   */
+  @Test
+  fun getServices(vertx: Vertx, ctx: VertxTestContext) {
+    val serviceMetadata = listOf(
+        Service("ID", "Name", "Description", "/path", "other", listOf(
+            ServiceParameter("ParamID", "ParamName", "ParamDesc",
+                Argument.Type.INPUT, Cardinality(1, 1))
+        ))
+    )
+
+    coEvery { metadataRegistry.findServices() } returns serviceMetadata
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/services")
+            .`as`(BodyCodec.jsonArray())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.JSON)
+            .sendAwait()
+
+        assertThat(JsonUtils.mapper.convertValue<List<Service>>(response.body().list))
+            .isEqualTo(serviceMetadata)
+
+        ctx.completeNow()
+      }
+    }
+  }
+
+  /**
+   * Test that the endpoint returns a list a single service
+   */
+  @Test
+  fun getServiceById(vertx: Vertx, ctx: VertxTestContext) {
+    val serviceMetadata = listOf(
+        Service("ID", "Name", "Description", "/path", "other", listOf(
+            ServiceParameter("ParamID", "ParamName", "ParamDesc",
+                Argument.Type.INPUT, Cardinality(1, 1))
+        ))
+    )
+
+    coEvery { metadataRegistry.findServices() } returns serviceMetadata
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        client.get(port, "localhost", "/services/UNKNOWN_ID")
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .sendAwait()
+
+        val response = client.get(port, "localhost", "/services/ID")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.JSON)
+            .sendAwait()
+
+        assertThat(JsonUtils.fromJson<Service>(response.body()))
+            .isEqualTo(serviceMetadata[0])
+
+        ctx.completeNow()
+      }
     }
   }
 

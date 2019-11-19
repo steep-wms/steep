@@ -368,7 +368,7 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onGetServices(ctx: RoutingContext) {
     launch {
-      val services = metadataRegistry.findServices()
+      val services = metadataRegistry.findServices().map { JsonUtils.toJson(it) }
       val result = JsonArray(services).encode()
 
       if (ctx.acceptableContentType == "text/html") {
