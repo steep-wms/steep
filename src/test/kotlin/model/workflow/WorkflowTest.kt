@@ -23,7 +23,7 @@ class WorkflowTest {
 
     assertThat(workflow.name).isEqualTo("Land showcase 1.1")
     assertThat(workflow.vars).hasSize(19)
-    assertThat(workflow.actions).hasSize(10)
+    assertThat(workflow.actions).hasSize(8)
 
     val action0 = workflow.actions[0]
     assertThat(action0).isExactlyInstanceOf(ExecuteAction::class.java)
@@ -47,43 +47,40 @@ class WorkflowTest {
         ))
     ))
 
-    val action2 = workflow.actions[2]
-    assertThat(action2).isExactlyInstanceOf(StoreAction::class.java)
-    val storeAction2 = action2 as StoreAction
-    assertThat(storeAction2.inputs).isEqualTo(listOf(Variable("OutlierFiltering0")))
+    val action1 = workflow.actions[1]
+    assertThat(action1).isExactlyInstanceOf(ExecuteAction::class.java)
+    val execAction1 = action1 as ExecuteAction
+    assertThat(execAction1.outputs).isEqualTo(listOf(
+        OutputParameter(id = "output_file_name", variable = Variable(
+            id = "OutlierFiltering0"
+        ), store = true)
+    ))
 
-    val action4 = workflow.actions[4]
-    assertThat(action4).isExactlyInstanceOf(ForEachAction::class.java)
-    val forAction4 = action4 as ForEachAction
-    assertThat(forAction4.input).isEqualTo(Variable("metadata0"))
-    assertThat(forAction4.enumerator).isEqualTo(Variable("result0"))
-    assertThat(forAction4.actions).hasSize(2)
+    val action3 = workflow.actions[3]
+    assertThat(action3).isExactlyInstanceOf(ForEachAction::class.java)
+    val forAction3 = action3 as ForEachAction
+    assertThat(forAction3.input).isEqualTo(Variable("metadata0"))
+    assertThat(forAction3.enumerator).isEqualTo(Variable("result0"))
+    assertThat(forAction3.actions).hasSize(1)
 
-    val action4x0 = forAction4.actions[0]
-    assertThat(action4x0).isExactlyInstanceOf(ExecuteAction::class.java)
-    val execAction4x0 = action4x0 as ExecuteAction
-    assertThat(execAction4x0.service).isEqualTo("MultiresolutionTriangulation")
-    assertThat(execAction4x0.inputs).isEqualTo(listOf(
+    val action3x0 = forAction3.actions[0]
+    assertThat(action3x0).isExactlyInstanceOf(ExecuteAction::class.java)
+    val execAction3x0 = action3x0 as ExecuteAction
+    assertThat(execAction3x0.service).isEqualTo("MultiresolutionTriangulation")
+    assertThat(execAction3x0.inputs).isEqualTo(listOf(
         GenericParameter(id = "inputjsfile", variable = Variable(
             id = "result0"
         ))
     ))
-    assertThat(execAction4x0.outputs).isEqualTo(listOf(
+    assertThat(execAction3x0.outputs).isEqualTo(listOf(
         OutputParameter(id = "outputjsfile", variable = Variable(
             id = "MultiResolutionTriangulation0"
-        ))
+        ), store = true)
     ))
-    assertThat(execAction4x0.parameters).isEmpty()
+    assertThat(execAction3x0.parameters).isEmpty()
 
-    val action4x1 = forAction4.actions[1]
-    assertThat(action4x1).isExactlyInstanceOf(StoreAction::class.java)
-    val storeAction4x1 = action4x1 as StoreAction
-    assertThat(storeAction4x1.inputs).isEqualTo(listOf(Variable("MultiResolutionTriangulation0")))
-
-    assertThat(storeAction4x1.inputs[0]).isSameAs(execAction4x0.outputs[0].variable)
-    assertThat(storeAction4x1.inputs[0]).isSameAs(workflow.vars[11])
-    assertThat(execAction4x0.inputs[0].variable).isSameAs(forAction4.enumerator)
-    assertThat(execAction4x0.inputs[0].variable).isSameAs(workflow.vars[10])
+    assertThat(execAction3x0.inputs[0].variable).isSameAs(forAction3.enumerator)
+    assertThat(execAction3x0.inputs[0].variable).isSameAs(workflow.vars[10])
   }
 
   /**

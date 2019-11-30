@@ -70,7 +70,8 @@
     }],
     "outputs": [{
       "id": "output_file_name",
-      "var": "OutlierFiltering0"
+      "var": "OutlierFiltering0",
+      "store": true
     }],
     "parameters": [{
       "id": "outlier_filtering_K",
@@ -79,9 +80,6 @@
       "id": "outlier_filtering_stddev",
       "var": "standardDeviation"
     }]
-  }, {
-    "type": "store",
-    "inputs": ["OutlierFiltering0"]
   }, {
     "type": "execute",
     "service": "VectorLayerPointCloudPartitioning",
@@ -112,11 +110,9 @@
       }],
       "outputs": [{
         "id": "outputjsfile",
-        "var": "MultiResolutionTriangulation0"
+        "var": "MultiResolutionTriangulation0",
+        "store": true
       }]
-    }, {
-      "type": "store",
-      "inputs": ["MultiResolutionTriangulation0"]
     }]
   }, {
     "type": "execute",
@@ -142,7 +138,8 @@
     }],
     "outputs": [{
       "id": "output_file_name",
-      "var": "OutlierFiltering1"
+      "var": "OutlierFiltering1",
+      "store": true
     }],
     "parameters": [{
       "id": "outlier_filtering_K",
@@ -151,9 +148,6 @@
       "id": "outlier_filtering_stddev",
       "var": "standardDeviation"
     }]
-  }, {
-    "type": "store",
-    "inputs": ["OutlierFiltering1"]
   }, {
     "type": "execute",
     "service": "VectorLayerPointCloudPartitioning",
@@ -184,11 +178,9 @@
       }],
       "outputs": [{
         "id": "outputjsfile",
-        "var": "MultiResolutionTriangulation1"
+        "var": "MultiResolutionTriangulation1",
+        "store": true
       }]
-    }, {
-      "type": "store",
-      "inputs": ["MultiResolutionTriangulation1"]
     }]
   }]
 }

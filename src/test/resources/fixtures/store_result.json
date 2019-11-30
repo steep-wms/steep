@@ -1,0 +1,29 @@
+[{
+  "chains": [{
+    "id": "1",
+    "executables": [{
+      "id": "cp",
+      "path": "cp",
+      "arguments": [{
+        "id": "input_file",
+        "variable": {
+          "id": "input_file1",
+          "value": "input_file.txt"
+        },
+        "type": "input",
+        "dataType": "string"
+      }, {
+        "id": "output_file",
+        "variable": {
+          "id": "output_file1",
+          "value": "/out/0"
+        },
+        "type": "output",
+        "dataType": "string"
+      }]
+    }]
+  }],
+  "results": {
+    "output_file1": ["/out/0"]
+  }
+}]
