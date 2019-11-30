@@ -6,5 +6,6 @@ import helper.UniqueID
 data class OutputParameter(
     override val id: String = UniqueID.next(),
     @JsonProperty("var") override val variable: Variable,
-    val prefix: String? = null
+    val prefix: String? = null,
+    val store: Boolean = false
 ) : Parameter

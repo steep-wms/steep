@@ -2,6 +2,7 @@ import AddressConstants.CONTROLLER_LOOKUP_NOW
 import AddressConstants.CONTROLLER_LOOKUP_ORPHANS_NOW
 import ConfigConstants.CONTROLLER_LOOKUP_INTERVAL
 import ConfigConstants.CONTROLLER_LOOKUP_ORPHANS_INTERVAL
+import ConfigConstants.OUT_PATH
 import ConfigConstants.TMP_PATH
 import com.fasterxml.jackson.databind.SerializationFeature
 import db.MetadataRegistry
@@ -48,6 +49,7 @@ class Controller : CoroutineVerticle() {
   }
 
   private lateinit var tmpPath: String
+  private lateinit var outPath: String
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var metadataRegistry: MetadataRegistry
   private lateinit var ruleSystem: RuleSystem
@@ -71,6 +73,9 @@ class Controller : CoroutineVerticle() {
     // read configuration
     tmpPath = config.getString(TMP_PATH) ?: throw IllegalStateException(
         "Missing configuration item `$TMP_PATH'")
+    outPath = config.getString(OUT_PATH) ?: throw IllegalStateException(
+        "Missing configuration item `$OUT_PATH'")
+
     lookupInterval = config.getLong(CONTROLLER_LOOKUP_INTERVAL, lookupInterval)
     lookupOrphansInterval = config.getLong(CONTROLLER_LOOKUP_ORPHANS_INTERVAL,
         lookupOrphansInterval)
@@ -193,6 +198,7 @@ class Controller : CoroutineVerticle() {
 
       val generator = ProcessChainGenerator(submission.workflow,
           FilenameUtils.normalize("$tmpPath/${submission.id}"),
+          FilenameUtils.normalize("$outPath/${submission.id}"),
           metadataRegistry.findServices())
 
       // check if submission needs to be resumed

@@ -201,7 +201,21 @@ class ProcessChainGeneratorTest {
 
         // Same as `forEachYieldToInputSameInputDeferredMore` but with a
         // predefined list of inputs
-        T("forEachYieldToInputSameInputDeferredMorePredefined")
+        T("forEachYieldToInputSameInputDeferredMorePredefined"),
+
+        // Test if a store flag for a single service is evaluated correctly
+        T("store"),
+
+        // Test if a store flag for two dependent services is evaluated
+        // correctly
+        T("storeTwoDependent"),
+
+        // Test if a store flag for two output variables of three dependent
+        // services is evaluated correctly
+        T("storeThreeDependent"),
+
+        // Test if a store flag inside a forEach action is evaluated correctly
+        T("storeForEach")
 
 
         //  TODO test complex graph
@@ -253,7 +267,7 @@ class ProcessChainGeneratorTest {
 
     var json = JsonObject()
     val idgen = ConsecutiveID()
-    var generator = ProcessChainGenerator(workflow, "/tmp/", services, idgen)
+    var generator = ProcessChainGenerator(workflow, "/tmp/", "/out/", services, idgen)
     assertThat(generator.isFinished()).isFalse()
 
     if (persistState) {
@@ -263,7 +277,7 @@ class ProcessChainGeneratorTest {
     var results = mapOf<String, List<Any>>()
     for (expected in expectedChains) {
       if (persistState) {
-        generator = ProcessChainGenerator(workflow, "/tmp/", services, idgen)
+        generator = ProcessChainGenerator(workflow, "/tmp/", "/out/", services, idgen)
         generator.loadState(json)
       }
 
@@ -277,7 +291,7 @@ class ProcessChainGeneratorTest {
     }
 
     if (persistState) {
-      generator = ProcessChainGenerator(workflow, "/tmp/", services, idgen)
+      generator = ProcessChainGenerator(workflow, "/tmp/", "/out/", services, idgen)
       generator.loadState(json)
     }
 

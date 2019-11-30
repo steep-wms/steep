@@ -31,10 +31,12 @@ import java.util.IdentityHashMap
  * Generates process chains from a workflow
  * @param workflow the workflow to convert to process chains
  * @param tmpPath a directory where temporary workflow results should be stored
+ * @param outPath a directory where final workflow results should be stored
  * @param services service metadata
  */
 class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
-    private val services: List<Service>, private val idGenerator: IDGenerator = UniqueID) {
+    private val outPath: String, private val services: List<Service>,
+    private val idGenerator: IDGenerator = UniqueID) {
   companion object {
     private val log = LoggerFactory.getLogger(ProcessChainGenerator::class.java)
   }
@@ -322,17 +324,19 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
 
   /**
    * Generate a value for an output argument based on a [serviceParam]
-   * definition and an optional [prefix]
+   * definition and an [outputParam]
    */
-  private fun makeOutput(serviceParam: ServiceParameter, prefix: Any?): String {
+  private fun makeOutput(serviceParam: ServiceParameter, outputParam: OutputParameter): String {
+    val prefix = outputParam.prefix
+    val base = if (outputParam.store) outPath else tmpPath
     val p = if (prefix is String) {
       if (prefix.startsWith("/")) {
         prefix
       } else {
-        "$tmpPath/$prefix"
+        "$base/$prefix"
       }
     } else {
-      "$tmpPath/"
+      "$base/"
     }
     return FilenameUtils.normalize(p + idGenerator.next() + (serviceParam.fileSuffix ?: ""))
   }
@@ -366,7 +370,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       // convert parameters to arguments
       val args = params.flatMap { param ->
         val vs = if (serviceParam.type == OUTPUT) {
-          listOf(makeOutput(serviceParam, (param as OutputParameter).prefix))
+          listOf(makeOutput(serviceParam, param as OutputParameter))
         } else {
           val iv = param.variable.value ?:
             mergeToDir(variableValues[param.variable.id], serviceParam) ?:

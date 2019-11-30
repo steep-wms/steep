@@ -40,6 +40,9 @@ import io.vertx.kotlin.coroutines.CoroutineVerticle
 import kotlinx.coroutines.launch
 import model.Submission
 import model.Version
+import model.workflow.Action
+import model.workflow.ForEachAction
+import model.workflow.StoreAction
 import model.workflow.Workflow
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FilenameUtils
@@ -537,10 +540,10 @@ class HttpEndpoint : CoroutineVerticle() {
           .end("Invalid workflow api version: " + e.message)
       return
     }
-    if (!api.satisfies(gte("3.0.0").and(lte("3.2.0")))) {
+    if (!api.satisfies(gte("3.0.0").and(lte("3.3.0")))) {
       ctx.response()
           .setStatusCode(400)
-          .end("Invalid workflow api version: $api. Supported version range is [3.0.0, 3.2.0].")
+          .end("Invalid workflow api version: $api. Supported version range is [3.0.0, 3.3.0].")
       return
     }
 
@@ -551,6 +554,11 @@ class HttpEndpoint : CoroutineVerticle() {
           .setStatusCode(400)
           .end("Invalid workflow: " + e.message)
       return
+    }
+
+    if (containsStore(workflow.actions)) {
+      log.warn("Store actions are deprecated and scheduled to be removed in " +
+          "workflow API version 4.0.0. Use [OutputParameter.store] instead.")
     }
 
     // log first 100 lines of workflow
@@ -582,6 +590,17 @@ class HttpEndpoint : CoroutineVerticle() {
             .setStatusCode(500)
             .end(e.message)
       }
+    }
+  }
+
+  /**
+   * Recursively checks if the given list of [actions] contains a [StoreAction]
+   */
+  private fun containsStore(actions: List<Action>): Boolean = actions.any {
+    when (it) {
+      is ForEachAction -> containsStore(it.actions)
+      is StoreAction -> true
+      else -> false
     }
   }
 
