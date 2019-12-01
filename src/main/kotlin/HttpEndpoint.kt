@@ -420,8 +420,11 @@ class HttpEndpoint : CoroutineVerticle() {
   /**
    * Amend submission JSON with additional information such as progress
    * @param submission the JSON object to amend
+   * @param includeDetails `true` if details such as submission results should
+   * be included
    */
-  private suspend fun amendSubmission(submission: JsonObject) {
+  private suspend fun amendSubmission(submission: JsonObject,
+      includeDetails: Boolean = false) {
     val submissionId = submission.getString("id")
     val runningProcessChains = submissionRegistry.countProcessChainsByStatus(
         submissionId, SubmissionRegistry.ProcessChainStatus.RUNNING)
@@ -435,6 +438,15 @@ class HttpEndpoint : CoroutineVerticle() {
     submission.put("succeededProcessChains", succeededProcessChains)
     submission.put("failedProcessChains", failedProcessChains)
     submission.put("totalProcessChains", totalProcessChains)
+
+    if (includeDetails) {
+      if (submission.getString("status") == Submission.Status.SUCCESS.toString()) {
+        val results = submissionRegistry.getSubmissionResults(submissionId)
+        if (results != null) {
+          submission.put("results", results)
+        }
+      }
+    }
   }
 
   /**
@@ -497,7 +509,7 @@ class HttpEndpoint : CoroutineVerticle() {
             .end("There is no workflow with ID `$id'")
       } else {
         val json = JsonUtils.toJson(submission)
-        amendSubmission(json)
+        amendSubmission(json, true)
         if (ctx.acceptableContentType == "text/html") {
           renderHtml("html/workflows/single.html", mapOf(
               "id" to submission.id,
@@ -604,7 +616,8 @@ class HttpEndpoint : CoroutineVerticle() {
     }
   }
 
-  private suspend fun amendProcessChain(processChain: JsonObject, submissionId: String) {
+  private suspend fun amendProcessChain(processChain: JsonObject,
+      submissionId: String, includeDetails: Boolean = false) {
     processChain.put("submissionId", submissionId)
 
     val id = processChain.getString("id")
@@ -627,10 +640,12 @@ class HttpEndpoint : CoroutineVerticle() {
       }
     }
 
-    if (status == SubmissionRegistry.ProcessChainStatus.SUCCESS) {
-      val results = submissionRegistry.getProcessChainResults(id)
-      if (results != null) {
-        processChain.put("results", results)
+    if (includeDetails) {
+      if (status == SubmissionRegistry.ProcessChainStatus.SUCCESS) {
+        val results = submissionRegistry.getProcessChainResults(id)
+        if (results != null) {
+          processChain.put("results", results)
+        }
       }
     }
 
@@ -662,7 +677,8 @@ class HttpEndpoint : CoroutineVerticle() {
       }.map { p ->
         JsonUtils.toJson(p.first).also {
           it.remove("executables")
-          amendProcessChain(it, p.second)
+          // TODO breaking change: do not include details when we load all process chains
+          amendProcessChain(it, p.second, true)
         }
       }
 
@@ -710,7 +726,7 @@ class HttpEndpoint : CoroutineVerticle() {
       } else {
         val json = JsonUtils.toJson(processChain)
         val submissionId = submissionRegistry.getProcessChainSubmissionId(id)
-        amendProcessChain(json, submissionId)
+        amendProcessChain(json, submissionId, true)
         if (ctx.acceptableContentType == "text/html") {
           renderHtml("html/processchains/single.html", mapOf(
               "id" to id,

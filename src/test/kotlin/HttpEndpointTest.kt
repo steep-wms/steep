@@ -204,8 +204,19 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.countProcessChainsByStatus(s2.id,
         ProcessChainStatus.SUCCESS) } returns 14
 
-    coEvery { submissionRegistry.findSubmissions(any(), any(), any()) } returns listOf(s1, s2)
-    coEvery { submissionRegistry.countSubmissions() } returns 2
+    val s3 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
+    coEvery { submissionRegistry.countProcessChainsBySubmissionId(s3.id) } returns 1
+    coEvery { submissionRegistry.countProcessChainsByStatus(s3.id,
+        ProcessChainStatus.REGISTERED) } returns 0
+    coEvery { submissionRegistry.countProcessChainsByStatus(s3.id,
+        ProcessChainStatus.RUNNING) } returns 0
+    coEvery { submissionRegistry.countProcessChainsByStatus(s3.id,
+        ProcessChainStatus.ERROR) } returns 0
+    coEvery { submissionRegistry.countProcessChainsByStatus(s3.id,
+        ProcessChainStatus.SUCCESS) } returns 1
+
+    coEvery { submissionRegistry.findSubmissions(any(), any(), any()) } returns listOf(s1, s2, s3)
+    coEvery { submissionRegistry.countSubmissions() } returns 3
 
     val client = WebClient.create(vertx)
     GlobalScope.launch(vertx.dispatcher()) {
@@ -218,7 +229,7 @@ class HttpEndpointTest {
 
         assertThat(response.headers()["x-page-size"]).isEqualTo("-1")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
-        assertThat(response.headers()["x-page-total"]).isEqualTo("2")
+        assertThat(response.headers()["x-page-total"]).isEqualTo("3")
 
         assertThat(response.body()).isEqualTo(json {
           array(
@@ -237,6 +248,14 @@ class HttpEndpointTest {
                   "failedProcessChains" to 13,
                   "succeededProcessChains" to 14,
                   "totalProcessChains" to 50
+              ),
+              obj(
+                  "id" to s3.id,
+                  "status" to Submission.Status.SUCCESS.toString(),
+                  "runningProcessChains" to 0,
+                  "failedProcessChains" to 0,
+                  "succeededProcessChains" to 1,
+                  "totalProcessChains" to 1
               )
           )
         })
@@ -288,6 +307,54 @@ class HttpEndpointTest {
                 "succeededProcessChains" to 4,
                 "totalProcessChains" to 10
             )
+        })
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that the endpoint returns a single successful workflow with a result
+   */
+  @Test
+  fun getWorkflowByIdSuccess(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
+    coEvery { submissionRegistry.countProcessChainsBySubmissionId(s1.id) } returns 1
+    coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+        ProcessChainStatus.REGISTERED) } returns 0
+    coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+        ProcessChainStatus.RUNNING) } returns 0
+    coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+        ProcessChainStatus.ERROR) } returns 0
+    coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+        ProcessChainStatus.SUCCESS) } returns 1
+
+    coEvery { submissionRegistry.findSubmissionById(s1.id) } returns s1
+
+    val results = mapOf("output_file1" to listOf("/out/test.txt"))
+    coEvery { submissionRegistry.getSubmissionResults(s1.id) } returns results
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/workflows/${s1.id}")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.JSON)
+            .sendAwait()
+
+        assertThat(response.body()).isEqualTo(json {
+          obj(
+              "id" to s1.id,
+              "workflow" to JsonUtils.toJson(s1.workflow),
+              "status" to Submission.Status.SUCCESS.toString(),
+              "runningProcessChains" to 0,
+              "failedProcessChains" to 0,
+              "succeededProcessChains" to 1,
+              "totalProcessChains" to 1,
+              "results" to JsonUtils.toJson(results)
+          )
         })
       }
 
