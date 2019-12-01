@@ -118,6 +118,22 @@ interface SubmissionRegistry {
   suspend fun getSubmissionStatus(submissionId: String): Submission.Status
 
   /**
+   * Set the results of a submission
+   * @param submissionId the submission ID
+   * @param results the results to set (may be `null` if the results should be removed)
+   */
+  suspend fun setSubmissionResults(submissionId: String, results: Map<String, List<Any>>?)
+
+  /**
+   * Get the results of a submission
+   * @param submissionId the submission ID
+   * @return the results (may be `null` if the submission does not have any
+   * result yet)
+   * @throws NoSuchElementException if the submission does not exist
+   */
+  suspend fun getSubmissionResults(submissionId: String): Map<String, List<Any>>?
+
+  /**
    * Set a submission's execution state
    * @param submissionId the submission ID
    * @param state the state to set or `null` if the state should be removed

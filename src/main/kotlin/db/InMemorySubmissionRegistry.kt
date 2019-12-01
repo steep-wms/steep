@@ -67,7 +67,8 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
 
   private data class SubmissionEntry(
       val serial: Int,
-      val submission: Submission
+      val submission: Submission,
+      val results: Map<String, List<Any>>? = null
   )
 
   private val processChainEntryID = AtomicInteger()
@@ -109,11 +110,14 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
         .map { it.submission }
   }
 
-  override suspend fun findSubmissionById(submissionId: String): Submission? {
+  private suspend fun findSubmissionEntryById(submissionId: String): SubmissionEntry? {
     return submissions.await().getAwait(submissionId)?.let {
-      JsonUtils.mapper.readValue<SubmissionEntry>(it).submission
+      JsonUtils.mapper.readValue<SubmissionEntry>(it)
     }
   }
+
+  override suspend fun findSubmissionById(submissionId: String) =
+      findSubmissionEntryById(submissionId)?.submission
 
   override suspend fun findSubmissionIdsByStatus(status: Submission.Status): Collection<String> {
     val map = submissions.await()
@@ -147,21 +151,25 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     }
   }
 
-  private suspend fun updateSubmission(submissionId: String,
-      updater: (Submission) -> Submission) {
+  private suspend fun updateSubmissionEntry(submissionId: String,
+      updater: (SubmissionEntry) -> SubmissionEntry) {
     val sharedData = vertx.sharedData()
     val lock = sharedData.getLockAwait(LOCK_SUBMISSIONS)
     try {
       val map = submissions.await()
       map.getAwait(submissionId)?.let {
         val oldEntry = JsonUtils.mapper.readValue<SubmissionEntry>(it)
-        val newSubmission = updater(oldEntry.submission)
-        val newEntry = oldEntry.copy(submission = newSubmission)
+        val newEntry = updater(oldEntry)
         map.putAwait(submissionId, JsonUtils.mapper.writeValueAsString(newEntry))
       }
     } finally {
       lock.release()
     }
+  }
+
+  private suspend fun updateSubmission(submissionId: String,
+      updater: (Submission) -> Submission) {
+    updateSubmissionEntry(submissionId) { it.copy(submission = updater(it.submission)) }
   }
 
   override suspend fun setSubmissionStartTime(submissionId: String, startTime: Instant) {
@@ -180,6 +188,16 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     val s = findSubmissionById(submissionId) ?: throw NoSuchElementException(
         "There is no submission with ID `$submissionId'")
     return s.status
+  }
+
+  override suspend fun setSubmissionResults(submissionId: String, results: Map<String, List<Any>>?) {
+    updateSubmissionEntry(submissionId) { it.copy(results = results) }
+  }
+
+  override suspend fun getSubmissionResults(submissionId: String): Map<String, List<Any>>? {
+    val s = findSubmissionEntryById(submissionId) ?: throw NoSuchElementException(
+        "There is no submission with ID `$submissionId'")
+    return s.results
   }
 
   override suspend fun setSubmissionExecutionState(submissionId: String,

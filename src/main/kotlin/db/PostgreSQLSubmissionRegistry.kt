@@ -314,32 +314,38 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
   }
 
-  override suspend fun setSubmissionExecutionState(submissionId: String, state: JsonObject?) {
-    withConnection { connection ->
-      val updateStatement = "UPDATE $SUBMISSIONS SET $EXECUTION_STATE=? WHERE $ID=?"
-      val updateParams = json {
-        array(
-            state?.encode(),
-            submissionId
-        )
-      }
-      connection.updateWithParamsAwait(updateStatement, updateParams)
-    }
-  }
-
-  override suspend fun getSubmissionExecutionState(submissionId: String): JsonObject? {
+  private suspend fun <T> getSubmissionColumn(submissionId: String,
+      column: String, block: (JsonArray) -> T): T {
     return withConnection { connection ->
-      val statement = "SELECT $EXECUTION_STATE FROM $SUBMISSIONS WHERE $ID=?"
+      val statement = "SELECT $column FROM $SUBMISSIONS WHERE $ID=?"
       val params = json {
         array(
             submissionId
         )
       }
-      val rs = connection.querySingleWithParamsAwait(statement, params) ?: throw NoSuchElementException(
+      val r = connection.querySingleWithParamsAwait(statement, params) ?: throw NoSuchElementException(
           "There is no submission with ID `$submissionId'")
-      rs.getString(0)?.let { JsonObject(it) }
+      block(r)
     }
   }
+
+  override suspend fun setSubmissionResults(submissionId: String,
+      results: Map<String, List<Any>>?) {
+    updateColumn(SUBMISSIONS, submissionId, RESULTS,
+        JsonUtils.mapper.writeValueAsString(results), true)
+  }
+
+  override suspend fun getSubmissionResults(submissionId: String): Map<String, List<Any>>? =
+      getSubmissionColumn(submissionId, RESULTS) { r ->
+        r.getString(0)?.let { JsonUtils.mapper.readValue<Map<String, List<Any>>>(it) } }
+
+  override suspend fun setSubmissionExecutionState(submissionId: String, state: JsonObject?) {
+    updateColumn(SUBMISSIONS, submissionId, EXECUTION_STATE, state?.encode(), false)
+  }
+
+  override suspend fun getSubmissionExecutionState(submissionId: String): JsonObject? =
+      getSubmissionColumn(submissionId, EXECUTION_STATE) { rs ->
+        rs.getString(0)?.let { JsonObject(it) } }
 
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,
       submissionId: String, status: ProcessChainStatus) {

@@ -75,6 +75,10 @@ class Controller : CoroutineVerticle() {
         "Missing configuration item `$TMP_PATH'")
     outPath = config.getString(OUT_PATH) ?: throw IllegalStateException(
         "Missing configuration item `$OUT_PATH'")
+    if (tmpPath.startsWith(outPath)) {
+      throw IllegalStateException("`$TMP_PATH' must not reside inside of " +
+          "`$OUT_PATH'. Point both configuration items to different locations.")
+    }
 
     lookupInterval = config.getLong(CONTROLLER_LOOKUP_INTERVAL, lookupInterval)
     lookupOrphansInterval = config.getLong(CONTROLLER_LOOKUP_ORPHANS_INTERVAL,
@@ -243,6 +247,7 @@ class Controller : CoroutineVerticle() {
       var totalProcessChains = 0
       var errors = 0
       var results = mapOf<String, List<Any>>()
+      val submissionResults = mutableMapOf<String, List<Any>>()
       while (true) {
         // generate process chains
         val processChains = if (processChainsToResume != null) {
@@ -293,6 +298,9 @@ class Controller : CoroutineVerticle() {
         val w = waitForProcessChains(processChains)
         results = w.first
         errors += w.second
+
+        // collect submission results
+        submissionResults.putAll(results.filter { (_, v) -> hasSubmissionResults(v) })
       }
 
       // evaluate results
@@ -314,6 +322,9 @@ class Controller : CoroutineVerticle() {
         else -> log.info(msg)
       }
 
+      if (submissionResults.isNotEmpty()) {
+        submissionRegistry.setSubmissionResults(submission.id, submissionResults)
+      }
       submissionRegistry.setSubmissionStatus(submission.id, status)
       submissionRegistry.setSubmissionEndTime(submission.id, Instant.now())
     } catch (t: Throwable) {
@@ -372,5 +383,16 @@ class Controller : CoroutineVerticle() {
     }
 
     return Pair(results, errors)
+  }
+
+  /**
+   * Recursively check if the given [results] contain strings that start with [outPath]
+   */
+  private fun hasSubmissionResults(results: Iterable<*>): Boolean = results.any {
+    when (it) {
+      is String -> it.startsWith(outPath)
+      is Iterable<*> -> hasSubmissionResults(it)
+      else -> false
+    }
   }
 }

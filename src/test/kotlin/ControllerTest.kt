@@ -8,6 +8,7 @@ import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus
 import db.SubmissionRegistryFactory
 import helper.JsonUtils
+import io.mockk.MockKVerificationScope
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -28,6 +29,7 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import model.Submission
 import model.Submission.Status
+import model.processchain.Argument
 import model.processchain.ProcessChain
 import model.rules.Rule
 import model.workflow.Action
@@ -88,7 +90,7 @@ class ControllerTest {
     val config = json {
       obj(
           ConfigConstants.TMP_PATH to "/tmp",
-          ConfigConstants.OUT_PATH to "/tmp/jobmanager/out"
+          ConfigConstants.OUT_PATH to "/out"
       )
     }
     val options = DeploymentOptions(config)
@@ -105,8 +107,10 @@ class ControllerTest {
     return JsonUtils.mapper.readValue(fixture)
   }
 
-  private fun doSimple(vertx: Vertx, ctx: VertxTestContext, withRules: Boolean = false) {
-    val workflow = readWorkflow("singleService")
+  private fun doSimple(vertx: Vertx, ctx: VertxTestContext,
+      withRules: Boolean = false, workflowName: String = "singleService",
+      verify: (suspend MockKVerificationScope.(Submission) -> Unit)? = null) {
+    val workflow = readWorkflow(workflowName)
     val submission = Submission(workflow = workflow)
     val acceptedSubmissions = mutableListOf(submission)
 
@@ -132,8 +136,11 @@ class ControllerTest {
         }
         coEvery { submissionRegistry.getProcessChainStatus(processChain.id) } returns
             ProcessChainStatus.SUCCESS
-        coEvery { submissionRegistry.getProcessChainResults(processChain.id) } returns
-            mapOf("output_file1" to listOf("/tmp/0"))
+
+        val results = processChain.executables.flatMap { it.arguments }.filter {
+          it.type == Argument.Type.OUTPUT }.map { (it.variable.id to listOf(it.variable.value)) }.toMap()
+        coEvery { submissionRegistry.getProcessChainResults(processChain.id) } returns results
+
         coEvery { submissionRegistry.setProcessChainStartTime(processChain.id, any()) } just Runs
       }
     }
@@ -145,6 +152,7 @@ class ControllerTest {
           submissionRegistry.setSubmissionStatus(submission.id, Status.SUCCESS)
           submissionRegistry.setSubmissionStartTime(submission.id, any())
           submissionRegistry.setSubmissionEndTime(submission.id, any())
+          verify?.let { it(submission) }
         }
       }
       ctx.completeNow()
@@ -178,6 +186,32 @@ class ControllerTest {
   @Tag(WITH_RULES)
   fun simpleWithRules(vertx: Vertx, ctx: VertxTestContext) {
     doSimple(vertx, ctx, true)
+  }
+
+  /**
+   * Executes a simple workflow and checks if the submission results have been
+   * set correctly
+   * @param vertx the Vert.x instance
+   * @param ctx the test context
+   */
+  @Test
+  fun submissionResults(vertx: Vertx, ctx: VertxTestContext) {
+    val resultsSlot = slot<Map<String, List<Any>>>()
+    coEvery { submissionRegistry.setSubmissionResults(any(), capture(resultsSlot)) } answers {
+      ctx.verify {
+        assertThat(resultsSlot.captured).hasSize(2)
+        assertThat(resultsSlot.captured["output_file1"])
+            .hasSize(1)
+            .allMatch { it is String && it.startsWith("/out/") }
+        assertThat(resultsSlot.captured["output_file3"])
+            .hasSize(1)
+            .allMatch { it is String && it.startsWith("/out/") }
+      }
+    }
+
+    doSimple(vertx, ctx, workflowName = "storeThreeDependent") { submission ->
+      submissionRegistry.setSubmissionResults(submission.id, resultsSlot.captured)
+    }
   }
 
   /**

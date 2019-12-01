@@ -2,7 +2,6 @@ package db
 
 import assertThatThrownBy
 import coVerify
-import helper.JsonUtils
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
@@ -14,7 +13,6 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import model.Submission
 import model.processchain.ProcessChain
-import model.workflow.ExecuteAction
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
@@ -303,6 +301,73 @@ abstract class SubmissionRegistryTest {
       }
 
       ctx.completeNow()
+    }
+  }
+
+  private suspend fun doSetSubmissionResults(ctx: VertxTestContext,
+      results: Map<String, List<Any>> = mapOf("ARG1" to listOf("output.txt"))): Submission {
+    val s = Submission(workflow = Workflow())
+
+    submissionRegistry.addSubmission(s)
+    val results1 = submissionRegistry.getSubmissionResults(s.id)
+
+    ctx.verify {
+      assertThat(results1).isNull()
+    }
+
+    submissionRegistry.setSubmissionResults(s.id, results)
+    val results2 = submissionRegistry.getSubmissionResults(s.id)
+
+    ctx.verify {
+      assertThat(results2).isEqualTo(results)
+    }
+
+    return s
+  }
+
+  @Test
+  fun setSubmissionResults(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      doSetSubmissionResults(ctx)
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun setSubmissionResultsNested(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      doSetSubmissionResults(ctx, mapOf("ARG1" to listOf(
+          listOf("output1.txt", "output2.txt")
+      )))
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun resetSubmissionResults(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      val s = doSetSubmissionResults(ctx)
+
+      submissionRegistry.setSubmissionResults(s.id, null)
+      val results = submissionRegistry.getSubmissionResults(s.id)
+
+      ctx.verify {
+        assertThat(results).isNull()
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun getResultsOfMissingSubmission(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        assertThatThrownBy {
+          submissionRegistry.getSubmissionResults("MISSING")
+        }.isInstanceOf(NoSuchElementException::class.java)
+        ctx.completeNow()
+      }
     }
   }
 

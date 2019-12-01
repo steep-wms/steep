@@ -60,6 +60,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     private const val BUCKET_PROCESS_CHAINS = "processChains"
     private const val BUCKET_PROCESS_CHAIN_RESULTS = "processChainResults"
     private const val BUCKET_EXECUTION_STATES = "executionStates"
+    private const val BUCKET_SUBMISSION_RESULTS = "submissionResults"
     private const val INTERNAL_ID = "_id"
     private const val ID = "id"
     private const val SUBMISSION_ID = "submissionId"
@@ -104,6 +105,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   private val bucketProcessChains: GridFSBucket
   private val bucketProcessChainResults: GridFSBucket
   private val bucketExecutionStates: GridFSBucket
+  private val bucketSubmissionResults: GridFSBucket
 
   init {
     val cs = ConnectionString(connectionString)
@@ -117,6 +119,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     bucketProcessChains = GridFSBuckets.create(db, BUCKET_PROCESS_CHAINS)
     bucketProcessChainResults = GridFSBuckets.create(db, BUCKET_PROCESS_CHAIN_RESULTS)
     bucketExecutionStates = GridFSBuckets.create(db, BUCKET_EXECUTION_STATES)
+    bucketSubmissionResults = GridFSBuckets.create(db, BUCKET_SUBMISSION_RESULTS)
 
     if (createIndexes) {
       // create indexes for `submission` collection
@@ -337,6 +340,25 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       stream.closeAwait()
       buf
     }
+  }
+
+  override suspend fun setSubmissionResults(submissionId: String, results: Map<String, List<Any>>?) {
+    writeGridFSDocument(bucketSubmissionResults, submissionId,
+        results?.let{ JsonObject(it) })
+  }
+
+  override suspend fun getSubmissionResults(submissionId: String): Map<String, List<Any>>? {
+    val submissionCount = collSubmissions.countDocumentsAwait(json {
+      obj(
+          INTERNAL_ID to submissionId
+      )
+    })
+    if (submissionCount == 0L) {
+      throw NoSuchElementException("There is no submission with ID `$submissionId'")
+    }
+
+    val buf = readGridFSDocument(bucketSubmissionResults, submissionId)
+    return buf?.let { JsonUtils.mapper.readValue(it.array()) }
   }
 
   override suspend fun setSubmissionExecutionState(submissionId: String, state: JsonObject?) {
