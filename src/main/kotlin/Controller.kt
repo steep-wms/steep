@@ -311,7 +311,9 @@ class Controller : CoroutineVerticle() {
           else -> Submission.Status.PARTIAL_SUCCESS
         }
       } else {
-        log.error("Submission was not executed completely")
+        log.error("Submission was not executed completely. There may be " +
+            "actions in the workflow that have not been executed, most likely" +
+            "because their input was not available.")
         Submission.Status.ERROR
       }
 
