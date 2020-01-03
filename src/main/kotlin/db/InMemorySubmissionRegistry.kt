@@ -68,7 +68,8 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   private data class SubmissionEntry(
       val serial: Int,
       val submission: Submission,
-      val results: Map<String, List<Any>>? = null
+      val results: Map<String, List<Any>>? = null,
+      val errorMessage: String? = null
   )
 
   private val processChainEntryID = AtomicInteger()
@@ -198,6 +199,17 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     val s = findSubmissionEntryById(submissionId) ?: throw NoSuchElementException(
         "There is no submission with ID `$submissionId'")
     return s.results
+  }
+
+  override suspend fun setSubmissionErrorMessage(submissionId: String,
+      errorMessage: String?) {
+    updateSubmissionEntry(submissionId) { it.copy(errorMessage = errorMessage) }
+  }
+
+  override suspend fun getSubmissionErrorMessage(submissionId: String): String? {
+    val s = findSubmissionEntryById(submissionId) ?: throw NoSuchElementException(
+        "There is no submission with ID `$submissionId'")
+    return s.errorMessage
   }
 
   override suspend fun setSubmissionExecutionState(submissionId: String,

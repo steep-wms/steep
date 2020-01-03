@@ -339,6 +339,14 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       getSubmissionColumn(submissionId, RESULTS) { r ->
         r.getString(0)?.let { JsonUtils.mapper.readValue<Map<String, List<Any>>>(it) } }
 
+  override suspend fun setSubmissionErrorMessage(submissionId: String,
+      errorMessage: String?) {
+    updateColumn(SUBMISSIONS, submissionId, ERROR_MESSAGE, errorMessage, false)
+  }
+
+  override suspend fun getSubmissionErrorMessage(submissionId: String): String? =
+      getSubmissionColumn(submissionId, ERROR_MESSAGE) { it.getString(0) }
+
   override suspend fun setSubmissionExecutionState(submissionId: String, state: JsonObject?) {
     updateColumn(SUBMISSIONS, submissionId, EXECUTION_STATE, state?.encode(), false)
   }

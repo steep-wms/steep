@@ -317,6 +317,15 @@ eb.onopen = () => {
     }
   });
 
+  if (window.singleWorkflow) {
+    eb.registerHandler("jobmanager.submissionRegistry.submissionErrorMessageChanged", (error, message) => {
+      let w = app.findWorkflowById(message.body.submissionId);
+      if (w) {
+        w.errorMessage = message.body.errorMessage;
+      }
+    });
+  }
+
   eb.registerHandler("jobmanager.submissionRegistry.processChainsAddedSize", (error, message) => {
     let pcsSize = message.body.processChainsSize;
     let submissionId = message.body.submissionId;

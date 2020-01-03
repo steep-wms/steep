@@ -363,6 +363,54 @@ class HttpEndpointTest {
   }
 
   /**
+   * Test that the endpoint returns a single successful workflow with an error message
+   */
+  @Test
+  fun getWorkflowByIdError(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow(), status = Submission.Status.ERROR)
+    coEvery { submissionRegistry.countProcessChainsBySubmissionId(s1.id) } returns 1
+    coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+        ProcessChainStatus.REGISTERED) } returns 0
+    coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+        ProcessChainStatus.RUNNING) } returns 0
+    coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+        ProcessChainStatus.ERROR) } returns 1
+    coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+        ProcessChainStatus.SUCCESS) } returns 0
+
+    coEvery { submissionRegistry.findSubmissionById(s1.id) } returns s1
+
+    val errorMessage = "This is an error message"
+    coEvery { submissionRegistry.getSubmissionErrorMessage(s1.id) } returns errorMessage
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/workflows/${s1.id}")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.JSON)
+            .sendAwait()
+
+        assertThat(response.body()).isEqualTo(json {
+          obj(
+              "id" to s1.id,
+              "workflow" to JsonUtils.toJson(s1.workflow),
+              "status" to Submission.Status.ERROR.toString(),
+              "runningProcessChains" to 0,
+              "failedProcessChains" to 1,
+              "succeededProcessChains" to 0,
+              "totalProcessChains" to 1,
+              "errorMessage" to errorMessage
+          )
+        })
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
    * Test that the endpoint rejects an empty workflow
    */
   @Test

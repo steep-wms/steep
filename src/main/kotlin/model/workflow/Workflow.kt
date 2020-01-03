@@ -1,7 +1,5 @@
 package model.workflow
 
-import helper.UniqueID
-
 /**
  * A workflow
  * @param name a human-readable name

@@ -76,6 +76,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
      */
     private val SUBMISSION_EXCLUDES = json {
       obj(
+          ERROR_MESSAGE to 0,
           SEQUENCE to 0
       )
     }
@@ -180,6 +181,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
    * Deserialize a submission from a database [document]
    */
   private fun deserializeSubmission(document: JsonObject): Submission {
+    document.remove(ERROR_MESSAGE)
     document.remove(SEQUENCE)
     document.put(ID, document.getString(INTERNAL_ID))
     document.remove(INTERNAL_ID)
@@ -360,6 +362,14 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     val buf = readGridFSDocument(bucketSubmissionResults, submissionId)
     return buf?.let { JsonUtils.mapper.readValue(it.array()) }
   }
+
+  override suspend fun setSubmissionErrorMessage(submissionId: String,
+      errorMessage: String?) {
+    updateField(collSubmissions, submissionId, ERROR_MESSAGE, errorMessage)
+  }
+
+  override suspend fun getSubmissionErrorMessage(submissionId: String) =
+      getSubmissionField<String?>(submissionId, ERROR_MESSAGE)
 
   override suspend fun setSubmissionExecutionState(submissionId: String, state: JsonObject?) {
     writeGridFSDocument(bucketExecutionStates, submissionId, state)

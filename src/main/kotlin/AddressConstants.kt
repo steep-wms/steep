@@ -75,6 +75,11 @@ object AddressConstants {
   const val SUBMISSION_STATUS_CHANGED = "jobmanager.submissionRegistry.submissionStatusChanged"
 
   /**
+   * Will be published when a submission's error message has changed
+   */
+  const val SUBMISSION_ERRORMESSAGE_CHANGED = "jobmanager.submissionRegistry.submissionErrorMessageChanged"
+
+  /**
    * Will be published when process chains have been added to the registry
    */
   const val PROCESSCHAINS_ADDED = "jobmanager.submissionRegistry.processChainsAdded"

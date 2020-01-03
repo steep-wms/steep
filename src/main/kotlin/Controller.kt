@@ -304,34 +304,45 @@ class Controller : CoroutineVerticle() {
       }
 
       // evaluate results
-      val status = if (generator.isFinished()) {
+      val (status, errorMessage) = if (generator.isFinished()) {
         when (errors) {
-          0 -> Submission.Status.SUCCESS
-          totalProcessChains -> Submission.Status.ERROR
-          else -> Submission.Status.PARTIAL_SUCCESS
+          0 -> Submission.Status.SUCCESS to null
+          totalProcessChains -> Submission.Status.ERROR to "All process chains failed"
+          else -> Submission.Status.PARTIAL_SUCCESS to null
         }
       } else {
-        log.error("Submission was not executed completely. There may be " +
-            "actions in the workflow that have not been executed, most likely" +
-            "because their input was not available.")
-        Submission.Status.ERROR
+        val em = when (errors) {
+          0 -> "Submission was not executed completely. There is at least " +
+              "one action in the workflow that has not been executed because " +
+              "its input was not available."
+          1 -> "Submission was not executed completely because a process " +
+              "chain failed"
+          else -> "Submission was not executed completely because $errors " +
+              "process chains failed"
+        }
+        log.error(em)
+        Submission.Status.ERROR to em
       }
 
-      val msg = "Submission `${submission.id}' finished with status $status"
+      val logMsg = "Submission `${submission.id}' finished with status $status"
       when (status) {
-        Submission.Status.PARTIAL_SUCCESS -> log.warn(msg)
-        Submission.Status.ERROR -> log.error(msg)
-        else -> log.info(msg)
+        Submission.Status.PARTIAL_SUCCESS -> log.warn(logMsg)
+        Submission.Status.ERROR -> log.error(logMsg)
+        else -> log.info(logMsg)
       }
 
       if (submissionResults.isNotEmpty()) {
         submissionRegistry.setSubmissionResults(submission.id, submissionResults)
       }
       submissionRegistry.setSubmissionStatus(submission.id, status)
+      if (errorMessage != null) {
+        submissionRegistry.setSubmissionErrorMessage(submission.id, errorMessage)
+      }
       submissionRegistry.setSubmissionEndTime(submission.id, Instant.now())
     } catch (t: Throwable) {
       log.error("Could not execute submission", t)
       submissionRegistry.setSubmissionStatus(submission.id, Submission.Status.ERROR)
+      submissionRegistry.setSubmissionErrorMessage(submission.id, t.message)
     } finally {
       // the submission was either successful or it failed - remove the current
       // execution state so it won't be repeated/resumed

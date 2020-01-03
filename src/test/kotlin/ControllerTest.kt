@@ -109,6 +109,14 @@ class ControllerTest {
 
   private fun doSimple(vertx: Vertx, ctx: VertxTestContext,
       withRules: Boolean = false, workflowName: String = "singleService",
+      processChainStatusSupplier: () -> ProcessChainStatus = {
+        ProcessChainStatus.SUCCESS
+      },
+      processChainResultsSupplier: (processChain: ProcessChain) -> Map<String, List<String>> = { processChain ->
+        processChain.executables.flatMap { it.arguments }.filter {
+          it.type == Argument.Type.OUTPUT }.map { (it.variable.id to listOf(it.variable.value)) }.toMap()
+      },
+      expectedSubmissionStatus: Status = Status.SUCCESS,
       verify: (suspend MockKVerificationScope.(Submission) -> Unit)? = null) {
     val workflow = readWorkflow(workflowName)
     val submission = Submission(workflow = workflow)
@@ -134,11 +142,11 @@ class ControllerTest {
             assertThat(processChain.requiredCapabilities).contains(NEW_REQUIRED_CAPABILITY)
           }
         }
-        coEvery { submissionRegistry.getProcessChainStatus(processChain.id) } returns
-            ProcessChainStatus.SUCCESS
 
-        val results = processChain.executables.flatMap { it.arguments }.filter {
-          it.type == Argument.Type.OUTPUT }.map { (it.variable.id to listOf(it.variable.value)) }.toMap()
+        val status = processChainStatusSupplier()
+        coEvery { submissionRegistry.getProcessChainStatus(processChain.id) } returns status
+
+        val results = processChainResultsSupplier(processChain)
         coEvery { submissionRegistry.getProcessChainResults(processChain.id) } returns results
 
         coEvery { submissionRegistry.setProcessChainStartTime(processChain.id, any()) } just Runs
@@ -149,7 +157,7 @@ class ControllerTest {
       ctx.verify {
         // verify that the submission was set to SUCCESS
         coVerify(exactly = 1) {
-          submissionRegistry.setSubmissionStatus(submission.id, Status.SUCCESS)
+          submissionRegistry.setSubmissionStatus(submission.id, expectedSubmissionStatus)
           submissionRegistry.setSubmissionStartTime(submission.id, any())
           submissionRegistry.setSubmissionEndTime(submission.id, any())
           verify?.let { it(submission) }
@@ -186,6 +194,102 @@ class ControllerTest {
   @Tag(WITH_RULES)
   fun simpleWithRules(vertx: Vertx, ctx: VertxTestContext) {
     doSimple(vertx, ctx, true)
+  }
+
+  /**
+   * Runs a simple workflow that should fail
+   * @param vertx the Vert.x instance
+   * @param ctx the test context
+   */
+  @Test
+  fun fail(vertx: Vertx, ctx: VertxTestContext) {
+    coEvery { submissionRegistry.setSubmissionStatus(any(), Status.ERROR) } just Runs
+    coEvery { submissionRegistry.setSubmissionErrorMessage(any(), "All process chains failed") } just Runs
+    doSimple(vertx, ctx, processChainStatusSupplier = { ProcessChainStatus.ERROR },
+        expectedSubmissionStatus = Status.ERROR) { submission ->
+      submissionRegistry.setSubmissionErrorMessage(submission.id, "All process chains failed")
+    }
+  }
+
+  /**
+   * Runs a simple workflow that should fails partially
+   * @param vertx the Vert.x instance
+   * @param ctx the test context
+   */
+  @Test
+  fun partial(vertx: Vertx, ctx: VertxTestContext) {
+    coEvery { submissionRegistry.setSubmissionStatus(any(), Status.PARTIAL_SUCCESS) } just Runs
+    var n = 0
+    doSimple(vertx, ctx, workflowName = "twoIndependentServices",
+        processChainStatusSupplier = {
+          n += 1
+          if (n == 1) ProcessChainStatus.SUCCESS else ProcessChainStatus.ERROR
+        },
+        expectedSubmissionStatus = Status.PARTIAL_SUCCESS) {
+      assertThat(n).isEqualTo(2)
+    }
+  }
+
+  /**
+   * Runs a simple workflow that does not finish completely because two
+   * process chains failed
+   * @param vertx the Vert.x instance
+   * @param ctx the test context
+   */
+  @Test
+  fun failTwoProcessChains(vertx: Vertx, ctx: VertxTestContext) {
+    coEvery { submissionRegistry.setSubmissionStatus(any(), Status.ERROR) } just Runs
+    coEvery { submissionRegistry.setSubmissionErrorMessage(any(),
+        "Submission was not executed completely because 2 process chains failed") } just Runs
+    var n = 0
+    doSimple(vertx, ctx, workflowName = "smallGraph",
+        processChainStatusSupplier = {
+          n += 1
+          if (n == 1) ProcessChainStatus.SUCCESS else ProcessChainStatus.ERROR
+        },
+        expectedSubmissionStatus = Status.ERROR) {
+      assertThat(n).isEqualTo(3)
+    }
+  }
+
+  /**
+   * Runs a simple workflow that does not finish completely because one
+   * process chain failed
+   * @param vertx the Vert.x instance
+   * @param ctx the test context
+   */
+  @Test
+  fun failOneProcessChain(vertx: Vertx, ctx: VertxTestContext) {
+    coEvery { submissionRegistry.setSubmissionStatus(any(), Status.ERROR) } just Runs
+    coEvery { submissionRegistry.setSubmissionErrorMessage(any(),
+        "Submission was not executed completely because a process chain failed") } just Runs
+    var n = 0
+    doSimple(vertx, ctx, workflowName = "join",
+        processChainStatusSupplier = {
+          n += 1
+          if (n == 1) ProcessChainStatus.SUCCESS else ProcessChainStatus.ERROR
+        },
+        expectedSubmissionStatus = Status.ERROR) {
+      assertThat(n).isEqualTo(2)
+    }
+  }
+
+  /**
+   * Runs a simple workflow that does not finish completely because a process
+   * chain does not return results
+   * @param vertx the Vert.x instance
+   * @param ctx the test context
+   */
+  @Test
+  fun notFinished(vertx: Vertx, ctx: VertxTestContext) {
+    coEvery { submissionRegistry.setSubmissionStatus(any(), Status.ERROR) } just Runs
+    coEvery { submissionRegistry.setSubmissionErrorMessage(any(),
+        "Submission was not executed completely. There is at least one " +
+            "action in the workflow that has not been executed because " +
+            "its input was not available.") } just Runs
+    doSimple(vertx, ctx, workflowName = "join",
+        processChainResultsSupplier = { emptyMap() },
+        expectedSubmissionStatus = Status.ERROR)
   }
 
   /**

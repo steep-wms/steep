@@ -223,6 +223,8 @@ class HttpEndpoint : CoroutineVerticle() {
         .addOutboundPermitted(PermittedOptions()
             .setAddress(AddressConstants.SUBMISSION_STATUS_CHANGED))
         .addOutboundPermitted(PermittedOptions()
+            .setAddress(AddressConstants.SUBMISSION_ERRORMESSAGE_CHANGED))
+        .addOutboundPermitted(PermittedOptions()
             .setAddress(AddressConstants.PROCESSCHAINS_ADDED))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(AddressConstants.PROCESSCHAINS_ADDED_SIZE))
@@ -440,10 +442,16 @@ class HttpEndpoint : CoroutineVerticle() {
     submission.put("totalProcessChains", totalProcessChains)
 
     if (includeDetails) {
-      if (submission.getString("status") == Submission.Status.SUCCESS.toString()) {
+      val strStatus = submission.getString("status");
+      if (strStatus == Submission.Status.SUCCESS.toString()) {
         val results = submissionRegistry.getSubmissionResults(submissionId)
         if (results != null) {
           submission.put("results", results)
+        }
+      } else if (strStatus == Submission.Status.ERROR.toString()) {
+        val errorMessage = submissionRegistry.getSubmissionErrorMessage(submissionId)
+        if (errorMessage != null) {
+          submission.put("errorMessage", errorMessage)
         }
       }
     }

@@ -371,6 +371,63 @@ abstract class SubmissionRegistryTest {
     }
   }
 
+  private suspend fun doSetSubmissionErrorMessage(ctx: VertxTestContext): Submission {
+    val s = Submission(workflow = Workflow())
+
+    submissionRegistry.addSubmission(s)
+    val errorMessage1 = submissionRegistry.getSubmissionErrorMessage(s.id)
+
+    ctx.verify {
+      assertThat(errorMessage1).isNull()
+    }
+
+    val errorMessage = "THIS is an ERROR!!!!"
+    submissionRegistry.setSubmissionErrorMessage(s.id, errorMessage)
+    val errorMessage2 = submissionRegistry.getSubmissionErrorMessage(s.id)
+
+    ctx.verify {
+      assertThat(errorMessage2).isEqualTo(errorMessage)
+    }
+
+    return s
+  }
+
+  @Test
+  fun setSubmissionErrorMessage(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      doSetSubmissionErrorMessage(ctx)
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun resetSubmissionErrorMessage(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      val s = doSetSubmissionErrorMessage(ctx)
+
+      submissionRegistry.setSubmissionErrorMessage(s.id, null)
+      val errorMessage = submissionRegistry.getSubmissionErrorMessage(s.id)
+
+      ctx.verify {
+        assertThat(errorMessage).isNull()
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun getErrorMessageOfMissingSubmission(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        assertThatThrownBy {
+          submissionRegistry.getSubmissionErrorMessage("MISSING")
+        }.isInstanceOf(NoSuchElementException::class.java)
+        ctx.completeNow()
+      }
+    }
+  }
+
   @Test
   fun setSubmissionExecutionState(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())

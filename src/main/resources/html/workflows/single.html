@@ -71,6 +71,20 @@ $% block content %$
         </div>
       </div>
 
+      <div class="ui accordion" v-if="w.status === 'ERROR' && w.errorMessage">
+        <div class="title active">
+          <i class="dropdown icon"></i>
+          Error message
+        </div>
+        <div class="content active">
+          <div class="errormessage">
+            <div class="ui inverted red segment">
+              <p>{{ w.errorMessage }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="ui accordion">
         <div class="title">
           <i class="dropdown icon"></i>

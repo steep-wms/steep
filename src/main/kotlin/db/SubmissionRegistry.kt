@@ -134,6 +134,23 @@ interface SubmissionRegistry {
   suspend fun getSubmissionResults(submissionId: String): Map<String, List<Any>>?
 
   /**
+   * Set the error message of a submission
+   * @param submissionId the submission ID
+   * @param errorMessage the error message (may be `null` if the error message
+   * should be removed)
+   */
+  suspend fun setSubmissionErrorMessage(submissionId: String, errorMessage: String?)
+
+  /**
+   * Get the error message of a submission
+   * @param submissionId the process chain ID
+   * @return the error message (may be `null` if the submission does not have
+   * an error message)
+   * @throws NoSuchElementException if the submission does not exist
+   */
+  suspend fun getSubmissionErrorMessage(submissionId: String): String?
+
+  /**
    * Set a submission's execution state
    * @param submissionId the submission ID
    * @param state the state to set or `null` if the state should be removed
@@ -307,7 +324,7 @@ interface SubmissionRegistry {
   suspend fun getProcessChainResults(processChainId: String): Map<String, List<Any>>?
 
   /**
-   * Set the error message for a process chain
+   * Set the error message of a process chain
    * @param processChainId the process chain ID
    * @param errorMessage the error message (may be `null` if the error message
    * should be removed)
@@ -318,7 +335,7 @@ interface SubmissionRegistry {
   /**
    * Get the error message of a process chain
    * @param processChainId the process chain ID
-   * @return the error message (may be `null` if the process chain oes not have
+   * @return the error message (may be `null` if the process chain does not have
    * an error message)
    * @throws NoSuchElementException if the process chain does not exist
    */

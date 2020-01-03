@@ -71,6 +71,16 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
     })
   }
 
+  override suspend fun setSubmissionErrorMessage(submissionId: String, errorMessage: String?) {
+    delegate.setSubmissionErrorMessage(submissionId, errorMessage)
+    vertx.eventBus().publish(AddressConstants.SUBMISSION_ERRORMESSAGE_CHANGED, json {
+      obj(
+          "submissionId" to submissionId,
+          "errorMessage" to errorMessage
+      )
+    })
+  }
+
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,
       submissionId: String, status: ProcessChainStatus) {
     delegate.addProcessChains(processChains, submissionId, status)
