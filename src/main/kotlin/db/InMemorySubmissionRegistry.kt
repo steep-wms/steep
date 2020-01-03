@@ -367,6 +367,25 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     updateProcessChain(processChainId) { it.copy(status = status) }
   }
 
+  override suspend fun setAllProcessChainsStatus(submissionId: String,
+      currentStatus: ProcessChainStatus, newStatus: ProcessChainStatus) {
+    val sharedData = vertx.sharedData()
+    val lock = sharedData.getLockAwait(LOCK_PROCESS_CHAINS)
+    try {
+      val map = processChains.await()
+      val values = awaitResult<List<String>> { map.values(it) }
+      values.map { JsonUtils.mapper.readValue<ProcessChainEntry>(it) }
+          .filter { it.submissionId == submissionId && it.status == currentStatus }
+          .forEach { entry ->
+            val newEntry = entry.copy(status = newStatus)
+            map.putAwait(entry.processChain.id,
+                JsonUtils.mapper.writeValueAsString(newEntry))
+          }
+    } finally {
+      lock.release()
+    }
+  }
+
   override suspend fun getProcessChainStatus(processChainId: String): ProcessChainStatus =
       getProcessChainEntryById(processChainId).status
 

@@ -430,6 +430,10 @@ class HttpEndpoint : CoroutineVerticle() {
     val submissionId = submission.getString("id")
     val runningProcessChains = submissionRegistry.countProcessChainsByStatus(
         submissionId, SubmissionRegistry.ProcessChainStatus.RUNNING)
+    val pausedProcessChains = submissionRegistry.countProcessChainsByStatus(
+        submissionId, SubmissionRegistry.ProcessChainStatus.PAUSED)
+    val cancelledProcessChains = submissionRegistry.countProcessChainsByStatus(
+        submissionId, SubmissionRegistry.ProcessChainStatus.CANCELLED)
     val succeededProcessChains = submissionRegistry.countProcessChainsByStatus(
         submissionId, SubmissionRegistry.ProcessChainStatus.SUCCESS)
     val failedProcessChains = submissionRegistry.countProcessChainsByStatus(
@@ -437,6 +441,8 @@ class HttpEndpoint : CoroutineVerticle() {
     val totalProcessChains = submissionRegistry.countProcessChainsBySubmissionId(
         submissionId)
     submission.put("runningProcessChains", runningProcessChains)
+    submission.put("pausedProcessChains", pausedProcessChains)
+    submission.put("cancelledProcessChains", cancelledProcessChains)
     submission.put("succeededProcessChains", succeededProcessChains)
     submission.put("failedProcessChains", failedProcessChains)
     submission.put("totalProcessChains", totalProcessChains)
@@ -633,7 +639,9 @@ class HttpEndpoint : CoroutineVerticle() {
     val status = submissionRegistry.getProcessChainStatus(id)
     processChain.put("status", status.toString())
 
-    if (status != SubmissionRegistry.ProcessChainStatus.REGISTERED) {
+    if (status != SubmissionRegistry.ProcessChainStatus.REGISTERED &&
+        status != SubmissionRegistry.ProcessChainStatus.PAUSED &&
+        status != SubmissionRegistry.ProcessChainStatus.CANCELLED) {
       val startTime = submissionRegistry.getProcessChainStartTime(id)
       if (startTime != null) {
         processChain.put("startTime", startTime)

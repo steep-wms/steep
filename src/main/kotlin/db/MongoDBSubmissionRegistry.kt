@@ -24,6 +24,7 @@ import helper.findOneAndUpdateAwait
 import helper.findOneAwait
 import helper.insertOneAwait
 import helper.readAwait
+import helper.updateManyAwait
 import helper.updateOneAwait
 import helper.writeAwait
 import io.vertx.core.Vertx
@@ -529,6 +530,22 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   override suspend fun setProcessChainStatus(processChainId: String,
       status: ProcessChainStatus) {
     updateField(collProcessChains, processChainId, STATUS, status.toString())
+  }
+
+  override suspend fun setAllProcessChainsStatus(submissionId: String,
+      currentStatus: ProcessChainStatus, newStatus: ProcessChainStatus) {
+    collProcessChains.updateManyAwait(json {
+      obj(
+          SUBMISSION_ID to submissionId,
+          STATUS to currentStatus.toString()
+      )
+    }, json {
+      obj(
+          "\$set" to obj(
+              STATUS to newStatus.toString()
+          )
+      )
+    })
   }
 
   override suspend fun getProcessChainStatus(processChainId: String) =

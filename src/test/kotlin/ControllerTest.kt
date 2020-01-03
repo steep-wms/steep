@@ -109,7 +109,7 @@ class ControllerTest {
 
   private fun doSimple(vertx: Vertx, ctx: VertxTestContext,
       withRules: Boolean = false, workflowName: String = "singleService",
-      processChainStatusSupplier: () -> ProcessChainStatus = {
+      processChainStatusSupplier: (processChain: ProcessChain) -> ProcessChainStatus = {
         ProcessChainStatus.SUCCESS
       },
       processChainResultsSupplier: (processChain: ProcessChain) -> Map<String, List<String>> = { processChain ->
@@ -127,7 +127,7 @@ class ControllerTest {
 
     // mock submission registry
     coEvery { submissionRegistry.setSubmissionStatus(submission.id, Status.RUNNING) } just Runs
-    coEvery { submissionRegistry.setSubmissionStatus(submission.id, Status.SUCCESS) } just Runs
+    coEvery { submissionRegistry.setSubmissionStatus(submission.id, expectedSubmissionStatus) } just Runs
     coEvery { submissionRegistry.getSubmissionStatus(submission.id) } returns Status.RUNNING
     coEvery { submissionRegistry.setSubmissionExecutionState(submission.id, any()) } just Runs
     coEvery { submissionRegistry.getSubmissionExecutionState(submission.id) } returns null
@@ -143,8 +143,9 @@ class ControllerTest {
           }
         }
 
-        val status = processChainStatusSupplier()
-        coEvery { submissionRegistry.getProcessChainStatus(processChain.id) } returns status
+        coEvery { submissionRegistry.getProcessChainStatus(processChain.id) } answers {
+          processChainStatusSupplier(processChain)
+        }
 
         val results = processChainResultsSupplier(processChain)
         coEvery { submissionRegistry.getProcessChainResults(processChain.id) } returns results
@@ -203,7 +204,6 @@ class ControllerTest {
    */
   @Test
   fun fail(vertx: Vertx, ctx: VertxTestContext) {
-    coEvery { submissionRegistry.setSubmissionStatus(any(), Status.ERROR) } just Runs
     coEvery { submissionRegistry.setSubmissionErrorMessage(any(), "All process chains failed") } just Runs
     doSimple(vertx, ctx, processChainStatusSupplier = { ProcessChainStatus.ERROR },
         expectedSubmissionStatus = Status.ERROR) { submission ->
@@ -218,7 +218,6 @@ class ControllerTest {
    */
   @Test
   fun partial(vertx: Vertx, ctx: VertxTestContext) {
-    coEvery { submissionRegistry.setSubmissionStatus(any(), Status.PARTIAL_SUCCESS) } just Runs
     var n = 0
     doSimple(vertx, ctx, workflowName = "twoIndependentServices",
         processChainStatusSupplier = {
@@ -238,7 +237,6 @@ class ControllerTest {
    */
   @Test
   fun failTwoProcessChains(vertx: Vertx, ctx: VertxTestContext) {
-    coEvery { submissionRegistry.setSubmissionStatus(any(), Status.ERROR) } just Runs
     coEvery { submissionRegistry.setSubmissionErrorMessage(any(),
         "Submission was not executed completely because 2 process chains failed") } just Runs
     var n = 0
@@ -260,7 +258,6 @@ class ControllerTest {
    */
   @Test
   fun failOneProcessChain(vertx: Vertx, ctx: VertxTestContext) {
-    coEvery { submissionRegistry.setSubmissionStatus(any(), Status.ERROR) } just Runs
     coEvery { submissionRegistry.setSubmissionErrorMessage(any(),
         "Submission was not executed completely because a process chain failed") } just Runs
     var n = 0
@@ -282,7 +279,6 @@ class ControllerTest {
    */
   @Test
   fun notFinished(vertx: Vertx, ctx: VertxTestContext) {
-    coEvery { submissionRegistry.setSubmissionStatus(any(), Status.ERROR) } just Runs
     coEvery { submissionRegistry.setSubmissionErrorMessage(any(),
         "Submission was not executed completely. There is at least one " +
             "action in the workflow that has not been executed because " +
@@ -437,5 +433,59 @@ class ControllerTest {
     coEvery { submissionRegistry.findSubmissionById(submission.id) } returns submission
 
     vertx.eventBus().publish(AddressConstants.CONTROLLER_LOOKUP_ORPHANS_NOW, null)
+  }
+
+  /**
+   * Tries to pause a workflow
+   * @param vertx the Vert.x instance
+   * @param ctx the test context
+   */
+  @Test
+  fun pause(vertx: Vertx, ctx: VertxTestContext) {
+    doSimple(vertx, ctx, workflowName = "smallGraph",
+        processChainStatusSupplier = { processChain ->
+          if (processChain.executables.any { it.path == "join.sh" })
+            ProcessChainStatus.PAUSED else ProcessChainStatus.SUCCESS
+        },
+        expectedSubmissionStatus = Status.PAUSED)
+  }
+
+  /**
+   * Tries to cancel a workflow
+   * @param vertx the Vert.x instance
+   * @param ctx the test context
+   */
+  @Test
+  fun cancel(vertx: Vertx, ctx: VertxTestContext) {
+    doSimple(vertx, ctx, workflowName = "smallGraph",
+        processChainStatusSupplier = { processChain ->
+          if (processChain.executables.any { it.path == "join.sh" })
+            ProcessChainStatus.CANCELLED else ProcessChainStatus.SUCCESS
+        },
+        expectedSubmissionStatus = Status.CANCELLED)
+  }
+
+  /**
+   * Tries to cancel an already running process chain
+   * @param vertx the Vert.x instance
+   * @param ctx the test context
+   */
+  @Test
+  fun cancelRunning(vertx: Vertx, ctx: VertxTestContext) {
+    var n = 0
+    doSimple(vertx, ctx, workflowName = "smallGraph",
+        processChainStatusSupplier = { processChain ->
+          if (processChain.executables.any { it.path == "join.sh" }) {
+            n++
+            if (n == 1) {
+              ProcessChainStatus.RUNNING
+            } else {
+              ProcessChainStatus.CANCELLED
+            }
+          } else {
+            ProcessChainStatus.SUCCESS
+          }
+        },
+        expectedSubmissionStatus = Status.CANCELLED)
   }
 }

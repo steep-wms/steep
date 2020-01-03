@@ -153,6 +153,13 @@ suspend fun <T> MongoCollection<T>.updateOneAwait(filter: JsonObject,
   } ?: throw IllegalStateException("Update operation did not produce a result")
 }
 
+suspend fun <T> MongoCollection<T>.updateManyAwait(filter: JsonObject,
+    update: JsonObject): UpdateResult {
+  return wrapCoroutine {
+    updateMany(wrap(filter), wrap(update))
+  } ?: throw IllegalStateException("Update operation did not produce a result")
+}
+
 suspend fun GridFSBucket.findAwait(filter: JsonObject): GridFSFile? {
   return wrapCoroutine {
     find(wrap(filter)).first()

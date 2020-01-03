@@ -25,6 +25,18 @@ interface SubmissionRegistry {
     RUNNING,
 
     /**
+     * The process chain is registered, has never been executed before, and
+     * will not be executed unless its status is set back to `REGISTERED`.
+     */
+    PAUSED,
+
+    /**
+     * The process chain has been cancelled. It has never been executed and
+     * will not be executed in the future.
+     */
+    CANCELLED,
+
+    /**
      * The process chain was executed successfully
      */
     SUCCESS,
@@ -298,6 +310,16 @@ interface SubmissionRegistry {
    * @param status the new status
    */
   suspend fun setProcessChainStatus(processChainId: String, status: ProcessChainStatus)
+
+  /**
+   * Find all process chains that belong to the submission with the given ID
+   * and that have the [currentStatus]. Set their status to [newStatus].
+   * @param submissionId the ID of the submission whose process chains to update
+   * @param currentStatus the current status of the process chains to update
+   * @param newStatus the new status
+   */
+  suspend fun setAllProcessChainsStatus(submissionId: String,
+      currentStatus: ProcessChainStatus, newStatus: ProcessChainStatus)
 
   /**
    * Get the status of a process chain

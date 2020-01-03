@@ -183,26 +183,34 @@ class HttpEndpointTest {
   @Test
   fun getWorkflows(vertx: Vertx, ctx: VertxTestContext) {
     val s1 = Submission(workflow = Workflow())
-    coEvery { submissionRegistry.countProcessChainsBySubmissionId(s1.id) } returns 10
+    coEvery { submissionRegistry.countProcessChainsBySubmissionId(s1.id) } returns 21
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
         ProcessChainStatus.REGISTERED) } returns 1
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
         ProcessChainStatus.RUNNING) } returns 2
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
-        ProcessChainStatus.ERROR) } returns 3
+        ProcessChainStatus.PAUSED) } returns 3
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
-        ProcessChainStatus.SUCCESS) } returns 4
+        ProcessChainStatus.CANCELLED) } returns 4
+    coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+        ProcessChainStatus.ERROR) } returns 5
+    coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+        ProcessChainStatus.SUCCESS) } returns 6
 
     val s2 = Submission(workflow = Workflow())
-    coEvery { submissionRegistry.countProcessChainsBySubmissionId(s2.id) } returns 50
+    coEvery { submissionRegistry.countProcessChainsBySubmissionId(s2.id) } returns 81
     coEvery { submissionRegistry.countProcessChainsByStatus(s2.id,
         ProcessChainStatus.REGISTERED) } returns 11
     coEvery { submissionRegistry.countProcessChainsByStatus(s2.id,
         ProcessChainStatus.RUNNING) } returns 12
     coEvery { submissionRegistry.countProcessChainsByStatus(s2.id,
-        ProcessChainStatus.ERROR) } returns 13
+        ProcessChainStatus.PAUSED) } returns 13
     coEvery { submissionRegistry.countProcessChainsByStatus(s2.id,
-        ProcessChainStatus.SUCCESS) } returns 14
+        ProcessChainStatus.CANCELLED) } returns 14
+    coEvery { submissionRegistry.countProcessChainsByStatus(s2.id,
+        ProcessChainStatus.ERROR) } returns 15
+    coEvery { submissionRegistry.countProcessChainsByStatus(s2.id,
+        ProcessChainStatus.SUCCESS) } returns 16
 
     val s3 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
     coEvery { submissionRegistry.countProcessChainsBySubmissionId(s3.id) } returns 1
@@ -210,6 +218,10 @@ class HttpEndpointTest {
         ProcessChainStatus.REGISTERED) } returns 0
     coEvery { submissionRegistry.countProcessChainsByStatus(s3.id,
         ProcessChainStatus.RUNNING) } returns 0
+    coEvery { submissionRegistry.countProcessChainsByStatus(s3.id,
+        ProcessChainStatus.PAUSED) } returns 0
+    coEvery { submissionRegistry.countProcessChainsByStatus(s3.id,
+        ProcessChainStatus.CANCELLED) } returns 0
     coEvery { submissionRegistry.countProcessChainsByStatus(s3.id,
         ProcessChainStatus.ERROR) } returns 0
     coEvery { submissionRegistry.countProcessChainsByStatus(s3.id,
@@ -237,22 +249,28 @@ class HttpEndpointTest {
                   "id" to s1.id,
                   "status" to Submission.Status.ACCEPTED.toString(),
                   "runningProcessChains" to 2,
-                  "failedProcessChains" to 3,
-                  "succeededProcessChains" to 4,
-                  "totalProcessChains" to 10
+                  "pausedProcessChains" to 3,
+                  "cancelledProcessChains" to 4,
+                  "failedProcessChains" to 5,
+                  "succeededProcessChains" to 6,
+                  "totalProcessChains" to 21
               ),
               obj(
                   "id" to s2.id,
                   "status" to Submission.Status.ACCEPTED.toString(),
                   "runningProcessChains" to 12,
-                  "failedProcessChains" to 13,
-                  "succeededProcessChains" to 14,
-                  "totalProcessChains" to 50
+                  "pausedProcessChains" to 13,
+                  "cancelledProcessChains" to 14,
+                  "failedProcessChains" to 15,
+                  "succeededProcessChains" to 16,
+                  "totalProcessChains" to 81
               ),
               obj(
                   "id" to s3.id,
                   "status" to Submission.Status.SUCCESS.toString(),
                   "runningProcessChains" to 0,
+                  "pausedProcessChains" to 0,
+                  "cancelledProcessChains" to 0,
                   "failedProcessChains" to 0,
                   "succeededProcessChains" to 1,
                   "totalProcessChains" to 1
@@ -270,15 +288,19 @@ class HttpEndpointTest {
   @Test
   fun getWorkflowById(vertx: Vertx, ctx: VertxTestContext) {
     val s1 = Submission(workflow = Workflow())
-    coEvery { submissionRegistry.countProcessChainsBySubmissionId(s1.id) } returns 10
+    coEvery { submissionRegistry.countProcessChainsBySubmissionId(s1.id) } returns 21
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
         ProcessChainStatus.REGISTERED) } returns 1
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
         ProcessChainStatus.RUNNING) } returns 2
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
-        ProcessChainStatus.ERROR) } returns 3
+        ProcessChainStatus.PAUSED) } returns 3
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
-        ProcessChainStatus.SUCCESS) } returns 4
+        ProcessChainStatus.CANCELLED) } returns 4
+    coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+        ProcessChainStatus.ERROR) } returns 5
+    coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+        ProcessChainStatus.SUCCESS) } returns 6
 
     coEvery { submissionRegistry.findSubmissionById(s1.id) } returns s1
     coEvery { submissionRegistry.findSubmissionById(neq(s1.id)) } returns null
@@ -303,9 +325,11 @@ class HttpEndpointTest {
                 "workflow" to JsonUtils.toJson(s1.workflow),
                 "status" to Submission.Status.ACCEPTED.toString(),
                 "runningProcessChains" to 2,
-                "failedProcessChains" to 3,
-                "succeededProcessChains" to 4,
-                "totalProcessChains" to 10
+                "pausedProcessChains" to 3,
+                "cancelledProcessChains" to 4,
+                "failedProcessChains" to 5,
+                "succeededProcessChains" to 6,
+                "totalProcessChains" to 21
             )
         })
       }
@@ -325,6 +349,10 @@ class HttpEndpointTest {
         ProcessChainStatus.REGISTERED) } returns 0
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
         ProcessChainStatus.RUNNING) } returns 0
+    coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+        ProcessChainStatus.PAUSED) } returns 0
+    coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+        ProcessChainStatus.CANCELLED) } returns 0
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
         ProcessChainStatus.ERROR) } returns 0
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
@@ -350,6 +378,8 @@ class HttpEndpointTest {
               "workflow" to JsonUtils.toJson(s1.workflow),
               "status" to Submission.Status.SUCCESS.toString(),
               "runningProcessChains" to 0,
+              "pausedProcessChains" to 0,
+              "cancelledProcessChains" to 0,
               "failedProcessChains" to 0,
               "succeededProcessChains" to 1,
               "totalProcessChains" to 1,
@@ -373,6 +403,10 @@ class HttpEndpointTest {
         ProcessChainStatus.REGISTERED) } returns 0
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
         ProcessChainStatus.RUNNING) } returns 0
+    coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+        ProcessChainStatus.PAUSED) } returns 0
+    coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+        ProcessChainStatus.CANCELLED) } returns 0
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
         ProcessChainStatus.ERROR) } returns 1
     coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
@@ -398,6 +432,8 @@ class HttpEndpointTest {
               "workflow" to JsonUtils.toJson(s1.workflow),
               "status" to Submission.Status.ERROR.toString(),
               "runningProcessChains" to 0,
+              "pausedProcessChains" to 0,
+              "cancelledProcessChains" to 0,
               "failedProcessChains" to 1,
               "succeededProcessChains" to 0,
               "totalProcessChains" to 1,

@@ -542,6 +542,22 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     updateColumn(PROCESS_CHAINS, processChainId, STATUS, status.toString(), false)
   }
 
+  override suspend fun setAllProcessChainsStatus(submissionId: String,
+      currentStatus: ProcessChainStatus, newStatus: ProcessChainStatus) {
+    withConnection { connection ->
+      val updateStatement = "UPDATE $PROCESS_CHAINS SET $STATUS=? WHERE " +
+          "$SUBMISSION_ID=? AND $STATUS=?"
+      val updateParams = json {
+        array(
+            newStatus.toString(),
+            submissionId,
+            currentStatus.toString()
+        )
+      }
+      connection.updateWithParamsAwait(updateStatement, updateParams)
+    }
+  }
+
   override suspend fun getProcessChainStatus(processChainId: String): ProcessChainStatus =
       getProcessChainColumn(processChainId, STATUS) { r ->
         r.getString(0).let { ProcessChainStatus.valueOf(it) } }

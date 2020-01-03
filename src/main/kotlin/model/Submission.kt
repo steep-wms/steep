@@ -23,6 +23,8 @@ data class Submission(
   enum class Status {
     ACCEPTED,
     RUNNING,
+    PAUSED,
+    CANCELLED,
     SUCCESS,
     PARTIAL_SUCCESS,
     ERROR

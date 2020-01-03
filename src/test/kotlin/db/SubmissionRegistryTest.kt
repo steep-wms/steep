@@ -889,6 +889,74 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun setAllProcessChainsStatus(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow())
+    val pc1 = ProcessChain()
+    val pc2 = ProcessChain()
+    val pc3 = ProcessChain()
+
+    val s2 = Submission(workflow = Workflow())
+    val pc4 = ProcessChain()
+    val pc5 = ProcessChain()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addProcessChains(listOf(pc1), s1.id,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      submissionRegistry.addProcessChains(listOf(pc2, pc3), s1.id,
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addProcessChains(listOf(pc4, pc5), s2.id,
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+
+      val pcStatus1a = submissionRegistry.getProcessChainStatus(pc1.id)
+      val pcStatus2a = submissionRegistry.getProcessChainStatus(pc2.id)
+      val pcStatus3a = submissionRegistry.getProcessChainStatus(pc3.id)
+      val pcStatus4a = submissionRegistry.getProcessChainStatus(pc4.id)
+      val pcStatus5a = submissionRegistry.getProcessChainStatus(pc5.id)
+
+      ctx.verify {
+        assertThat(pcStatus1a)
+            .isEqualTo(SubmissionRegistry.ProcessChainStatus.RUNNING)
+        assertThat(pcStatus2a)
+            .isEqualTo(SubmissionRegistry.ProcessChainStatus.REGISTERED)
+        assertThat(pcStatus3a)
+            .isEqualTo(SubmissionRegistry.ProcessChainStatus.REGISTERED)
+        assertThat(pcStatus4a)
+            .isEqualTo(SubmissionRegistry.ProcessChainStatus.REGISTERED)
+        assertThat(pcStatus5a)
+            .isEqualTo(SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      }
+
+      submissionRegistry.setAllProcessChainsStatus(s1.id,
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.PAUSED)
+
+      val pcStatus1b = submissionRegistry.getProcessChainStatus(pc1.id)
+      val pcStatus2b = submissionRegistry.getProcessChainStatus(pc2.id)
+      val pcStatus3b = submissionRegistry.getProcessChainStatus(pc3.id)
+      val pcStatus4b = submissionRegistry.getProcessChainStatus(pc4.id)
+      val pcStatus5b = submissionRegistry.getProcessChainStatus(pc5.id)
+
+      ctx.verify {
+        assertThat(pcStatus1b)
+            .isEqualTo(SubmissionRegistry.ProcessChainStatus.RUNNING)
+        assertThat(pcStatus2b)
+            .isEqualTo(SubmissionRegistry.ProcessChainStatus.PAUSED)
+        assertThat(pcStatus3b)
+            .isEqualTo(SubmissionRegistry.ProcessChainStatus.PAUSED)
+        assertThat(pcStatus4b)
+            .isEqualTo(SubmissionRegistry.ProcessChainStatus.REGISTERED)
+        assertThat(pcStatus5b)
+            .isEqualTo(SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun getStatusOfMissingProcessChain(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.coVerify {
