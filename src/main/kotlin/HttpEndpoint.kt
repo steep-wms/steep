@@ -48,6 +48,7 @@ import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
 import java.io.StringWriter
+import kotlin.math.max
 import com.github.zafarkhaja.semver.Version as SemVersion
 
 /**
@@ -445,7 +446,7 @@ class HttpEndpoint : CoroutineVerticle() {
     submission.put("totalProcessChains", totalProcessChains)
 
     if (includeDetails) {
-      val strStatus = submission.getString("status");
+      val strStatus = submission.getString("status")
       if (strStatus == Submission.Status.SUCCESS.toString()) {
         val results = submissionRegistry.getSubmissionResults(submissionId)
         if (results != null) {
@@ -467,7 +468,7 @@ class HttpEndpoint : CoroutineVerticle() {
   private fun onGetWorkflows(ctx: RoutingContext) {
     launch {
       val isHtml = ctx.acceptableContentType == "text/html"
-      val offset = Math.max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
+      val offset = max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
       // TODO also use default size for json result
       val size = ctx.request().getParam("size")?.toIntOrNull() ?: if (isHtml) 10 else -1
 
@@ -676,7 +677,7 @@ class HttpEndpoint : CoroutineVerticle() {
   private fun onGetProcessChains(ctx: RoutingContext) {
     launch {
       val isHtml = ctx.acceptableContentType == "text/html"
-      val offset = Math.max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
+      val offset = max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
       // TODO also use default size for json result
       val size = ctx.request().getParam("size")?.toIntOrNull() ?: if (isHtml) 10 else -1
 
