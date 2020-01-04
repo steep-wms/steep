@@ -25,14 +25,7 @@ interface SubmissionRegistry {
     RUNNING,
 
     /**
-     * The process chain is registered, has never been executed before, and
-     * will not be executed unless its status is set back to `REGISTERED`.
-     */
-    PAUSED,
-
-    /**
-     * The process chain has been cancelled. It has never been executed and
-     * will not be executed in the future.
+     * The process chain's execution has been cancelled
      */
     CANCELLED,
 

@@ -931,7 +931,7 @@ abstract class SubmissionRegistryTest {
 
       submissionRegistry.setAllProcessChainsStatus(s1.id,
           SubmissionRegistry.ProcessChainStatus.REGISTERED,
-          SubmissionRegistry.ProcessChainStatus.PAUSED)
+          SubmissionRegistry.ProcessChainStatus.CANCELLED)
 
       val pcStatus1b = submissionRegistry.getProcessChainStatus(pc1.id)
       val pcStatus2b = submissionRegistry.getProcessChainStatus(pc2.id)
@@ -943,9 +943,9 @@ abstract class SubmissionRegistryTest {
         assertThat(pcStatus1b)
             .isEqualTo(SubmissionRegistry.ProcessChainStatus.RUNNING)
         assertThat(pcStatus2b)
-            .isEqualTo(SubmissionRegistry.ProcessChainStatus.PAUSED)
+            .isEqualTo(SubmissionRegistry.ProcessChainStatus.CANCELLED)
         assertThat(pcStatus3b)
-            .isEqualTo(SubmissionRegistry.ProcessChainStatus.PAUSED)
+            .isEqualTo(SubmissionRegistry.ProcessChainStatus.CANCELLED)
         assertThat(pcStatus4b)
             .isEqualTo(SubmissionRegistry.ProcessChainStatus.REGISTERED)
         assertThat(pcStatus5b)

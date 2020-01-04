@@ -52,11 +52,10 @@ class Controller : CoroutineVerticle() {
    * Results produced by [waitForProcessChains]
    * @param results the results of suceeded process chains
    * @param failed the number of failed process chains
-   * @param paused the number of paused process chains
    * @param cancelled the number of cancelled process chains
    */
   private data class WaitForProcessChainsResult(val results: Map<String, List<Any>>,
-      val failed: Int, val paused: Int, val cancelled: Int)
+      val failed: Int, val cancelled: Int)
 
   private lateinit var tmpPath: String
   private lateinit var outPath: String
@@ -256,7 +255,6 @@ class Controller : CoroutineVerticle() {
       // main loop
       var totalProcessChains = 0
       var failed = 0
-      var paused = 0
       var cancelled = 0
       var results = mapOf<String, List<Any>>()
       val submissionResults = mutableMapOf<String, List<Any>>()
@@ -310,7 +308,6 @@ class Controller : CoroutineVerticle() {
         val w = waitForProcessChains(processChains)
         results = w.results
         failed += w.failed
-        paused += w.paused
         cancelled += w.cancelled
 
         // collect submission results
@@ -321,22 +318,15 @@ class Controller : CoroutineVerticle() {
       val (status, errorMessage) = if (generator.isFinished()) {
         when (failed) {
           0 -> when (cancelled) {
-            0 -> when (paused) {
-              0 -> Submission.Status.SUCCESS
-              else -> Submission.Status.PAUSED
-            }
+            0 -> Submission.Status.SUCCESS
             else -> Submission.Status.CANCELLED
           } to null
           totalProcessChains -> Submission.Status.ERROR to "All process chains failed"
           else -> Submission.Status.PARTIAL_SUCCESS to null
         }
       } else {
-        if (paused + cancelled == totalProcessChains) {
-          if (cancelled > 0) {
-            Submission.Status.CANCELLED to null
-          } else {
-            Submission.Status.PAUSED to null
-          }
+        if (cancelled == totalProcessChains) {
+          Submission.Status.CANCELLED to null
         } else {
           val em = when (failed) {
             0 -> "Submission was not executed completely. There is at least " +
@@ -383,14 +373,13 @@ class Controller : CoroutineVerticle() {
   /**
    * Wait for the given list of process chains to finish
    * @param processChains the process chains to wait for
-   * @return an object containing the accumulated process chain results and the
-   * number of failed, paused, and cancelled process chains
+   * @return an object containing the accumulated process chain results as well
+   * as the number of failed and cancelled process chains
    */
   private suspend fun waitForProcessChains(processChains: Collection<ProcessChain>):
       WaitForProcessChainsResult {
     val results = mutableMapOf<String, List<Any>>()
     var failed = 0
-    var paused = 0
     var cancelled = 0
 
     val processChainsToCheck = processChains.map { it.id }.toMutableSet()
@@ -411,11 +400,6 @@ class Controller : CoroutineVerticle() {
 
             ProcessChainStatus.ERROR -> {
               failed++
-              finishedProcessChains.add(processChainId)
-            }
-
-            ProcessChainStatus.PAUSED -> {
-              paused++
               finishedProcessChains.add(processChainId)
             }
 
@@ -440,7 +424,7 @@ class Controller : CoroutineVerticle() {
       gaugeProcessChains.dec(processChainsToCheck.size.toDouble())
     }
 
-    return WaitForProcessChainsResult(results, failed, paused, cancelled)
+    return WaitForProcessChainsResult(results, failed, cancelled)
   }
 
   /**

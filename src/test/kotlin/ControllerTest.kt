@@ -436,21 +436,6 @@ class ControllerTest {
   }
 
   /**
-   * Tries to pause a workflow
-   * @param vertx the Vert.x instance
-   * @param ctx the test context
-   */
-  @Test
-  fun pause(vertx: Vertx, ctx: VertxTestContext) {
-    doSimple(vertx, ctx, workflowName = "smallGraph",
-        processChainStatusSupplier = { processChain ->
-          if (processChain.executables.any { it.path == "join.sh" })
-            ProcessChainStatus.PAUSED else ProcessChainStatus.SUCCESS
-        },
-        expectedSubmissionStatus = Status.PAUSED)
-  }
-
-  /**
    * Tries to cancel a workflow
    * @param vertx the Vert.x instance
    * @param ctx the test context
