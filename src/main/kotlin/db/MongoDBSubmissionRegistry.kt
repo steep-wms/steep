@@ -248,6 +248,32 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   }
 
   /**
+   * Set a [field] of a document with a given [id] and an [expectedValue]
+   * in the given [collection] to a specified [newValue]
+   */
+  private suspend fun updateField(collection: MongoCollection<JsonObject>,
+      id: String, field: String, expectedValue: Any?, newValue: Any?) {
+    collection.updateOneAwait(json {
+      obj(
+          INTERNAL_ID to id,
+          field to expectedValue
+      )
+    }, json {
+      obj(
+          if (newValue != null) {
+            "\$set" to obj(
+                field to newValue
+            )
+          } else {
+            "\$unset" to obj(
+                field to ""
+            )
+          }
+      )
+    })
+  }
+
+  /**
    * Get the value of a [field] of a document with the given [id] and [type]
    * from the given [collection]
    */
@@ -530,6 +556,12 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   override suspend fun setProcessChainStatus(processChainId: String,
       status: ProcessChainStatus) {
     updateField(collProcessChains, processChainId, STATUS, status.toString())
+  }
+
+  override suspend fun setProcessChainStatus(processChainId: String,
+      currentStatus: ProcessChainStatus, newStatus: ProcessChainStatus) {
+    updateField(collProcessChains, processChainId, STATUS,
+        currentStatus.toString(), newStatus.toString())
   }
 
   override suspend fun setAllProcessChainsStatus(submissionId: String,

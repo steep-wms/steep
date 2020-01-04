@@ -48,6 +48,8 @@ import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
 import java.io.StringWriter
+import java.lang.ClassCastException
+import java.lang.IllegalArgumentException
 import kotlin.math.max
 import com.github.zafarkhaja.semver.Version as SemVersion
 
@@ -163,6 +165,11 @@ class HttpEndpoint : CoroutineVerticle() {
         .produces("text/html")
         .handler(this::onGetProcessChainById)
 
+    router.put("/processchains/:id")
+        .handler(bodyHandler)
+        .produces("application/json")
+        .handler(this::onPutProcessChainById)
+
     router.get("/workflows")
         .produces("application/json")
         .produces("text/html")
@@ -172,6 +179,11 @@ class HttpEndpoint : CoroutineVerticle() {
         .produces("application/json")
         .produces("text/html")
         .handler(this::onGetWorkflowById)
+
+    router.put("/workflows/:id")
+        .handler(bodyHandler)
+        .produces("application/json")
+        .handler(this::onPutWorkflowById)
 
     router.post("/workflows")
         .handler(bodyHandler)
@@ -537,6 +549,71 @@ class HttpEndpoint : CoroutineVerticle() {
   }
 
   /**
+   * Update a single workflow by ID
+   * @param ctx the routing context
+   */
+  private fun onPutWorkflowById(ctx: RoutingContext) {
+    val id = ctx.pathParam("id")
+    val update = try {
+      ctx.bodyAsJson
+    } catch (e: Exception) {
+      ctx.response()
+          .setStatusCode(400)
+          .end("Invalid request body: " + e.message)
+      return
+    }
+
+    val strStatus = try {
+      update.getString("status")
+    } catch (e: ClassCastException) {
+      ctx.response()
+          .setStatusCode(400)
+          .end("`status' property must be a string")
+      return
+    }
+
+    if (strStatus == null) {
+      ctx.response()
+          .setStatusCode(400)
+          .end("Missing `status' property")
+      return
+    }
+
+    val status = try {
+      Submission.Status.valueOf(strStatus)
+    } catch (e: IllegalArgumentException) {
+      ctx.response()
+          .setStatusCode(400)
+          .end("Invalid `status' property")
+      return
+    }
+
+    launch {
+      val submission = submissionRegistry.findSubmissionById(id)
+      if (submission == null) {
+        ctx.response()
+            .setStatusCode(404)
+            .end("There is no workflow with ID `$id'")
+      } else {
+        if (status == Submission.Status.CANCELLED) {
+          submissionRegistry.setAllProcessChainsStatus(id,
+              SubmissionRegistry.ProcessChainStatus.REGISTERED,
+              SubmissionRegistry.ProcessChainStatus.CANCELLED)
+        }
+
+        val updatedSubmission = submissionRegistry.findSubmissionById(id)!!
+        val json = JsonUtils.toJson(updatedSubmission)
+        json.remove("workflow")
+        amendSubmission(json)
+
+        ctx.response()
+            .putHeader("content-type", "application/json")
+            .end(json.encode())
+      }
+    }
+  }
+
+  /**
    * Execute a workflow
    * @param ctx the routing context
    */
@@ -637,8 +714,7 @@ class HttpEndpoint : CoroutineVerticle() {
     val status = submissionRegistry.getProcessChainStatus(id)
     processChain.put("status", status.toString())
 
-    if (status != SubmissionRegistry.ProcessChainStatus.REGISTERED &&
-        status != SubmissionRegistry.ProcessChainStatus.CANCELLED) {
+    if (status != SubmissionRegistry.ProcessChainStatus.REGISTERED) {
       val startTime = submissionRegistry.getProcessChainStartTime(id)
       if (startTime != null) {
         processChain.put("startTime", startTime)
@@ -646,7 +722,8 @@ class HttpEndpoint : CoroutineVerticle() {
     }
 
     if (status == SubmissionRegistry.ProcessChainStatus.SUCCESS ||
-        status == SubmissionRegistry.ProcessChainStatus.ERROR) {
+        status == SubmissionRegistry.ProcessChainStatus.ERROR ||
+        status == SubmissionRegistry.ProcessChainStatus.CANCELLED) {
       val endTime = submissionRegistry.getProcessChainEndTime(id)
       if (endTime != null) {
         processChain.put("endTime", endTime)
@@ -725,7 +802,7 @@ class HttpEndpoint : CoroutineVerticle() {
   }
 
   /**
-   * Get single process chain by ID
+   * Get a single process chain by ID
    * @param ctx the routing context
    */
   private fun onGetProcessChainById(ctx: RoutingContext) {
@@ -750,6 +827,73 @@ class HttpEndpoint : CoroutineVerticle() {
               .putHeader("content-type", "application/json")
               .end(json.encode())
         }
+      }
+    }
+  }
+
+  /**
+   * Update a single process chain by ID
+   * @param ctx the routing context
+   */
+  private fun onPutProcessChainById(ctx: RoutingContext) {
+    val id = ctx.pathParam("id")
+    val update = try {
+      ctx.bodyAsJson
+    } catch (e: Exception) {
+      ctx.response()
+          .setStatusCode(400)
+          .end("Invalid request body: " + e.message)
+      return
+    }
+
+    val strStatus = try {
+      update.getString("status")
+    } catch (e: ClassCastException) {
+      ctx.response()
+          .setStatusCode(400)
+          .end("`status' property must be a string")
+      return
+    }
+
+    if (strStatus == null) {
+      ctx.response()
+          .setStatusCode(400)
+          .end("Missing `status' property")
+      return
+    }
+
+    val status = try {
+      SubmissionRegistry.ProcessChainStatus.valueOf(strStatus)
+    } catch (e: IllegalArgumentException) {
+      ctx.response()
+          .setStatusCode(400)
+          .end("Invalid `status' property")
+      return
+    }
+
+    launch {
+      val processChain = submissionRegistry.findProcessChainById(id)
+      if (processChain == null) {
+        ctx.response()
+            .setStatusCode(404)
+            .end("There is no process chain with ID `$id'")
+      } else {
+        if (status == SubmissionRegistry.ProcessChainStatus.CANCELLED) {
+          val currentStatus = submissionRegistry.getProcessChainStatus(id)
+          if (currentStatus == SubmissionRegistry.ProcessChainStatus.REGISTERED) {
+            submissionRegistry.setProcessChainStatus(id, currentStatus, status)
+          }
+        }
+
+        val updatedProcessChain = submissionRegistry.findProcessChainById(id)!!
+        val json = JsonUtils.toJson(updatedProcessChain)
+        json.remove("executables")
+        val submissionId = submissionRegistry.getProcessChainSubmissionId(id)
+        amendProcessChain(json, submissionId)
+
+        ctx.response()
+            .putHeader("content-type", "application/json")
+            .end(json.encode())
       }
     }
   }

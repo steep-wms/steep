@@ -889,6 +889,64 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun setProcessChainStatusExpected(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc = ProcessChain()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s)
+      submissionRegistry.addProcessChains(listOf(pc), s.id)
+
+      val pcStatus1 = submissionRegistry.getProcessChainStatus(pc.id)
+      ctx.verify {
+        assertThat(pcStatus1)
+            .isEqualTo(SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      }
+
+      submissionRegistry.setProcessChainStatus(pc.id,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+
+      val pcStatus2 = submissionRegistry.getProcessChainStatus(pc.id)
+      ctx.verify {
+        assertThat(pcStatus2)
+            .isEqualTo(SubmissionRegistry.ProcessChainStatus.RUNNING)
+      }
+
+      submissionRegistry.setProcessChainStatus(pc.id,
+          SubmissionRegistry.ProcessChainStatus.RUNNING,
+          SubmissionRegistry.ProcessChainStatus.CANCELLED)
+
+      val pcStatus3 = submissionRegistry.getProcessChainStatus(pc.id)
+      ctx.verify {
+        assertThat(pcStatus3)
+            .isEqualTo(SubmissionRegistry.ProcessChainStatus.CANCELLED)
+      }
+
+      submissionRegistry.setProcessChainStatus(pc.id,
+          SubmissionRegistry.ProcessChainStatus.RUNNING,
+          SubmissionRegistry.ProcessChainStatus.SUCCESS)
+
+      val pcStatus4 = submissionRegistry.getProcessChainStatus(pc.id)
+      ctx.verify {
+        assertThat(pcStatus4)
+            .isEqualTo(SubmissionRegistry.ProcessChainStatus.CANCELLED)
+      }
+
+      submissionRegistry.setProcessChainStatus(pc.id,
+          SubmissionRegistry.ProcessChainStatus.CANCELLED,
+          SubmissionRegistry.ProcessChainStatus.ERROR)
+
+      val pcStatus5 = submissionRegistry.getProcessChainStatus(pc.id)
+      ctx.verify {
+        assertThat(pcStatus5)
+            .isEqualTo(SubmissionRegistry.ProcessChainStatus.ERROR)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun setAllProcessChainsStatus(vertx: Vertx, ctx: VertxTestContext) {
     val s1 = Submission(workflow = Workflow())
     val pc1 = ProcessChain()

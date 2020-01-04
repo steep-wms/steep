@@ -367,6 +367,17 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     updateProcessChain(processChainId) { it.copy(status = status) }
   }
 
+  override suspend fun setProcessChainStatus(processChainId: String,
+      currentStatus: ProcessChainStatus, newStatus: ProcessChainStatus) {
+    updateProcessChain(processChainId) {
+      if (it.status == currentStatus) {
+        it.copy(status = newStatus)
+      } else {
+        it
+      }
+    }
+  }
+
   override suspend fun setAllProcessChainsStatus(submissionId: String,
       currentStatus: ProcessChainStatus, newStatus: ProcessChainStatus) {
     val sharedData = vertx.sharedData()

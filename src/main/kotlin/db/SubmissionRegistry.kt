@@ -305,6 +305,16 @@ interface SubmissionRegistry {
   suspend fun setProcessChainStatus(processChainId: String, status: ProcessChainStatus)
 
   /**
+   * Atomically set the status of a process chain if its current status
+   * matches a specified one. If it does not match, the method does nothing.
+   * @param processChainId the process chain ID
+   * @param currentStatus the expected current status
+   * @param newStatus the new status
+   */
+  suspend fun setProcessChainStatus(processChainId: String,
+      currentStatus: ProcessChainStatus, newStatus: ProcessChainStatus)
+
+  /**
    * Find all process chains that belong to the submission with the given ID
    * and that have the [currentStatus]. Set their status to [newStatus].
    * @param submissionId the ID of the submission whose process chains to update

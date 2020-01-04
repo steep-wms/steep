@@ -9,6 +9,7 @@ import helper.UniqueID
 import helper.YamlUtils
 import io.mockk.Runs
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -429,6 +430,108 @@ class HttpEndpointTest {
   }
 
   /**
+   * Test if a workflow can be updated
+   */
+  @Test
+  fun putWorkflowById(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
+
+    coEvery { submissionRegistry.findSubmissionById(s1.id) } returns s1
+    coEvery { submissionRegistry.findSubmissionById("UNKNOWN") } returns null
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val cancelledBody = json {
+          obj(
+              "status" to "CANCELLED"
+          )
+        }
+
+        val missingBody = json {
+          obj(
+              "foo" to "bar"
+          )
+        }
+
+        val invalidBody = json {
+          obj(
+              "status" to "INVALID"
+          )
+        }
+
+        // test invalid requests
+        client.put(port, "localhost", "/workflows/${s1.id}")
+            .`as`(BodyCodec.none())
+            .expect(ResponsePredicate.SC_BAD_REQUEST)
+            .sendAwait()
+
+        client.put(port, "localhost", "/workflows/${s1.id}")
+            .`as`(BodyCodec.none())
+            .expect(ResponsePredicate.SC_BAD_REQUEST)
+            .sendBufferAwait(Buffer.buffer("INVALID BODY"))
+
+        client.put(port, "localhost", "/workflows/${s1.id}")
+            .`as`(BodyCodec.none())
+            .expect(ResponsePredicate.SC_BAD_REQUEST)
+            .sendJsonObjectAwait(missingBody)
+
+        client.put(port, "localhost", "/workflows/${s1.id}")
+            .`as`(BodyCodec.none())
+            .expect(ResponsePredicate.SC_BAD_REQUEST)
+            .sendJsonObjectAwait(invalidBody)
+
+        client.put(port, "localhost", "/workflows/UNKNOWN")
+            .`as`(BodyCodec.none())
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .sendJsonObjectAwait(cancelledBody)
+
+        client.put(port, "localhost", "/workflows/${s1.id}")
+            .`as`(BodyCodec.none())
+            .putHeader("accept", "text/html")
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .sendJsonObjectAwait(cancelledBody)
+
+        // now test valid requests
+        coEvery { submissionRegistry.setAllProcessChainsStatus(s1.id,
+            ProcessChainStatus.REGISTERED, ProcessChainStatus.CANCELLED) } just Runs
+        coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+            ProcessChainStatus.RUNNING) } returns 1
+        coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+            ProcessChainStatus.CANCELLED) } returns 2
+        coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+            ProcessChainStatus.SUCCESS) } returns 0
+        coEvery { submissionRegistry.countProcessChainsByStatus(s1.id,
+            ProcessChainStatus.ERROR) } returns 0
+        coEvery { submissionRegistry.countProcessChainsBySubmissionId(s1.id) } returns 3
+        val response1 = client.put(port, "localhost", "/workflows/${s1.id}")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .sendJsonObjectAwait(cancelledBody)
+
+        assertThat(response1.body()).isEqualTo(json {
+          obj(
+              "id" to s1.id,
+              "status" to Submission.Status.RUNNING.toString(),
+              "runningProcessChains" to 1,
+              "cancelledProcessChains" to 2,
+              "succeededProcessChains" to 0,
+              "failedProcessChains" to 0,
+              "totalProcessChains" to 3
+          )
+        })
+
+        coVerify(exactly = 1) {
+          submissionRegistry.setAllProcessChainsStatus(s1.id,
+              ProcessChainStatus.REGISTERED, ProcessChainStatus.CANCELLED)
+        }
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
    * Test that the endpoint rejects an empty workflow
    */
   @Test
@@ -783,6 +886,147 @@ class HttpEndpointTest {
               "results" to obj(
                   "output_file1" to array("output.txt")
               )
+          )
+        })
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if process chains can be updated
+   */
+  @Test
+  fun putProcessChainById(vertx: Vertx, ctx: VertxTestContext) {
+    val sid = UniqueID.next()
+    val pc1 = ProcessChain()
+    val pc2 = ProcessChain()
+    val pc3 = ProcessChain()
+
+    coEvery { submissionRegistry.findProcessChainById(pc1.id) } returns pc1
+    coEvery { submissionRegistry.findProcessChainById(pc2.id) } returns pc2
+    coEvery { submissionRegistry.findProcessChainById(pc3.id) } returns pc3
+    coEvery { submissionRegistry.findProcessChainById("UNKNOWN") } returns null
+
+    coEvery { submissionRegistry.getProcessChainSubmissionId(pc1.id) } returns sid
+    coEvery { submissionRegistry.getProcessChainSubmissionId(pc2.id) } returns sid
+    coEvery { submissionRegistry.getProcessChainSubmissionId(pc3.id) } returns sid
+
+    val startTime = Instant.now()
+    coEvery { submissionRegistry.getProcessChainStartTime(pc1.id) } returns startTime
+    coEvery { submissionRegistry.getProcessChainStartTime(pc2.id) } returns startTime
+    coEvery { submissionRegistry.getProcessChainStartTime(pc3.id) } returns null
+
+    val endTime = Instant.now()
+    coEvery { submissionRegistry.getProcessChainEndTime(pc1.id) } returns endTime
+    coEvery { submissionRegistry.getProcessChainEndTime(pc2.id) } returns null
+    coEvery { submissionRegistry.getProcessChainEndTime(pc3.id) } returns null
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val cancelledBody = json {
+          obj(
+              "status" to "CANCELLED"
+          )
+        }
+
+        val missingBody = json {
+          obj(
+              "foo" to "bar"
+          )
+        }
+
+        val invalidBody = json {
+          obj(
+              "status" to "INVALID"
+          )
+        }
+
+        // test invalid requests
+        client.put(port, "localhost", "/processchains/${pc1.id}")
+            .`as`(BodyCodec.none())
+            .expect(ResponsePredicate.SC_BAD_REQUEST)
+            .sendAwait()
+
+        client.put(port, "localhost", "/processchains/${pc1.id}")
+            .`as`(BodyCodec.none())
+            .expect(ResponsePredicate.SC_BAD_REQUEST)
+            .sendBufferAwait(Buffer.buffer("INVALID BODY"))
+
+        client.put(port, "localhost", "/processchains/${pc1.id}")
+            .`as`(BodyCodec.none())
+            .expect(ResponsePredicate.SC_BAD_REQUEST)
+            .sendJsonObjectAwait(missingBody)
+
+        client.put(port, "localhost", "/processchains/${pc1.id}")
+            .`as`(BodyCodec.none())
+            .expect(ResponsePredicate.SC_BAD_REQUEST)
+            .sendJsonObjectAwait(invalidBody)
+
+        client.put(port, "localhost", "/processchains/UNKNOWN")
+            .`as`(BodyCodec.none())
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .sendJsonObjectAwait(cancelledBody)
+
+        client.put(port, "localhost", "/processchains/${pc1.id}")
+            .`as`(BodyCodec.none())
+            .putHeader("accept", "text/html")
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .sendJsonObjectAwait(cancelledBody)
+
+        // now test valid requests
+        coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns
+            ProcessChainStatus.SUCCESS
+        val response1 = client.put(port, "localhost", "/processchains/${pc1.id}")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .sendJsonObjectAwait(cancelledBody)
+
+        assertThat(response1.body()).isEqualTo(json {
+          obj(
+              "id" to pc1.id,
+              "requiredCapabilities" to array(),
+              "submissionId" to sid,
+              "status" to ProcessChainStatus.SUCCESS.toString(),
+              "startTime" to startTime,
+              "endTime" to endTime
+          )
+        })
+
+        coEvery { submissionRegistry.getProcessChainStatus(pc2.id) } returns
+            ProcessChainStatus.RUNNING
+        val response2 = client.put(port, "localhost", "/processchains/${pc2.id}")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .sendJsonObjectAwait(cancelledBody)
+
+        assertThat(response2.body()).isEqualTo(json {
+          obj(
+              "id" to pc2.id,
+              "requiredCapabilities" to array(),
+              "submissionId" to sid,
+              "status" to ProcessChainStatus.RUNNING.toString(),
+              "startTime" to startTime
+          )
+        })
+
+        coEvery { submissionRegistry.getProcessChainStatus(pc3.id) } returns
+            ProcessChainStatus.REGISTERED andThen ProcessChainStatus.CANCELLED
+        coEvery { submissionRegistry.setProcessChainStatus(pc3.id,
+            ProcessChainStatus.REGISTERED, ProcessChainStatus.CANCELLED) } just Runs
+        val response3 = client.put(port, "localhost", "/processchains/${pc3.id}")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .sendJsonObjectAwait(cancelledBody)
+
+        assertThat(response3.body()).isEqualTo(json {
+          obj(
+              "id" to pc3.id,
+              "requiredCapabilities" to array(),
+              "submissionId" to sid,
+              "status" to ProcessChainStatus.CANCELLED.toString()
           )
         })
       }

@@ -249,6 +249,28 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
   }
 
+  private suspend fun updateColumn(table: String, id: String, column: String,
+      currentValue: Any?, newValue: Any?, jsonb: Boolean, connection: SQLConnection) {
+    val jsonbStr = if (jsonb) "::jsonb" else ""
+    val updateStatement = "UPDATE $table SET $column=?$jsonbStr WHERE $ID=? " +
+        "AND $column=?$jsonbStr"
+    val updateParams = json {
+      array(
+          newValue,
+          id,
+          currentValue
+      )
+    }
+    connection.updateWithParamsAwait(updateStatement, updateParams)
+  }
+
+  private suspend fun updateColumn(table: String, id: String, column: String,
+      currentValue: Any?, newValue: Any?, jsonb: Boolean) {
+    withConnection { connection ->
+      updateColumn(table, id, column, currentValue, newValue, jsonb, connection)
+    }
+  }
+
   override suspend fun fetchNextSubmission(currentStatus: Submission.Status,
       newStatus: Submission.Status): Submission? {
     return withLocks { connection ->
@@ -540,6 +562,12 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   override suspend fun setProcessChainStatus(processChainId: String,
       status: ProcessChainStatus) {
     updateColumn(PROCESS_CHAINS, processChainId, STATUS, status.toString(), false)
+  }
+
+  override suspend fun setProcessChainStatus(processChainId: String,
+      currentStatus: ProcessChainStatus, newStatus: ProcessChainStatus) {
+    updateColumn(PROCESS_CHAINS, processChainId, STATUS,
+        currentStatus.toString(), newStatus.toString(), false)
   }
 
   override suspend fun setAllProcessChainsStatus(submissionId: String,
