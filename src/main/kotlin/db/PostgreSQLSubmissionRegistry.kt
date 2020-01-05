@@ -434,6 +434,22 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
   }
 
+  override suspend fun findProcessChainIdsBySubmissionIdAndStatus(
+      submissionId: String, status: ProcessChainStatus): List<String> {
+    return withConnection { connection ->
+      val statement = "SELECT $ID FROM $PROCESS_CHAINS " +
+          "WHERE $SUBMISSION_ID=? AND $STATUS=? ORDER BY $SERIAL"
+      val params = json {
+        array(
+            submissionId,
+            status.toString()
+        )
+      }
+      val rs = connection.queryWithParamsAwait(statement, params)
+      rs.results.map { it.getString(0) }
+    }
+  }
+
   override suspend fun findProcessChainStatusesBySubmissionId(submissionId: String):
       Map<String, ProcessChainStatus> {
     return withConnection { connection ->

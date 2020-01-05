@@ -1,4 +1,5 @@
 import AddressConstants.CONTROLLER_LOOKUP_NOW
+import AddressConstants.LOCAL_AGENT_ADDRESS_PREFIX
 import AddressConstants.PROCESSCHAINS_ADDED
 import AddressConstants.PROCESSCHAINS_ADDED_SIZE
 import AddressConstants.PROCESSCHAIN_ENDTIME_CHANGED
@@ -54,6 +55,7 @@ import io.vertx.kotlin.core.json.JsonArray
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.Submission
 import model.Version
@@ -612,10 +614,35 @@ class HttpEndpoint : CoroutineVerticle() {
             .setStatusCode(404)
             .end("There is no workflow with ID `$id'")
       } else {
-        if (status == Submission.Status.CANCELLED) {
+        if (submission.status != status && status == Submission.Status.CANCELLED) {
+          // first, atomically cancel all process chains that are currently
+          // registered but not running yet
           submissionRegistry.setAllProcessChainsStatus(id,
               SubmissionRegistry.ProcessChainStatus.REGISTERED,
               SubmissionRegistry.ProcessChainStatus.CANCELLED)
+
+          // now cancel running process chains
+          val pcIds = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
+              id, SubmissionRegistry.ProcessChainStatus.RUNNING)
+          // request cancellation (see also onPutProcessChainById())
+          val cancelMsg = json {
+            obj(
+                "action" to "cancel"
+            )
+          }
+          for (pcId in pcIds) {
+            vertx.eventBus().send(LOCAL_AGENT_ADDRESS_PREFIX + pcId, cancelMsg)
+          }
+
+          // optimistically wait up to 2 seconds for the submission
+          // to become cancelled
+          for (i in 1..4) {
+            delay(500)
+            val updatedStatus = submissionRegistry.getSubmissionStatus(id)
+            if (updatedStatus == Submission.Status.CANCELLED) {
+              break
+            }
+          }
         }
 
         val updatedSubmission = submissionRegistry.findSubmissionById(id)!!
@@ -899,6 +926,27 @@ class HttpEndpoint : CoroutineVerticle() {
           val currentStatus = submissionRegistry.getProcessChainStatus(id)
           if (currentStatus == SubmissionRegistry.ProcessChainStatus.REGISTERED) {
             submissionRegistry.setProcessChainStatus(id, currentStatus, status)
+          } else if (currentStatus == SubmissionRegistry.ProcessChainStatus.RUNNING) {
+            // Ask local agent (running anywhere in the cluster) to cancel
+            // the process chain. Its status should be set to CANCELLED by
+            // the scheduler as soon as the local agent has aborted the
+            // execution and the JobManager has sent this information back to
+            // the remote agent.
+            vertx.eventBus().send(LOCAL_AGENT_ADDRESS_PREFIX + id, json {
+              obj(
+                  "action" to "cancel"
+              )
+            })
+
+            // optimistically wait up to 2 seconds for the process chain
+            // to become cancelled
+            for (i in 1..4) {
+              delay(500)
+              val updatedStatus = submissionRegistry.getProcessChainStatus(id)
+              if (updatedStatus == SubmissionRegistry.ProcessChainStatus.CANCELLED) {
+                break
+              }
+            }
           }
         }
 

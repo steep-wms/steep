@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.nio.file.Path
+import kotlin.concurrent.thread
 
 /**
  * Tests for [Shell]
@@ -47,5 +48,21 @@ class ShellTest {
     assertThatThrownBy { Shell.execute(listOf("false")) }
         .isInstanceOf(Shell.ExecutionException::class.java)
         .hasFieldOrPropertyWithValue("exitCode", 1)
+  }
+
+  /**
+   * Test if a process can be destroyed by interrupting the current thread
+   */
+  @Test
+  fun interrupt() {
+    val t = Thread.currentThread()
+
+    thread {
+      Thread.sleep(200)
+      t.interrupt()
+    }
+
+    assertThatThrownBy { Shell.execute(listOf("sleep", "10")) }
+        .isInstanceOf(InterruptedException::class.java)
   }
 }

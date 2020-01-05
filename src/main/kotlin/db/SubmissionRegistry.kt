@@ -208,6 +208,17 @@ interface SubmissionRegistry {
       size: Int = -1, offset: Int = 0, order: Int = 1): Collection<ProcessChain>
 
   /**
+   * Find the IDs of all process chains that belong to a given submission
+   * and have the given status
+   * @param submissionId the submission's ID
+   * @param status the expected process chain status
+   * @return the list of process chain IDs (may be empty if the submission does
+   * not exist or if it has no process chains with the given status)
+   */
+  suspend fun findProcessChainIdsBySubmissionIdAndStatus(submissionId: String,
+      status: ProcessChainStatus): Collection<String>
+
+  /**
    * Find all process chains that belong to a given submission and return their
    * IDs and their statuses
    * @param submissionId the submission's ID

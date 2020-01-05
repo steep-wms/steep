@@ -1,6 +1,7 @@
 package agent
 
 import AddressConstants
+import db.SubmissionRegistry.ProcessChainStatus
 import helper.JsonUtils
 import helper.UniqueID
 import io.vertx.core.Future
@@ -18,6 +19,7 @@ import io.vertx.kotlin.coroutines.receiveChannelHandler
 import model.processchain.ProcessChain
 import org.slf4j.LoggerFactory
 import java.rmi.RemoteException
+import java.util.concurrent.CancellationException
 
 /**
  * This class sends a process chain over the event bus to a remote agent and
@@ -82,11 +84,26 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
         // wait for reply
         val result = adapter.receive()
 
-        val errorMessage: String? = result.body()["errorMessage"]
-        if (errorMessage != null) {
-          throw RemoteException(errorMessage)
+        val strStatus: String? = result.body()["status"]
+        return when (val status = strStatus?.let { ProcessChainStatus.valueOf(it) }) {
+          ProcessChainStatus.ERROR -> {
+            val errorMessage: String? = result.body()["errorMessage"]
+            if (errorMessage != null) {
+              throw RemoteException(errorMessage)
+            } else {
+              throw RemoteException("Unknown error on remote side")
+            }
+          }
+
+          ProcessChainStatus.CANCELLED ->
+            throw CancellationException()
+
+          ProcessChainStatus.SUCCESS ->
+            JsonUtils.fromJson(result.body()["results"])
+
+          else ->
+            throw IllegalStateException("Unknown status: $status")
         }
-        return JsonUtils.fromJson(result.body()["results"])
       } finally {
         agentLeftConsumer.unregister()
       }

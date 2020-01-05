@@ -3,6 +3,7 @@ import AddressConstants.REMOTE_AGENT_BUSY
 import AddressConstants.REMOTE_AGENT_IDLE
 import agent.LocalAgent
 import agent.RemoteAgentRegistry
+import db.SubmissionRegistry
 import helper.JsonUtils
 import helper.Shell
 import io.vertx.core.eventbus.Message
@@ -263,7 +264,15 @@ class JobManager : CoroutineVerticle() {
     val results = la.execute(processChain)
     json {
       obj(
-          "results" to JsonUtils.toJson(results)
+          "results" to JsonUtils.toJson(results),
+          "status" to SubmissionRegistry.ProcessChainStatus.SUCCESS.toString()
+      )
+    }
+  } catch (_: CancellationException) {
+    log.debug("Process chain execution was cancelled")
+    json {
+      obj(
+          "status" to SubmissionRegistry.ProcessChainStatus.CANCELLED.toString()
       )
     }
   } catch (t: Throwable) {
@@ -275,16 +284,14 @@ class JobManager : CoroutineVerticle() {
 
         ${t.lastOutput}
       """.trimIndent()
-    } else if (t is CancellationException) {
-      log.debug("Process chain execution was cancelled")
-      t.message ?: "Process chain execution was cancelled"
     } else {
       log.debug("Could not execute process chain", t)
       t.message ?: "Unknown internal error"
     }
     json {
       obj(
-          "errorMessage" to message
+          "errorMessage" to message,
+          "status" to SubmissionRegistry.ProcessChainStatus.ERROR.toString()
       )
     }
   }

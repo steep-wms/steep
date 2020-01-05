@@ -62,6 +62,13 @@ object AddressConstants {
   const val REMOTE_AGENT_ADDRESS_PREFIX = "jobmanager.remoteAgentRegistry.agent."
 
   /**
+   * Prefix for addresses of local agents. Each local agent listens to one
+   * of these addresses while it executes a process chain. The actual
+   * address is [LOCAL_AGENT_ADDRESS_PREFIX] + ID of the process chain.
+   */
+  const val LOCAL_AGENT_ADDRESS_PREFIX = "jobmanager.localAgent."
+
+  /**
    * Will be published when a submission has been added to the registry
    */
   const val SUBMISSION_ADDED = "jobmanager.submissionRegistry.submissionAdded"

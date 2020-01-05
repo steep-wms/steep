@@ -6,6 +6,7 @@ import agent.AgentRegistryFactory
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
 import db.SubmissionRegistry
+import db.SubmissionRegistry.ProcessChainStatus.CANCELLED
 import db.SubmissionRegistry.ProcessChainStatus.ERROR
 import db.SubmissionRegistry.ProcessChainStatus.REGISTERED
 import db.SubmissionRegistry.ProcessChainStatus.RUNNING
@@ -18,6 +19,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
 import java.time.Instant
+import java.util.concurrent.CancellationException
 import java.util.concurrent.TimeUnit
 
 /**
@@ -113,6 +115,9 @@ class Scheduler : CoroutineVerticle() {
           val results = agent.execute(processChain)
           submissionRegistry.setProcessChainResults(processChain.id, results)
           submissionRegistry.setProcessChainStatus(processChain.id, SUCCESS)
+        } catch (_: CancellationException) {
+          log.warn("Process chain execution was cancelled")
+          submissionRegistry.setProcessChainStatus(processChain.id, CANCELLED)
         } catch (t: Throwable) {
           log.error("Process chain execution failed", t)
           submissionRegistry.setProcessChainErrorMessage(processChain.id, t.message)

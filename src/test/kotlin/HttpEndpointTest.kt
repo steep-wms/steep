@@ -438,6 +438,10 @@ class HttpEndpointTest {
 
     coEvery { submissionRegistry.findSubmissionById(s1.id) } returns s1
     coEvery { submissionRegistry.findSubmissionById("UNKNOWN") } returns null
+    coEvery { submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
+        s1.id, ProcessChainStatus.RUNNING) } returns emptyList()
+    coEvery { submissionRegistry.getSubmissionStatus(s1.id) } returns
+        Submission.Status.RUNNING andThen Submission.Status.CANCELLED
 
     val client = WebClient.create(vertx)
     GlobalScope.launch(vertx.dispatcher()) {

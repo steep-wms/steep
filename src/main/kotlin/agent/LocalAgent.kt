@@ -1,11 +1,14 @@
 package agent
 
+import AddressConstants.LOCAL_AGENT_ADDRESS_PREFIX
 import ConfigConstants
 import com.google.common.cache.CacheBuilder
 import db.PluginRegistryFactory
 import helper.FileSystemUtils.readRecursive
 import helper.UniqueID
 import io.vertx.core.Vertx
+import io.vertx.core.json.JsonObject
+import io.vertx.kotlin.core.eventbus.unregisterAwait
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -65,8 +68,22 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
         .filter { it.type == Argument.Type.OUTPUT }
     val executables = mkdirsForOutputs(outputs) + processChain.executables
 
-    for (exec in executables) {
-      execute(exec)
+    // temporarily register a consumer that can cancel the process chain
+    val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
+    val consumer = vertx.eventBus().consumer<JsonObject>(address).handler { msg ->
+      if (msg.body().getString("action") == "cancel") {
+        cancel()
+      }
+    }
+
+    // execute the process chain
+    try {
+      for (exec in executables) {
+        execute(exec)
+      }
+    } finally {
+      // make sure the consumer is unregistered
+      consumer.unregisterAwait()
     }
 
     // create list of results

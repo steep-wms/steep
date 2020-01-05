@@ -4,6 +4,7 @@ import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import AddressConstants.REMOTE_AGENT_LEFT
 import assertThatThrownBy
 import coVerify
+import db.SubmissionRegistry
 import helper.JsonUtils
 import helper.UniqueID
 import io.vertx.core.Vertx
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import java.rmi.RemoteException
 import java.util.ArrayDeque
+import java.util.concurrent.CancellationException
 import java.util.concurrent.Executors
 
 /**
@@ -65,7 +67,8 @@ class RemoteAgentTest : AgentTest() {
         val results = la.execute(processChain)
         vertx.eventBus().send(replyAddress, json {
           obj(
-              "results" to JsonUtils.toJson(results)
+              "results" to JsonUtils.toJson(results),
+              "status" to SubmissionRegistry.ProcessChainStatus.SUCCESS.toString()
           )
         })
       }
@@ -144,7 +147,8 @@ class RemoteAgentTest : AgentTest() {
       val replyAddress: String = jsonObj["replyAddress"]
       vertx.eventBus().send(replyAddress, json {
         obj(
-            "errorMessage" to errorMessage
+            "errorMessage" to errorMessage,
+            "status" to SubmissionRegistry.ProcessChainStatus.ERROR.toString()
         )
       })
     }
@@ -155,6 +159,35 @@ class RemoteAgentTest : AgentTest() {
         assertThatThrownBy { agent.execute(ProcessChain()) }
             .isInstanceOf(RemoteException::class.java)
             .hasMessage(errorMessage)
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test what happens if the remote agent cancels the execution
+   */
+  @Test
+  fun cancel(vertx: Vertx, ctx: VertxTestContext) {
+    vertx.eventBus().consumer<JsonObject>(ADDRESS) { msg ->
+      // accept the process chain ...
+      msg.reply("ACK")
+
+      // but then cancel it
+      val jsonObj: JsonObject = msg.body()
+      val replyAddress: String = jsonObj["replyAddress"]
+      vertx.eventBus().send(replyAddress, json {
+        obj(
+            "status" to SubmissionRegistry.ProcessChainStatus.CANCELLED.toString()
+        )
+      })
+    }
+
+    val agent = createAgent(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        assertThatThrownBy { agent.execute(ProcessChain()) }
+            .isInstanceOf(CancellationException::class.java)
       }
       ctx.completeNow()
     }
@@ -178,7 +211,8 @@ class RemoteAgentTest : AgentTest() {
       val replyAddress: String = jsonObj["replyAddress"]
       vertx.eventBus().send(replyAddress, json {
         obj(
-            "results" to obj()
+            "results" to obj(),
+            "status" to SubmissionRegistry.ProcessChainStatus.SUCCESS.toString()
         )
       })
 
