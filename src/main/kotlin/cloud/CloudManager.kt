@@ -1,11 +1,13 @@
 package cloud
 
-import AddressConstants
+import AddressConstants.REMOTE_AGENT_ADDED
+import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
+import AddressConstants.REMOTE_AGENT_LEFT
+import AddressConstants.REMOTE_AGENT_MISSING
 import ConfigConstants.CLOUD_CREATED_BY_TAG
 import ConfigConstants.CLOUD_SETUPS_FILE
 import ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION
 import ConfigConstants.CLOUD_SSH_USERNAME
-import agent.RemoteAgentRegistry
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.mitchellbosecke.pebble.PebbleEngine
 import helper.YamlUtils
@@ -143,15 +145,15 @@ class CloudManager : CoroutineVerticle() {
     createdVMs = sharedData.getAsyncMapAwait(CREATED_VMS_MAP_NAME)
 
     // keep track of left agents
-    vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_LEFT) { msg ->
-      val agentId = msg.body().substring(RemoteAgentRegistry.AGENT_ADDRESS_PREFIX.length)
+    vertx.eventBus().consumer<String>(REMOTE_AGENT_LEFT) { msg ->
+      val agentId = msg.body().substring(REMOTE_AGENT_ADDRESS_PREFIX.length)
       log.info("Agent $agentId has left the cluster. Scheduling deletion of its VM ...")
       leftAgents.add(agentId)
     }
-    vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_ADDED) { msg ->
+    vertx.eventBus().consumer<String>(REMOTE_AGENT_ADDED) { msg ->
       // remove the `agentId` from `leftAgents` if the agent has returned -- in
       // the hope that the VM has not been deleted by `sync()` in the meantime
-      val agentId = msg.body().substring(RemoteAgentRegistry.AGENT_ADDRESS_PREFIX.length)
+      val agentId = msg.body().substring(REMOTE_AGENT_ADDRESS_PREFIX.length)
       log.info("Agent $agentId has joined the cluster.")
       leftAgents.remove(agentId)
     }
@@ -159,7 +161,7 @@ class CloudManager : CoroutineVerticle() {
     syncTimerStart()
 
     // create new virtual machines on demand
-    vertx.eventBus().consumer<JsonArray>(AddressConstants.REMOTE_AGENT_MISSING) { msg ->
+    vertx.eventBus().consumer<JsonArray>(REMOTE_AGENT_MISSING) { msg ->
       val requiredCapabilities = msg.body()
       if (requiredCapabilities != null) {
         launch {
@@ -350,8 +352,8 @@ class CloudManager : CoroutineVerticle() {
     // register a handler that waits for the agent on the new virtual machine
     // to become available
     val future = Future.future<Unit>()
-    val consumer = vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_ADDED) { msg ->
-      if (msg.body() == RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + vmId) {
+    val consumer = vertx.eventBus().consumer<String>(REMOTE_AGENT_ADDED) { msg ->
+      if (msg.body() == REMOTE_AGENT_ADDRESS_PREFIX + vmId) {
         future.complete()
       }
     }

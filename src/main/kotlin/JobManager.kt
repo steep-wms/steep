@@ -1,3 +1,6 @@
+import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
+import AddressConstants.REMOTE_AGENT_BUSY
+import AddressConstants.REMOTE_AGENT_IDLE
 import agent.LocalAgent
 import agent.RemoteAgentRegistry
 import helper.JsonUtils
@@ -59,7 +62,7 @@ class JobManager : CoroutineVerticle() {
         ConfigConstants.AGENT_AUTO_SHUTDOWN_TIMEOUT, 0))
 
     // consume process chains and run a local agent for each of them
-    val address = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + Main.agentId
+    val address = REMOTE_AGENT_ADDRESS_PREFIX + Main.agentId
     vertx.eventBus().consumer<JsonObject>(address, this::onAgentMessage)
 
     // register remote agent
@@ -125,15 +128,15 @@ class JobManager : CoroutineVerticle() {
   private fun markBusy(busy: Boolean = true) {
     if (busy) {
       if (this.busy == null) {
-        vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_BUSY,
-            RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + Main.agentId)
+        vertx.eventBus().publish(REMOTE_AGENT_BUSY,
+            REMOTE_AGENT_ADDRESS_PREFIX + Main.agentId)
         stateChangedTime = Instant.now()
       }
       this.busy = Instant.now()
     } else {
       if (this.busy != null) {
-        vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_IDLE,
-            RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + Main.agentId)
+        vertx.eventBus().publish(REMOTE_AGENT_IDLE,
+            REMOTE_AGENT_ADDRESS_PREFIX + Main.agentId)
         stateChangedTime = Instant.now()
       }
       this.busy = null

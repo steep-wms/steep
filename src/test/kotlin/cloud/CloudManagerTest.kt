@@ -1,8 +1,8 @@
 package cloud
 
-import AddressConstants
+import AddressConstants.REMOTE_AGENT_ADDED
+import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import ConfigConstants
-import agent.RemoteAgentRegistry
 import coVerify
 import helper.UniqueID
 import helper.YamlUtils
@@ -185,8 +185,8 @@ class CloudManagerTest {
         ctx.verify {
           assertThat(agentId).isNotEmpty()
         }
-        vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_ADDED,
-            RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + agentId)
+        vertx.eventBus().publish(REMOTE_AGENT_ADDED,
+            REMOTE_AGENT_ADDRESS_PREFIX + agentId)
       }
     }
 

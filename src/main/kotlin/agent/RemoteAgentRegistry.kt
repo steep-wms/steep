@@ -1,6 +1,10 @@
 package agent
 
-import AddressConstants
+import AddressConstants.CLUSTER_NODE_LEFT
+import AddressConstants.REMOTE_AGENT_ADDED
+import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
+import AddressConstants.REMOTE_AGENT_LEFT
+import AddressConstants.REMOTE_AGENT_MISSING
 import io.prometheus.client.Gauge
 import io.vertx.core.Future
 import io.vertx.core.Vertx
@@ -31,11 +35,6 @@ import kotlin.coroutines.CoroutineContext
 class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineScope {
   companion object {
     private val log = LoggerFactory.getLogger(RemoteAgentRegistry::class.java)
-
-    /**
-     * Prefix for eventbus addresses of [RemoteAgent]s
-     */
-    const val AGENT_ADDRESS_PREFIX = "RemoteAgentRegistry.Agent."
 
     /**
      * Name of a local map keeping information about the remote registry
@@ -84,7 +83,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     // do not register consumers multiple times
     if (localMap.compute(KEY_INITIALIZED) { _, v -> v != null } == false) {
       // log added agents
-      vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_ADDED) { msg ->
+      vertx.eventBus().consumer<String>(REMOTE_AGENT_ADDED) { msg ->
         log.info("Remote agent `${msg.body()}' has been added.")
         launch {
           val size = agents.await().sizeAwait()
@@ -94,7 +93,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
       }
 
       // log left agents
-      vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_LEFT) { msg ->
+      vertx.eventBus().consumer<String>(REMOTE_AGENT_LEFT) { msg ->
         log.info("Remote agent `${msg.body()}' has left.")
         launch {
           val size = agents.await().sizeAwait()
@@ -104,12 +103,12 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
       }
 
       // unregister agents whose nodes have left
-      vertx.eventBus().localConsumer<String>(AddressConstants.CLUSTER_NODE_LEFT) { msg ->
+      vertx.eventBus().localConsumer<String>(CLUSTER_NODE_LEFT) { msg ->
         launch {
           log.info("Node `${msg.body()}' has left the cluster. Removing remote agent.")
           agents.await().removeAwait(msg.body())
-          val address = AGENT_ADDRESS_PREFIX + msg.body()
-          vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_LEFT, address)
+          val address = REMOTE_AGENT_ADDRESS_PREFIX + msg.body()
+          vertx.eventBus().publish(REMOTE_AGENT_LEFT, address)
         }
       }
     }
@@ -126,9 +125,9 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
    * unregisters the agent when the node with the [id] leaves the cluster.
    */
   suspend fun register(id: String) {
-    val address = AGENT_ADDRESS_PREFIX + id
+    val address = REMOTE_AGENT_ADDRESS_PREFIX + id
     agents.await().putAwait(id, true)
-    vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_ADDED, address)
+    vertx.eventBus().publish(REMOTE_AGENT_ADDED, address)
   }
 
   /**
@@ -159,7 +158,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
       // a list of candidates
       val candidates = mutableListOf<Pair<String, Long>>()
       for (agent in keys) {
-        val address = AGENT_ADDRESS_PREFIX + agent
+        val address = REMOTE_AGENT_ADDRESS_PREFIX + agent
         if (skippedAgents.contains(address)) {
           continue
         }
@@ -180,7 +179,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
         // capabilities
         val arr = JsonArray()
         processChain.requiredCapabilities.forEach { arr.add(it) }
-        vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_MISSING, arr)
+        vertx.eventBus().publish(REMOTE_AGENT_MISSING, arr)
 
         return null
       }

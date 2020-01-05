@@ -1,3 +1,20 @@
+import AddressConstants.CONTROLLER_LOOKUP_NOW
+import AddressConstants.PROCESSCHAINS_ADDED
+import AddressConstants.PROCESSCHAINS_ADDED_SIZE
+import AddressConstants.PROCESSCHAIN_ENDTIME_CHANGED
+import AddressConstants.PROCESSCHAIN_ERRORMESSAGE_CHANGED
+import AddressConstants.PROCESSCHAIN_STARTTIME_CHANGED
+import AddressConstants.PROCESSCHAIN_STATUS_CHANGED
+import AddressConstants.REMOTE_AGENT_ADDED
+import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
+import AddressConstants.REMOTE_AGENT_BUSY
+import AddressConstants.REMOTE_AGENT_IDLE
+import AddressConstants.REMOTE_AGENT_LEFT
+import AddressConstants.SUBMISSION_ADDED
+import AddressConstants.SUBMISSION_ENDTIME_CHANGED
+import AddressConstants.SUBMISSION_ERRORMESSAGE_CHANGED
+import AddressConstants.SUBMISSION_STARTTIME_CHANGED
+import AddressConstants.SUBMISSION_STATUS_CHANGED
 import agent.RemoteAgentRegistry
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.convertValue
@@ -228,35 +245,35 @@ class HttpEndpoint : CoroutineVerticle() {
     val sockJSHandler = SockJSHandler.create(vertx)
     sockJSHandler.bridge(BridgeOptions()
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(AddressConstants.SUBMISSION_ADDED))
+            .setAddress(SUBMISSION_ADDED))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(AddressConstants.SUBMISSION_STARTTIME_CHANGED))
+            .setAddress(SUBMISSION_STARTTIME_CHANGED))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(AddressConstants.SUBMISSION_ENDTIME_CHANGED))
+            .setAddress(SUBMISSION_ENDTIME_CHANGED))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(AddressConstants.SUBMISSION_STATUS_CHANGED))
+            .setAddress(SUBMISSION_STATUS_CHANGED))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(AddressConstants.SUBMISSION_ERRORMESSAGE_CHANGED))
+            .setAddress(SUBMISSION_ERRORMESSAGE_CHANGED))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(AddressConstants.PROCESSCHAINS_ADDED))
+            .setAddress(PROCESSCHAINS_ADDED))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(AddressConstants.PROCESSCHAINS_ADDED_SIZE))
+            .setAddress(PROCESSCHAINS_ADDED_SIZE))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(AddressConstants.PROCESSCHAIN_STARTTIME_CHANGED))
+            .setAddress(PROCESSCHAIN_STARTTIME_CHANGED))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(AddressConstants.PROCESSCHAIN_ENDTIME_CHANGED))
+            .setAddress(PROCESSCHAIN_ENDTIME_CHANGED))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(AddressConstants.PROCESSCHAIN_STATUS_CHANGED))
+            .setAddress(PROCESSCHAIN_STATUS_CHANGED))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(AddressConstants.PROCESSCHAIN_ERRORMESSAGE_CHANGED))
+            .setAddress(PROCESSCHAIN_ERRORMESSAGE_CHANGED))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(AddressConstants.REMOTE_AGENT_ADDED))
+            .setAddress(REMOTE_AGENT_ADDED))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(AddressConstants.REMOTE_AGENT_LEFT))
+            .setAddress(REMOTE_AGENT_LEFT))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(AddressConstants.REMOTE_AGENT_BUSY))
+            .setAddress(REMOTE_AGENT_BUSY))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(AddressConstants.REMOTE_AGENT_IDLE)))
+            .setAddress(REMOTE_AGENT_IDLE)))
     router.route("/eventbus/*").handler(sockJSHandler)
 
     val baseRouter = Router.router(vertx)
@@ -322,7 +339,7 @@ class HttpEndpoint : CoroutineVerticle() {
         )
       }
       val agents = agentIds.map { vertx.eventBus().sendAwait<JsonObject>(
-          RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + it, msg) }.map { it.body() }
+          REMOTE_AGENT_ADDRESS_PREFIX + it, msg) }.map { it.body() }
 
       val result = JsonArray(agents).encode()
 
@@ -353,7 +370,7 @@ class HttpEndpoint : CoroutineVerticle() {
 
       try {
         val agent = vertx.eventBus().sendAwait<JsonObject>(
-            RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + id, msg).body()
+            REMOTE_AGENT_ADDRESS_PREFIX + id, msg).body()
 
         if (ctx.acceptableContentType == "text/html") {
           renderHtml("html/agents/single.html", mapOf(
@@ -685,7 +702,7 @@ class HttpEndpoint : CoroutineVerticle() {
             .end(JsonUtils.mapper.writeValueAsString(submission))
 
         // notify controller to speed up lookup process
-        vertx.eventBus().send(AddressConstants.CONTROLLER_LOOKUP_NOW, null)
+        vertx.eventBus().send(CONTROLLER_LOOKUP_NOW, null)
       } catch (e: Exception) {
         ctx.response()
             .setStatusCode(500)

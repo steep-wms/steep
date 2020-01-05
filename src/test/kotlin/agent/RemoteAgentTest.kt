@@ -1,6 +1,7 @@
 package agent
 
-import AddressConstants
+import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
+import AddressConstants.REMOTE_AGENT_LEFT
 import assertThatThrownBy
 import coVerify
 import helper.JsonUtils
@@ -33,7 +34,7 @@ import java.util.concurrent.Executors
 class RemoteAgentTest : AgentTest() {
   companion object {
     private const val NODE_ID = "RemoteAgentTest"
-    private const val ADDRESS = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + NODE_ID
+    private const val ADDRESS = REMOTE_AGENT_ADDRESS_PREFIX + NODE_ID
   }
 
   private val executorService = Executors.newCachedThreadPool()
@@ -114,7 +115,7 @@ class RemoteAgentTest : AgentTest() {
       msg.reply("ACK")
 
       // but then leave the cluster
-      vertx.eventBus().publish(AddressConstants.REMOTE_AGENT_LEFT, ADDRESS)
+      vertx.eventBus().publish(REMOTE_AGENT_LEFT, ADDRESS)
     }
 
     val agent = createAgent(vertx)

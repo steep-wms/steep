@@ -1,6 +1,7 @@
 package agent
 
-import AddressConstants
+import AddressConstants.REMOTE_AGENT_ADDED
+import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import helper.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.core.impl.NoStackTraceThrowable
@@ -48,11 +49,11 @@ class RemoteAgentRegistryTest {
     val registry = RemoteAgentRegistry(vertx)
 
     val agentId = UniqueID.next()
-    val address = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + agentId
+    val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId
 
     var addedCount = 0
 
-    vertx.eventBus().consumer<String>(AddressConstants.REMOTE_AGENT_ADDED) { msg ->
+    vertx.eventBus().consumer<String>(REMOTE_AGENT_ADDED) { msg ->
       if (msg.body() == address) {
         addedCount++
       } else {
@@ -78,7 +79,7 @@ class RemoteAgentRegistryTest {
     val registry = RemoteAgentRegistry(vertx)
 
     val agentId = UniqueID.next()
-    val address = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + agentId
+    val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId
 
     var inquiryCount = 0
     var allocateCount = 0
@@ -86,8 +87,7 @@ class RemoteAgentRegistryTest {
 
     vertx.eventBus().consumer<JsonObject>(address) { msg ->
       val json = msg.body()
-      val action = json.getString("action")
-      when (action) {
+      when (val action = json.getString("action")) {
         "inquire" -> {
           inquiryCount++
           msg.reply(json { obj("available" to true) })
@@ -136,12 +136,11 @@ class RemoteAgentRegistryTest {
 
     val reqCap = setOf("docker", "gpu")
     val agentId = UniqueID.next()
-    val address = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + agentId
+    val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId
 
     vertx.eventBus().consumer<JsonObject>(address) { msg ->
       val json = msg.body()
-      val action = json.getString("action")
-      when (action) {
+      when (val action = json.getString("action")) {
         "inquire" -> {
           ctx.verify {
             assertThat(json.getJsonArray("requiredCapabilities").toSet()).isEqualTo(reqCap)
@@ -173,10 +172,10 @@ class RemoteAgentRegistryTest {
     val reqCap2 = setOf("gpu")
 
     val agentId1 = UniqueID.next()
-    val address1 = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + agentId1
+    val address1 = REMOTE_AGENT_ADDRESS_PREFIX + agentId1
 
     val agentId2 = UniqueID.next()
-    val address2 = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + agentId2
+    val address2 = REMOTE_AGENT_ADDRESS_PREFIX + agentId2
 
     var inquiryCount1 = 0
     var allocateCount1 = 0
@@ -186,8 +185,7 @@ class RemoteAgentRegistryTest {
 
     vertx.eventBus().consumer<JsonObject>(address1) { msg ->
       val json = msg.body()
-      val action = json.getString("action")
-      when (action) {
+      when (val action = json.getString("action")) {
         "inquire" -> {
           inquiryCount1++
           val available = json.getJsonArray("requiredCapabilities").toSet() == reqCap1
@@ -203,8 +201,7 @@ class RemoteAgentRegistryTest {
 
     vertx.eventBus().consumer<JsonObject>(address2) { msg ->
       val json = msg.body()
-      val action = json.getString("action")
-      when (action) {
+      when (val action = json.getString("action")) {
         "inquire" -> {
           inquiryCount2++
           val available = json.getJsonArray("requiredCapabilities").toSet() == reqCap2
@@ -252,10 +249,10 @@ class RemoteAgentRegistryTest {
     val registry = RemoteAgentRegistry(vertx)
 
     val agentId1 = UniqueID.next()
-    val address1 = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + agentId1
+    val address1 = REMOTE_AGENT_ADDRESS_PREFIX + agentId1
 
     val agentId2 = UniqueID.next()
-    val address2 = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + agentId2
+    val address2 = REMOTE_AGENT_ADDRESS_PREFIX + agentId2
 
     var inquiryCount1 = 0
     var allocateCount1 = 0
@@ -268,8 +265,7 @@ class RemoteAgentRegistryTest {
 
     vertx.eventBus().consumer<JsonObject>(address1) { msg ->
       val json = msg.body()
-      val action = json.getString("action")
-      when (action) {
+      when (val action = json.getString("action")) {
         "inquire" -> {
           inquiryCount1++
           msg.reply(json {
@@ -289,8 +285,7 @@ class RemoteAgentRegistryTest {
 
     vertx.eventBus().consumer<JsonObject>(address2) { msg ->
       val json = msg.body()
-      val action = json.getString("action")
-      when (action) {
+      when (val action = json.getString("action")) {
         "inquire" -> {
           inquiryCount2++
           msg.reply(json {
@@ -351,10 +346,10 @@ class RemoteAgentRegistryTest {
     val registry = RemoteAgentRegistry(vertx)
 
     val agentId1 = UniqueID.next()
-    val address1 = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + agentId1
+    val address1 = REMOTE_AGENT_ADDRESS_PREFIX + agentId1
 
     val agentId2 = UniqueID.next()
-    val address2 = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + agentId2
+    val address2 = REMOTE_AGENT_ADDRESS_PREFIX + agentId2
 
     var inquiryCount1 = 0
     var allocateCount1 = 0
@@ -364,8 +359,7 @@ class RemoteAgentRegistryTest {
 
     vertx.eventBus().consumer<JsonObject>(address1) { msg ->
       val json = msg.body()
-      val action = json.getString("action")
-      when (action) {
+      when (val action = json.getString("action")) {
         "inquire" -> {
           inquiryCount1++
           msg.reply(json {
@@ -385,8 +379,7 @@ class RemoteAgentRegistryTest {
 
     vertx.eventBus().consumer<JsonObject>(address2) { msg ->
       val json = msg.body()
-      val action = json.getString("action")
-      when (action) {
+      when (val action = json.getString("action")) {
         "inquire" -> {
           inquiryCount2++
           msg.reply(json {

@@ -55,6 +55,13 @@ object AddressConstants {
   const val REMOTE_AGENT_IDLE = "jobmanager.remoteAgentRegistry.agentIdle"
 
   /**
+   * Prefix for eventbus addresses of [agent.RemoteAgent]s. Each remote agent
+   * listens to one of these addresses. The actual address is
+   * [REMOTE_AGENT_ADDRESS_PREFIX] + ID of the remote agent.
+   */
+  const val REMOTE_AGENT_ADDRESS_PREFIX = "jobmanager.remoteAgentRegistry.agent."
+
+  /**
    * Will be published when a submission has been added to the registry
    */
   const val SUBMISSION_ADDED = "jobmanager.submissionRegistry.submissionAdded"
