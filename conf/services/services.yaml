@@ -48,25 +48,3 @@
   path: hello-world
   runtime: docker
   parameters: []
-
-- id: docker_sleep
-  name: Docker sleep
-  description: Run sleep inside an alpine container
-  path: alpine
-  runtime: docker
-
-  parameters:
-    - id: sleep
-      name: sleep command
-      description: The sleep command
-      type: argument
-      cardinality: 1..1
-      data_type: string
-      default: sleep
-
-    - id: seconds
-      name: seconds to sleep
-      description: The number of seconds to sleep
-      type: argument
-      cardinality: 1..1
-      data_type: integer
