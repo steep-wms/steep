@@ -14,6 +14,7 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.launch
 import model.processchain.ProcessChain
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import java.rmi.RemoteException
 import java.util.ArrayDeque
+import java.util.concurrent.Executors
 
 /**
  * Tests for [RemoteAgent]
@@ -33,6 +35,9 @@ class RemoteAgentTest : AgentTest() {
     private const val NODE_ID = "RemoteAgentTest"
     private const val ADDRESS = RemoteAgentRegistry.AGENT_ADDRESS_PREFIX + NODE_ID
   }
+
+  private val executorService = Executors.newCachedThreadPool()
+  private val localAgentDispatcher = executorService.asCoroutineDispatcher()
 
   override fun createAgent(vertx: Vertx): Agent =
       RemoteAgent(ADDRESS, vertx)
@@ -55,7 +60,7 @@ class RemoteAgentTest : AgentTest() {
       }
 
       GlobalScope.launch(vertx.dispatcher()) {
-        val la = LocalAgent(vertx)
+        val la = LocalAgent(vertx, localAgentDispatcher)
         val results = la.execute(processChain)
         vertx.eventBus().send(replyAddress, json {
           obj(
