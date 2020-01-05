@@ -39,6 +39,16 @@ let app = new Vue({
       return undefined;
     },
 
+    findProcessChainsBySubmissionIdAndStatus: function (submissionId, status) {
+      let result = [];
+      for (let pc of this.processChains) {
+        if (pc.submissionId === submissionId && pc.status === status) {
+          result.push(pc);
+        }
+      }
+      return result;
+    },
+
     processChainDuration: function (pc) {
       let endTime = pc.endTime || this.now;
       let duration = Math.ceil(this.$moment.duration(
@@ -107,6 +117,14 @@ eb.onopen = () => {
     let pc = app.findProcessChainById(message.body.processChainId);
     if (pc) {
       pc.status = message.body.status;
+    }
+  });
+
+  eb.registerHandler("jobmanager.submissionRegistry.processChainAllStatusChanged", (error, message) => {
+    let pcs = app.findProcessChainsBySubmissionIdAndStatus(
+        message.body.submissionId, message.body.currentStatus);
+    for (pc of pcs) {
+      pc.status = message.body.newStatus;
     }
   });
 

@@ -7,6 +7,7 @@ function initWorkflow(w) {
   }
   w.runningProcessChains = w.runningProcessChains || 0;
   w.succeededProcessChains = w.succeededProcessChains || 0;
+  w.cancelledProcessChains = w.cancelledProcessChains || 0;
   w.failedProcessChains = w.failedProcessChains || 0;
   w.totalProcessChains = w.totalProcessChains || 0;
   w.startTime = w.startTime || null;
@@ -338,6 +339,8 @@ eb.onopen = () => {
     w.totalProcessChains += pcsSize;
     if (status === "RUNNING") {
       w.runningProcessChains += pcsSize;
+    } else if (status === "CANCELLED") {
+      w.cancelledProcessChains += pcsSize;
     } else if (status === "ERROR") {
       w.failedProcessChains += pcsSize;
     } else if (status === "SUCCESS") {
@@ -346,7 +349,6 @@ eb.onopen = () => {
   });
 
   eb.registerHandler("jobmanager.submissionRegistry.processChainStatusChanged", (error, message) => {
-    let processChainId = message.body.processChainId;
     let submissionId = message.body.submissionId;
     let status = message.body.status;
     let previousStatus = message.body.previousStatus;
@@ -358,6 +360,8 @@ eb.onopen = () => {
     if (previousStatus !== status) {
       if (previousStatus === "RUNNING") {
         w.runningProcessChains = Math.max(w.runningProcessChains - 1, 0);
+      } else if (previousStatus === "CANCELLED") {
+        w.cancelledProcessChains = Math.max(w.cancelledProcessChains - 1, 0);
       } else if (previousStatus === "ERROR") {
         w.failedProcessChains = Math.max(w.failedProcessChains - 1, 0);
       } else if (previousStatus === "SUCCESS") {
@@ -366,10 +370,49 @@ eb.onopen = () => {
 
       if (status === "RUNNING") {
         w.runningProcessChains++;
+      } else if (status === "CANCELLED") {
+        w.cancelledProcessChains++;
       } else if (status === "ERROR") {
         w.failedProcessChains++;
       } else if (status === "SUCCESS") {
         w.succeededProcessChains++;
+      }
+    }
+  });
+
+  eb.registerHandler("jobmanager.submissionRegistry.processChainAllStatusChanged", (error, message) => {
+    let submissionId = message.body.submissionId;
+    let currentStatus = message.body.currentStatus;
+    let newStatus = message.body.newStatus;
+    let w = app.findWorkflowById(submissionId);
+    if (!w) {
+      return;
+    }
+
+    if (currentStatus !== newStatus) {
+      let n = 0;
+      if (currentStatus === "RUNNING") {
+        n = w.runningProcessChains;
+        w.runningProcessChains = 0;
+      } else if (currentStatus === "CANCELLED") {
+        n = w.cancelledProcessChains;
+        w.cancelledProcessChains = 0;
+      } else if (currentStatus === "ERROR") {
+        n = w.failedProcessChains;
+        w.failedProcessChains = 0;
+      } else if (currentStatus === "SUCCESS") {
+        n = w.succeededProcessChains;
+        w.succeededProcessChains = 0;
+      }
+
+      if (newStatus === "RUNNING") {
+        w.runningProcessChains += n;
+      } else if (newStatus === "CANCELLED") {
+        w.cancelledProcessChains += n;
+      } else if (newStatus === "ERROR") {
+        w.failedProcessChains += n;
+      } else if (newStatus === "SUCCESS") {
+        w.succeededProcessChains += n;
       }
     }
   });

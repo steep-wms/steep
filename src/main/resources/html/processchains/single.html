@@ -56,10 +56,12 @@ $% block content %$
             </div>
             <div class="step" :class="{ active: pc.status !== 'REGISTERED' && pc.status !== 'RUNNING', disabled: pc.status === 'REGISTERED' }">
               <i v-if="pc.status === 'REGISTERED' || pc.status === 'RUNNING'" class="flag checkered icon"></i>
+              <i v-if="pc.status === 'CANCELLED'" class="ban grey icon"></i>
               <i v-if="pc.status === 'ERROR'" class="exclamation circle red icon"></i>
               <i v-if="pc.status === 'SUCCESS'" class="check circle green icon"></i>
               <div class="content">
                 <div v-if="pc.status === 'REGISTERED' || pc.status === 'RUNNING'" class="title">Finish</div>
+                <div v-if="pc.status === 'CANCELLED'" class="title">Cancelled</div>
                 <div v-if="pc.status === 'ERROR'" class="title">Error</div>
                 <div v-if="pc.status === 'SUCCESS'" class="title">Success</div>
               </div>

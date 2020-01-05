@@ -120,6 +120,11 @@ object AddressConstants {
   const val PROCESSCHAIN_STATUS_CHANGED = "jobmanager.submissionRegistry.processChainStatusChanged"
 
   /**
+   * Will be published when the status of multiple process chains has changed at once
+   */
+  const val PROCESSCHAIN_ALL_STATUS_CHANGED = "jobmanager.submissionRegistry.processChainAllStatusChanged"
+
+  /**
    * Will be published when a process chain's results have changed
    */
   const val PROCESSCHAIN_RESULTS_CHANGED = "jobmanager.submissionRegistry.processChainResultsChanged"

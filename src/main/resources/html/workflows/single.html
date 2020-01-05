@@ -45,7 +45,7 @@ $% block content %$
               <div class="content">
                 <div class="title">Running</div>
                 <a v-bind:href="basePath + '/processchains/?submissionId=' + w.id" v-if="w.status === 'RUNNING'" class="description">
-                  {{ w.succeededProcessChains + w.failedProcessChains }} of
+                  {{ w.succeededProcessChains + w.failedProcessChains + w.cancelledProcessChains }} of
                   {{ w.totalProcessChains }} completed
                   ({{ w.runningProcessChains }} running)
                 </a>
@@ -56,11 +56,13 @@ $% block content %$
             </div>
             <div class="step" :class="{ active: w.status !== 'ACCEPTED' && w.status !== 'RUNNING', disabled: w.status === 'ACCEPTED' }">
               <i v-if="w.status === 'ACCEPTED' || w.status === 'RUNNING'" class="flag checkered icon"></i>
+              <i v-if="w.status === 'CANCELLED'" class="ban grey icon"></i>
               <i v-if="w.status === 'ERROR'" class="exclamation circle red icon"></i>
               <i v-if="w.status === 'PARTIAL_SUCCESS'" class="info circle orange icon"></i>
               <i v-if="w.status === 'SUCCESS'" class="check circle green icon"></i>
               <div class="content">
                 <div v-if="w.status === 'ACCEPTED' || w.status === 'RUNNING'" class="title">Finish</div>
+                <div v-if="w.status === 'CANCELLED'" class="title">Cancelled</div>
                 <div v-if="w.status === 'ERROR'" class="title">Error</div>
                 <div v-if="w.status === 'PARTIAL_SUCCESS'" class="title">Partial success</div>
                 <div v-if="w.status === 'SUCCESS'" class="title">Success</div>

@@ -2,6 +2,7 @@ import AddressConstants.CONTROLLER_LOOKUP_NOW
 import AddressConstants.LOCAL_AGENT_ADDRESS_PREFIX
 import AddressConstants.PROCESSCHAINS_ADDED
 import AddressConstants.PROCESSCHAINS_ADDED_SIZE
+import AddressConstants.PROCESSCHAIN_ALL_STATUS_CHANGED
 import AddressConstants.PROCESSCHAIN_ENDTIME_CHANGED
 import AddressConstants.PROCESSCHAIN_ERRORMESSAGE_CHANGED
 import AddressConstants.PROCESSCHAIN_STARTTIME_CHANGED
@@ -266,6 +267,8 @@ class HttpEndpoint : CoroutineVerticle() {
             .setAddress(PROCESSCHAIN_ENDTIME_CHANGED))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(PROCESSCHAIN_STATUS_CHANGED))
+        .addOutboundPermitted(PermittedOptions()
+            .setAddress(PROCESSCHAIN_ALL_STATUS_CHANGED))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(PROCESSCHAIN_ERRORMESSAGE_CHANGED))
         .addOutboundPermitted(PermittedOptions()
