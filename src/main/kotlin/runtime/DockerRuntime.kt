@@ -3,6 +3,7 @@ package runtime
 import helper.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
+import io.vertx.core.json.JsonObject
 import model.processchain.Argument
 import model.processchain.ArgumentVariable
 import model.processchain.Executable
@@ -12,17 +13,11 @@ import model.processchain.Executable
  * Docker image name.
  * @author Michel Kraemer
  */
-class DockerRuntime(vertx: Vertx) : OtherRuntime() {
-  private val additionalDockerVolumes: List<String>
-  private val tmpPath: String
-
-  init {
-    val config = vertx.orCreateContext.config()
-    additionalDockerVolumes = config.getJsonArray(
-        ConfigConstants.RUNTIMES_DOCKER_VOLUMES, JsonArray()).map { it.toString() }
-    tmpPath = config.getString(ConfigConstants.TMP_PATH) ?: throw IllegalStateException(
-        "Missing configuration item `${ConfigConstants.TMP_PATH}'")
-  }
+class DockerRuntime(config: JsonObject) : OtherRuntime() {
+  private val additionalDockerVolumes: List<String> = config.getJsonArray(
+      ConfigConstants.RUNTIMES_DOCKER_VOLUMES, JsonArray()).map { it.toString() }
+  private val tmpPath: String = config.getString(ConfigConstants.TMP_PATH) ?:
+      throw IllegalStateException("Missing configuration item `${ConfigConstants.TMP_PATH}'")
 
   override fun execute(executable: Executable, outputLinesToCollect: Int): String {
     val additionalVolumes = additionalDockerVolumes.map {

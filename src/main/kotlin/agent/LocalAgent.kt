@@ -55,12 +55,14 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
 
   override val coroutineContext: CoroutineContext by lazy { dispatcher + Job() }
 
+  private val config = vertx.orCreateContext.config()
+
   private val pluginRegistry = PluginRegistryFactory.create()
-  private val outputLinesToCollect = vertx.orCreateContext.config()
+  private val outputLinesToCollect = config
       .getInteger(ConfigConstants.AGENT_OUTPUT_LINES_TO_COLLECT, 100)
 
   private val otherRuntime by lazy { OtherRuntime() }
-  private val dockerRuntime by lazy { DockerRuntime(vertx) }
+  private val dockerRuntime by lazy { DockerRuntime(config) }
 
   override suspend fun execute(processChain: ProcessChain): Map<String, List<Any>> {
     val outputs = processChain.executables
