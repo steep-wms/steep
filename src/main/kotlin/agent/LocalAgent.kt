@@ -6,8 +6,13 @@ import db.PluginRegistryFactory
 import helper.FileSystemUtils.readRecursive
 import helper.UniqueID
 import io.vertx.core.Vertx
-import io.vertx.core.WorkerExecutor
-import io.vertx.kotlin.coroutines.awaitResult
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.suspendCancellableCoroutine
 import model.metadata.Service
 import model.plugins.call
 import model.processchain.Argument
@@ -17,14 +22,22 @@ import model.processchain.ProcessChain
 import runtime.DockerRuntime
 import runtime.OtherRuntime
 import java.io.File
+import java.util.concurrent.CancellationException
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlin.reflect.full.callSuspend
 
 /**
  * An agent that executes process chains locally
+ * @param vertx the Vert.x instance
+ * @dispatcher a coroutine dispatcher used to execute blocking process chains
+ * in an asynchronous manner. Should be a [java.util.concurrent.ThreadPoolExecutor]
+ * converted to a [CoroutineDispatcher] through [kotlinx.coroutines.asCoroutineDispatcher].
  * @author Michel Kraemer
  */
-class LocalAgent(private val vertx: Vertx) : Agent {
+class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) : Agent, CoroutineScope {
   companion object {
     /**
      * A cache that tracks which directories we already created
@@ -36,6 +49,8 @@ class LocalAgent(private val vertx: Vertx) : Agent {
   }
 
   override val id: String = UniqueID.next()
+
+  override val coroutineContext: CoroutineContext by lazy { dispatcher + Job() }
 
   private val pluginRegistry = PluginRegistryFactory.create()
   private val outputLinesToCollect = vertx.orCreateContext.config()
@@ -50,15 +65,8 @@ class LocalAgent(private val vertx: Vertx) : Agent {
         .filter { it.type == Argument.Type.OUTPUT }
     val executables = mkdirsForOutputs(outputs) + processChain.executables
 
-    // run executables in a separate worker executor
-    val executor = vertx.createSharedWorkerExecutor(LocalAgent::class.simpleName,
-        1, Long.MAX_VALUE)
-    try {
-      for (exec in executables) {
-        execute(exec, executor)
-      }
-    } finally {
-      executor.close()
+    for (exec in executables) {
+      execute(exec)
     }
 
     // create list of results
@@ -70,33 +78,56 @@ class LocalAgent(private val vertx: Vertx) : Agent {
     }
   }
 
-  private suspend fun execute(exec: Executable, executor: WorkerExecutor) {
+  /**
+   * Try to cancel the process chain execution. Interrupt the thread that
+   * executes the process chain.
+   */
+  fun cancel() {
+    coroutineContext.cancel()
+  }
+
+  private suspend fun execute(exec: Executable) {
     if (exec.runtime == Service.RUNTIME_DOCKER) {
-      executeBlocking(executor) { dockerRuntime.execute(exec, outputLinesToCollect) }
+      interruptableAsync {
+        dockerRuntime.execute(exec, outputLinesToCollect)
+      }.await()
     } else if (exec.runtime == Service.RUNTIME_OTHER) {
-      executeBlocking(executor) { otherRuntime.execute(exec, outputLinesToCollect) }
+      interruptableAsync {
+        otherRuntime.execute(exec, outputLinesToCollect)
+      }.await()
     } else {
       val r = pluginRegistry.findRuntime(exec.runtime) ?:
           throw IllegalStateException("Unknown runtime: `${exec.runtime}'")
       if (r.compiledFunction.isSuspend) {
         r.compiledFunction.callSuspend(exec, outputLinesToCollect, vertx)
       } else {
-        executeBlocking(executor) { r.compiledFunction.call(exec, outputLinesToCollect, vertx) }
+        interruptableAsync {
+          r.compiledFunction.call(exec, outputLinesToCollect, vertx)
+        }.await()
       }
     }
   }
 
-  private suspend fun executeBlocking(executor: WorkerExecutor, block: () -> Unit) {
-    awaitResult<Unit> { handler ->
-      // IMPORTANT: call `executeBlocking` with `ordered = false`! Otherwise,
-      // we will block other calls to `executeBlocking` in the same Vert.x
-      // context, because Vert.x tries to execute them all sequentially.
-      executor.executeBlocking<Unit>({ f ->
-        block()
-        f.complete()
-      }, false, { ar ->
-        handler.handle(ar)
-      })
+  /**
+   * Executes the given [block] in the [coroutineContext]. Handles cancellation
+   * requests and interrupts the thread that executes the [block].
+   */
+  private fun interruptableAsync(block: () -> String): Deferred<String> = async {
+    suspendCancellableCoroutine<String> { cont ->
+      val t = Thread.currentThread()
+
+      cont.invokeOnCancellation {
+        t.interrupt()
+      }
+
+      try {
+        cont.resume(block())
+      } catch (ie: InterruptedException) {
+        cont.resumeWithException(CancellationException(ie.message ?:
+            "Process chain execution was interrupted"))
+      } catch (t: Throwable) {
+        cont.resumeWithException(t)
+      }
     }
   }
 

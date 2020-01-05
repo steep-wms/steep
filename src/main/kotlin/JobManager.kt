@@ -12,12 +12,15 @@ import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.processchain.ProcessChain
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.CancellationException
+import java.util.concurrent.Executors
 
 /**
  * The JobManager's main API entry point
@@ -36,6 +39,13 @@ class JobManager : CoroutineVerticle() {
   private lateinit var busyTimeout: Duration
   private var lastProcessChainSequence = -1L
   private lateinit var autoShutdownTimeout: Duration
+
+  /**
+   * An executor service that can be passed to a [LocalAgent] to run process
+   * chains in a background thread
+   */
+  private val executorService = Executors.newCachedThreadPool()
+  private val localAgentDispatcher = executorService.asCoroutineDispatcher()
 
   /**
    * The time when the last process chain finished executing
@@ -246,7 +256,7 @@ class JobManager : CoroutineVerticle() {
    * @return the reply message (containing either results or an error message)
    */
   private suspend fun executeProcessChain(processChain: ProcessChain) = try {
-    val la = LocalAgent(vertx)
+    val la = LocalAgent(vertx, localAgentDispatcher)
     val results = la.execute(processChain)
     json {
       obj(
@@ -262,9 +272,12 @@ class JobManager : CoroutineVerticle() {
 
         ${t.lastOutput}
       """.trimIndent()
+    } else if (t is CancellationException) {
+      log.debug("Process chain execution was cancelled")
+      t.message ?: "Process chain execution was cancelled"
     } else {
       log.debug("Could not execute process chain", t)
-      t.message
+      t.message ?: "Unknown internal error"
     }
     json {
       obj(
