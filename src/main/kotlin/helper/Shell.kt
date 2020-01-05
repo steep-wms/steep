@@ -50,15 +50,19 @@ object Shell {
     try {
       process.waitFor()
     } catch (e: InterruptedException) {
-      process.destroy()
-      if (!process.waitFor(10, TimeUnit.SECONDS)) {
-        log.warn("Unable to destroy process after 10s. Trying to destroy forcibly ...")
+      // Always destroy process forcibly because it seems Docker containers
+      // cannot be destroyed normally. If necessary, we could make this
+      // configurable (for example through service metadata) but for the time
+      // being, there's no need.
+      // process.destroy()
+      // if (!process.waitFor(10, TimeUnit.SECONDS)) {
+      //  log.warn("Unable to destroy process after 10s. Trying to destroy forcibly ...")
         process.destroyForcibly()
         if (!process.waitFor(10, TimeUnit.SECONDS)) {
-          log.error("Unable to forcibly destroy process after 20s.")
+          log.error("Unable to forcibly destroy process")
           throw InterruptedException("Unable to forcibly destroy process")
         }
-      }
+      // }
       throw e
     } finally {
       readerThread.join()
