@@ -45,6 +45,7 @@ object Shell {
 
     val streamGobbler = StreamGobbler(process.inputStream, outputLinesToCollect)
     val readerThread = Thread(streamGobbler)
+    readerThread.start()
 
     try {
       process.waitFor()
