@@ -234,7 +234,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.JSON)
             .sendAwait()
 
-        assertThat(response.headers()["x-page-size"]).isEqualTo("-1")
+        assertThat(response.headers()["x-page-size"]).isEqualTo("10")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
         assertThat(response.headers()["x-page-total"]).isEqualTo("3")
 
@@ -717,7 +717,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.JSON)
             .sendAwait()
 
-        assertThat(response.headers()["x-page-size"]).isEqualTo("-1")
+        assertThat(response.headers()["x-page-size"]).isEqualTo("10")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
         assertThat(response.headers()["x-page-total"]).isEqualTo("4")
 
@@ -803,7 +803,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.JSON)
             .sendAwait()
 
-        assertThat(response.headers()["x-page-size"]).isEqualTo("-1")
+        assertThat(response.headers()["x-page-size"]).isEqualTo("10")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
         assertThat(response.headers()["x-page-total"]).isEqualTo("2")
 

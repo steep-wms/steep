@@ -503,8 +503,7 @@ class HttpEndpoint : CoroutineVerticle() {
     launch {
       val isHtml = ctx.acceptableContentType == "text/html"
       val offset = max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
-      // TODO also use default size for json result
-      val size = ctx.request().getParam("size")?.toIntOrNull() ?: if (isHtml) 10 else -1
+      val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
 
       val total = submissionRegistry.countSubmissions()
       val submissions = submissionRegistry.findSubmissions(size, offset, -1)
@@ -802,8 +801,7 @@ class HttpEndpoint : CoroutineVerticle() {
     launch {
       val isHtml = ctx.acceptableContentType == "text/html"
       val offset = max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
-      // TODO also use default size for json result
-      val size = ctx.request().getParam("size")?.toIntOrNull() ?: if (isHtml) 10 else -1
+      val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
 
       val submissionId: String? = ctx.request().getParam("submissionId")
       val list = if (submissionId == null) {
