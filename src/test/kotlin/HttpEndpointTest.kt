@@ -729,10 +729,7 @@ class HttpEndpointTest {
                   "submissionId" to s1.id,
                   "status" to "SUCCESS",
                   "startTime" to startTime,
-                  "endTime" to endTime,
-                  "results" to obj(
-                      "output_file1" to array("output.txt")
-                  )
+                  "endTime" to endTime
               ),
               obj(
                   "id" to pc2.id,
@@ -815,10 +812,7 @@ class HttpEndpointTest {
                   "submissionId" to s1.id,
                   "status" to "SUCCESS",
                   "startTime" to startTime,
-                  "endTime" to endTime,
-                  "results" to obj(
-                      "output_file1" to array("output.txt")
-                  )
+                  "endTime" to endTime
               ),
               obj(
                   "id" to pc2.id,

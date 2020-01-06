@@ -812,8 +812,7 @@ class HttpEndpoint : CoroutineVerticle() {
       }.map { p ->
         JsonUtils.toJson(p.first).also {
           it.remove("executables")
-          // TODO breaking change: do not include details when we load all process chains
-          amendProcessChain(it, p.second, true)
+          amendProcessChain(it, p.second)
         }
       }
 
