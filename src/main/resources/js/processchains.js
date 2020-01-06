@@ -30,6 +30,23 @@ let app = new Vue({
     }, 1000);
   },
   methods: {
+    showCancelModal: function (pc) {
+      $("#cancel-modal")
+        .modal({
+          onApprove: function () {
+            fetch(basePath + "/processchains/" + pc.id, {
+              method: "PUT",
+              body: JSON.stringify({
+                status: "CANCELLED"
+              })
+            }).catch(error => {
+              console.error(error);
+            });
+          }
+        })
+        .modal("show");
+    },
+
     findProcessChainById: function (id) {
       for (let pc of this.processChains) {
         if (pc.id === id) {

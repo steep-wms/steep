@@ -39,6 +39,23 @@ let app = new Vue({
     }
   },
   methods: {
+    showCancelModal: function (w) {
+      $("#cancel-modal")
+        .modal({
+          onApprove: function () {
+            fetch(basePath + "/workflows/" + w.id, {
+              method: "PUT",
+              body: JSON.stringify({
+                status: "CANCELLED"
+              })
+            }).catch(error => {
+              console.error(error);
+            });
+          }
+        })
+        .modal("show");
+    },
+
     findWorkflowById: function (id) {
       for (let workflow of this.workflows) {
         if (workflow.id === id) {

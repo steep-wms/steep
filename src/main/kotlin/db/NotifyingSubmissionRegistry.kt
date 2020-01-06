@@ -160,6 +160,22 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
     })
   }
 
+  override suspend fun setProcessChainStatus(processChainId: String,
+      currentStatus: ProcessChainStatus, newStatus: ProcessChainStatus) {
+    delegate.setProcessChainStatus(processChainId, currentStatus, newStatus)
+    val actualStatus = delegate.getProcessChainStatus(processChainId)
+    if (actualStatus == newStatus) {
+      vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_STATUS_CHANGED, json {
+        obj(
+            "processChainId" to processChainId,
+            "submissionId" to delegate.getProcessChainSubmissionId(processChainId),
+            "status" to newStatus.name,
+            "previousStatus" to currentStatus.name
+        )
+      })
+    }
+  }
+
   override suspend fun setAllProcessChainsStatus(submissionId: String,
       currentStatus: ProcessChainStatus, newStatus: ProcessChainStatus) {
     delegate.setAllProcessChainsStatus(submissionId, currentStatus, newStatus)

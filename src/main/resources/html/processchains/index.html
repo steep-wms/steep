@@ -47,7 +47,8 @@ $% block content %$
               <div class="running step" :class="{ active: pc.status === 'RUNNING', disabled: pc.status === 'REGISTERED' }">
                 <i class="cog grey icon"></i>
                 <div class="content">
-                  <div class="title">Running</div>
+                  <div class="title" v-if="pc.status !== 'CANCELLED'">Running</div>
+                  <div class="title" v-if="pc.status === 'CANCELLED'">Cancelling</div>
                 </div>
               </div>
               <div class="step" :class="{ active: pc.status !== 'REGISTERED' && pc.status !== 'RUNNING', disabled: pc.status === 'REGISTERED' }">

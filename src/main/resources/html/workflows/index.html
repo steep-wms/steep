@@ -36,7 +36,8 @@ $% block content %$
               <div class="running step" :class="{ active: w.status === 'RUNNING', disabled: w.status === 'ACCEPTED' }">
                 <i class="cog grey icon"></i>
                 <div class="content">
-                  <div class="title">Running</div>
+                  <div class="title" v-if="w.cancelledProcessChains === 0">Running</div>
+                  <div class="title" v-if="w.cancelledProcessChains !== 0">Cancelling</div>
                   <a v-bind:href="basePath + '/processchains/?submissionId=' + w.id" v-if="w.status === 'RUNNING'" class="description">
                     {{ w.succeededProcessChains + w.failedProcessChains + w.cancelledProcessChains }} of
                     {{ w.totalProcessChains }} completed

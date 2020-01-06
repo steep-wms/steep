@@ -14,12 +14,17 @@ $% block content %$
     <div v-for="pc in processChains" class="processchains">
       
       <h1 class="ui header"><a v-bind:href="basePath + '/workflows/' + pc.submissionId">{{ pc.submissionId }}</a> &raquo; {{ pc.id }}</h1>
+      <button class="ui right floated labeled icon button" @click="showCancelModal(pc)"
+          v-if="pc.status === 'REGISTERED' || pc.status === 'RUNNING'">
+        <i class="ban icon"></i> Cancel
+      </button>
 
-      <div class="ui divider"></div>
+      <div class="ui clearing divider"></div>
       
       <div class="processchain">
         <div class="processchain-left">
           <p v-if="pc.status === 'REGISTERED'">Process chain has not started yet</p>
+          <p v-if="pc.status === 'CANCELLED' && !pc.startTime && !pc.endTime">Process chain was never started</p>
           <div class="ui relaxed list">
             <div class="item" v-if="pc.status !== 'REGISTERED' && pc.startTime">
               <div class="header">Start time:</div>
@@ -51,7 +56,8 @@ $% block content %$
             <div class="running step" :class="{ active: pc.status === 'RUNNING', disabled: pc.status === 'REGISTERED' }">
               <i class="cog grey icon"></i>
               <div class="content">
-                <div class="title">Running</div>
+                <div class="title" v-if="pc.status !== 'CANCELLED'">Running</div>
+                <div class="title" v-if="pc.status === 'CANCELLED'">Cancelling</div>
               </div>
             </div>
             <div class="step" :class="{ active: pc.status !== 'REGISTERED' && pc.status !== 'RUNNING', disabled: pc.status === 'REGISTERED' }">
@@ -100,6 +106,20 @@ $% block content %$
   </div>
 
 </div>
+
+<div class="ui tiny test modal transition hidden" id="cancel-modal">
+  <div class="header">
+    Cancel process chain
+  </div>
+  <div class="content">
+    <p>Are you sure you want to cancel this process chain?</p>
+  </div>
+  <div class="actions">
+    <div class="ui deny button">Keep it</div>
+    <div class="ui red approve button">Cancel it now</div>
+  </div>
+</div>
+
 $% endblock %$
 
 $% block additionalScripts %$

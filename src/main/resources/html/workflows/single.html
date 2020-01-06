@@ -12,10 +12,14 @@ $% block content %$
   <div class="ui container" v-cloak>
 
     <div v-for="w in workflows" class="workflows">
-      
-      <h1 class="ui header">{{ w.id }}</h1>
 
-      <div class="ui divider"></div>
+      <h1 class="ui header">{{ w.id }}</h1>
+      <button class="ui right floated labeled icon button" @click="showCancelModal(w)"
+          v-if="w.status === 'ACCEPTED' || w.status === 'RUNNING'">
+        <i class="ban icon"></i> Cancel
+      </button>
+
+      <div class="ui clearing divider"></div>
       
       <div class="workflow">
         <div class="workflow-left">
@@ -43,7 +47,8 @@ $% block content %$
             <div class="running step" :class="{ active: w.status === 'RUNNING', disabled: w.status === 'ACCEPTED' }">
               <i class="cog grey icon"></i>
               <div class="content">
-                <div class="title">Running</div>
+                <div class="title" v-if="w.cancelledProcessChains === 0">Running</div>
+                <div class="title" v-if="w.cancelledProcessChains !== 0">Cancelling</div>
                 <a v-bind:href="basePath + '/processchains/?submissionId=' + w.id" v-if="w.status === 'RUNNING'" class="description">
                   {{ w.succeededProcessChains + w.failedProcessChains + w.cancelledProcessChains }} of
                   {{ w.totalProcessChains }} completed
@@ -115,6 +120,19 @@ $% block content %$
 
 <div id="workflow-graph">
   <svg id="graph"></svg>
+</div>
+
+<div class="ui tiny test modal transition hidden" id="cancel-modal">
+  <div class="header">
+    Cancel workflow
+  </div>
+  <div class="content">
+    <p>Are you sure you want to cancel this workflow?</p>
+  </div>
+  <div class="actions">
+    <div class="ui deny button">Keep it</div>
+    <div class="ui red approve button">Cancel it now</div>
+  </div>
 </div>
 
 $% endblock %$
