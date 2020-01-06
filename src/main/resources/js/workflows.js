@@ -408,7 +408,11 @@ eb.onopen = () => {
 
     if (currentStatus !== newStatus) {
       let n = 0;
-      if (currentStatus === "RUNNING") {
+      if (currentStatus === "REGISTERED") {
+        n = w.totalProcessChains - w.runningProcessChains -
+            w.failedProcessChains - w.succeededProcessChains -
+            w.cancelledProcessChains;
+      } else if (currentStatus === "RUNNING") {
         n = w.runningProcessChains;
         w.runningProcessChains = 0;
       } else if (currentStatus === "CANCELLED") {
