@@ -316,16 +316,16 @@ class Controller : CoroutineVerticle() {
 
       // evaluate results
       val (status, errorMessage) = if (generator.isFinished()) {
-        when (failed) {
-          0 -> when (cancelled) {
-            0 -> Submission.Status.SUCCESS
-            else -> Submission.Status.CANCELLED
-          } to null
-          totalProcessChains -> Submission.Status.ERROR to "All process chains failed"
-          else -> Submission.Status.PARTIAL_SUCCESS to null
+        when (cancelled) {
+          0 -> when (failed) {
+            0 -> Submission.Status.SUCCESS to null
+            totalProcessChains -> Submission.Status.ERROR to "All process chains failed"
+            else -> Submission.Status.PARTIAL_SUCCESS to null
+          }
+          else -> Submission.Status.CANCELLED to null
         }
       } else {
-        if (cancelled == totalProcessChains) {
+        if (cancelled > 0) {
           Submission.Status.CANCELLED to null
         } else {
           val em = when (failed) {
