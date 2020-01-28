@@ -541,7 +541,13 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
               STATUS to newStatus.toString()
           )
       )
-    }, FindOneAndUpdateOptions().projection(wrap(PROCESS_CHAIN_EXCLUDES)))
+    }, FindOneAndUpdateOptions()
+        .projection(wrap(PROCESS_CHAIN_EXCLUDES))
+        .sort(wrap(json {
+          obj(
+              SEQUENCE to 1
+          )
+        })))
     return doc?.let { readProcessChain(it).first }
   }
 

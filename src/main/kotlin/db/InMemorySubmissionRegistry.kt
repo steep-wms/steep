@@ -317,6 +317,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       val map = processChains.await()
       val values = awaitResult<List<String>> { map.values(it) }
       val entry = values.map { JsonUtils.mapper.readValue<ProcessChainEntry>(it) }
+          .sortedBy { it.serial }
           .find { it.status == currentStatus }
       return entry?.let {
         val newEntry = it.copy(status = newStatus)

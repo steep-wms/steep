@@ -772,6 +772,30 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun fetchNextProcessChainOrder(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc1 = ProcessChain()
+    val pc2 = ProcessChain()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s)
+      submissionRegistry.addProcessChains(listOf(pc1, pc2), s.id)
+      val pcA = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      val pcB = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      ctx.verify {
+        assertThat(pcA).isEqualTo(pc1)
+        assertThat(pcB).isEqualTo(pc2)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun getProcessChainSubmissionId(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()

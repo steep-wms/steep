@@ -259,7 +259,8 @@ interface SubmissionRegistry {
 
   /**
    * Atomically fetch a process chain that has the given `currentStatus` and
-   * set its status to `newStatus` before returning it.
+   * set its status to `newStatus` before returning it. Process chains should
+   * be returned in the order they have been added to the registry.
    * @param currentStatus the current status of the process chain
    * @param newStatus the new status
    * @return the process chain (or `null` if there was no process chain with

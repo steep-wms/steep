@@ -518,7 +518,8 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   override suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
       newStatus: ProcessChainStatus): ProcessChain? {
     return withLocks { connection ->
-      val statement = "SELECT $DATA FROM $PROCESS_CHAINS WHERE $STATUS=? LIMIT 1"
+      val statement = "SELECT $DATA FROM $PROCESS_CHAINS WHERE $STATUS=? " +
+          "ORDER BY $SERIAL LIMIT 1"
       val params = json {
         array(
             currentStatus.toString()

@@ -121,7 +121,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
    * [id].
    *
    * The agent should already listen to messages on the eventbus address
-   * ([AGENT_ADDRESS_PREFIX]` + id`). The agent registry automatically
+   * ([REMOTE_AGENT_ADDRESS_PREFIX]` + id`). The agent registry automatically
    * unregisters the agent when the node with the [id] leaves the cluster.
    */
   suspend fun register(id: String) {
