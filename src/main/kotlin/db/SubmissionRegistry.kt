@@ -228,6 +228,15 @@ interface SubmissionRegistry {
       Map<String, ProcessChainStatus>
 
   /**
+   * Get a list of distinct required capabilities of all process chains with
+   * the given [status].
+   * @param status the status of the process chains
+   * @return a list of distinct sets of required capabilities
+   */
+  suspend fun findProcessChainRequiredCapabilities(status: ProcessChainStatus):
+      List<Collection<String>>
+
+  /**
    * Get a single process chain from the registry
    * @param processChainId the process chain's ID
    * @return the process chain or `null` if the process chain does not exist
@@ -260,14 +269,20 @@ interface SubmissionRegistry {
   /**
    * Atomically fetch a process chain that has the given `currentStatus` and
    * set its status to `newStatus` before returning it. Process chains should
-   * be returned in the order they have been added to the registry.
+   * be returned in the order they have been added to the registry. The method
+   * only looks for process chains whose set of [requiredCapabilities] equals
+   * the given one. If no [requiredCapabilities] have been specified, the
+   * method returns the first process chain found.
    * @param currentStatus the current status of the process chain
    * @param newStatus the new status
+   * @param requiredCapabilities an optional set of required capabilities used
+   * to narrow down the search
    * @return the process chain (or `null` if there was no process chain with
-   * the given `currentStatus`)
+   * the given `currentStatus` and `requiredCapabilities`)
    */
   suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
-      newStatus: ProcessChainStatus): ProcessChain?
+      newStatus: ProcessChainStatus,
+      requiredCapabilities: Collection<String>? = null): ProcessChain?
 
   /**
    * Set the start time of a process chain

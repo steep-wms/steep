@@ -19,6 +19,7 @@ import helper.bulkWriteAwait
 import helper.closeAwait
 import helper.countDocumentsAwait
 import helper.deleteAwait
+import helper.distinctAwait
 import helper.findAwait
 import helper.findOneAndUpdateAwait
 import helper.findOneAwait
@@ -28,6 +29,7 @@ import helper.updateManyAwait
 import helper.updateOneAwait
 import helper.writeAwait
 import io.vertx.core.Vertx
+import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
@@ -68,6 +70,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     private const val START_TIME = "startTime"
     private const val END_TIME = "endTime"
     private const val STATUS = "status"
+    private const val REQUIRED_CAPABILITIES = "requiredCapabilities"
     private const val ERROR_MESSAGE = "errorMessage"
     private const val SEQUENCE = "sequence"
     private const val VALUE = "value"
@@ -92,7 +95,8 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
           START_TIME to 0,
           END_TIME to 0,
           ERROR_MESSAGE to 0,
-          SEQUENCE to 0
+          SEQUENCE to 0,
+          REQUIRED_CAPABILITIES to 0
       )
     }
     private val PROCESS_CHAIN_EXCLUDES_BUT_SUBMISSION_ID =
@@ -138,7 +142,8 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       collProcessChains.createIndexes(listOf(
           IndexModel(Indexes.ascending(SUBMISSION_ID), IndexOptions().background(true)),
           IndexModel(Indexes.ascending(STATUS), IndexOptions().background(true)),
-          IndexModel(Indexes.ascending(SEQUENCE), IndexOptions().background(true))
+          IndexModel(Indexes.ascending(SEQUENCE), IndexOptions().background(true)),
+          IndexModel(Indexes.ascending(REQUIRED_CAPABILITIES), IndexOptions().background(true))
       )).subscribe(object : DefaultSubscriber<String>() {
         override fun onError(t: Throwable) {
           log.error("Could not create index on collection `$COLL_PROCESS_CHAINS'", t)
@@ -426,7 +431,8 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
             INTERNAL_ID to pc.id,
             SEQUENCE to sequence + i,
             SUBMISSION_ID to submissionId,
-            STATUS to status.toString()
+            STATUS to status.toString(),
+            REQUIRED_CAPABILITIES to JsonUtils.mapper.writeValueAsString(pc.requiredCapabilities)
         )
       }
       InsertOneModel(doc)
@@ -501,6 +507,16 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       }).associateBy({ it.getString(INTERNAL_ID) }, {
         ProcessChainStatus.valueOf(it.getString(STATUS)) })
 
+  override suspend fun findProcessChainRequiredCapabilities(
+      status: ProcessChainStatus): List<Collection<String>> {
+    val arrays = collProcessChains.distinctAwait(REQUIRED_CAPABILITIES, json {
+      obj(
+          STATUS to status.toString()
+      )
+    }, String::class.java)
+    return arrays.map { a -> JsonArray(a).map { it.toString() }}
+  }
+
   override suspend fun findProcessChainById(processChainId: String): ProcessChain? {
     val doc = collProcessChains.findOneAwait(json {
       obj(
@@ -530,11 +546,18 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       })
 
   override suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
-      newStatus: ProcessChainStatus): ProcessChain? {
+      newStatus: ProcessChainStatus, requiredCapabilities: Collection<String>?): ProcessChain? {
     val doc = collProcessChains.findOneAndUpdateAwait(json {
-      obj(
-          STATUS to currentStatus.toString()
-      )
+      if (requiredCapabilities == null) {
+        obj(
+            STATUS to currentStatus.toString()
+        )
+      } else {
+        obj(
+            STATUS to currentStatus.toString(),
+            REQUIRED_CAPABILITIES to JsonUtils.mapper.writeValueAsString(requiredCapabilities)
+        )
+      }
     }, json {
       obj(
           "\$set" to obj(

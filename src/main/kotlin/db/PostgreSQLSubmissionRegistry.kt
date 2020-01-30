@@ -51,6 +51,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     private const val START_TIME = "startTime"
     private const val END_TIME = "endTime"
     private const val STATUS = "status"
+    private const val REQUIRED_CAPABILITIES = "requiredCapabilities"
     private const val RESULTS = "results"
     private const val ERROR_MESSAGE = "errorMessage"
     private const val EXECUTION_STATE = "executionState"
@@ -465,6 +466,21 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
   }
 
+  override suspend fun findProcessChainRequiredCapabilities(
+      status: ProcessChainStatus): List<Collection<String>> {
+    return withConnection { connection ->
+      val statement = "SELECT DISTINCT $DATA->'$REQUIRED_CAPABILITIES' " +
+          "FROM $PROCESS_CHAINS WHERE $STATUS=?"
+      val params = json {
+        array(
+            status.toString()
+        )
+      }
+      val rs = connection.queryWithParamsAwait(statement, params)
+      rs.results.map { JsonUtils.mapper.readValue<List<String>>(it.getString(0)) }
+    }
+  }
+
   override suspend fun findProcessChainById(processChainId: String): ProcessChain? {
     return withConnection { connection ->
       val statement = "SELECT $DATA FROM $PROCESS_CHAINS WHERE $ID=?"
@@ -516,15 +532,26 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
-      newStatus: ProcessChainStatus): ProcessChain? {
+      newStatus: ProcessChainStatus, requiredCapabilities: Collection<String>?): ProcessChain? {
     return withLocks { connection ->
-      val statement = "SELECT $DATA FROM $PROCESS_CHAINS WHERE $STATUS=? " +
-          "ORDER BY $SERIAL LIMIT 1"
-      val params = json {
-        array(
-            currentStatus.toString()
-        )
+      val (statement, params) = if (requiredCapabilities == null) {
+        "SELECT $DATA FROM $PROCESS_CHAINS WHERE $STATUS=? " +
+            "ORDER BY $SERIAL LIMIT 1" to json {
+          array(
+              currentStatus.toString()
+          )
+        }
+      } else {
+        "SELECT $DATA FROM $PROCESS_CHAINS WHERE $STATUS=? " +
+            "AND $DATA->'$REQUIRED_CAPABILITIES'=?::jsonb " +
+            "ORDER BY $SERIAL LIMIT 1" to json {
+          array(
+              currentStatus.toString(),
+              JsonUtils.mapper.writeValueAsString(requiredCapabilities)
+          )
+        }
       }
+
       val rs = connection.querySingleWithParamsAwait(statement, params)
       rs?.let { arr ->
         JsonUtils.mapper.readValue<ProcessChain>(arr.getString(0)).also {

@@ -140,6 +140,14 @@ suspend fun <T> MongoCollection<T>.findOneAndUpdateAwait(filter: JsonObject,
   }
 }
 
+suspend fun <T, R> MongoCollection<T>.distinctAwait(fieldName: String,
+    filter: JsonObject, resultClass: Class<R>): List<R> {
+  return suspendCancellableCoroutine { cont: CancellableContinuation<List<R>> ->
+    val d = distinct(fieldName, wrap(filter), resultClass)
+    d.subscribe(CollectionSubscriber(cont))
+  }
+}
+
 suspend fun <T> MongoCollection<T>.insertOneAwait(document: T) {
   wrapCoroutine {
     insertOne(document)

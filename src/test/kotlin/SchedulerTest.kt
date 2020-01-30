@@ -42,6 +42,8 @@ class SchedulerTest {
     submissionRegistry = mockk()
     mockkObject(SubmissionRegistryFactory)
     every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
+    coEvery { submissionRegistry.findProcessChainRequiredCapabilities(any()) } returns
+        listOf(emptyList())
     coEvery { submissionRegistry.close() } just Runs
 
     // mock agent registry
@@ -85,13 +87,24 @@ class SchedulerTest {
       }
     }
 
-    coEvery { agentRegistry.allocate(any()) } answers {
-      // allocate first agent from list of available agents
-      if (availableAgents.isEmpty()) {
-        null
-      } else {
-        availableAgents.removeAt(0)
+    val slotRequiredCapabilities = slot<List<Collection<String>>>()
+    coEvery { agentRegistry.selectCandidates(capture(slotRequiredCapabilities)) } answers {
+      slotRequiredCapabilities.captured.mapIndexedNotNull { i, rc ->
+        if (i >= availableAgents.size) {
+          null
+        } else {
+          Pair(rc, availableAgents[i].id)
+        }
       }
+    }
+
+    val slotAgentAddress = slot<String>()
+    coEvery { agentRegistry.tryAllocate(capture(slotAgentAddress)) } answers {
+      val agent = availableAgents.find { it.id == slotAgentAddress.captured }
+      if (agent != null) {
+        availableAgents.remove(agent)
+      }
+      agent
     }
 
     val slotAgent = slot<Agent>()
@@ -151,7 +164,7 @@ class SchedulerTest {
     }
 
     // execute process chains
-    coEvery { submissionRegistry.fetchNextProcessChain(REGISTERED, RUNNING) } answers {
+    coEvery { submissionRegistry.fetchNextProcessChain(REGISTERED, RUNNING, any()) } answers {
       if (registeredPcs.isEmpty()) null else registeredPcs.removeAt(0)
     }
 
@@ -179,15 +192,24 @@ class SchedulerTest {
   }
 
   @Test
+  fun twoChainsTwoAgentsDifferentRequiredCapabilities(vertx: Vertx, ctx: VertxTestContext) {
+    coEvery { submissionRegistry.findProcessChainRequiredCapabilities(any()) } returns
+        listOf(listOf("docker"), emptyList())
+    testSimple(2, 2, vertx, ctx)
+  }
+
+  @Test
   fun deallocateAgentOnError(vertx: Vertx, ctx: VertxTestContext) {
     val message = "THIS is an ERROR"
 
     // mock agent
     val agent = mockk<Agent>()
-    every { agent.id } returns "Mock agent"
+    val agentId = "Mock agent"
+    every { agent.id } returns agentId
     coEvery { agent.execute(any()) } throws Exception(message)
-    coEvery { agentRegistry.allocate(any()) } returns agent
-    coEvery { agentRegistry.deallocate(agent) } just Runs
+    coEvery { agentRegistry.tryAllocate(agentId) } returns agent andThen null
+    coEvery { agentRegistry.selectCandidates(any()) } returns
+        listOf(Pair(emptySet(), agentId)) andThen emptyList()
 
     // mock submission registry
     val pc = ProcessChain()
@@ -207,7 +229,7 @@ class SchedulerTest {
     }
 
     // execute process chains
-    coEvery { submissionRegistry.fetchNextProcessChain(REGISTERED, RUNNING) } returns
+    coEvery { submissionRegistry.fetchNextProcessChain(REGISTERED, RUNNING, any()) } returns
         pc andThen null
 
     vertx.eventBus().publish(AddressConstants.SCHEDULER_LOOKUP_NOW, null)

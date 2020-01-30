@@ -69,9 +69,12 @@ class JobManagerTest {
     val remoteAgentRegistry = RemoteAgentRegistry(vertx)
 
     GlobalScope.launch(vertx.dispatcher()) {
-      val agent = remoteAgentRegistry.allocate(processChain)
+      val candidates = remoteAgentRegistry.selectCandidates(
+          listOf(processChain.requiredCapabilities))
       ctx.coVerify {
+        val agent = remoteAgentRegistry.tryAllocate(candidates[0].second)
         assertThat(agent).isNotNull
+
         val results = agent!!.execute(processChain)
         assertThat(results).isEmpty()
       }
@@ -92,9 +95,12 @@ class JobManagerTest {
     coEvery { anyConstructed<LocalAgent>().execute(processChain) } returns expectedResults
 
     GlobalScope.launch(vertx.dispatcher()) {
-      val agent = remoteAgentRegistry.allocate(processChain)
+      val candidates = remoteAgentRegistry.selectCandidates(
+          listOf(processChain.requiredCapabilities))
       ctx.coVerify {
+        val agent = remoteAgentRegistry.tryAllocate(candidates[0].second)
         assertThat(agent).isNotNull
+
         val results = agent!!.execute(processChain)
         assertThat(results).isEqualTo(expectedResults)
       }
@@ -116,9 +122,10 @@ class JobManagerTest {
         IOException(errorMessage)
 
     GlobalScope.launch(vertx.dispatcher()) {
-      val agent = remoteAgentRegistry.allocate(processChain)
+      val candidates = remoteAgentRegistry.selectCandidates(
+          listOf(processChain.requiredCapabilities))
       ctx.coVerify {
-        assertThat(agent).isNotNull
+        val agent = remoteAgentRegistry.tryAllocate(candidates[0].second)
         assertThatThrownBy { agent!!.execute(processChain) }
             .isInstanceOf(RemoteException::class.java)
             .hasMessage(errorMessage)
@@ -143,8 +150,10 @@ class JobManagerTest {
         Shell.ExecutionException(errorMessage, lastOutput, exitCode)
 
     GlobalScope.launch(vertx.dispatcher()) {
-      val agent = remoteAgentRegistry.allocate(processChain)
+      val candidates = remoteAgentRegistry.selectCandidates(
+          listOf(processChain.requiredCapabilities))
       ctx.coVerify {
+        val agent = remoteAgentRegistry.tryAllocate(candidates[0].second)
         assertThat(agent).isNotNull
         assertThatThrownBy { agent!!.execute(processChain) }
             .isInstanceOf(RemoteException::class.java)
@@ -163,9 +172,10 @@ class JobManagerTest {
     val remoteAgentRegistry = RemoteAgentRegistry(vertx)
 
     GlobalScope.launch(vertx.dispatcher()) {
-      val agent = remoteAgentRegistry.allocate(processChain)
+      val candidates = remoteAgentRegistry.selectCandidates(
+          listOf(processChain.requiredCapabilities))
       ctx.verify {
-        assertThat(agent).isNull()
+        assertThat(candidates).isEmpty()
       }
       ctx.completeNow()
     }
@@ -180,9 +190,11 @@ class JobManagerTest {
     val remoteAgentRegistry = RemoteAgentRegistry(vertx)
 
     GlobalScope.launch(vertx.dispatcher()) {
-      val agent = remoteAgentRegistry.allocate(processChain)
+      val candidates = remoteAgentRegistry.selectCandidates(
+          listOf(processChain.requiredCapabilities))
       ctx.verify {
-        assertThat(agent).isNotNull()
+        assertThat(candidates).containsExactly(Pair(processChain.requiredCapabilities,
+            AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX + Main.agentId))
       }
       ctx.completeNow()
     }
@@ -197,15 +209,17 @@ class JobManagerTest {
     val remoteAgentRegistry = RemoteAgentRegistry(vertx)
 
     GlobalScope.launch(vertx.dispatcher()) {
+      val candidates = remoteAgentRegistry.selectCandidates(
+          listOf(processChain.requiredCapabilities))
       ctx.coVerify {
-        val agent1 = remoteAgentRegistry.allocate(processChain)
+        val agent1 = remoteAgentRegistry.tryAllocate(candidates[0].second)
         assertThat(agent1).isNotNull
 
-        val agent2 = remoteAgentRegistry.allocate(processChain)
+        val agent2 = remoteAgentRegistry.tryAllocate(candidates[0].second)
         assertThat(agent2).isNull()
 
         remoteAgentRegistry.deallocate(agent1!!)
-        val agent3 = remoteAgentRegistry.allocate(processChain)
+        val agent3 = remoteAgentRegistry.tryAllocate(candidates[0].second)
         assertThat(agent3).isNotNull
       }
       ctx.completeNow()
@@ -222,16 +236,18 @@ class JobManagerTest {
     val remoteAgentRegistry = RemoteAgentRegistry(vertx)
 
     GlobalScope.launch(vertx.dispatcher()) {
+      val candidates = remoteAgentRegistry.selectCandidates(
+          listOf(processChain.requiredCapabilities))
       ctx.coVerify {
-        val agent1 = remoteAgentRegistry.allocate(processChain)
+        val agent1 = remoteAgentRegistry.tryAllocate(candidates[0].second)
         assertThat(agent1).isNotNull
 
-        val agent2 = remoteAgentRegistry.allocate(processChain)
+        val agent2 = remoteAgentRegistry.tryAllocate(candidates[0].second)
         assertThat(agent2).isNull()
 
         delay(1001)
 
-        val agent3 = remoteAgentRegistry.allocate(processChain)
+        val agent3 = remoteAgentRegistry.tryAllocate(candidates[0].second)
         assertThat(agent3).isNotNull
       }
       ctx.completeNow()
@@ -250,14 +266,16 @@ class JobManagerTest {
     coEvery { anyConstructed<LocalAgent>().execute(processChain) } returns emptyMap()
 
     GlobalScope.launch(vertx.dispatcher()) {
+      val candidates = remoteAgentRegistry.selectCandidates(
+          listOf(processChain.requiredCapabilities))
       ctx.coVerify {
-        val agent = remoteAgentRegistry.allocate(processChain)
+        val agent = remoteAgentRegistry.tryAllocate(candidates[0].second)
         assertThat(agent).isNotNull
         agent!!.execute(processChain)
 
         delay(1001)
 
-        val agent2 = remoteAgentRegistry.allocate(processChain)
+        val agent2 = remoteAgentRegistry.tryAllocate(candidates[0].second)
         assertThat(agent2).isNotNull
       }
       ctx.completeNow()

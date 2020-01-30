@@ -165,20 +165,49 @@ class JobManager : CoroutineVerticle() {
    * requires a given set of capabilities
    */
   private fun onAgentInquire(msg: Message<JsonObject>) {
-    val available = if (isBusy()) {
-      false
+    val bestRequiredCapabilities = if (isBusy()) {
+      -1
     } else {
-      // we are not busy - check if we have the required capabilities
+      // select requiredCapabilities that best match our own capabilities
       val arr = msg.body().getJsonArray("requiredCapabilities")
-      val requiredCapabilities = arr.map { it as String }
-      capabilities.containsAll(requiredCapabilities)
+      var max = -1
+      var best = -1
+
+      for ((i, rcs) in arr.withIndex()) {
+        val rcsArr = rcs as JsonArray
+        var ok = true
+        var count = 0
+
+        for (rc in rcsArr) {
+          if (capabilities.contains(rc)) {
+            count++
+          } else {
+            ok = false
+            break
+          }
+        }
+
+        if (ok && count > max) {
+          max = count
+          best = i
+        }
+      }
+
+      best
     }
 
     val reply = json {
-      obj(
-          "available" to available,
-          "lastSequence" to lastProcessChainSequence
-      )
+      if (bestRequiredCapabilities != -1) {
+        obj(
+            "available" to true,
+            "bestRequiredCapabilities" to bestRequiredCapabilities,
+            "lastSequence" to lastProcessChainSequence
+        )
+      } else {
+        obj(
+            "available" to false
+        )
+      }
     }
     msg.reply(reply)
   }

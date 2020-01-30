@@ -24,7 +24,6 @@ import io.vertx.kotlin.coroutines.awaitResult
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import model.processchain.ProcessChain
 import org.slf4j.LoggerFactory
 import kotlin.coroutines.CoroutineContext
 
@@ -138,73 +137,80 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     return awaitResult { agents.keys(it) }
   }
 
-  override suspend fun allocate(processChain: ProcessChain): Agent? {
-    val requiredCapabilities = JsonArray()
-    processChain.requiredCapabilities.forEach { requiredCapabilities.add(it) }
+  override suspend fun selectCandidates(requiredCapabilities: List<Collection<String>>):
+      List<Pair<Collection<String>, String>> {
+    if (requiredCapabilities.isEmpty()) {
+      return emptyList()
+    }
+
+    // prepare message
+    val requiredCapabilitiesArr = JsonArray(requiredCapabilities
+        .map { JsonArray(it.toList()) })
     val msgInquire = json {
       obj(
           "action" to "inquire",
-          "requiredCapabilities" to requiredCapabilities
+          "requiredCapabilities" to requiredCapabilitiesArr
       )
     }
 
     val agents = this.agents.await()
     val keys = awaitResult<Set<String>> { agents.keys(it) }
-    val skippedAgents = mutableSetOf<String>()
 
-    while (true) {
-      // ask all agents if they are able and available to execute a process
-      // chain with the given required capabilities. collect these agents in
-      // a list of candidates
-      val candidates = mutableListOf<Pair<String, Long>>()
-      for (agent in keys) {
-        val address = REMOTE_AGENT_ADDRESS_PREFIX + agent
-        if (skippedAgents.contains(address)) {
-          continue
-        }
-        try {
-          val replyInquire = vertx.eventBus().sendAwait<JsonObject>(address, msgInquire)
-          if (replyInquire.body().getBoolean("available")) {
-            val lastSequence = replyInquire.body().getLong("lastSequence", -1L)
-            candidates.add(Pair(address, lastSequence))
+    // ask all agents if they are able and available to execute a process
+    // chain with the given required capabilities. collect these agents in
+    // a list of candidates
+    val candidatesPerSet = mutableMapOf<Int, MutableList<Pair<String, Long>>>()
+    for (agent in keys) {
+      val address = REMOTE_AGENT_ADDRESS_PREFIX + agent
+      try {
+        val replyInquire = vertx.eventBus().sendAwait<JsonObject>(address, msgInquire)
+        if (replyInquire.body().getBoolean("available")) {
+          val lastSequence = replyInquire.body().getLong("lastSequence", -1L)
+          val bestRequiredCapabilities = replyInquire.body().getInteger("bestRequiredCapabilities")
+          candidatesPerSet.compute(bestRequiredCapabilities) { _, l ->
+            val p = Pair(address, lastSequence)
+            l?.also { it.add(p) } ?: mutableListOf(p)
           }
-        } catch (t: Throwable) {
-          log.error("Could not inquire agent `$agent'. Skipping it.", t)
         }
+      } catch (t: Throwable) {
+        log.error("Could not inquire agent `$agent'. Skipping it.", t)
       }
+    }
 
+    return candidatesPerSet.mapNotNull { (i, candidates) ->
       // there is no agent that has the required capabilities
       if (candidates.isEmpty()) {
         // publish a message that says that we need an agent with the given
         // capabilities
-        val arr = JsonArray()
-        processChain.requiredCapabilities.forEach { arr.add(it) }
+        val arr = requiredCapabilitiesArr.getJsonArray(i)
         vertx.eventBus().publish(REMOTE_AGENT_MISSING, arr)
-
-        return null
+        null
+      } else {
+        // LRU: Select agent with the lowest `lastSequence` because it's the one
+        // that has not processed a process chain for the longest time.
+        candidates.sortBy { it.second }
+        Pair(requiredCapabilities[i], candidates.first().first)
       }
-
-      // LRU: Select agent with the lowest `lastSequence` because it's the one
-      // that has not processed a process chain for the longest time.
-      candidates.sortBy { it.second }
-      val result = candidates.first().first
-
-      // try to allocate the agent
-      val msgAllocate = json {
-        obj(
-            "action" to "allocate"
-        )
-      }
-      try {
-        val replyAllocate = vertx.eventBus().sendAwait<String>(result, msgAllocate)
-        if (replyAllocate.body() == "ACK") {
-          return RemoteAgent(result, vertx)
-        }
-      } catch (t: Throwable) {
-        // fall through
-      }
-      skippedAgents.add(result)
     }
+  }
+
+  override suspend fun tryAllocate(address: String): Agent? {
+    val msgAllocate = json {
+      obj(
+          "action" to "allocate"
+      )
+    }
+
+    try {
+      val replyAllocate = vertx.eventBus().sendAwait<String>(address, msgAllocate)
+      if (replyAllocate.body() == "ACK") {
+        return RemoteAgent(address, vertx)
+      }
+    } catch (t: Throwable) {
+      // fall through
+    }
+
+    return null
   }
 
   override suspend fun deallocate(agent: Agent) {

@@ -1,18 +1,23 @@
 package agent
 
-import model.processchain.ProcessChain
-
 /**
  * Keeps a list of agents
  * @author Michel Kraemer
  */
 interface AgentRegistry {
   /**
-   * Allocate an agent to execute a given process chain
-   * @param processChain the process chain
-   * @return the agent
+   * For each given set of [requiredCapabilities], try to find an address of
+   * an agent that is able to handle them
    */
-  suspend fun allocate(processChain: ProcessChain): Agent?
+  suspend fun selectCandidates(requiredCapabilities: List<Collection<String>>):
+      List<Pair<Collection<String>, String>>
+
+  /**
+   * Try to allocate the agent with the given [address]. The method returns
+   * the allocated agent or `null` if the agent rejected the allocation request
+   * or was not reachable at all.
+   */
+  suspend fun tryAllocate(address: String): Agent?
 
   /**
    * Deallocate an agent

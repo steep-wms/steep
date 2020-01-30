@@ -12,6 +12,9 @@ import db.SubmissionRegistry.ProcessChainStatus.REGISTERED
 import db.SubmissionRegistry.ProcessChainStatus.RUNNING
 import db.SubmissionRegistry.ProcessChainStatus.SUCCESS
 import db.SubmissionRegistryFactory
+import io.vertx.core.json.JsonObject
+import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
@@ -41,6 +44,13 @@ class Scheduler : CoroutineVerticle() {
   private lateinit var logFoundProcessChainCache: Cache<String, Boolean>
   private lateinit var logNoAgentCache: Cache<String, Boolean>
 
+  /**
+   * A list of sets of capabilities required by process chains with the status
+   * [REGISTERED]
+   */
+  private var allRequiredCapabilities: List<Collection<String>> = emptyList()
+  private var allRequiredCapabilitiesInitialized = false
+
   override suspend fun start() {
     log.info("Launching scheduler ...")
 
@@ -65,14 +75,15 @@ class Scheduler : CoroutineVerticle() {
     periodicLookupJob = launch {
       while (true) {
         delay(lookupInterval)
-        lookup()
+        lookup(updateRequiredCapabilities = true)
       }
     }
 
-    vertx.eventBus().consumer<Int?>(SCHEDULER_LOOKUP_NOW) { msg ->
-      val maxLookups = msg.body() ?: Int.MAX_VALUE
+    vertx.eventBus().consumer<JsonObject?>(SCHEDULER_LOOKUP_NOW) { msg ->
+      val maxLookups = msg.body()?.getInteger("maxLookups") ?: Int.MAX_VALUE
+      val updateRequiredCapabilities = msg.body()?.getBoolean("updateRequiredCapabilities") ?: true
       launch {
-        lookup(maxLookups)
+        lookup(maxLookups, updateRequiredCapabilities)
       }
     }
   }
@@ -86,48 +97,82 @@ class Scheduler : CoroutineVerticle() {
   /**
    * Get registered process chains and execute them asynchronously
    * @param maxLookups the maximum number of lookups to perform
+   * @param updateRequiredCapabilities `true` if the list of known required
+   * capabilities should be updated before performing the lookup
    */
-  private suspend fun lookup(maxLookups: Int = Int.MAX_VALUE) {
+  private suspend fun lookup(maxLookups: Int = Int.MAX_VALUE,
+      updateRequiredCapabilities: Boolean) {
+    if (updateRequiredCapabilities || !allRequiredCapabilitiesInitialized) {
+      allRequiredCapabilities = submissionRegistry
+          .findProcessChainRequiredCapabilities(REGISTERED)
+      allRequiredCapabilitiesInitialized = true
+    }
+
     for (i in 0 until maxLookups) {
-      // get next registered process chain
-      val processChain = submissionRegistry.fetchNextProcessChain(REGISTERED, RUNNING) ?: return
-      logFoundProcessChainCache.get(processChain.id) {
-        log.info("Found registered process chain `${processChain.id}'")
-        true
+      // send all known required capabilities to all agents and ask them if they
+      // are available and, if so, what required capabilities they can handle
+      val candidates = agentRegistry.selectCandidates(allRequiredCapabilities)
+      if (candidates.isEmpty()) {
+        // agents are all busy or do not accept our required capabilities
+        break
       }
 
-      // allocate an agent for the process chain
-      val agent = agentRegistry.allocate(processChain)
-      if (agent == null) {
-        logNoAgentCache.get(processChain.id) {
-          log.info("No agent available to execute process chain `${processChain.id}'")
-          true
+      // iterate through all agents that indicated they are available
+      for ((requiredCapabilities, address) in candidates) {
+        // get next registered process chain for the given set of required capabilities
+        val processChain = submissionRegistry.fetchNextProcessChain(
+            REGISTERED, RUNNING, requiredCapabilities)
+        if (processChain == null) {
+          // We didn't find a process chain for these required capabilities.
+          // Remove them from the list of known ones.
+          allRequiredCapabilities = allRequiredCapabilities.filter { it != requiredCapabilities }
+          continue
         }
-        submissionRegistry.setProcessChainStatus(processChain.id, REGISTERED)
-        return
-      }
-      log.info("Assigned process chain `${processChain.id}' to agent `${agent.id}'")
 
-      // execute process chain
-      launch {
-        try {
-          submissionRegistry.setProcessChainStartTime(processChain.id, Instant.now())
-          val results = agent.execute(processChain)
-          submissionRegistry.setProcessChainResults(processChain.id, results)
-          submissionRegistry.setProcessChainStatus(processChain.id, SUCCESS)
-        } catch (_: CancellationException) {
-          log.warn("Process chain execution was cancelled")
-          submissionRegistry.setProcessChainStatus(processChain.id, CANCELLED)
-        } catch (t: Throwable) {
-          log.error("Process chain execution failed", t)
-          submissionRegistry.setProcessChainErrorMessage(processChain.id, t.message)
-          submissionRegistry.setProcessChainStatus(processChain.id, ERROR)
-        } finally {
-          agentRegistry.deallocate(agent)
-          submissionRegistry.setProcessChainEndTime(processChain.id, Instant.now())
+        if (requiredCapabilities.isEmpty()) {
+          log.info("Found registered process chain `${processChain.id}'")
+        } else {
+          log.info("Found registered process chain `${processChain.id}' for " +
+              "required capabilities `$requiredCapabilities'")
+        }
 
-          // try to lookup next process chain immediately
-          vertx.eventBus().send(SCHEDULER_LOOKUP_NOW, 1)
+        // allocate an agent for the process chain
+        val agent = agentRegistry.tryAllocate(address)
+        if (agent == null) {
+          log.warn("Agent with address `$address' did not accept process " +
+              "chain `${processChain.id}'")
+          submissionRegistry.setProcessChainStatus(processChain.id, REGISTERED)
+          return
+        }
+
+        log.info("Assigned process chain `${processChain.id}' to agent `${agent.id}'")
+
+        // execute process chain
+        launch {
+          try {
+            submissionRegistry.setProcessChainStartTime(processChain.id, Instant.now())
+            val results = agent.execute(processChain)
+            submissionRegistry.setProcessChainResults(processChain.id, results)
+            submissionRegistry.setProcessChainStatus(processChain.id, SUCCESS)
+          } catch (_: CancellationException) {
+            log.warn("Process chain execution was cancelled")
+            submissionRegistry.setProcessChainStatus(processChain.id, CANCELLED)
+          } catch (t: Throwable) {
+            log.error("Process chain execution failed", t)
+            submissionRegistry.setProcessChainErrorMessage(processChain.id, t.message)
+            submissionRegistry.setProcessChainStatus(processChain.id, ERROR)
+          } finally {
+            agentRegistry.deallocate(agent)
+            submissionRegistry.setProcessChainEndTime(processChain.id, Instant.now())
+
+            // try to lookup next process chain immediately
+            vertx.eventBus().send(SCHEDULER_LOOKUP_NOW, json {
+              obj(
+                  "maxLookups" to 1,
+                  "updateRequiredCapabilities" to false
+              )
+            })
+          }
         }
       }
     }

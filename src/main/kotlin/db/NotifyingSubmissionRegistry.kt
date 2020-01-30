@@ -112,8 +112,8 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
   }
 
   override suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
-      newStatus: ProcessChainStatus): ProcessChain? {
-    val pc = delegate.fetchNextProcessChain(currentStatus, newStatus)
+      newStatus: ProcessChainStatus, requiredCapabilities: Collection<String>?): ProcessChain? {
+    val pc = delegate.fetchNextProcessChain(currentStatus, newStatus, requiredCapabilities)
     if (pc != null) {
       vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_STATUS_CHANGED, json {
         obj(

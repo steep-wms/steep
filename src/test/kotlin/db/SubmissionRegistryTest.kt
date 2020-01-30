@@ -747,6 +747,36 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun findProcessChainRequiredCapabilities(vertx: Vertx, ctx: VertxTestContext) {
+    val rcs1 = setOf("rc1")
+    val rcs2 = setOf("rc1", "rc2")
+
+    val s = Submission(workflow = Workflow())
+    val pc1 = ProcessChain(requiredCapabilities = rcs1)
+    val pc2 = ProcessChain()
+    val pc3 = ProcessChain(requiredCapabilities = rcs1)
+    val pc4 = ProcessChain(requiredCapabilities = rcs2)
+    val pc5 = ProcessChain(requiredCapabilities = rcs2)
+    val pc6 = ProcessChain(requiredCapabilities = rcs1)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s)
+      submissionRegistry.addProcessChains(listOf(pc1, pc2, pc3, pc4, pc5, pc6), s.id)
+
+      val r = submissionRegistry.findProcessChainRequiredCapabilities(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      ctx.verify {
+        assertThat(r).hasSize(3)
+        assertThat(r).anyMatch { it.toSet() == rcs1 }
+        assertThat(r).anyMatch { it.toSet() == rcs2 }
+        assertThat(r).anyMatch { it.isEmpty() }
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun fetchNextProcessChain(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()
@@ -789,6 +819,42 @@ abstract class SubmissionRegistryTest {
       ctx.verify {
         assertThat(pcA).isEqualTo(pc1)
         assertThat(pcB).isEqualTo(pc2)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun fetchNextProcessChainRequiredCapabilities(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc1 = ProcessChain(requiredCapabilities = setOf("docker", "sleep"))
+    val pc2 = ProcessChain()
+    val pc3 = ProcessChain(requiredCapabilities = setOf("docker"))
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s)
+      submissionRegistry.addProcessChains(listOf(pc1, pc2, pc3), s.id)
+      val pcA = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      val pcB = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          listOf("docker"))
+      val pcC = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          listOf("docker", "sleep"))
+      val pcD = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          emptyList())
+      ctx.verify {
+        assertThat(pcA).isEqualTo(pc1)
+        assertThat(pcB).isEqualTo(pc3)
+        assertThat(pcC).isEqualTo(pc1)
+        assertThat(pcD).isEqualTo(pc2)
       }
 
       ctx.completeNow()

@@ -288,6 +288,12 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
           .map { Pair(it.processChain.id, it.status) }
           .toMap()
 
+  override suspend fun findProcessChainRequiredCapabilities(status: ProcessChainStatus) =
+      findProcessChainEntries()
+          .filter { it.status == status }
+          .map { it.processChain.requiredCapabilities }
+          .distinct()
+
   override suspend fun findProcessChainById(processChainId: String): ProcessChain? {
     return processChains.await().getAwait(processChainId)?.let {
       JsonUtils.mapper.readValue<ProcessChainEntry>(it).processChain
@@ -310,15 +316,17 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
           .count().toLong()
 
   override suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
-      newStatus: ProcessChainStatus): ProcessChain? {
+      newStatus: ProcessChainStatus, requiredCapabilities: Collection<String>?): ProcessChain? {
     val sharedData = vertx.sharedData()
     val lock = sharedData.getLockAwait(LOCK_PROCESS_CHAINS)
     try {
       val map = processChains.await()
       val values = awaitResult<List<String>> { map.values(it) }
       val entry = values.map { JsonUtils.mapper.readValue<ProcessChainEntry>(it) }
-          .sortedBy { it.serial }
-          .find { it.status == currentStatus }
+          .filter { it.status == currentStatus && (requiredCapabilities == null ||
+              (it.processChain.requiredCapabilities.size == requiredCapabilities.size &&
+                  it.processChain.requiredCapabilities.containsAll(requiredCapabilities))) }
+          .minBy { it.serial }
       return entry?.let {
         val newEntry = it.copy(status = newStatus)
         map.putAwait(it.processChain.id, JsonUtils.mapper.writeValueAsString(newEntry))
