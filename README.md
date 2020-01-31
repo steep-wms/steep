@@ -1,6 +1,8 @@
 Steep
 =====
 
+[![Actions Status](https://github.com/steep-wms/steep/workflows/Java%20CI/badge.svg)](https://github.com/steep-wms/steep/actions)
+
 Scientific Workflow Management System
 
 **Key features:**

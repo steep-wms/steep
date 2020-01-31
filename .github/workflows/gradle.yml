@@ -1,0 +1,32 @@
+name: Java CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+
+      - name: Run tests and install
+        run: ./gradlew check installDist -i
+
+      - name: Build Docker image
+        run: |
+          docker build -t steep/steep .
+          docker tag steep/steep steep/steep:unstable
+
+      - name: Push Docker image
+        if: github.repository == 'steep-wms/steep' && github.event_name == 'push'
+        env:
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+        run: |
+          echo $DOCKER_HUB_ACCESS_TOKEN | docker login --username $DOCKER_HUB_USERNAME --password-stdin
+          docker push steep/steep:unstable
