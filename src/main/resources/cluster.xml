@@ -6,9 +6,9 @@
         <property name="hazelcast.logging.type">slf4j</property>
     </properties>
 
-    <!-- create a cluster group for the JobManager -->
+    <!-- create a cluster group for Steep -->
     <group>
-        <name>jobmanager</name>
+        <name>steep</name>
     </group>
 
     <!-- configure network options -->

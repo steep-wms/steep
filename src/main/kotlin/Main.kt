@@ -33,7 +33,7 @@ var globalAgentId: String = "localhost"
 
 suspend fun main() {
   // load configuration
-  val confFileStr = File("conf/jobmanager.yaml").readText()
+  val confFileStr = File("conf/steep.yaml").readText()
   val yaml = Yaml()
   val m = yaml.load<Map<String, Any>>(confFileStr)
   val conf = JsonUtils.flatten(JsonObject(m))
@@ -120,7 +120,7 @@ suspend fun main() {
     }
   })
 
-  // start JobManager's main verticle
+  // start Steep's main verticle
   val deploymentOptions = DeploymentOptions(conf)
   try {
     vertx.deployVerticleAwait(Main::class.qualifiedName!!, deploymentOptions)
@@ -193,7 +193,7 @@ private fun getDefaultAddress(): String? {
 }
 
 /**
- * The JobManager's main verticle
+ * Steep's main verticle
  * @author Michel Kraemer
  */
 class Main : CoroutineVerticle() {
@@ -230,7 +230,7 @@ class Main : CoroutineVerticle() {
     vertx.deployVerticleAwait(Scheduler::class.qualifiedName!!, options)
     vertx.deployVerticleAwait(Controller::class.qualifiedName!!, options)
     if (config.getBoolean(ConfigConstants.AGENT_ENABLED, true)) {
-      vertx.deployVerticleAwait(JobManager::class.qualifiedName!!, options)
+      vertx.deployVerticleAwait(Steep::class.qualifiedName!!, options)
     }
     if (config.getBoolean(ConfigConstants.HTTP_ENABLED, true)) {
       vertx.deployVerticleAwait(HttpEndpoint::class.qualifiedName!!, options)

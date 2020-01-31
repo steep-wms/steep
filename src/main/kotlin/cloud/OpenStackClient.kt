@@ -121,7 +121,7 @@ class OpenStackClient(endpoint: String, username: String, password: String,
     log.info("Creating block device ...")
 
     val builder = Builders.volume()
-        .name("fraunhofer-jobmanager-" + UniqueID.next())
+        .name("fraunhofer-steep-" + UniqueID.next())
         .metadata(metadata)
         .size(blockDeviceSizeGb)
         .volumeType(volumeType)
@@ -195,7 +195,7 @@ class OpenStackClient(endpoint: String, username: String, password: String,
     log.info("Creating VM ...")
 
     var builder = Builders.server()
-        .name("fraunhofer-jobmanager-" + UniqueID.next())
+        .name("fraunhofer-steep-" + UniqueID.next())
         .addMetadata(metadata)
         .networks(listOf(networkId))
         .keypairName(keypairName)

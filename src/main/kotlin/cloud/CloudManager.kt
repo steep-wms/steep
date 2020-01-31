@@ -37,8 +37,8 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Acquires remote agents on demand. Creates virtual machines, deploys the
- * JobManager to them, and destroys them if they are not needed anymore.
+ * Acquires remote agents on demand. Creates virtual machines, deploys Steep
+ * to them, and destroys them if they are not needed anymore.
  * @author Michel Kraemer
  */
 class CloudManager : CoroutineVerticle() {
@@ -47,7 +47,7 @@ class CloudManager : CoroutineVerticle() {
 
     /**
      * A metadata key indicating that a virtual machine has been created
-     * by the JobManager
+     * by Steep
      */
     private const val CREATED_BY = "Created-By"
 
@@ -86,7 +86,7 @@ class CloudManager : CoroutineVerticle() {
 
   /**
    * A metadata item indicating that a virtual machine has been created
-   * by the JobManager
+   * by Steep
    */
   private lateinit var createdByTag: String
 

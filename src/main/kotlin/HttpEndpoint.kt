@@ -74,7 +74,7 @@ import kotlin.math.max
 import com.github.zafarkhaja.semver.Version as SemVersion
 
 /**
- * The JobManager's main API entry point
+ * Steep's main API entry point
  * @author Michel Kraemer
  */
 class HttpEndpoint : CoroutineVerticle() {
@@ -98,7 +98,7 @@ class HttpEndpoint : CoroutineVerticle() {
      * Calculate SHA256 checksum for all [TRANSIENT_ASSETS]
      */
     private val ASSET_SHAS = TRANSIENT_ASSETS.mapValues { (_, v) ->
-      val sha = JobManager::class.java.getResourceAsStream(v)
+      val sha = Steep::class.java.getResourceAsStream(v)
           .use { DigestUtils.sha256Hex(it) }
       val ext = FilenameUtils.getExtension(v)
       val basename = FilenameUtils.removeExtension(v)
@@ -315,7 +315,7 @@ class HttpEndpoint : CoroutineVerticle() {
   }
 
   /**
-   * Get information about the JobManager
+   * Get information about Steep
    * @param ctx the routing context
    */
   private fun onGet(ctx: RoutingContext) {
@@ -930,7 +930,7 @@ class HttpEndpoint : CoroutineVerticle() {
             // Ask local agent (running anywhere in the cluster) to cancel
             // the process chain. Its status should be set to CANCELLED by
             // the scheduler as soon as the local agent has aborted the
-            // execution and the JobManager has sent this information back to
+            // execution and Steep has sent this information back to
             // the remote agent.
             vertx.eventBus().send(LOCAL_AGENT_ADDRESS_PREFIX + id, json {
               obj(

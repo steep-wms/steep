@@ -1,7 +1,7 @@
-JobManager v3
-=============
+Steep
+=====
 
-This is the third major version of the JobManager.
+Scientific Workflow Management System
 
 **Key features:**
 
@@ -10,7 +10,7 @@ This is the third major version of the JobManager.
   so-called process chains
 * Support for cyclic workflow graphs (i.e. *recursive for-each actions*)
 * Optimized *process chain scheduling* through parallelization and distribution
-  to multiple agents (i.e. JobManager instances running in the Cloud or in a
+  to multiple agents (i.e. Steep instances running in the Cloud or in a
   cluster)
 * *Automatic failover:* crashed workflows can be resumed without loss of
   information
@@ -30,7 +30,7 @@ This is the third major version of the JobManager.
 * Tight integration with *Kubernetes* enables optimized resource usage through
   *auto-scaling*
 * *OpenStack Cloud Connector* allows virtual machines hosting additional
-  JobManager agents to be created on demand
+  Steep agents to be created on demand
 * Endpoint providing metrics to *Prometheus*
 * REST-like *HTTP interface*
 * Web-based *user interface* for monitoring
@@ -48,6 +48,6 @@ This project requires at least JDK 11.
 Building and running the Docker image
 -------------------------------------
 
-    docker build -t jobmanager3 .
-    docker run --name jobmanager3 --rm -p 8080:8080 \
-      -e JOBMANAGER_HTTP_HOST=0.0.0.0 jobmanager3
+    docker build -t steep .
+    docker run --name steep --rm -p 8080:8080 \
+      -e STEEP_HTTP_HOST=0.0.0.0 steep

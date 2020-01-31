@@ -1,8 +1,8 @@
 # first exclude everything
 **
 
-# then include JobManager (built with `./gradlew installDist`)
-!build/install/jobmanager3
+# then include Steep (built with `./gradlew installDist`)
+!build/install/steep
 
 # also include conf files
 !conf

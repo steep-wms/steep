@@ -2,7 +2,7 @@
 <configuration>
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
-            <if condition='org.apache.commons.lang3.BooleanUtils.toBoolean(p("JOBMANAGER_LOGGING_ENABLEJSON"))'>
+            <if condition='org.apache.commons.lang3.BooleanUtils.toBoolean(p("STEEP_LOGGING_ENABLEJSON"))'>
                 <then>
                     <layout class="ch.qos.logback.contrib.json.classic.JsonLayout">
                         <jsonFormatter class="ch.qos.logback.contrib.jackson.JacksonJsonFormatter"/>
@@ -24,10 +24,10 @@
                 <pattern>%d{yyyy-MM-dd HH:mm:ss} - %msg%n</pattern>
             </layout>
         </encoder>
-        <file>jobmanager.log</file>
+        <file>steep.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!-- daily rollover -->
-            <fileNamePattern>jobmanager.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <fileNamePattern>steep.%d{yyyy-MM-dd}.log</fileNamePattern>
 
             <!-- keep 7 days' worth of history capped at 100MB total size -->
             <maxHistory>7</maxHistory>
@@ -43,8 +43,8 @@
     <logger name="com.hazelcast" level="INFO" />
     <logger name="com.zaxxer.hikari.pool" level="INFO" />
 
-    <variable name="JOBMANAGER_LOG_LEVEL" value="${JOBMANAGER_LOG_LEVEL:-DEBUG}" />
-    <root level="${JOBMANAGER_LOG_LEVEL}">
+    <variable name="STEEP_LOG_LEVEL" value="${STEEP_LOG_LEVEL:-DEBUG}" />
+    <root level="${STEEP_LOG_LEVEL}">
         <appender-ref ref="FILE"/>
         <appender-ref ref="STDOUT"/>
     </root>

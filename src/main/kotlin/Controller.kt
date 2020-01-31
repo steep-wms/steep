@@ -43,7 +43,7 @@ class Controller : CoroutineVerticle() {
      * The current number of process chains we are currently waiting for
      */
     private val gaugeProcessChains = Gauge.build()
-        .name("jobmanager_controller_process_chains")
+        .name("steep_controller_process_chains")
         .help("Number of process chains the controller is waiting for")
         .register()
   }

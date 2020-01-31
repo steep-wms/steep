@@ -27,12 +27,12 @@ import java.util.concurrent.CancellationException
 import java.util.concurrent.Executors
 
 /**
- * The JobManager's main API entry point
+ * Steep's main API entry point
  * @author Michel Kraemer
  */
-class JobManager : CoroutineVerticle() {
+class Steep : CoroutineVerticle() {
   companion object {
-    private val log = LoggerFactory.getLogger(JobManager::class.java)
+    private val log = LoggerFactory.getLogger(Steep::class.java)
   }
 
   private val startTime = Instant.now()

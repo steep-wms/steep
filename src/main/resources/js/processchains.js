@@ -94,7 +94,7 @@ let eb = new EventBus(basePath + "/eventbus");
 eb.enableReconnect(true);
 eb.onopen = () => {
   if (!window.singleProcessChain) {
-    eb.registerHandler("jobmanager.submissionRegistry.processChainsAdded", (error, message) => {
+    eb.registerHandler("steep.submissionRegistry.processChainsAdded", (error, message) => {
       let submissionId = message.body.submissionId;
       if (window.submissionId === null || window.submissionId === submissionId) {
         if (page.offset > 0) {
@@ -116,28 +116,28 @@ eb.onopen = () => {
     });
   }
 
-  eb.registerHandler("jobmanager.submissionRegistry.processChainStartTimeChanged", (error, message) => {
+  eb.registerHandler("steep.submissionRegistry.processChainStartTimeChanged", (error, message) => {
     let pc = app.findProcessChainById(message.body.processChainId);
     if (pc) {
       pc.startTime = message.body.startTime;
     }
   });
 
-  eb.registerHandler("jobmanager.submissionRegistry.processChainEndTimeChanged", (error, message) => {
+  eb.registerHandler("steep.submissionRegistry.processChainEndTimeChanged", (error, message) => {
     let pc = app.findProcessChainById(message.body.processChainId);
     if (pc) {
       pc.endTime = message.body.endTime;
     }
   });
 
-  eb.registerHandler("jobmanager.submissionRegistry.processChainStatusChanged", (error, message) => {
+  eb.registerHandler("steep.submissionRegistry.processChainStatusChanged", (error, message) => {
     let pc = app.findProcessChainById(message.body.processChainId);
     if (pc) {
       pc.status = message.body.status;
     }
   });
 
-  eb.registerHandler("jobmanager.submissionRegistry.processChainAllStatusChanged", (error, message) => {
+  eb.registerHandler("steep.submissionRegistry.processChainAllStatusChanged", (error, message) => {
     let pcs = app.findProcessChainsBySubmissionIdAndStatus(
         message.body.submissionId, message.body.currentStatus);
     for (pc of pcs) {
@@ -145,7 +145,7 @@ eb.onopen = () => {
     }
   });
 
-  eb.registerHandler("jobmanager.submissionRegistry.processChainErrorMessageChanged", (error, message) => {
+  eb.registerHandler("steep.submissionRegistry.processChainErrorMessageChanged", (error, message) => {
     let pc = app.findProcessChainById(message.body.processChainId);
     if (pc) {
       pc.errorMessage = message.body.errorMessage;

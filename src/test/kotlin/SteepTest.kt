@@ -30,11 +30,11 @@ import java.io.IOException
 import java.rmi.RemoteException
 
 /**
- * Tests for [JobManager]
+ * Tests for [Steep]
  * @author Michel Kraemer
  */
 @ExtendWith(VertxExtension::class)
-class JobManagerTest {
+class SteepTest {
   private lateinit var submissionRegistry: SubmissionRegistry
 
   @BeforeEach
@@ -52,7 +52,7 @@ class JobManagerTest {
       )
     }
     val options = DeploymentOptions(config)
-    vertx.deployVerticle(JobManager::class.qualifiedName, options, ctx.completing())
+    vertx.deployVerticle(Steep::class.qualifiedName, options, ctx.completing())
   }
 
   @AfterEach

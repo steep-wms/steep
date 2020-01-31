@@ -1,10 +1,10 @@
-jobmanager:
-  # overrideConfigFile: conf/jobmanager-override.yaml
+steep:
+  # overrideConfigFile: conf/steep-override.yaml
   services: conf/services/*.yaml
   rules: conf/rules/*.yaml
   plugins: conf/plugins/*.yaml
   tmpPath: /tmp
-  outPath: /tmp/jobmanager/out
+  outPath: /tmp/steep/out
 
   cluster:
     eventBus:
@@ -28,7 +28,7 @@ jobmanager:
     host: localhost
     port: 8080
     postMaxSize: 10485760  # 10 MB
-    # basePath: /jobmanager
+    # basePath: /steep
 
   agent:
     enabled: true
@@ -52,8 +52,8 @@ jobmanager:
     driver: inmemory
     # driver: postgresql
     # driver: mongodb
-    url: jdbc:postgresql://localhost:5432/jobmanager?currentSchema=jobmanager
-    # url: mongodb://localhost:27017/jobmanager
+    url: jdbc:postgresql://localhost:5432/steep?currentSchema=steep
+    # url: mongodb://localhost:27017/steep
     username: postgres
     password: mysecretpassword
 
@@ -61,35 +61,34 @@ jobmanager:
     enabled: false
     setupsFile: conf/setups.yaml
     driver: openstack
-    createdByTag: JobManager
+    createdByTag: Steep
     syncIntervalSeconds: 120
 
     openstack:
-      endpoint: https://cloudapi.igd.fraunhofer.de:5000/v3
+      endpoint: https://example.com:5000/v3
       username: myusername
       password: mysecretpassword
       domainName: Default
-      projectId: dbcc955cb8884742be64b23ca43ce3f9
-      # projectName: geotest
-      availabilityZone: nova
-      networkId: b7a8cacb-92c4-4580-a6d0-64caba96c38a
+      projectId: abcdefghijklmopqrstuvwxyz
+      # projectName: myproject
+      availabilityZone: az-01
+      networkId: abcdefghijklmopqrstuvwxyz
       usePublicIp: true
-      keypairName: jobmanager
+      keypairName: steep
       securityGroups:
         - default
-        - express-cloud
 
     ssh:
       username: ubuntu
-      privateKeyLocation: conf/jobmanager-cloudapi.pem
+      privateKeyLocation: conf/steep.pem
 
 setups:
   default:
     docker:
       username: myusername
       password: mysecretpassword
-      registry: geocode.igd.fraunhofer.de:4567
-      image: geocode.igd.fraunhofer.de:4567/jobmanager/jobmanager3:latest
+      registry: example.com
+      image: example.com:4567/steep/steep:latest
 
     sshfs:
       url: user@192.168.0.1

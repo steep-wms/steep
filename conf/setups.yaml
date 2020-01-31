@@ -7,7 +7,7 @@
   provisioningScripts:
     - conf/setups/default/01_docker.sh
     - conf/setups/default/02_sshfs.sh
-    - conf/setups/default/03_jobmanager.sh
+    - conf/setups/default/03_steep.sh
 
   providedCapabilities:
     - docker

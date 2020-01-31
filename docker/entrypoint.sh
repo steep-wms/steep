@@ -9,4 +9,4 @@ export LD_PRELOAD=libnss_wrapper.so
 export NSS_WRAPPER_PASSWD=/tmp/passwd
 export NSS_WRAPPER_GROUP=/etc/group
 
-exec bin/jobmanager3
+exec bin/steep

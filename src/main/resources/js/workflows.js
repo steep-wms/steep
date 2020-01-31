@@ -299,7 +299,7 @@ let eb = new EventBus(basePath + "/eventbus");
 eb.enableReconnect(true);
 eb.onopen = () => {
   if (!window.singleWorkflow) {
-    eb.registerHandler("jobmanager.submissionRegistry.submissionAdded", (error, message) => {
+    eb.registerHandler("steep.submissionRegistry.submissionAdded", (error, message) => {
       if (page.offset > 0) {
         app.workflowsAdded = true;
       } else {
@@ -314,21 +314,21 @@ eb.onopen = () => {
     });
   }
 
-  eb.registerHandler("jobmanager.submissionRegistry.submissionStartTimeChanged", (error, message) => {
+  eb.registerHandler("steep.submissionRegistry.submissionStartTimeChanged", (error, message) => {
     let w = app.findWorkflowById(message.body.submissionId);
     if (w) {
       w.startTime = message.body.startTime;
     }
   });
 
-  eb.registerHandler("jobmanager.submissionRegistry.submissionEndTimeChanged", (error, message) => {
+  eb.registerHandler("steep.submissionRegistry.submissionEndTimeChanged", (error, message) => {
     let w = app.findWorkflowById(message.body.submissionId);
     if (w) {
       w.endTime = message.body.endTime;
     }
   });
 
-  eb.registerHandler("jobmanager.submissionRegistry.submissionStatusChanged", (error, message) => {
+  eb.registerHandler("steep.submissionRegistry.submissionStatusChanged", (error, message) => {
     let w = app.findWorkflowById(message.body.submissionId);
     if (w) {
       w.status = message.body.status;
@@ -336,7 +336,7 @@ eb.onopen = () => {
   });
 
   if (window.singleWorkflow) {
-    eb.registerHandler("jobmanager.submissionRegistry.submissionErrorMessageChanged", (error, message) => {
+    eb.registerHandler("steep.submissionRegistry.submissionErrorMessageChanged", (error, message) => {
       let w = app.findWorkflowById(message.body.submissionId);
       if (w) {
         w.errorMessage = message.body.errorMessage;
@@ -344,7 +344,7 @@ eb.onopen = () => {
     });
   }
 
-  eb.registerHandler("jobmanager.submissionRegistry.processChainsAddedSize", (error, message) => {
+  eb.registerHandler("steep.submissionRegistry.processChainsAddedSize", (error, message) => {
     let pcsSize = message.body.processChainsSize;
     let submissionId = message.body.submissionId;
     let status = message.body.status;
@@ -365,7 +365,7 @@ eb.onopen = () => {
     }
   });
 
-  eb.registerHandler("jobmanager.submissionRegistry.processChainStatusChanged", (error, message) => {
+  eb.registerHandler("steep.submissionRegistry.processChainStatusChanged", (error, message) => {
     let submissionId = message.body.submissionId;
     let status = message.body.status;
     let previousStatus = message.body.previousStatus;
@@ -397,7 +397,7 @@ eb.onopen = () => {
     }
   });
 
-  eb.registerHandler("jobmanager.submissionRegistry.processChainAllStatusChanged", (error, message) => {
+  eb.registerHandler("steep.submissionRegistry.processChainAllStatusChanged", (error, message) => {
     let submissionId = message.body.submissionId;
     let currentStatus = message.body.currentStatus;
     let newStatus = message.body.newStatus;

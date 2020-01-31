@@ -2,5 +2,4 @@
 .idea/
 build/
 out/
-processChainLog/*.log
-jobmanager*.log
+steep*.log

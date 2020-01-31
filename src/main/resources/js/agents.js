@@ -67,7 +67,7 @@ let app = new Vue({
 let eb = new EventBus(basePath + "/eventbus");
 eb.enableReconnect(true);
 eb.onopen = () => {
-  eb.registerHandler("jobmanager.remoteAgentRegistry.agentAdded", (error, message) => {
+  eb.registerHandler("steep.remoteAgentRegistry.agentAdded", (error, message) => {
     if (!window.singleAgent) {
       let id = message.body.substring(AGENT_ADDRESS_PREFIX.length);
       fetch(basePath + "/agents/" + id)
@@ -83,7 +83,7 @@ eb.onopen = () => {
     }
   });
 
-  eb.registerHandler("jobmanager.remoteAgentRegistry.agentLeft", (error, message) => {
+  eb.registerHandler("steep.remoteAgentRegistry.agentLeft", (error, message) => {
     let id = message.body.substring(AGENT_ADDRESS_PREFIX.length);
     let i = app.findAgentById(id);
     if (i !== -1) {
@@ -91,7 +91,7 @@ eb.onopen = () => {
     }
   });
 
-  eb.registerHandler("jobmanager.remoteAgentRegistry.agentBusy", (error, message) => {
+  eb.registerHandler("steep.remoteAgentRegistry.agentBusy", (error, message) => {
     let id = message.body.substring(AGENT_ADDRESS_PREFIX.length);
     let i = app.findAgentById(id);
     if (i !== -1) {
@@ -100,7 +100,7 @@ eb.onopen = () => {
     }
   });
 
-  eb.registerHandler("jobmanager.remoteAgentRegistry.agentIdle", (error, message) => {
+  eb.registerHandler("steep.remoteAgentRegistry.agentIdle", (error, message) => {
     let id = message.body.substring(AGENT_ADDRESS_PREFIX.length);
     let i = app.findAgentById(id);
     if (i !== -1) {

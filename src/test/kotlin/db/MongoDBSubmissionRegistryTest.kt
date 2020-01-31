@@ -32,7 +32,7 @@ class MongoDBSubmissionRegistryTest : SubmissionRegistryTest() {
         .build()
     private val CONNECTION_STRING = "mongodb://" +
         MONGOD_CONFIG.net().serverAddress.hostAddress + ":" +
-        MONGOD_CONFIG.net().port + "/jobmanager"
+        MONGOD_CONFIG.net().port + "/steep"
 
     @BeforeAll
     @JvmStatic

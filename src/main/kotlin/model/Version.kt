@@ -3,8 +3,8 @@ package model
 import java.util.Calendar
 
 /**
- * JobManager version info
- * @param version the JobManager's version number
+ * Steep version info
+ * @param version Steep's version number
  * @param build the build ID from the CI server
  * @param commit the Git commit this build was based on
  * @param timestamp the timestamp when the build was executed
