@@ -15,7 +15,7 @@ jobs:
           java-version: 11
 
       - name: Run tests and install
-        run: ./gradlew check installDist -i
+        run: ./gradlew check installDist
 
       - name: Build Docker image
         run: |
