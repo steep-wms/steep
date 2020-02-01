@@ -1,0 +1,10 @@
+api: 3.0.0
+vars:
+  - id: sleep_seconds
+    value: 30
+actions:
+  - type: execute
+    service: docker_sleep
+    parameters:
+      - id: seconds
+        var: sleep_seconds
