@@ -62,14 +62,11 @@ import model.Submission
 import model.Version
 import model.workflow.Action
 import model.workflow.ForEachAction
-import model.workflow.StoreAction
 import model.workflow.Workflow
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
 import java.io.StringWriter
-import java.lang.ClassCastException
-import java.lang.IllegalArgumentException
 import kotlin.math.max
 import com.github.zafarkhaja.semver.Version as SemVersion
 
@@ -660,6 +657,33 @@ class HttpEndpoint : CoroutineVerticle() {
   }
 
   /**
+   * Recursively searches the given JSON object for store actions and removes
+   * them with a warning. Support for store actions was dropped in workflow
+   * API version 4.0.0.
+   */
+  private fun removeStoreAction(json: Map<*, *>) {
+    val actions = json["actions"]
+    if (actions is MutableList<*>) {
+      val iterator = actions.iterator()
+      while (iterator.hasNext()) {
+        val a = iterator.next()
+        if (a is Map<*, *>) {
+          val type = a["type"]
+          if ("for" == type) {
+            removeStoreAction(a)
+          } else if ("store" == type) {
+            log.warn("Found a store action in the posted workflow. Such " +
+                "actions were removed in workflow API version 4.0.0. The " +
+                "action will be removed from the workflow. Use the `store' " +
+                "flag on `output' parameters instead.")
+            iterator.remove()
+          }
+        }
+      }
+    }
+  }
+
+  /**
    * Execute a workflow
    * @param ctx the routing context
    */
@@ -687,12 +711,15 @@ class HttpEndpoint : CoroutineVerticle() {
           .end("Invalid workflow api version: " + e.message)
       return
     }
-    if (!api.satisfies(gte("3.0.0").and(lte("3.3.0")))) {
+    if (!api.satisfies(gte("3.0.0").and(lte("4.0.0")))) {
       ctx.response()
           .setStatusCode(400)
-          .end("Invalid workflow api version: $api. Supported version range is [3.0.0, 3.3.0].")
+          .end("Invalid workflow api version: $api. Supported version range is [3.0.0, 4.0.0].")
       return
     }
+
+    // remove incompatible store action
+    removeStoreAction(workflowJson)
 
     val workflow = try {
       JsonUtils.mapper.convertValue<Workflow>(workflowJson)
@@ -701,11 +728,6 @@ class HttpEndpoint : CoroutineVerticle() {
           .setStatusCode(400)
           .end("Invalid workflow: " + e.message)
       return
-    }
-
-    if (containsStore(workflow.actions)) {
-      log.warn("Store actions are deprecated and scheduled to be removed in " +
-          "workflow API version 4.0.0. Use [OutputParameter.store] instead.")
     }
 
     // log first 100 lines of workflow
@@ -737,17 +759,6 @@ class HttpEndpoint : CoroutineVerticle() {
             .setStatusCode(500)
             .end(e.message)
       }
-    }
-  }
-
-  /**
-   * Recursively checks if the given list of [actions] contains a [StoreAction]
-   */
-  private fun containsStore(actions: List<Action>): Boolean = actions.any {
-    when (it) {
-      is ForEachAction -> containsStore(it.actions)
-      is StoreAction -> true
-      else -> false
     }
   }
 

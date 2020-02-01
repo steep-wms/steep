@@ -41,6 +41,11 @@ import model.metadata.ServiceParameter
 import model.processchain.Argument
 import model.processchain.Executable
 import model.processchain.ProcessChain
+import model.workflow.ExecuteAction
+import model.workflow.ForEachAction
+import model.workflow.GenericParameter
+import model.workflow.OutputParameter
+import model.workflow.Variable
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
@@ -603,15 +608,14 @@ class HttpEndpointTest {
     }
   }
 
-  private fun doPostWorkflow(vertx: Vertx, ctx: VertxTestContext, json: Boolean) {
-    val w = Workflow()
-
+  private fun doPostWorkflow(vertx: Vertx, ctx: VertxTestContext, body: Buffer,
+      expectedWorkflow: Workflow) {
     val submissionSlot = slot<Submission>()
     coEvery { submissionRegistry.addSubmission(capture(submissionSlot)) } answers {
       ctx.verify {
         assertThat(submissionSlot.captured.id).isNotNull()
         assertThat(submissionSlot.captured.status).isEqualTo(Submission.Status.ACCEPTED)
-        assertThat(submissionSlot.captured.workflow).isEqualTo(w)
+        assertThat(submissionSlot.captured.workflow).isEqualTo(expectedWorkflow)
       }
     }
 
@@ -622,18 +626,12 @@ class HttpEndpointTest {
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_ACCEPTED)
             .expect(ResponsePredicate.JSON)
-            .let {
-              if (json) {
-                it.sendJsonObjectAwait(JsonUtils.toJson(w))
-              } else {
-                it.sendBufferAwait(Buffer.buffer(YamlUtils.mapper.writeValueAsString(w)))
-              }
-            }
+            .sendBufferAwait(body)
 
         assertThat(response.body()).isEqualTo(json {
           obj(
               "id" to submissionSlot.captured.id,
-              "workflow" to JsonUtils.toJson(w),
+              "workflow" to JsonUtils.toJson(expectedWorkflow),
               "status" to Submission.Status.ACCEPTED.toString()
           )
         })
@@ -648,7 +646,9 @@ class HttpEndpointTest {
    */
   @Test
   fun postWorkflow(vertx: Vertx, ctx: VertxTestContext) {
-    doPostWorkflow(vertx, ctx, true)
+    val expected = Workflow()
+    val buf = Buffer.buffer(JsonUtils.mapper.writeValueAsString(expected))
+    doPostWorkflow(vertx, ctx, buf, expected)
   }
 
   /**
@@ -656,7 +656,97 @@ class HttpEndpointTest {
    */
   @Test
   fun postWorkflowYaml(vertx: Vertx, ctx: VertxTestContext) {
-    doPostWorkflow(vertx, ctx, false)
+    val expected = Workflow()
+    val buf = Buffer.buffer(YamlUtils.mapper.writeValueAsString(expected))
+    doPostWorkflow(vertx, ctx, buf, expected)
+  }
+
+  /**
+   * Test if the endpoint still accepts workflows with a store action
+   */
+  @Test
+  fun postWorkflowWithStore(vertx: Vertx, ctx: VertxTestContext) {
+    val body = json {
+      obj(
+          "api" to "4.0.0",
+          "vars" to array(
+              obj(
+                  "id" to "input_file1",
+                  "value" to "input_file.txt"
+              ),
+              obj(
+                  "id" to "output_file1"
+              ),
+              obj(
+                  "id" to "i"
+              )
+          ),
+          "actions" to array(
+              obj(
+                  "type" to "execute",
+                  "service" to "cp",
+                  "inputs" to array(
+                      obj(
+                          "id" to "input_file",
+                          "var" to "input_file1"
+                      )
+                  ),
+                  "outputs" to array(
+                      obj(
+                          "id" to "output_file",
+                          "var" to "output_file1"
+                      )
+                  )
+              ),
+              obj(
+                  "type" to "store",
+                  "inputs" to array("output_file1")
+              ),
+              obj(
+                  "type" to "for",
+                  "input" to "input_file1",
+                  "enumerator" to "i",
+                  "actions" to array(
+                      obj(
+                          "type" to "store",
+                          "inputs" to array("output_file1")
+                      )
+                  )
+              )
+          )
+      )
+    }
+
+    val inputFile1 = Variable(id = "input_file1", value = "input_file.txt")
+    val outputFile1 = Variable(id = "output_file1")
+    val enumerator1 = Variable(id = "i")
+    val expected = Workflow(
+        vars = listOf(
+            inputFile1,
+            outputFile1,
+            enumerator1
+        ),
+        actions = listOf(
+            ExecuteAction(
+                service = "cp",
+                inputs = listOf(GenericParameter(
+                    id = "input_file",
+                    variable = inputFile1
+                )),
+                outputs = listOf(OutputParameter(
+                    id = "output_file",
+                    variable = outputFile1
+                ))
+            ),
+            ForEachAction(
+                input = inputFile1,
+                enumerator = enumerator1
+            )
+        )
+    )
+
+    val buf = Buffer.buffer(JsonUtils.mapper.writeValueAsString(body))
+    doPostWorkflow(vertx, ctx, buf, expected)
   }
 
   /**

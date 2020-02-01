@@ -17,7 +17,6 @@ import model.workflow.Action
 import model.workflow.ExecuteAction
 import model.workflow.ForEachAction
 import model.workflow.OutputParameter
-import model.workflow.StoreAction
 import model.workflow.Variable
 import model.workflow.Workflow
 import org.apache.commons.io.FilenameUtils
@@ -219,10 +218,6 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
         action.copy(input = substitutions[action.input.id] ?: action.input,
             enumerator = newEnum, output = newOutput, actions = newActions,
             yieldToOutput = action.yieldToOutput?.let { substitutions[it.id] ?: it })
-      }
-
-      is StoreAction -> {
-        action.copy(inputs = action.inputs.map { substitutions[it.id] ?: it })
       }
 
       else -> throw RuntimeException("Unknown action type `${action.javaClass}'")

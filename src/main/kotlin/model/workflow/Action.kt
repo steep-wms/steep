@@ -14,7 +14,6 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
     property = "type")
 @JsonSubTypes(
     Type(value = ExecuteAction::class, name = "execute"),
-    Type(value = ForEachAction::class, name = "for"),
-    Type(value = StoreAction::class, name = "store")
+    Type(value = ForEachAction::class, name = "for")
 )
 interface Action
