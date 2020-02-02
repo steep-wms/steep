@@ -1,41 +1,47 @@
-Steep
-=====
+<h1 align="center">
+	<br>
+	<br>
+	<img width="500" src="https://steep-wms.github.io/images/steep-logo.svg" alt="Steep">
+	<br>
+	<br>
+	<br>
+</h1>
 
-[![Actions Status](https://github.com/steep-wms/steep/workflows/Java%20CI/badge.svg)](https://github.com/steep-wms/steep/actions)
+> A Scientific Workflow Management System made for the Cloud
 
-Scientific Workflow Management System
+[![Apache License, Version 2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0) [![Actions Status](https://github.com/steep-wms/steep/workflows/Java%20CI/badge.svg)](https://github.com/steep-wms/steep/actions)
 
-**Key features:**
+Steep has the following fey features:
 
-* *Dynamic and scalable workflow management* without apriori ~~design-time~~
+* *Dynamic and scalable workflow management* without apriori
   runtime-time knowledge through incremental conversion of workflow graphs to
   so-called process chains
-* Support for cyclic workflow graphs (i.e. *recursive for-each actions*)
-* Optimized *process chain scheduling* through parallelization and distribution
-  to multiple agents (i.e. Steep instances running in the Cloud or in a
-  cluster)
+* Support for cyclic workflow graphs (with *recursive for-each actions*)
+* Optimized, capability-based *process chain scheduling* through
+  parallelization and distribution to multiple agents (i.e. Steep instances
+  running in the Cloud or in a cluster)
 * *Automatic failover:* crashed workflows can be resumed without loss of
   information
-* *Service metadata* allows process services with *arbitrary interfaces* to be
-  integrated/executed
+* *Service metadata* allows processing services with *arbitrary interfaces*
+  to be integrated/executed
 * *Rule-based* on-line modification of process chains
 * Built-in runtime environments for *executable binaries* and *Docker*.
-* *Plugins:*
-  * An *output adapter* plugin modifies the way the agents collect process
+* Can be extended with *plugins:*
+  * *Output adapter* plugins modify the way agents collect process
     chain results
-  * A *runtime* plugin adds a custom runtime environment (e.g. Python,
+  * *Runtime* plugins add custom runtime environments (e.g. Python,
     AWS Lambda, Web Processing Services).
-* Database back-ends:
-  * In-memory
-  * PostgreSQL
+* Supported database back-ends:
   * MongoDB
+  * PostgreSQL
+  * In-memory
 * Tight integration with *Kubernetes* enables optimized resource usage through
   *auto-scaling*
 * *OpenStack Cloud Connector* allows virtual machines hosting additional
   Steep agents to be created on demand
-* Endpoint providing metrics to *Prometheus*
 * REST-like *HTTP interface*
 * Web-based *user interface* for monitoring
+* Provides metrics to *Prometheus*
 * Asynchronous event-driven architecture
 * Very high test coverage
 
