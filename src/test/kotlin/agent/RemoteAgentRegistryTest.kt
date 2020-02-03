@@ -29,6 +29,59 @@ import java.util.ArrayDeque
 @ExtendWith(VertxExtension::class)
 class RemoteAgentRegistryTest {
   /**
+   * A result of [registerAgentWithCapabilities]
+   */
+  private class RegisteredAgent(val address: String, var inquiryCount: Int = 0)
+
+  /**
+   * Registers a mock agent with the given [capabilities] in the given [registry].
+   * An optional [sequenceProvider] can provide a value of `lastSequence` in
+   * the `inquire` response, and a [bestSelector] selects the best supported
+   * set of capabilities for this agent.
+   */
+  private suspend fun registerAgentWithCapabilities(capabilities: List<String>,
+      registry: RemoteAgentRegistry, vertx: Vertx, ctx: VertxTestContext,
+      sequenceProvider: (() -> Long)? = null,
+      bestSelector: (JsonArray, List<String>) -> Int): RegisteredAgent {
+    val agentId = UniqueID.next()
+    val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId
+    val result = RegisteredAgent(address)
+
+    val handler = { msg: Message<JsonObject> ->
+      val json = msg.body()
+      when (val action = json.getString("action")) {
+        "inquire" -> {
+          result.inquiryCount++
+          val allRcs = json.getJsonArray("requiredCapabilities")
+          val best = bestSelector(allRcs, capabilities)
+          val available = best >= 0
+          val reply = json {
+            if (sequenceProvider != null) {
+              obj(
+                  "available" to available,
+                  "bestRequiredCapabilities" to best,
+                  "lastSequence" to sequenceProvider()
+              )
+            } else {
+              obj(
+                  "available" to available,
+                  "bestRequiredCapabilities" to best
+              )
+            }
+          }
+          msg.reply(reply)
+        }
+        else -> ctx.failNow(NoStackTraceThrowable("Unknown action $action"))
+      }
+    }
+
+    vertx.eventBus().consumer<JsonObject>(address, handler)
+    registry.register(agentId)
+
+    return result
+  }
+
+  /**
    * Test that no agent is selected as candidate if there are none
    */
   @Test
@@ -95,39 +148,19 @@ class RemoteAgentRegistryTest {
   fun selectOneCandidate(vertx: Vertx, ctx: VertxTestContext) {
     val registry = RemoteAgentRegistry(vertx)
 
-    val agentId = UniqueID.next()
-    val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId
-
-    var inquiryCount = 0
-
-    vertx.eventBus().consumer<JsonObject>(address) { msg ->
-      val json = msg.body()
-      when (val action = json.getString("action")) {
-        "inquire" -> {
-          ctx.verify {
-            assertThat(json.getJsonArray("requiredCapabilities")).isEqualTo(
-                JsonArray().add(JsonArray()))
-          }
-          inquiryCount++
-          msg.reply(json {
-            obj(
-                "available" to true,
-                "bestRequiredCapabilities" to 0
-            )
-          })
-        }
-        else -> ctx.failNow(NoStackTraceThrowable("Unknown action $action"))
-      }
-    }
-
     GlobalScope.launch(vertx.dispatcher()) {
-      registry.register(agentId)
+      val agent = registerAgentWithCapabilities(emptyList(), registry, vertx, ctx) { allRcs, _ ->
+        ctx.verify {
+          assertThat(allRcs).isEqualTo(JsonArray().add(JsonArray()))
+        }
+        0
+      }
 
       val candidates = registry.selectCandidates(listOf(emptySet()))
       ctx.verify {
         assertThat(candidates).hasSize(1)
-        assertThat(candidates[0]).isEqualTo(Pair(emptySet<String>(), address))
-        assertThat(inquiryCount).isEqualTo(1)
+        assertThat(candidates[0]).isEqualTo(Pair(emptySet<String>(), agent.address))
+        assertThat(agent.inquiryCount).isEqualTo(1)
       }
 
       ctx.completeNow()
@@ -190,29 +223,20 @@ class RemoteAgentRegistryTest {
   fun selectNoAgentReject(vertx: Vertx, ctx: VertxTestContext) {
     val registry = RemoteAgentRegistry(vertx)
 
-    val reqCap = setOf("docker", "gpu")
-    val agentId = UniqueID.next()
-    val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId
-
-    vertx.eventBus().consumer<JsonObject>(address) { msg ->
-      val json = msg.body()
-      when (val action = json.getString("action")) {
-        "inquire" -> {
-          ctx.verify {
-            assertThat(json.getJsonArray("requiredCapabilities")).isEqualTo(
-                JsonArray().add(JsonArray(reqCap.toList())))
-          }
-          msg.reply(json { obj("available" to false) })
-        }
-        else -> ctx.failNow(NoStackTraceThrowable("Unknown action $action"))
-      }
-    }
+    val reqCap = listOf("docker", "gpu")
 
     GlobalScope.launch(vertx.dispatcher()) {
-      registry.register(agentId)
-      val agent = registry.selectCandidates(listOf(reqCap))
+      val agent = registerAgentWithCapabilities(reqCap, registry, vertx, ctx) { allRcs, capabilities ->
+        ctx.verify {
+          assertThat(allRcs).isEqualTo(JsonArray().add(JsonArray(capabilities)))
+        }
+        -1
+      }
+
+      val candidates = registry.selectCandidates(listOf(reqCap))
       ctx.verify {
-        assertThat(agent).isEmpty()
+        assertThat(candidates).isEmpty()
+        assertThat(agent.inquiryCount).isEqualTo(1)
       }
       ctx.completeNow()
     }
@@ -228,77 +252,31 @@ class RemoteAgentRegistryTest {
     val reqCap1 = listOf("docker")
     val reqCap2 = listOf("gpu")
 
-    val agentId1 = UniqueID.next()
-    val address1 = REMOTE_AGENT_ADDRESS_PREFIX + agentId1
-
-    val agentId2 = UniqueID.next()
-    val address2 = REMOTE_AGENT_ADDRESS_PREFIX + agentId2
-
-    var inquiryCount1 = 0
-    var inquiryCount2 = 0
-
-    vertx.eventBus().consumer<JsonObject>(address1) { msg ->
-      val json = msg.body()
-      when (val action = json.getString("action")) {
-        "inquire" -> {
-          inquiryCount1++
-          val available = json.getJsonArray("requiredCapabilities") ==
-              JsonArray().add(JsonArray(reqCap1))
-          val reply = json {
-            if (available) {
-              obj(
-                  "available" to true,
-                  "bestRequiredCapabilities" to 0
-              )
-            } else {
-              obj("available" to false)
-            }
-          }
-          msg.reply(reply)
-        }
-        else -> ctx.failNow(NoStackTraceThrowable("Unknown action $action"))
-      }
-    }
-
-    vertx.eventBus().consumer<JsonObject>(address2) { msg ->
-      val json = msg.body()
-      when (val action = json.getString("action")) {
-        "inquire" -> {
-          inquiryCount2++
-          val available = json.getJsonArray("requiredCapabilities") ==
-              JsonArray().add(JsonArray(reqCap2))
-          val reply = json {
-            if (available) {
-              obj(
-                  "available" to true,
-                  "bestRequiredCapabilities" to 0
-              )
-            } else {
-              obj("available" to false)
-            }
-          }
-          msg.reply(reply)
-        }
-        else -> ctx.failNow(NoStackTraceThrowable("Unknown action $action"))
-      }
+    val bestSelector = { allRcs: JsonArray, capabilities: List<String> ->
+      val available = allRcs == JsonArray().add(JsonArray(capabilities))
+      if (available) 0 else -1
     }
 
     GlobalScope.launch(vertx.dispatcher()) {
-      registry.register(agentId1)
-      registry.register(agentId2)
+      val agent1 = registerAgentWithCapabilities(reqCap1, registry, vertx,
+          ctx, bestSelector = bestSelector)
+      val agent2 = registerAgentWithCapabilities(reqCap2, registry, vertx,
+          ctx, bestSelector = bestSelector)
+
       val candidates1 = registry.selectCandidates(listOf(reqCap1))
       ctx.verify {
         assertThat(candidates1).hasSize(1)
-        assertThat(candidates1[0]).isEqualTo(Pair(reqCap1, address1))
-        assertThat(inquiryCount1).isEqualTo(1)
-        assertThat(inquiryCount2).isEqualTo(1)
+        assertThat(candidates1[0]).isEqualTo(Pair(reqCap1, agent1.address))
+        assertThat(agent1.inquiryCount).isEqualTo(1)
+        assertThat(agent2.inquiryCount).isEqualTo(1)
       }
+
       val candidates2 = registry.selectCandidates(listOf(reqCap2))
       ctx.verify {
         assertThat(candidates2).hasSize(1)
-        assertThat(candidates2[0]).isEqualTo(Pair(reqCap2, address2))
-        assertThat(inquiryCount1).isEqualTo(2)
-        assertThat(inquiryCount2).isEqualTo(2)
+        assertThat(candidates2[0]).isEqualTo(Pair(reqCap2, agent2.address))
+        assertThat(agent1.inquiryCount).isEqualTo(2)
+        assertThat(agent2.inquiryCount).isEqualTo(2)
       }
       ctx.completeNow()
     }
@@ -315,45 +293,25 @@ class RemoteAgentRegistryTest {
     val reqCap2 = listOf("gpu")
     val reqCap3 = listOf("docker", "gpu")
 
-    val agentId1 = UniqueID.next()
-    val address1 = REMOTE_AGENT_ADDRESS_PREFIX + agentId1
-
-    val agentId2 = UniqueID.next()
-    val address2 = REMOTE_AGENT_ADDRESS_PREFIX + agentId2
-
-    val agentId3 = UniqueID.next()
-    val address3 = REMOTE_AGENT_ADDRESS_PREFIX + agentId3
-
-    val handler = { reqCap: List<String> -> { msg: Message<JsonObject> ->
-      val json = msg.body()
-      when (val action = json.getString("action")) {
-        "inquire" -> {
-          val allRcs = json.getJsonArray("requiredCapabilities")
-          val best = allRcs.indexOfFirst { (it as JsonArray) == JsonArray(reqCap) }
-          val reply = json {
-            obj(
-                "available" to true,
-                "bestRequiredCapabilities" to best
-            )
-          }
-          msg.reply(reply)
-        }
-        else -> ctx.failNow(NoStackTraceThrowable("Unknown action $action"))
-      }
-    }}
-
-    vertx.eventBus().consumer<JsonObject>(address1, handler(reqCap1))
-    vertx.eventBus().consumer<JsonObject>(address2, handler(reqCap2))
-    vertx.eventBus().consumer<JsonObject>(address3, handler(reqCap3))
+    val bestSelector = { allRcs: JsonArray, capabilities: List<String> ->
+      allRcs.indexOfFirst { (it as JsonArray) == JsonArray(capabilities) }
+    }
 
     GlobalScope.launch(vertx.dispatcher()) {
-      registry.register(agentId1)
-      registry.register(agentId2)
-      registry.register(agentId3)
+      val agent1 = registerAgentWithCapabilities(reqCap1, registry, vertx,
+          ctx, bestSelector = bestSelector)
+      val agent2 = registerAgentWithCapabilities(reqCap2, registry, vertx,
+          ctx, bestSelector = bestSelector)
+      val agent3 = registerAgentWithCapabilities(reqCap3, registry, vertx,
+          ctx, bestSelector = bestSelector)
+
       val candidates = registry.selectCandidates(listOf(reqCap1, reqCap2, reqCap3))
       ctx.verify {
-        assertThat(candidates).containsExactlyInAnyOrder(Pair(reqCap1, address1),
-            Pair(reqCap2, address2), Pair(reqCap3, address3))
+        assertThat(candidates).containsExactlyInAnyOrder(Pair(reqCap1, agent1.address),
+            Pair(reqCap2, agent2.address), Pair(reqCap3, agent3.address))
+        assertThat(agent1.inquiryCount).isEqualTo(1)
+        assertThat(agent2.inquiryCount).isEqualTo(1)
+        assertThat(agent3.inquiryCount).isEqualTo(1)
       }
       ctx.completeNow()
     }
@@ -367,75 +325,35 @@ class RemoteAgentRegistryTest {
   fun sequenceBasedSelection(vertx: Vertx, ctx: VertxTestContext) {
     val registry = RemoteAgentRegistry(vertx)
 
-    val agentId1 = UniqueID.next()
-    val address1 = REMOTE_AGENT_ADDRESS_PREFIX + agentId1
-
-    val agentId2 = UniqueID.next()
-    val address2 = REMOTE_AGENT_ADDRESS_PREFIX + agentId2
-
-    var inquiryCount1 = 0
-    var inquiryCount2 = 0
-
     val q1 = ArrayDeque<Long>(listOf(0L, 1L, 4L))
     val q2 = ArrayDeque<Long>(listOf(2L, 2L, 3L))
 
-    vertx.eventBus().consumer<JsonObject>(address1) { msg ->
-      val json = msg.body()
-      when (val action = json.getString("action")) {
-        "inquire" -> {
-          inquiryCount1++
-          msg.reply(json {
-            obj(
-                "available" to true,
-                "lastSequence" to q1.pop(),
-                "bestRequiredCapabilities" to 0
-            )
-          })
-        }
-        else -> ctx.failNow(NoStackTraceThrowable("Unknown action $action"))
-      }
-    }
-
-    vertx.eventBus().consumer<JsonObject>(address2) { msg ->
-      val json = msg.body()
-      when (val action = json.getString("action")) {
-        "inquire" -> {
-          inquiryCount2++
-          msg.reply(json {
-            obj(
-                "available" to true,
-                "lastSequence" to q2.pop(),
-                "bestRequiredCapabilities" to 0
-            )
-          })
-        }
-        else -> ctx.failNow(NoStackTraceThrowable("Unknown action $action"))
-      }
-    }
-
     GlobalScope.launch(vertx.dispatcher()) {
-      registry.register(agentId1)
-      registry.register(agentId2)
+      val agent1 = registerAgentWithCapabilities(emptyList(), registry, vertx, ctx,
+          sequenceProvider = q1::pop, bestSelector = { _,_ -> 0 })
+      val agent2 = registerAgentWithCapabilities(emptyList(), registry, vertx, ctx,
+          sequenceProvider = q2::pop, bestSelector = { _,_ -> 0 })
+
       val candidates1 = registry.selectCandidates(listOf(emptyList()))
       ctx.verify {
         assertThat(candidates1).hasSize(1)
-        assertThat(candidates1[0]).isEqualTo(Pair(emptyList<String>(), address1))
-        assertThat(inquiryCount1).isEqualTo(1)
-        assertThat(inquiryCount2).isEqualTo(1)
+        assertThat(candidates1[0]).isEqualTo(Pair(emptyList<String>(), agent1.address))
+        assertThat(agent1.inquiryCount).isEqualTo(1)
+        assertThat(agent2.inquiryCount).isEqualTo(1)
       }
       val candidates2 = registry.selectCandidates(listOf(emptyList()))
       ctx.verify {
         assertThat(candidates2).hasSize(1)
-        assertThat(candidates2[0]).isEqualTo(Pair(emptyList<String>(), address1))
-        assertThat(inquiryCount1).isEqualTo(2)
-        assertThat(inquiryCount2).isEqualTo(2)
+        assertThat(candidates2[0]).isEqualTo(Pair(emptyList<String>(), agent1.address))
+        assertThat(agent1.inquiryCount).isEqualTo(2)
+        assertThat(agent2.inquiryCount).isEqualTo(2)
       }
       val candidates3 = registry.selectCandidates(listOf(emptyList()))
       ctx.verify {
         assertThat(candidates3).hasSize(1)
-        assertThat(candidates3[0]).isEqualTo(Pair(emptyList<String>(), address2))
-        assertThat(inquiryCount1).isEqualTo(3)
-        assertThat(inquiryCount2).isEqualTo(3)
+        assertThat(candidates3[0]).isEqualTo(Pair(emptyList<String>(), agent2.address))
+        assertThat(agent1.inquiryCount).isEqualTo(3)
+        assertThat(agent2.inquiryCount).isEqualTo(3)
       }
       ctx.completeNow()
     }
