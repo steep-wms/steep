@@ -303,9 +303,12 @@ class Controller : CoroutineVerticle() {
         // notify scheduler(s)
         vertx.eventBus().publish(AddressConstants.SCHEDULER_LOOKUP_NOW, null)
 
+        // do not keep temporary process chain results in memory if not needed
+        val collectTemporaryResults = !generator.isFinished()
+
         // wait for process chain results
         totalProcessChains += processChains.size
-        val w = waitForProcessChains(processChains)
+        val w = waitForProcessChains(processChains, collectTemporaryResults)
         results = w.results
         failed += w.failed
         cancelled += w.cancelled
@@ -373,11 +376,14 @@ class Controller : CoroutineVerticle() {
   /**
    * Wait for the given list of process chains to finish
    * @param processChains the process chains to wait for
+   * @param collectTemporaryResults `true` if the method should collect results
+   * of process chains even if they are only temporary or `false` if it should
+   * only keep submission results.
    * @return an object containing the accumulated process chain results as well
    * as the number of failed and cancelled process chains
    */
-  private suspend fun waitForProcessChains(processChains: Collection<ProcessChain>):
-      WaitForProcessChainsResult {
+  private suspend fun waitForProcessChains(processChains: Collection<ProcessChain>,
+      collectTemporaryResults: Boolean): WaitForProcessChainsResult {
     val results = mutableMapOf<String, List<Any>>()
     var failed = 0
     var cancelled = 0
@@ -392,8 +398,12 @@ class Controller : CoroutineVerticle() {
         loop@ for (processChainId in processChainsToCheck) {
           when (submissionRegistry.getProcessChainStatus(processChainId)) {
             ProcessChainStatus.SUCCESS -> {
-              submissionRegistry.getProcessChainResults(processChainId)?.let {
-                results.putAll(it)
+              submissionRegistry.getProcessChainResults(processChainId)?.let { pcr ->
+                if (collectTemporaryResults) {
+                  results.putAll(pcr)
+                } else {
+                  results.putAll(pcr.filter { (_, v) -> hasSubmissionResults(v) })
+                }
               }
               finishedProcessChains.add(processChainId)
             }
