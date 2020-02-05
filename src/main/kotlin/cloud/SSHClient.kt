@@ -33,7 +33,7 @@ class SSHClient(private val ip: String, private val username: String,
           "-o", "StrictHostKeyChecking=no",
           "-o", "UserKnownHostsFile=/dev/null",
           "$username@$ip",
-          "echo ok")).trim()
+          "echo ok"), 1, false).trim()
     }
   }
 

@@ -18,11 +18,15 @@ object Shell {
    * Executes the given command
    * @param command the command
    * @param outputLinesToCollect the number of output lines to collect at most
+   * @param logFailedExitCode `true` if a failed process with a non-zero exit
+   * code should be logged
    * @return the command's output (stdout and stderr)
    * @throws ExecutionException if the command failed
    */
-  fun execute(command: List<String>, outputLinesToCollect: Int = 100): String {
-    return execute(command, File(System.getProperty("user.dir")), outputLinesToCollect)
+  fun execute(command: List<String>, outputLinesToCollect: Int = 100,
+      logFailedExitCode: Boolean = true): String {
+    return execute(command, File(System.getProperty("user.dir")),
+        outputLinesToCollect, logFailedExitCode)
   }
 
   /**
@@ -30,11 +34,13 @@ object Shell {
    * @param command the command
    * @param workingDir the working directory
    * @param outputLinesToCollect the number of output lines to collect at most
+   * @param logFailedExitCode `true` if a failed process with a non-zero exit
+   * code should be logged
    * @return the command's output (stdout and stderr)
    * @throws ExecutionException if the command failed
    */
   private fun execute(command: List<String>, workingDir: File,
-      outputLinesToCollect: Int = 100): String {
+      outputLinesToCollect: Int = 100, logFailedExitCode: Boolean = true): String {
     val joinedCommand = command.joinToString(" ")
     log.info(joinedCommand)
 
@@ -71,7 +77,9 @@ object Shell {
     val code = process.exitValue()
     val result = streamGobbler.lines().joinToString("\n")
     if (code != 0) {
-      log.error("Command failed with exit code: $code")
+      if (logFailedExitCode) {
+        log.error("Command failed with exit code: $code")
+      }
       throw ExecutionException("Failed to run `$joinedCommand'", result, code)
     }
 
