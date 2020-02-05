@@ -85,10 +85,6 @@ steep:
 setups:
   default:
     docker:
-      username: myusername
-      password: mysecretpassword
-      registry: example.com
-      image: example.com:4567/steep/steep:latest
-
-    sshfs:
-      url: user@192.168.0.1
+      image: steep/steep:unstable
+    agent:
+      autoShutdownTimeoutMinutes: 30
