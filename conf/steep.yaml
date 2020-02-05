@@ -46,6 +46,7 @@ steep:
     lookupOrphansIntervalMilliseconds: 300000
 
   scheduler:
+    enabled: true
     lookupIntervalMilliseconds: 20000
 
   db:

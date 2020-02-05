@@ -15,4 +15,5 @@ docker run -d --name steep --restart=on-failure \
   -e "STEEP_AGENT_ID={{ agentId }}" \
   -e "STEEP_AGENT_CAPABILITIES=[{% for cap in agentCapabilities %}\"{{ cap }}\"{% if not loop.last %},{% endif %}{% endfor %}]" \
   -e "STEEP_AGENT_AUTOSHUTDOWNTIMEOUTMINUTES={{ config["setups.default.agent.autoShutdownTimeoutMinutes"] }}" \
+  -e "STEEP_SCHEDULER_ENABLED=false" \
   {{ config["setups.default.docker.image"] }}

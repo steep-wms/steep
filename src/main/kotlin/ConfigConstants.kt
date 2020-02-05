@@ -128,6 +128,12 @@ object ConfigConstants {
   const val CONTROLLER_LOOKUP_ORPHANS_INTERVAL = "steep.controller.lookupOrphansIntervalMilliseconds"
 
   /**
+   * `true` if the scheduler should be enabled. Set this value to `false` if
+   * your Steep instance does not have access to the shared database.
+   */
+  const val SCHEDULER_ENABLED = "steep.scheduler.enabled"
+
+  /**
    * The interval in which the scheduler looks for registered process chains
    */
   const val SCHEDULER_LOOKUP_INTERVAL = "steep.scheduler.lookupIntervalMilliseconds"
