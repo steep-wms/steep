@@ -21,6 +21,7 @@ data class Setup(
     val imageName: String,
     val blockDeviceSizeGb: Int,
     val blockDeviceVolumeType: String? = null,
+    val minVMs: Int = 0,
     val maxVMs: Int,
     val provisioningScripts: List<String> = emptyList(),
     val providedCapabilities: List<String> = emptyList()

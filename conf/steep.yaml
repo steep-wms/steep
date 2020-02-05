@@ -64,6 +64,7 @@ steep:
     driver: openstack
     createdByTag: Steep
     syncIntervalSeconds: 120
+    keepAliveIntervalSeconds: 30
 
     openstack:
       endpoint: https://example.com:5000/v3

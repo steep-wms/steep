@@ -227,6 +227,13 @@ object ConfigConstants {
   const val CLOUD_SYNC_INTERVAL = "steep.cloud.syncIntervalSeconds"
 
   /**
+   * The number of seconds that should pass before the Cloud manager sends
+   * keep-alive messages to a minimum of remote agents again (so that they
+   * do not shut down themselves). See [model.setup.Setup.minVMs].
+   */
+  const val CLOUD_KEEP_ALIVE_INTERVAL = "steep.cloud.keepAliveIntervalSeconds"
+
+  /**
    * OpenStack authentication endpoint
    */
   const val CLOUD_OPENSTACK_ENDPOINT = "steep.cloud.openstack.endpoint"

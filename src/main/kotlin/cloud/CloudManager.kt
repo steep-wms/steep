@@ -14,6 +14,8 @@ import helper.YamlUtils
 import io.vertx.core.Future
 import io.vertx.core.json.JsonArray
 import io.vertx.core.shareddata.AsyncMap
+import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.core.shareddata.compareAndSetAwait
 import io.vertx.kotlin.core.shareddata.getAsyncMapAwait
 import io.vertx.kotlin.core.shareddata.getAwait
@@ -33,6 +35,7 @@ import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.IOException
 import java.io.StringWriter
+import java.util.TreeSet
 import kotlin.math.max
 import kotlin.math.min
 
@@ -159,6 +162,7 @@ class CloudManager : CoroutineVerticle() {
     }
 
     syncTimerStart()
+    sendKeepAliveTimerStart()
 
     // create new virtual machines on demand
     vertx.eventBus().consumer<JsonArray>(REMOTE_AGENT_MISSING) { msg ->
@@ -246,6 +250,84 @@ class CloudManager : CoroutineVerticle() {
         }
       }
     }
+
+    // ensure there's a minimum number of VMs
+    for (setup in setups) {
+      if (setup.minVMs > 0) {
+        // get number of existing VMs with this setup
+        val counter = vertx.sharedData().getCounterAwait(COUNTER_PREFIX + setup.id)
+        val n = counter.getAwait()
+        if (n < setup.minVMs) {
+          launch {
+            createRemoteAgent(setup)
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Send keep-alive messages now and then regularly
+   */
+  private suspend fun sendKeepAliveTimerStart() {
+    try {
+      sendKeepAlive()
+    } catch (t: Throwable) {
+      log.error("Could not send keep-alive messages", t)
+    }
+    sendKeepAliveTimer()
+  }
+
+  /**
+   * Send keep-alive messages to a minimum of remote agents again (so that they
+   * do not shut down themselves). See [model.setup.Setup.minVMs].
+   */
+  private suspend fun sendKeepAlive() {
+    // collect VMs per Setup
+    val entries = awaitResult<Map<String, String>> { createdVMs.entries(it) }
+    val vmsPerSetup = entries.entries.groupingBy {
+      // group by Setup ID
+      it.value
+    }.fold({ _, e ->
+      // add first vmID to a sorted set
+      TreeSet<String>().also { it.add(e.key) }
+    }, { _, s, e ->
+      // add all remaining vmIDs to this set
+      s.also { it.add(e.key) }
+    })
+
+    val setupsById = setups.map { it.id to it }.toMap()
+    for ((setupId, vmIDs) in vmsPerSetup) {
+      val setup = setupsById[setupId] ?: continue
+
+      if (setup.minVMs > 0) {
+        // set a minimum number of VMs
+        val minVmIDs = vmIDs.asSequence().take(2)
+
+        // send keep-alive message to these VMs
+        for (vmID in minVmIDs) {
+          val address = REMOTE_AGENT_ADDRESS_PREFIX + vmID
+          val msg = json {
+            obj(
+                "action" to "keepAlive"
+            )
+          }
+          vertx.eventBus().send(address, msg)
+        }
+      }
+    }
+  }
+
+  /**
+   * Start a periodic timer that sends keep-alive messages to remote agents
+   */
+  private fun sendKeepAliveTimer() {
+    val seconds = config.getLong(ConfigConstants.CLOUD_KEEP_ALIVE_INTERVAL, 30L)
+    vertx.setTimer(1000 * seconds) {
+      launch {
+        sendKeepAliveTimerStart()
+      }
+    }
   }
 
   /**
@@ -263,7 +345,14 @@ class CloudManager : CoroutineVerticle() {
     val setup = selectSetup(requiredCapabilities) ?: throw IllegalStateException(
         "Could not find a setup that can satisfy the required capabilities: " +
             requiredCapabilities)
+    createRemoteAgent(setup, requiredCapabilities)
+  }
 
+  /**
+   * Create a virtual machine with the given [setup] and the corresponding
+   * [requiredCapabilities] (optional) and deploy a remote agent to it
+   */
+  private suspend fun createRemoteAgent(setup: Setup, requiredCapabilities: Set<String>? = null) {
     // get number of existing VMs with this setup
     val counter = vertx.sharedData().getCounterAwait(COUNTER_PREFIX + setup.id)
     val nBefore = counter.getAwait()
@@ -290,8 +379,12 @@ class CloudManager : CoroutineVerticle() {
         return
       }
 
-      log.info("Creating virtual machine with setup `${setup.id}' for " +
-          "capabilities $requiredCapabilities ...")
+      if (requiredCapabilities != null) {
+        log.info("Creating virtual machine with setup `${setup.id}' for " +
+            "capabilities $requiredCapabilities ...")
+      } else {
+        log.info("Creating virtual machine with setup `${setup.id}' ...")
+      }
 
       if (backoffSeconds > 10) {
         log.info("Backing off for $backoffSeconds seconds due to too many failed attempts.")

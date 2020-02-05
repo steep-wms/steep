@@ -31,6 +31,7 @@ import io.vertx.kotlin.core.shareddata.sizeAwait
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.setup.Setup
 import org.assertj.core.api.Assertions.assertThat
@@ -53,6 +54,7 @@ class CloudManagerTest {
     private const val MY_OLD_VM = "MY_OLD_VM"
     private const val CREATED_BY_TAG = "CloudManagerTest"
     private const val TEST_SETUP2_ID = "TestSetup2"
+    private const val SYNC_INTERVAL = 2
   }
 
   private lateinit var client: CloudClient
@@ -67,6 +69,7 @@ class CloudManagerTest {
 
     // mock SSH client
     mockkConstructor(SSHClient::class)
+    coEvery { anyConstructed<SSHClient>().tryConnect(any()) } just Runs
   }
 
   @AfterEach
@@ -85,23 +88,14 @@ class CloudManagerTest {
     YamlUtils.mapper.writeValue(setupFile, setups)
 
     GlobalScope.launch(vertx.dispatcher()) {
-      // create a counter for a second setup
-      val counter = vertx.sharedData().getCounterAwait(
-          "CloudManager.Counter.$TEST_SETUP2_ID")
-      counter.incrementAndGetAwait()
-
-      // pretend we already created a VM with the second setup
-      val createdVMs = vertx.sharedData().getAsyncMapAwait<String, String>(
-          "CloudManager.CreatedVMs")
-      createdVMs.putAwait(UniqueID.next(), TEST_SETUP2_ID)
-
       // deploy verticle under test
       val config = json {
         obj(
             ConfigConstants.CLOUD_CREATED_BY_TAG to CREATED_BY_TAG,
             ConfigConstants.CLOUD_SSH_USERNAME to "user",
             ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION to "myprivatekey.pem",
-            ConfigConstants.CLOUD_SETUPS_FILE to setupFile.toString()
+            ConfigConstants.CLOUD_SETUPS_FILE to setupFile.toString(),
+            ConfigConstants.CLOUD_SYNC_INTERVAL to SYNC_INTERVAL
         )
       }
       val options = DeploymentOptions(config)
@@ -111,7 +105,7 @@ class CloudManagerTest {
   }
 
   /**
-   * Tests that create VMs
+   * Test that VMs are created
    */
   @Nested
   inner class Create {
@@ -154,7 +148,6 @@ class CloudManagerTest {
       val testShSrcSlot = slot<String>()
       val testShDstSlot = slot<String>()
       val executeSlot = slot<String>()
-      coEvery { anyConstructed<SSHClient>().tryConnect(any()) } just Runs
       coEvery { anyConstructed<SSHClient>().uploadFile(capture(testShSrcSlot),
           capture(testShDstSlot)) } answers {
         agentId = File(testShSrcSlot.captured).readText()
@@ -276,7 +269,7 @@ class CloudManagerTest {
   }
 
   /**
-   * Tests that destroy VMs
+   * Test that VMs are destroyed
    */
   @Nested
   inner class Destroy {
@@ -287,7 +280,19 @@ class CloudManagerTest {
       coEvery { client.isVMActive(MY_OLD_VM) } returns true
       coEvery { client.destroyVM(MY_OLD_VM) } just Runs
 
-      deployCloudManager(tempDir, emptyList(), vertx, ctx)
+      GlobalScope.launch(vertx.dispatcher()) {
+        // create a counter for a second setup
+        val counter = vertx.sharedData().getCounterAwait(
+            "CloudManager.Counter.$TEST_SETUP2_ID")
+        counter.incrementAndGetAwait()
+
+        // pretend we already created a VM with the second setup
+        val createdVMs = vertx.sharedData().getAsyncMapAwait<String, String>(
+            "CloudManager.CreatedVMs")
+        createdVMs.putAwait(UniqueID.next(), TEST_SETUP2_ID)
+
+        deployCloudManager(tempDir, emptyList(), vertx, ctx)
+      }
     }
 
     /**
@@ -322,6 +327,76 @@ class CloudManagerTest {
               "CloudManager.CreatedVMs")
           assertThat(createdVMs.sizeAwait()).isEqualTo(0)
         }
+        ctx.completeNow()
+      }
+    }
+  }
+
+  /**
+   * Test that a minimum number of VMs is created
+   */
+  @Nested
+  inner class Min {
+    private lateinit var testSetupMin: Setup
+
+    @BeforeEach
+    fun setUp(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
+      val tempDirFile = tempDir.toRealPath().toFile()
+      val testSh = File(tempDirFile, "test.sh")
+      testSh.writeText("{{ agentId }}")
+
+      testSetupMin = Setup("testMin", "myflavor", "myImage", 500000, null, 2, 4,
+          listOf(testSh.absolutePath))
+
+      // mock client
+      val createdVMs = mutableListOf<String>()
+      coEvery { client.listVMs(any()) } answers { createdVMs }
+      coEvery { client.getImageID(testSetupMin.imageName) } returns testSetupMin.imageName
+      coEvery { client.createBlockDevice(testSetupMin.imageName, testSetupMin.blockDeviceSizeGb,
+          testSetupMin.blockDeviceVolumeType, any()) } answers { UniqueID.next() }
+      coEvery { client.createVM(testSetupMin.flavor, any(), any()) } answers {
+          UniqueID.next().also { createdVMs.add(it) } }
+      coEvery { client.getIPAddress(any()) } answers { UniqueID.next() }
+      coEvery { client.waitForVM(any()) } just Runs
+
+      // mock SSH agent
+      var agentId = ""
+      val testShSrcSlot = slot<String>()
+      val testShDstSlot = slot<String>()
+      coEvery { anyConstructed<SSHClient>().uploadFile(capture(testShSrcSlot),
+          capture(testShDstSlot)) } answers {
+        agentId = File(testShSrcSlot.captured).readText()
+      }
+
+      // send REMOTE_AGENT_ADDED when the VM has been provisioned
+      coEvery { anyConstructed<SSHClient>().execute(any()) } coAnswers {
+        vertx.eventBus().publish(REMOTE_AGENT_ADDED,
+            REMOTE_AGENT_ADDRESS_PREFIX + agentId)
+      }
+
+      deployCloudManager(tempDir, listOf(testSetupMin), vertx, ctx)
+    }
+
+    /**
+     * Make sure we always create at least two VMs with [testSetupMin]
+     */
+    @Test
+    fun tryCreateMin(vertx: Vertx, ctx: VertxTestContext) {
+      GlobalScope.launch(vertx.dispatcher()) {
+        // give the CloudManager enough time to call sync() at least three times
+        delay(SYNC_INTERVAL * 4 * 1000L)
+
+        ctx.coVerify {
+          coVerify(exactly = 2) {
+            client.getImageID(testSetupMin.imageName)
+            client.createBlockDevice(testSetupMin.imageName,
+                testSetupMin.blockDeviceSizeGb,
+                testSetupMin.blockDeviceVolumeType, any())
+            client.createVM(testSetupMin.flavor, any(), any())
+            client.getIPAddress(any())
+          }
+        }
+
         ctx.completeNow()
       }
     }

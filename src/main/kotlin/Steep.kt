@@ -52,7 +52,8 @@ class Steep : CoroutineVerticle() {
   private val localAgentDispatcher = executorService.asCoroutineDispatcher()
 
   /**
-   * The time when the last process chain finished executing
+   * The time when the last process chain finished executing (or when a
+   * keep-alive message has been received)
    */
   private var lastExecuteTime = Instant.now()
 
@@ -100,6 +101,7 @@ class Steep : CoroutineVerticle() {
       when (val action = jsonObj.getString("action")) {
         "info" -> onAgentInfo(msg)
         "inquire" -> onAgentInquire(msg)
+        "keepAlive" -> onAgentKeepAlive()
         "allocate" -> onAgentAllocate(msg)
         "deallocate" -> onAgentDeallocate(msg)
         "process" -> onProcessChain(msg)
@@ -210,6 +212,15 @@ class Steep : CoroutineVerticle() {
       }
     }
     msg.reply(reply)
+  }
+
+  /**
+   * Handle a keep-alive message
+   */
+  private fun onAgentKeepAlive() {
+    // pretend we executed something so we don't shut down ourselves
+    // see checkAutoShutdown()
+    lastExecuteTime = Instant.now()
   }
 
   /**
