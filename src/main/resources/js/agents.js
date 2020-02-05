@@ -1,6 +1,6 @@
 Vue.use(vueMoment);
 
-const AGENT_ADDRESS_PREFIX = "RemoteAgentRegistry.Agent.";
+const AGENT_ADDRESS_PREFIX = "steep.remoteAgentRegistry.agent.";
 
 function _sortAgents(agents) {
   agents.sort((a, b) => a.id.localeCompare(b.id));
