@@ -156,10 +156,15 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     val agents = this.agents.await()
     val keys = awaitResult<Set<String>> { agents.keys(it) }
 
+    // Prepare a map with candidates per set of required capabilities. Initialize
+    // the map with empty lists so we can later check if they are still empty
+    // and send a REMOTE_AGENT_MISSING message.
+    val candidatesPerSet = mutableMapOf<Int, MutableList<Pair<String, Long>>>()
+    requiredCapabilities.indices.forEach { candidatesPerSet[it] = mutableListOf() }
+
     // ask all agents if they are able and available to execute a process
     // chain with the given required capabilities. collect these agents in
     // a list of candidates
-    val candidatesPerSet = mutableMapOf<Int, MutableList<Pair<String, Long>>>()
     for (agent in keys) {
       val address = REMOTE_AGENT_ADDRESS_PREFIX + agent
       try {
@@ -167,10 +172,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
         if (replyInquire.body().getBoolean("available")) {
           val lastSequence = replyInquire.body().getLong("lastSequence", -1L)
           val bestRequiredCapabilities = replyInquire.body().getInteger("bestRequiredCapabilities")
-          candidatesPerSet.compute(bestRequiredCapabilities) { _, l ->
-            val p = Pair(address, lastSequence)
-            l?.also { it.add(p) } ?: mutableListOf(p)
-          }
+          candidatesPerSet[bestRequiredCapabilities]?.add(Pair(address, lastSequence))
         }
       } catch (t: Throwable) {
         log.error("Could not inquire agent `$agent'. Skipping it.", t)
