@@ -13,6 +13,7 @@ import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import model.plugins.OutputAdapterPlugin
+import model.plugins.ProcessChainAdapterPlugin
 import model.plugins.RuntimePlugin
 import model.plugins.call
 import model.processchain.Argument
@@ -68,6 +69,50 @@ class PluginRegistryTest {
     val pr = PluginRegistry(listOf(adapter1, adapter2, adapter3))
     assertThat(pr.findOutputAdapter("dataType")).isSameAs(adapter2)
     assertThat(pr.findOutputAdapter("wrongDataType")).isNull()
+  }
+
+  /**
+   * Test if a simple process chain adapter can be compiled and executed
+   */
+  @Test
+  fun compileDummyProcessChainAdapter(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      val config = json {
+        obj(
+            ConfigConstants.PLUGINS to "src/**/db/dummyProcessChainAdapter.yaml"
+        )
+      }
+      PluginRegistryFactory.initialize(vertx, config)
+
+      val pr = PluginRegistryFactory.create()
+      val adapters = pr.getProcessChainAdapters()
+      ctx.coVerify {
+        assertThat(adapters).hasSize(1)
+        val adapter = adapters[0]
+        val pcs = listOf(ProcessChain())
+        val newPcs = adapter.call(pcs, vertx)
+        assertThat(newPcs).isNotSameAs(pcs)
+        assertThat(newPcs).hasSize(2)
+        assertThat(newPcs[0]).isSameAs(pcs[0])
+        assertThat(newPcs[1]).isNotSameAs(pcs[0])
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if [PluginRegistry.getProcessChainAdapters] works correctly
+   */
+  @Test
+  fun getProcessChainAdapters() {
+    val adapter1 = ProcessChainAdapterPlugin("a", "file.kts")
+    val adapter2 = ProcessChainAdapterPlugin("b", "file2.kts")
+    val adapter3 = ProcessChainAdapterPlugin("c", "file3.kts")
+    val expected = listOf(adapter1, adapter2, adapter3)
+    val pr = PluginRegistry(expected)
+    assertThat(pr.getProcessChainAdapters()).isEqualTo(expected)
+    assertThat(pr.getProcessChainAdapters()).isNotSameAs(expected)
   }
 
   /**

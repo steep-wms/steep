@@ -2,6 +2,7 @@ package db
 
 import model.plugins.OutputAdapterPlugin
 import model.plugins.Plugin
+import model.plugins.ProcessChainAdapterPlugin
 import model.plugins.RuntimePlugin
 
 /**
@@ -11,6 +12,8 @@ import model.plugins.RuntimePlugin
 class PluginRegistry(compiledPlugins: List<Plugin>) {
   private val outputAdapters = compiledPlugins.filterIsInstance<OutputAdapterPlugin>()
       .associateBy { it.supportedDataType }
+  private val processChainAdapters = compiledPlugins
+      .filterIsInstance<ProcessChainAdapterPlugin>()
   private val runtimes = compiledPlugins.filterIsInstance<RuntimePlugin>()
       .associateBy { it.supportedRuntime }
 
@@ -23,4 +26,9 @@ class PluginRegistry(compiledPlugins: List<Plugin>) {
    * Get a runtime with the given [name]
    */
   fun findRuntime(name: String) = runtimes[name]
+
+  /**
+   * Get all process chain adapters
+   */
+  fun getProcessChainAdapters() = processChainAdapters
 }

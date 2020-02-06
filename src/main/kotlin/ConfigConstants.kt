@@ -11,13 +11,6 @@ object ConfigConstants {
   const val SERVICES = "steep.services"
 
   /**
-   * The path to the file(s) containing rules for the [RuleSystem]. Either
-   * a string pointing to a single file or a file pattern (e.g.
-   * &#42;&#42;&#47;&#42;.yaml) or an array of files or globs.
-   */
-  const val RULES = "steep.rules"
-
-  /**
    * The path to the file(s) containing plugin descriptors. Either
    * a string pointing to a single file or a file pattern (e.g.
    * &#42;&#42;&#47;&#42;.yaml) or an array of files or globs.

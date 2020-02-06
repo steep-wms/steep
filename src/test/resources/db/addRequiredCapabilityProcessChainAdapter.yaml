@@ -1,0 +1,4 @@
+# A process chain adapter that adds a required capability to all process chains
+- name: addRequiredCapabilityProcessChainAdapter
+  type: processChainAdapter
+  scriptFile: db/addRequiredCapabilityProcessChainAdapter.kts

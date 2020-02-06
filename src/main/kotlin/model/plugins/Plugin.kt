@@ -15,6 +15,7 @@ import kotlin.reflect.KFunction
     property = "type")
 @JsonSubTypes(
     JsonSubTypes.Type(value = OutputAdapterPlugin::class, name = "outputAdapter"),
+    JsonSubTypes.Type(value = ProcessChainAdapterPlugin::class, name = "processChainAdapter"),
     JsonSubTypes.Type(value = RuntimePlugin::class, name = "runtime")
 )
 interface Plugin {

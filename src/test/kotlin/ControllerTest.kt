@@ -2,8 +2,7 @@ import TestMetadata.services
 import com.fasterxml.jackson.module.kotlin.readValue
 import db.MetadataRegistry
 import db.MetadataRegistryFactory
-import db.RuleRegistry
-import db.RuleRegistryFactory
+import db.PluginRegistryFactory
 import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus
 import db.SubmissionRegistryFactory
@@ -27,11 +26,13 @@ import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.DeploymentOptions
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import model.Submission
 import model.Submission.Status
 import model.processchain.Argument
 import model.processchain.ProcessChain
-import model.rules.Rule
 import model.workflow.Action
 import model.workflow.Variable
 import model.workflow.Workflow
@@ -50,7 +51,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 @ExtendWith(VertxExtension::class)
 class ControllerTest {
   companion object {
-    private const val WITH_RULES = "withRules"
+    private const val WITH_ADAPTER = "withAdapter"
     private const val NEW_REQUIRED_CAPABILITY = "NewRequiredCapability"
   }
 
@@ -71,30 +72,27 @@ class ControllerTest {
     coEvery { submissionRegistry.findSubmissionIdsByStatus(Status.RUNNING) } returns emptyList()
     coEvery { submissionRegistry.close() } just Runs
 
-    // mock rule registry
-    val ruleRegistry: RuleRegistry = mockk()
-    mockkObject(RuleRegistryFactory)
-    every { RuleRegistryFactory.create(any()) } returns ruleRegistry
-    if (info.tags.contains(WITH_RULES)) {
-      coEvery { ruleRegistry.findRules() } returns listOf(Rule(
-          name = "Add required capability",
-          target = Rule.Target.PROCESSCHAIN,
-          condition = "(obj) => true",
-          action = "(obj) => { obj.requiredCapabilities.push('$NEW_REQUIRED_CAPABILITY') }"
-      ))
-    } else {
-      coEvery { ruleRegistry.findRules() } returns emptyList()
-    }
+    GlobalScope.launch(vertx.dispatcher()) {
+      // initialize plugin registry if necessary
+      if (info.tags.contains(WITH_ADAPTER)) {
+        val pluginRegistryConfig = json {
+          obj(
+              ConfigConstants.PLUGINS to "src/**/db/addRequiredCapabilityProcessChainAdapter.yaml"
+          )
+        }
+        PluginRegistryFactory.initialize(vertx, pluginRegistryConfig)
+      }
 
-    // deploy verticle under test
-    val config = json {
-      obj(
-          ConfigConstants.TMP_PATH to "/tmp",
-          ConfigConstants.OUT_PATH to "/out"
-      )
+      // deploy verticle under test
+      val config = json {
+        obj(
+            ConfigConstants.TMP_PATH to "/tmp",
+            ConfigConstants.OUT_PATH to "/out"
+        )
+      }
+      val options = DeploymentOptions(config)
+      vertx.deployVerticle(Controller::class.qualifiedName, options, ctx.completing())
     }
-    val options = DeploymentOptions(config)
-    vertx.deployVerticle(Controller::class.qualifiedName, options, ctx.completing())
   }
 
   @AfterEach
@@ -108,7 +106,7 @@ class ControllerTest {
   }
 
   private fun doSimple(vertx: Vertx, ctx: VertxTestContext,
-      withRules: Boolean = false, workflowName: String = "singleService",
+      withAdapter: Boolean = false, workflowName: String = "singleService",
       processChainStatusSupplier: (processChain: ProcessChain) -> ProcessChainStatus = {
         ProcessChainStatus.SUCCESS
       },
@@ -137,7 +135,7 @@ class ControllerTest {
     val processChainsSlot = slot<List<ProcessChain>>()
     coEvery { submissionRegistry.addProcessChains(capture(processChainsSlot), submission.id) } answers {
       for (processChain in processChainsSlot.captured) {
-        if (withRules) {
+        if (withAdapter) {
           ctx.verify {
             assertThat(processChain.requiredCapabilities).contains(NEW_REQUIRED_CAPABILITY)
           }
@@ -187,13 +185,14 @@ class ControllerTest {
   }
 
   /**
-   * Similar to [simple] but modifies the process chains with rules
+   * Similar to [simple] but modifies the process chains with a process chain
+   * adapter plugin
    * @param vertx the Vert.x instance
    * @param ctx the test context
    */
   @Test
-  @Tag(WITH_RULES)
-  fun simpleWithRules(vertx: Vertx, ctx: VertxTestContext) {
+  @Tag(WITH_ADAPTER)
+  fun simpleWithAdapter(vertx: Vertx, ctx: VertxTestContext) {
     doSimple(vertx, ctx, true)
   }
 

@@ -7,7 +7,8 @@ import ConfigConstants.TMP_PATH
 import com.fasterxml.jackson.databind.SerializationFeature
 import db.MetadataRegistry
 import db.MetadataRegistryFactory
-import db.RuleRegistryFactory
+import db.PluginRegistry
+import db.PluginRegistryFactory
 import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus
 import db.SubmissionRegistryFactory
@@ -21,6 +22,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.Submission
+import model.plugins.call
 import model.processchain.ProcessChain
 import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
@@ -61,7 +63,7 @@ class Controller : CoroutineVerticle() {
   private lateinit var outPath: String
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var metadataRegistry: MetadataRegistry
-  private lateinit var ruleSystem: RuleSystem
+  private val pluginRegistry: PluginRegistry = PluginRegistryFactory.create()
 
   private var lookupInterval: Long = DEFAULT_LOOKUP_INTERVAL
   private lateinit var periodicLookupJob: Job
@@ -74,10 +76,6 @@ class Controller : CoroutineVerticle() {
     // create registries
     submissionRegistry = SubmissionRegistryFactory.create(vertx)
     metadataRegistry = MetadataRegistryFactory.create(vertx)
-
-    // prepare rule system
-    val ruleRegistry = RuleRegistryFactory.create(vertx)
-    ruleSystem = RuleSystem(ruleRegistry.findRules())
 
     // read configuration
     tmpPath = config.getString(TMP_PATH) ?: throw IllegalStateException(
@@ -131,7 +129,6 @@ class Controller : CoroutineVerticle() {
     periodicLookupJob.cancelAndJoin()
     periodicLookupOrphansJob.cancelAndJoin()
     submissionRegistry.close()
-    ruleSystem.close()
   }
 
   /**
@@ -186,6 +183,20 @@ class Controller : CoroutineVerticle() {
       // this submission
       null
     }
+  }
+
+  /**
+   * Applies all process chain adapter plugins to the given list of
+   * [processChains] and returns the modified list. If there are no plugins or
+   * if they did no make any modifications, the method returns the original list.
+   */
+  private suspend fun applyPlugins(processChains: List<ProcessChain>): List<ProcessChain> {
+    val adapters = pluginRegistry.getProcessChainAdapters()
+    var result = processChains
+    for (adapter in adapters) {
+      result = adapter.call(result, vertx)
+    }
+    return result
   }
 
   /**
@@ -265,7 +276,7 @@ class Controller : CoroutineVerticle() {
           processChainsToResume = null
           pcs
         } else {
-          val pcs = ruleSystem.apply(generator.generate(results))
+          val pcs = applyPlugins(generator.generate(results))
           if (pcs.isEmpty()) {
             break
           }

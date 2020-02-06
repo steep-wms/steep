@@ -24,11 +24,12 @@ Steep has the following fey features:
   information
 * *Service metadata* allows processing services with *arbitrary interfaces*
   to be integrated/executed
-* *Rule-based* on-line modification of process chains
 * Built-in runtime environments for *executable binaries* and *Docker*.
 * Can be extended with *plugins:*
   * *Output adapter* plugins modify the way agents collect process
     chain results
+  * *Process chain adapter* plugins modify generated process chains before they
+    are executed
   * *Runtime* plugins add custom runtime environments (e.g. Python,
     AWS Lambda, Web Processing Services).
 * Supported database back-ends:
