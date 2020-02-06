@@ -29,8 +29,6 @@ import kotlin.coroutines.CoroutineContext
  * `projectId` or `projectName` must be set but not both at the same time.
  * @param projectName the name of the OpenStack project to connect to. Will be
  * used in combination with `domainName` if `projectId` is not set.
- * @param availabilityZone the OpenStack availability zone in which to create
- * resources
  * @param networkId the ID of the OpenStack network to attach new VMs to
  * @param usePublicIp `true` if new VMs should have a public IP address
  * @param securityGroups the OpenStack security groups that new VMs should be
@@ -41,9 +39,9 @@ import kotlin.coroutines.CoroutineContext
  */
 class OpenStackClient(endpoint: String, username: String, password: String,
     domainName: String, projectId: String?, projectName: String?,
-    private val availabilityZone: String, private val networkId: String,
-    private val usePublicIp: Boolean, private val securityGroups: List<String>,
-    private val keypairName: String, vertx: Vertx) : CloudClient, CoroutineScope {
+    private val networkId: String, private val usePublicIp: Boolean,
+    private val securityGroups: List<String>, private val keypairName: String,
+    vertx: Vertx) : CloudClient, CoroutineScope {
   companion object {
     private val log = LoggerFactory.getLogger(OpenStackClient::class.java)
   }
@@ -116,7 +114,7 @@ class OpenStackClient(endpoint: String, username: String, password: String,
   }
 
   override suspend fun createBlockDevice(imageId: String,
-      blockDeviceSizeGb: Int, volumeType: String?,
+      blockDeviceSizeGb: Int, volumeType: String?, availabilityZone: String,
       metadata: Map<String, String>): String {
     log.info("Creating block device ...")
 
@@ -191,7 +189,7 @@ class OpenStackClient(endpoint: String, username: String, password: String,
   }
 
   override suspend fun createVM(flavor: String, blockDeviceId: String,
-      metadata: Map<String, String>): String {
+      availabilityZone: String, metadata: Map<String, String>): String {
     log.info("Creating VM ...")
 
     var builder = Builders.server()

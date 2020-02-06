@@ -261,11 +261,6 @@ object ConfigConstants {
   const val CLOUD_OPENSTACK_PROJECT_NAME = "steep.cloud.openstack.projectName"
 
   /**
-   * The OpenStack availability zone in which to create resources
-   */
-  const val CLOUD_OPENSTACK_AVAILABILITY_ZONE = "steep.cloud.openstack.availabilityZone"
-
-  /**
    * The ID of the OpenStack network to attach new VMs to
    */
   const val CLOUD_OPENSTACK_NETWORK_ID = "steep.cloud.openstack.networkId"

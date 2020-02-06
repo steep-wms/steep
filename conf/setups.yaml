@@ -1,6 +1,7 @@
 - id: default
   flavor: 7d217779-4d7b-4689-8a40-c12a377b946d
   imageName: Ubuntu 18.04
+  availabilityZone: az-01
   blockDeviceSizeGb: 50
   minVMs: 0
   maxVMs: 1

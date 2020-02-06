@@ -29,11 +29,14 @@ interface CloudClient {
    * @param blockDeviceSizeGb the size of the block device in GB
    * @param volumeType the type of the volume (may be `null` if the type
    * should be selected automatically)
+   * @param availabilityZone the availability zone in which to create the block
+   * device
    * @param metadata the metadata to attach to the block device
    * @return the block device ID
    */
   suspend fun createBlockDevice(imageId: String, blockDeviceSizeGb: Int,
-      volumeType: String?, metadata: Map<String, String>): String
+      volumeType: String?, availabilityZone: String,
+      metadata: Map<String, String>): String
 
   /**
    * Destroy a block device
@@ -47,11 +50,12 @@ interface CloudClient {
    * available or [isVMActive] to poll its state.
    * @param flavor the flavor to use
    * @param blockDeviceId the ID of the block device to attach
+   * @param availabilityZone the availability zone in which to create the VM
    * @param metadata the metadata to attach to the virtual machine
    * @return the ID of the new virtual machine
    */
   suspend fun createVM(flavor: String, blockDeviceId: String,
-      metadata: Map<String, String>): String
+      availabilityZone: String, metadata: Map<String, String>): String
 
   /**
    * Check if the VM with the given ID is active

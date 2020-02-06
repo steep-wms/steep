@@ -72,7 +72,6 @@ steep:
       domainName: Default
       projectId: abcdefghijklmopqrstuvwxyz
       # projectName: myproject
-      availabilityZone: az-01
       networkId: abcdefghijklmopqrstuvwxyz
       usePublicIp: true
       keypairName: steep

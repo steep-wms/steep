@@ -1,7 +1,6 @@
 package cloud
 
 import ConfigConstants.CLOUD_DRIVER
-import ConfigConstants.CLOUD_OPENSTACK_AVAILABILITY_ZONE
 import ConfigConstants.CLOUD_OPENSTACK_DOMAIN_NAME
 import ConfigConstants.CLOUD_OPENSTACK_ENDPOINT
 import ConfigConstants.CLOUD_OPENSTACK_KEYPAIR_NAME
@@ -63,10 +62,6 @@ object CloudClientFactory {
           "must be set")
     }
 
-    val availabilityZone = config.getString(CLOUD_OPENSTACK_AVAILABILITY_ZONE) ?:
-        throw IllegalArgumentException("Missing configuration item " +
-            "`$CLOUD_OPENSTACK_AVAILABILITY_ZONE'")
-
     val networkId = config.getString(CLOUD_OPENSTACK_NETWORK_ID) ?:
         throw IllegalArgumentException("Missing configuration item " +
             "`$CLOUD_OPENSTACK_NETWORK_ID'")
@@ -81,7 +76,7 @@ object CloudClientFactory {
             "`$CLOUD_OPENSTACK_KEYPAIR_NAME'")
 
     return OpenStackClient(endpoint, username, password, domainName,
-        projectId, projectName, availabilityZone, networkId, usePublicIp,
-        securityGroups, keypairName, vertx)
+        projectId, projectName, networkId, usePublicIp, securityGroups,
+        keypairName, vertx)
   }
 }

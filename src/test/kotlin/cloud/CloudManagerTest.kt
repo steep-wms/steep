@@ -55,6 +55,8 @@ class CloudManagerTest {
     private const val CREATED_BY_TAG = "CloudManagerTest"
     private const val TEST_SETUP2_ID = "TestSetup2"
     private const val SYNC_INTERVAL = 2
+    private const val AZ01 = "az-01"
+    private const val AZ02 = "az-02"
   }
 
   private lateinit var client: CloudClient
@@ -122,10 +124,10 @@ class CloudManagerTest {
       val testSh = File(tempDirFile, "test.sh")
       testSh.writeText("{{ agentId }}")
 
-      testSetup = Setup("test", "myflavor", "myImage", 500000, null, 0, 1,
-          listOf(testSh.absolutePath), listOf("test1"))
-      testSetupLarge = Setup("testLarge", "myflavor", "myImage", 500000, "SSD", 0, 4,
-          listOf(testSh.absolutePath), listOf("test2"))
+      testSetup = Setup("test", "myflavor", "myImage", AZ01, 500000,
+          null, 0, 1, listOf(testSh.absolutePath), listOf("test1"))
+      testSetupLarge = Setup("testLarge", "myFlavor", "myImage", AZ01, 500000,
+          "SSD", 0, 4, listOf(testSh.absolutePath), listOf("test2"))
 
       deployCloudManager(tempDir, listOf(testSetup, testSetupLarge), vertx, ctx)
     }
@@ -182,8 +184,10 @@ class CloudManagerTest {
           coVerify(exactly = 1) {
             client.getImageID(testSetup.imageName)
             client.createBlockDevice(testSetup.imageName,
-                testSetup.blockDeviceSizeGb, null, any())
-            client.createVM(testSetup.flavor, any(), any())
+                testSetup.blockDeviceSizeGb, null,
+                testSetup.availabilityZone, any())
+            client.createVM(testSetup.flavor, any(),
+                testSetup.availabilityZone, any())
             client.getIPAddress(any())
           }
         }
@@ -208,8 +212,10 @@ class CloudManagerTest {
           coVerify(exactly = 1) {
             client.getImageID(testSetup.imageName)
             client.createBlockDevice(testSetup.imageName,
-                testSetup.blockDeviceSizeGb, null, any())
-            client.createVM(testSetup.flavor, any(), any())
+                testSetup.blockDeviceSizeGb, null,
+                testSetup.availabilityZone, any())
+            client.createVM(testSetup.flavor, any(),
+                testSetup.availabilityZone, any())
             client.getIPAddress(any())
           }
         }
@@ -231,8 +237,10 @@ class CloudManagerTest {
           coVerify(exactly = 1) {
             client.getImageID(testSetup.imageName)
             client.createBlockDevice(testSetup.imageName,
-                testSetup.blockDeviceSizeGb, null, any())
-            client.createVM(testSetup.flavor, any(), any())
+                testSetup.blockDeviceSizeGb, null,
+                testSetup.availabilityZone, any())
+            client.createVM(testSetup.flavor, any(),
+                testSetup.availabilityZone, any())
             client.getIPAddress(any())
           }
         }
@@ -257,8 +265,10 @@ class CloudManagerTest {
           coVerify(exactly = 4) {
             client.getImageID(testSetupLarge.imageName)
             client.createBlockDevice(testSetupLarge.imageName,
-                testSetupLarge.blockDeviceSizeGb, "SSD", any())
-            client.createVM(testSetupLarge.flavor, any(), any())
+                testSetupLarge.blockDeviceSizeGb, "SSD",
+                testSetupLarge.availabilityZone, any())
+            client.createVM(testSetupLarge.flavor, any(),
+                testSetupLarge.availabilityZone, any())
             client.getIPAddress(any())
           }
         }
@@ -345,17 +355,20 @@ class CloudManagerTest {
       val testSh = File(tempDirFile, "test.sh")
       testSh.writeText("{{ agentId }}")
 
-      testSetupMin = Setup("testMin", "myflavor", "myImage", 500000, null, 2, 4,
-          listOf(testSh.absolutePath))
+      testSetupMin = Setup("testMin", "myflavor", "myImage", AZ01, 500000,
+          null, 2, 4, listOf(testSh.absolutePath))
 
       // mock client
       val createdVMs = mutableListOf<String>()
       coEvery { client.listVMs(any()) } answers { createdVMs }
       coEvery { client.getImageID(testSetupMin.imageName) } returns testSetupMin.imageName
-      coEvery { client.createBlockDevice(testSetupMin.imageName, testSetupMin.blockDeviceSizeGb,
-          testSetupMin.blockDeviceVolumeType, any()) } answers { UniqueID.next() }
-      coEvery { client.createVM(testSetupMin.flavor, any(), any()) } answers {
-          UniqueID.next().also { createdVMs.add(it) } }
+      coEvery { client.createBlockDevice(testSetupMin.imageName,
+          testSetupMin.blockDeviceSizeGb, testSetupMin.blockDeviceVolumeType,
+          testSetupMin.availabilityZone, any()) } answers { UniqueID.next() }
+      coEvery { client.createVM(testSetupMin.flavor, any(),
+          testSetupMin.availabilityZone, any()) } answers {
+        UniqueID.next().also { createdVMs.add(it) }
+      }
       coEvery { client.getIPAddress(any()) } answers { UniqueID.next() }
       coEvery { client.waitForVM(any()) } just Runs
 
@@ -391,8 +404,10 @@ class CloudManagerTest {
             client.getImageID(testSetupMin.imageName)
             client.createBlockDevice(testSetupMin.imageName,
                 testSetupMin.blockDeviceSizeGb,
-                testSetupMin.blockDeviceVolumeType, any())
-            client.createVM(testSetupMin.flavor, any(), any())
+                testSetupMin.blockDeviceVolumeType,
+                testSetupMin.availabilityZone, any())
+            client.createVM(testSetupMin.flavor, any(),
+                testSetupMin.availabilityZone, any())
             client.getIPAddress(any())
           }
         }

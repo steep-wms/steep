@@ -5,6 +5,7 @@ package model.setup
  * @param id the setup's unique ID
  * @param flavor the VM flavor
  * @param imageName the name of the VM image to deploy
+ * @param availabilityZone the availability zone in which to create the VM
  * @param blockDeviceSizeGb the size of the VM's block device in gigabytes
  * @param blockDeviceVolumeType the type of the VM's block device (may be
  * `null` if the type should be selected automatically)
@@ -19,6 +20,7 @@ data class Setup(
     val id: String,
     val flavor: String,
     val imageName: String,
+    val availabilityZone: String,
     val blockDeviceSizeGb: Int,
     val blockDeviceVolumeType: String? = null,
     val minVMs: Int = 0,
