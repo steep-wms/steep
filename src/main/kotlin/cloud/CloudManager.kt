@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.IOException
 import java.io.StringWriter
+import java.util.ArrayDeque
 import java.util.TreeSet
 import kotlin.math.max
 import kotlin.math.min
@@ -331,28 +332,58 @@ class CloudManager : CoroutineVerticle() {
   }
 
   /**
-   * Select a [Setup] that satisfies the given [requiredCapabilities]. May
-   * return `null` if there is no matching [Setup].
+   * Select [Setup]s that satisfy the given [requiredCapabilities]. May
+   * return an empty list if there is no matching [Setup].
    */
-  private fun selectSetup(requiredCapabilities: Set<String>): Setup? =
-      setups.find { it.providedCapabilities.containsAll(requiredCapabilities) }
+  private fun selectSetups(requiredCapabilities: Set<String>): List<Setup> =
+      setups.filter { it.providedCapabilities.containsAll(requiredCapabilities) }
 
   /**
    * Create a virtual machine that matches the given [requiredCapabilities]
    * and deploy a remote agent to it
    */
   suspend fun createRemoteAgent(requiredCapabilities: Set<String>) {
-    val setup = selectSetup(requiredCapabilities) ?: throw IllegalStateException(
-        "Could not find a setup that can satisfy the required capabilities: " +
-            requiredCapabilities)
-    createRemoteAgent(setup, requiredCapabilities)
+    val setups = selectSetups(requiredCapabilities)
+    if (setups.isEmpty()) {
+      throw IllegalStateException("Could not find a setup that can satisfy " +
+          "the required capabilities: " + requiredCapabilities)
+    }
+
+    val setupQueue = ArrayDeque(setups)
+    var setup = setupQueue.poll()
+    while (true) {
+      val t = try {
+        if (createRemoteAgent(setup, requiredCapabilities)) {
+          break
+        }
+        null
+      } catch (t: Throwable) {
+        t
+      }
+
+      if (setupQueue.isEmpty()) {
+        if (t != null) {
+          throw t
+        }
+        break
+      }
+
+      log.warn("Could not create remote agent with setup `${setup.id}'. " +
+          "Trying next setup ...", t)
+      setup = setupQueue.poll()
+    }
   }
 
   /**
    * Create a virtual machine with the given [setup] and the corresponding
-   * [requiredCapabilities] (optional) and deploy a remote agent to it
+   * [requiredCapabilities] (optional) and deploy a remote agent to it. Returns
+   * `true` if the remote agent has been created or `false` if some precondition
+   * (e.g. too many VMs with this setup have already been created) prevented
+   * the VMs from being created. Throws an exception if an attempt to create
+   * a VM was made but failed.
    */
-  private suspend fun createRemoteAgent(setup: Setup, requiredCapabilities: Set<String>? = null) {
+  private suspend fun createRemoteAgent(setup: Setup,
+      requiredCapabilities: Set<String>? = null): Boolean {
     // get number of existing VMs with this setup
     val counter = vertx.sharedData().getCounterAwait(COUNTER_PREFIX + setup.id)
     val nBefore = counter.getAwait()
@@ -364,7 +395,7 @@ class CloudManager : CoroutineVerticle() {
     } catch (t: Throwable) {
       // Could not acquire lock. Assume someone else is already creating a VM
       // with this setup.
-      return
+      return false
     }
 
     try {
@@ -372,11 +403,11 @@ class CloudManager : CoroutineVerticle() {
       if (nAfter > nBefore) {
         // we just finished creating a VM with this setup while we tried to
         // acquire the lock
-        return
+        return false
       }
       if (nAfter >= setup.maxVMs.toLong()) {
         // we already created more than enough virtual machines with this setup
-        return
+        return false
       }
 
       if (requiredCapabilities != null) {
@@ -413,6 +444,8 @@ class CloudManager : CoroutineVerticle() {
       // release lock that says we're currently creating a VM with this setup
       lock.release()
     }
+
+    return true
   }
 
   /**

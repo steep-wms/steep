@@ -113,6 +113,7 @@ class CloudManagerTest {
   inner class Create {
     private lateinit var testSetup: Setup
     private lateinit var testSetupLarge: Setup
+    private lateinit var testSetupAlternative: Setup
 
     @BeforeEach
     fun setUp(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
@@ -125,24 +126,33 @@ class CloudManagerTest {
       testSh.writeText("{{ agentId }}")
 
       testSetup = Setup("test", "myflavor", "myImage", AZ01, 500000,
-          null, 0, 1, listOf(testSh.absolutePath), listOf("test1"))
+          null, 0, 1, listOf(testSh.absolutePath), listOf("test1", "foo"))
       testSetupLarge = Setup("testLarge", "myFlavor", "myImage", AZ01, 500000,
           "SSD", 0, 4, listOf(testSh.absolutePath), listOf("test2"))
+      testSetupAlternative = Setup("testAlternative", "myAlternativeFlavor",
+          "myImage", AZ02, 500000, null, 0, 1, listOf(testSh.absolutePath),
+          listOf("test3", "foo"))
 
-      deployCloudManager(tempDir, listOf(testSetup, testSetupLarge), vertx, ctx)
+      deployCloudManager(tempDir, listOf(testSetup, testSetupLarge,
+          testSetupAlternative), vertx, ctx)
     }
 
     private suspend fun doCreateOnDemand(setup: Setup, vertx: Vertx,
-        ctx: VertxTestContext) {
+        ctx: VertxTestContext, mockCreateResources: Boolean = true,
+        requiredCapabilities: List<String> = setup.providedCapabilities) {
       val metadata = mapOf(
           "Created-By" to CREATED_BY_TAG,
           "Setup-Id" to setup.id
       )
 
       coEvery { client.getImageID(setup.imageName) } returns setup.imageName
-      coEvery { client.createBlockDevice(setup.imageName, setup.blockDeviceSizeGb,
-          setup.blockDeviceVolumeType, metadata) } answers { UniqueID.next() }
-      coEvery { client.createVM(setup.flavor, any(), metadata) } answers { UniqueID.next() }
+      if (mockCreateResources) {
+        coEvery { client.createBlockDevice(setup.imageName, setup.blockDeviceSizeGb,
+            setup.blockDeviceVolumeType, setup.availabilityZone,
+            metadata) } answers { UniqueID.next() }
+        coEvery { client.createVM(setup.flavor, any(), setup.availabilityZone,
+            metadata) } answers { UniqueID.next() }
+      }
       coEvery { client.getIPAddress(any()) } answers { UniqueID.next() }
       coEvery { client.waitForVM(any()) } just Runs
 
@@ -169,7 +179,7 @@ class CloudManagerTest {
         }
       }
 
-      cloudManager.createRemoteAgent(setup.providedCapabilities.toSet())
+      cloudManager.createRemoteAgent(requiredCapabilities.toSet())
     }
 
     /**
@@ -270,6 +280,59 @@ class CloudManagerTest {
             client.createVM(testSetupLarge.flavor, any(),
                 testSetupLarge.availabilityZone, any())
             client.getIPAddress(any())
+          }
+        }
+
+        ctx.completeNow()
+      }
+    }
+
+    /**
+     * Test if a VM with an alternative [testSetup] can be created
+     */
+    @Test
+    fun createVMAlternativeSetup(vertx: Vertx, ctx: VertxTestContext) {
+      GlobalScope.launch(vertx.dispatcher()) {
+        // let the first setup throw an exception and the second succeed
+        coEvery { client.createVM(testSetup.flavor, any(),
+            testSetup.availabilityZone, any()) } throws IllegalStateException()
+        coEvery { client.createVM(testSetupAlternative.flavor, any(),
+            testSetupAlternative.availabilityZone, any()) } answers { UniqueID.next() }
+
+        // mock additional methods
+        coEvery { client.destroyBlockDevice(any()) } just Runs
+        coEvery { client.createBlockDevice(testSetup.imageName,
+            testSetup.blockDeviceSizeGb,
+            testSetup.blockDeviceVolumeType,
+            testSetup.availabilityZone, any()) } answers { UniqueID.next() }
+        coEvery { client.createBlockDevice(testSetupAlternative.imageName,
+            testSetupAlternative.blockDeviceSizeGb,
+            testSetupAlternative.blockDeviceVolumeType,
+            testSetupAlternative.availabilityZone, any()) } answers { UniqueID.next() }
+
+        doCreateOnDemand(testSetup, vertx, ctx, false, listOf("foo"))
+
+        ctx.coVerify {
+          coVerify(exactly = 2) {
+            client.getImageID(testSetup.imageName)
+          }
+          coVerify(exactly = 1) {
+            client.createBlockDevice(testSetup.imageName,
+                testSetup.blockDeviceSizeGb, null,
+                testSetup.availabilityZone, any())
+            client.createVM(testSetup.flavor, any(),
+                testSetup.availabilityZone, any())
+          }
+          coVerify(exactly = 1) {
+            client.createBlockDevice(testSetupAlternative.imageName,
+                testSetupAlternative.blockDeviceSizeGb, null,
+                testSetupAlternative.availabilityZone, any())
+            client.createVM(testSetupAlternative.flavor, any(),
+                testSetupAlternative.availabilityZone, any())
+          }
+          coVerify(exactly = 1) {
+            client.getIPAddress(any())
+            client.destroyBlockDevice(any())
           }
         }
 
