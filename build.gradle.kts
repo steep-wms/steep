@@ -68,8 +68,6 @@ dependencies {
     implementation("io.prometheus:simpleclient_vertx:$prometheusClientVersion")
     implementation("org.apache.commons:commons-lang3:3.8.1")
     implementation("org.flywaydb:flyway-core:5.2.4")
-    implementation("org.graalvm.sdk:graal-sdk:$graalVMVersion")
-    implementation("org.graalvm.js:js:$graalVMVersion")
     implementation("org.jetbrains.kotlin:kotlin-scripting-jvm-host-embeddable:1.3.30")
     implementation("org.mongodb:mongodb-driver-reactivestreams:1.11.0")
     implementation("org.pacesys:openstack4j:3.2.0")
