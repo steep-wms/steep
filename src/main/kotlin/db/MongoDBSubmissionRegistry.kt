@@ -574,6 +574,22 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     return doc?.let { readProcessChain(it).first }
   }
 
+  override suspend fun existsProcessChain(currentStatus: ProcessChainStatus,
+      requiredCapabilities: Collection<String>?): Boolean {
+    return collProcessChains.countDocumentsAwait(json {
+      if (requiredCapabilities == null) {
+        obj(
+            STATUS to currentStatus.toString()
+        )
+      } else {
+        obj(
+            STATUS to currentStatus.toString(),
+            REQUIRED_CAPABILITIES to JsonUtils.mapper.writeValueAsString(requiredCapabilities)
+        )
+      }
+    }, 1) == 1L
+  }
+
   override suspend fun setProcessChainStartTime(processChainId: String, startTime: Instant?) {
     updateField(collProcessChains, processChainId, START_TIME, startTime)
   }

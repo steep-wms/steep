@@ -562,6 +562,29 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
   }
 
+  override suspend fun existsProcessChain(currentStatus: ProcessChainStatus,
+      requiredCapabilities: Collection<String>?): Boolean {
+    return withLocks { connection ->
+      val (statement, params) = if (requiredCapabilities == null) {
+        "SELECT 1 FROM $PROCESS_CHAINS WHERE $STATUS=? LIMIT 1" to json {
+          array(
+              currentStatus.toString()
+          )
+        }
+      } else {
+        "SELECT 1 FROM $PROCESS_CHAINS WHERE $STATUS=? " +
+            "AND $DATA->'$REQUIRED_CAPABILITIES'=?::jsonb LIMIT 1" to json {
+          array(
+              currentStatus.toString(),
+              JsonUtils.mapper.writeValueAsString(requiredCapabilities)
+          )
+        }
+      }
+
+      connection.querySingleWithParamsAwait(statement, params) != null
+    }
+  }
+
   private suspend fun <T> getProcessChainColumn(processChainId: String,
       column: String, block: (JsonArray) -> T): T {
     return withConnection { connection ->

@@ -862,6 +862,99 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun existsProcessChain(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc1 = ProcessChain()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s)
+      val eA = submissionRegistry.existsProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      submissionRegistry.addProcessChains(listOf(pc1), s.id)
+      val eB = submissionRegistry.existsProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      submissionRegistry.setProcessChainStatus(pc1.id,
+          SubmissionRegistry.ProcessChainStatus.SUCCESS)
+      val eC = submissionRegistry.existsProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      val eD = submissionRegistry.existsProcessChain(
+          SubmissionRegistry.ProcessChainStatus.SUCCESS)
+
+      ctx.verify {
+        assertThat(eA).isFalse()
+        assertThat(eB).isTrue()
+        assertThat(eC).isFalse()
+        assertThat(eD).isTrue()
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun existsProcessChainCapabilities(vertx: Vertx, ctx: VertxTestContext) {
+    val rc = setOf("docker")
+    val s = Submission(workflow = Workflow())
+    val pc1 = ProcessChain(requiredCapabilities = rc)
+    val pc2 = ProcessChain()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s)
+      val eA1 = submissionRegistry.existsProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      val eA2 = submissionRegistry.existsProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED, rc)
+
+      submissionRegistry.addProcessChains(listOf(pc1, pc2), s.id)
+      val eB1 = submissionRegistry.existsProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      val eB2 = submissionRegistry.existsProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED, rc)
+
+      submissionRegistry.setProcessChainStatus(pc1.id,
+          SubmissionRegistry.ProcessChainStatus.SUCCESS)
+      val eC1 = submissionRegistry.existsProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      val eC2 = submissionRegistry.existsProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED, rc)
+
+      val eD1 = submissionRegistry.existsProcessChain(
+          SubmissionRegistry.ProcessChainStatus.SUCCESS)
+      val eD2 = submissionRegistry.existsProcessChain(
+          SubmissionRegistry.ProcessChainStatus.SUCCESS, rc)
+
+      submissionRegistry.setProcessChainStatus(pc2.id,
+          SubmissionRegistry.ProcessChainStatus.SUCCESS)
+      val eE1 = submissionRegistry.existsProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      val eE2 = submissionRegistry.existsProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED, rc)
+
+      val eF1 = submissionRegistry.existsProcessChain(
+          SubmissionRegistry.ProcessChainStatus.SUCCESS)
+      val eF2 = submissionRegistry.existsProcessChain(
+          SubmissionRegistry.ProcessChainStatus.SUCCESS, rc)
+
+      ctx.verify {
+        assertThat(eA1).isFalse()
+        assertThat(eA2).isFalse()
+        assertThat(eB1).isTrue()
+        assertThat(eB2).isTrue()
+        assertThat(eC1).isTrue()
+        assertThat(eC2).isFalse()
+        assertThat(eD1).isTrue()
+        assertThat(eD2).isTrue()
+        assertThat(eE1).isFalse()
+        assertThat(eE2).isFalse()
+        assertThat(eF1).isTrue()
+        assertThat(eF2).isTrue()
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun getProcessChainSubmissionId(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()

@@ -4,7 +4,6 @@ import AddressConstants.CLUSTER_NODE_LEFT
 import AddressConstants.REMOTE_AGENT_ADDED
 import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import AddressConstants.REMOTE_AGENT_LEFT
-import AddressConstants.REMOTE_AGENT_MISSING
 import io.prometheus.client.Gauge
 import io.vertx.core.Future
 import io.vertx.core.Vertx
@@ -156,15 +155,10 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     val agents = this.agents.await()
     val keys = awaitResult<Set<String>> { agents.keys(it) }
 
-    // Prepare a map with candidates per set of required capabilities. Initialize
-    // the map with empty lists so we can later check if they are still empty
-    // and send a REMOTE_AGENT_MISSING message.
-    val candidatesPerSet = mutableMapOf<Int, MutableList<Pair<String, Long>>>()
-    requiredCapabilities.indices.forEach { candidatesPerSet[it] = mutableListOf() }
-
     // ask all agents if they are able and available to execute a process
     // chain with the given required capabilities. collect these agents in
     // a list of candidates
+    val candidatesPerSet = mutableMapOf<Int, MutableList<Pair<String, Long>>>()
     for (agent in keys) {
       val address = REMOTE_AGENT_ADDRESS_PREFIX + agent
       try {
@@ -172,27 +166,21 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
         if (replyInquire.body().getBoolean("available")) {
           val lastSequence = replyInquire.body().getLong("lastSequence", -1L)
           val bestRequiredCapabilities = replyInquire.body().getInteger("bestRequiredCapabilities")
-          candidatesPerSet[bestRequiredCapabilities]?.add(Pair(address, lastSequence))
+          candidatesPerSet.compute(bestRequiredCapabilities) { _, l ->
+            val p = Pair(address, lastSequence)
+            l?.also { it.add(p) } ?: mutableListOf(p)
+          }
         }
       } catch (t: Throwable) {
         log.error("Could not inquire agent `$agent'. Skipping it.", t)
       }
     }
 
-    return candidatesPerSet.mapNotNull { (i, candidates) ->
-      // there is no agent that has the required capabilities
-      if (candidates.isEmpty()) {
-        // publish a message that says that we need an agent with the given
-        // capabilities
-        val arr = requiredCapabilitiesArr.getJsonArray(i)
-        vertx.eventBus().publish(REMOTE_AGENT_MISSING, arr)
-        null
-      } else {
-        // LRU: Select agent with the lowest `lastSequence` because it's the one
-        // that has not processed a process chain for the longest time.
-        candidates.sortBy { it.second }
-        Pair(requiredCapabilities[i], candidates.first().first)
-      }
+    return candidatesPerSet.map { (i, candidates) ->
+      // LRU: Select agent with the lowest `lastSequence` because it's the one
+      // that has not processed a process chain for the longest time.
+      candidates.sortBy { it.second }
+      Pair(requiredCapabilities[i], candidates.first().first)
     }
   }
 

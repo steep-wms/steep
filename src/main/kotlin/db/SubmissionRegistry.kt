@@ -267,7 +267,7 @@ interface SubmissionRegistry {
   suspend fun countProcessChainsByStatus(submissionId: String, status: ProcessChainStatus): Long
 
   /**
-   * Atomically fetch a process chain that has the given `currentStatus` and
+   * Atomically fetch a process chain that has the given [currentStatus] and
    * set its status to `newStatus` before returning it. Process chains should
    * be returned in the order they have been added to the registry. The method
    * only looks for process chains whose set of [requiredCapabilities] equals
@@ -283,6 +283,17 @@ interface SubmissionRegistry {
   suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
       newStatus: ProcessChainStatus,
       requiredCapabilities: Collection<String>? = null): ProcessChain?
+
+  /**
+   * Check if there is a process chain that has the given [currentStatus] and
+   * the optional set of [requiredCapabilities].
+   * @param currentStatus the current status of the process chain
+   * @param requiredCapabilities an optional set of required capabilities used
+   * to narrow down the search
+   * @return `true` if there is such a process chain, `false` otherwise
+   */
+  suspend fun existsProcessChain(currentStatus: ProcessChainStatus,
+      requiredCapabilities: Collection<String>? = null): Boolean
 
   /**
    * Set the start time of a process chain

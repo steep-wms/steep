@@ -2,6 +2,7 @@ package helper
 
 import com.mongodb.bulk.BulkWriteResult
 import com.mongodb.client.gridfs.model.GridFSFile
+import com.mongodb.client.model.CountOptions
 import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.WriteModel
 import com.mongodb.client.result.UpdateResult
@@ -96,9 +97,14 @@ suspend fun <T> MongoCollection<T>.bulkWriteAwait(requests: List<WriteModel<T>>)
   } ?: throw IllegalStateException("Bulk write did not produce a result")
 }
 
-suspend fun <T> MongoCollection<T>.countDocumentsAwait(filter: JsonObject): Long {
+suspend fun <T> MongoCollection<T>.countDocumentsAwait(filter: JsonObject,
+    limit: Int = -1): Long {
   return wrapCoroutine {
-    countDocuments(wrap(filter))
+    val options = CountOptions()
+    if (limit >= 0) {
+      options.limit(limit)
+    }
+    countDocuments(wrap(filter), options)
   } ?: 0
 }
 

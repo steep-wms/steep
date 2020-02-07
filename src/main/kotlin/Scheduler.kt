@@ -1,3 +1,4 @@
+import AddressConstants.REMOTE_AGENT_MISSING
 import AddressConstants.SCHEDULER_LOOKUP_NOW
 import ConfigConstants.SCHEDULER_LOOKUP_INTERVAL
 import agent.Agent
@@ -12,6 +13,7 @@ import db.SubmissionRegistry.ProcessChainStatus.REGISTERED
 import db.SubmissionRegistry.ProcessChainStatus.RUNNING
 import db.SubmissionRegistry.ProcessChainStatus.SUCCESS
 import db.SubmissionRegistryFactory
+import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
@@ -48,7 +50,7 @@ class Scheduler : CoroutineVerticle() {
    * A list of sets of capabilities required by process chains with the status
    * [REGISTERED]
    */
-  private var allRequiredCapabilities: List<Collection<String>> = emptyList()
+  private var allRequiredCapabilities: MutableList<Collection<String>> = mutableListOf()
   private var allRequiredCapabilitiesInitialized = false
 
   override suspend fun start() {
@@ -104,7 +106,7 @@ class Scheduler : CoroutineVerticle() {
       updateRequiredCapabilities: Boolean) {
     if (updateRequiredCapabilities || !allRequiredCapabilitiesInitialized) {
       allRequiredCapabilities = submissionRegistry
-          .findProcessChainRequiredCapabilities(REGISTERED)
+          .findProcessChainRequiredCapabilities(REGISTERED).toMutableList()
       allRequiredCapabilitiesInitialized = true
     }
 
@@ -113,7 +115,22 @@ class Scheduler : CoroutineVerticle() {
       // are available and, if so, what required capabilities they can handle
       val candidates = agentRegistry.selectCandidates(allRequiredCapabilities)
       if (candidates.isEmpty()) {
-        // agents are all busy or do not accept our required capabilities
+        // Agents are all busy or do not accept our required capabilities.
+        // Check if we need to request a new agent.
+        val rcsi = allRequiredCapabilities.iterator()
+        while (rcsi.hasNext()) {
+          val rcs = rcsi.next()
+          if (!submissionRegistry.existsProcessChain(REGISTERED, rcs)) {
+            // if there is no such process chain, the capabilities are not
+            // required anymore
+            rcsi.remove()
+          } else {
+            // publish a message that says we need an agent with the given
+            // capabilities
+            val arr = JsonArray(rcs.toList())
+            vertx.eventBus().publish(REMOTE_AGENT_MISSING, arr)
+          }
+        }
         break
       }
 
@@ -125,7 +142,7 @@ class Scheduler : CoroutineVerticle() {
         if (processChain == null) {
           // We didn't find a process chain for these required capabilities.
           // Remove them from the list of known ones.
-          allRequiredCapabilities = allRequiredCapabilities.filter { it != requiredCapabilities }
+          allRequiredCapabilities.remove(requiredCapabilities)
           continue
         }
 

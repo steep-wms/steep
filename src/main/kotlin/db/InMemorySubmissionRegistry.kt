@@ -337,6 +337,22 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     }
   }
 
+  override suspend fun existsProcessChain(currentStatus: ProcessChainStatus,
+      requiredCapabilities: Collection<String>?): Boolean {
+    val sharedData = vertx.sharedData()
+    val lock = sharedData.getLockAwait(LOCK_PROCESS_CHAINS)
+    try {
+      val map = processChains.await()
+      val values = awaitResult<List<String>> { map.values(it) }
+      return values.map { JsonUtils.mapper.readValue<ProcessChainEntry>(it) }
+          .any { it.status == currentStatus && (requiredCapabilities == null ||
+              (it.processChain.requiredCapabilities.size == requiredCapabilities.size &&
+                  it.processChain.requiredCapabilities.containsAll(requiredCapabilities))) }
+    } finally {
+      lock.release()
+    }
+  }
+
   private suspend fun getProcessChainEntryById(processChainId: String): ProcessChainEntry {
     val map = processChains.await()
     val str = map.getAwait(processChainId) ?: throw NoSuchElementException(
