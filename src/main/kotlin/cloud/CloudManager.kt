@@ -303,7 +303,7 @@ class CloudManager : CoroutineVerticle() {
 
       if (setup.minVMs > 0) {
         // set a minimum number of VMs
-        val minVmIDs = vmIDs.asSequence().take(2)
+        val minVmIDs = vmIDs.asSequence().take(setup.minVMs)
 
         // send keep-alive message to these VMs
         for (vmID in minVmIDs) {
