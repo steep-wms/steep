@@ -71,7 +71,7 @@ class SSHClient(private val ip: String, private val username: String,
   private suspend fun executeBlocking(block: () -> Unit) {
     // execute commands in a separate worker executor with a very long timeout
     val executor = vertx.createSharedWorkerExecutor(SSHClient::class.simpleName,
-        1, Long.MAX_VALUE)
+        30, Long.MAX_VALUE)
     try {
       awaitResult<Unit> { handler ->
         // call `executeBlocking` with `ordered = false` to enable

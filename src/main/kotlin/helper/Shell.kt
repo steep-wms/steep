@@ -49,7 +49,8 @@ object Shell {
         .redirectErrorStream(true)
         .start()
 
-    val streamGobbler = StreamGobbler(process.inputStream, outputLinesToCollect)
+    val streamGobbler = StreamGobbler(process.pid(), process.inputStream,
+        outputLinesToCollect)
     val readerThread = Thread(streamGobbler)
     readerThread.start()
 
@@ -100,16 +101,17 @@ object Shell {
   ) : IOException(message)
 
   /**
-   * A background thread that reads all data from an [inputStream] and collects
-   * as many lines as [outputLinesToCollect]
+   * A background thread that reads all data from the [inputStream] of a process
+   * with the given [pid] and collects as many lines as [outputLinesToCollect]
    */
-  private class StreamGobbler(private val inputStream: InputStream,
+  private class StreamGobbler(private val pid: Long,
+      private val inputStream: InputStream,
       private val outputLinesToCollect: Int) : Runnable {
     private val lines = LinkedList<String>()
 
     override fun run() {
       inputStream.bufferedReader().forEachLine { line ->
-        log.info(line)
+        log.info("[$pid] $line")
         synchronized(this) {
           lines.add(line)
           if (lines.size > outputLinesToCollect) {
