@@ -227,6 +227,11 @@ object ConfigConstants {
   const val CLOUD_KEEP_ALIVE_INTERVAL = "steep.cloud.keepAliveIntervalSeconds"
 
   /**
+   * Describes parameters of remote agents the CloudManager maintain in its pool
+   */
+  const val CLOUD_AGENTPOOL = "steep.cloud.agentPool"
+
+  /**
    * OpenStack authentication endpoint
    */
   const val CLOUD_OPENSTACK_ENDPOINT = "steep.cloud.openstack.endpoint"

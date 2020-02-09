@@ -4,12 +4,16 @@ import AddressConstants.REMOTE_AGENT_ADDED
 import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import AddressConstants.REMOTE_AGENT_LEFT
 import AddressConstants.REMOTE_AGENT_MISSING
+import ConfigConstants
+import ConfigConstants.CLOUD_AGENTPOOL
 import ConfigConstants.CLOUD_CREATED_BY_TAG
 import ConfigConstants.CLOUD_SETUPS_FILE
 import ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION
 import ConfigConstants.CLOUD_SSH_USERNAME
+import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.mitchellbosecke.pebble.PebbleEngine
+import helper.JsonUtils
 import helper.YamlUtils
 import io.vertx.core.Future
 import io.vertx.core.json.JsonArray
@@ -84,6 +88,15 @@ class CloudManager : CoroutineVerticle() {
   }
 
   /**
+   * Parameters of remote agents the CloudManager should keep in its pool
+   * @param capabilities the capabilities the agent instances should provide
+   * @param min the minimum number of remote agents to create with the given
+   * [capabilities]
+   */
+  private data class PoolAgentParams(
+      val capabilities: List<String> = emptyList(), val min: Int = 0)
+
+  /**
    * The client to connect to the Cloud
    */
   private lateinit var cloudClient: CloudClient
@@ -104,6 +117,11 @@ class CloudManager : CoroutineVerticle() {
    * virtual machines
    */
   private lateinit var sshPrivateKeyLocation: String
+
+  /**
+   * Parameters of remote agents the CloudManager maintain in its pool
+   */
+  private lateinit var poolAgentParams: List<PoolAgentParams>
 
   /**
    * A list of pre-configured setups
@@ -138,6 +156,8 @@ class CloudManager : CoroutineVerticle() {
         "Missing configuration item `$CLOUD_SSH_USERNAME'")
     sshPrivateKeyLocation = config.getString(CLOUD_SSH_PRIVATE_KEY_LOCATION) ?: throw IllegalStateException(
         "Missing configuration item `$CLOUD_SSH_PRIVATE_KEY_LOCATION'")
+    poolAgentParams = JsonUtils.mapper.convertValue(
+        config.getJsonArray(CLOUD_AGENTPOOL, JsonArray()))
 
     // load setups file
     val setupsFile = config.getString(CLOUD_SETUPS_FILE) ?: throw IllegalStateException(
@@ -265,6 +285,31 @@ class CloudManager : CoroutineVerticle() {
         }
       }
     }
+
+    // check agent pool parameters and ensure there's a minimum number of
+    // agents with certain capabilities
+    for (params in poolAgentParams) {
+      if (params.min > 0) {
+        val vmsPerSetup = getVMsPerSetup()
+        val setupsById = setups.map { it.id to it }.toMap()
+
+        // count number of created VMs that provide the required capabilities
+        val n = vmsPerSetup.map { (setupId, vms) ->
+          val setup = setupsById[setupId]
+          if (setup?.providedCapabilities?.containsAll(params.capabilities) == true) {
+            vms.size
+          } else {
+            0
+          }
+        }.sum()
+
+        if (n < params.min) {
+          // There are not enough VMs that provide the required capabilities.
+          // Create more.
+          createRemoteAgent(params.capabilities)
+        }
+      }
+    }
   }
 
   /**
@@ -280,13 +325,12 @@ class CloudManager : CoroutineVerticle() {
   }
 
   /**
-   * Send keep-alive messages to a minimum of remote agents again (so that they
-   * do not shut down themselves). See [model.setup.Setup.minVMs].
+   * Return a map with IDs of [Setup]s and the corresponding set of created VMs
+   * sorted by the VM ID.
    */
-  private suspend fun sendKeepAlive() {
-    // collect VMs per Setup
+  private suspend fun getVMsPerSetup(): Map<String, TreeSet<String>> {
     val entries = awaitResult<Map<String, String>> { createdVMs.entries(it) }
-    val vmsPerSetup = entries.entries.groupingBy {
+    return entries.entries.groupingBy {
       // group by Setup ID
       it.value
     }.fold({ _, e ->
@@ -296,7 +340,14 @@ class CloudManager : CoroutineVerticle() {
       // add all remaining vmIDs to this set
       s.also { it.add(e.key) }
     })
+  }
 
+  /**
+   * Send keep-alive messages to a minimum of remote agents again (so that they
+   * do not shut down themselves). See [model.setup.Setup.minVMs].
+   */
+  private suspend fun sendKeepAlive() {
+    val vmsPerSetup = getVMsPerSetup()
     val setupsById = setups.map { it.id to it }.toMap()
     for ((setupId, vmIDs) in vmsPerSetup) {
       val setup = setupsById[setupId] ?: continue
@@ -335,14 +386,14 @@ class CloudManager : CoroutineVerticle() {
    * Select [Setup]s that satisfy the given [requiredCapabilities]. May
    * return an empty list if there is no matching [Setup].
    */
-  private fun selectSetups(requiredCapabilities: Set<String>): List<Setup> =
+  private fun selectSetups(requiredCapabilities: Collection<String>): List<Setup> =
       setups.filter { it.providedCapabilities.containsAll(requiredCapabilities) }
 
   /**
    * Create a virtual machine that matches the given [requiredCapabilities]
    * and deploy a remote agent to it
    */
-  suspend fun createRemoteAgent(requiredCapabilities: Set<String>) {
+  suspend fun createRemoteAgent(requiredCapabilities: Collection<String>) {
     val setups = selectSetups(requiredCapabilities)
     if (setups.isEmpty()) {
       throw IllegalStateException("Could not find a setup that can satisfy " +
@@ -353,7 +404,9 @@ class CloudManager : CoroutineVerticle() {
     var setup = setupQueue.poll()
     while (true) {
       val t = try {
-        if (createRemoteAgent(setup, requiredCapabilities)) {
+        log.info("Creating remote agent with setup `${setup.id}' for " +
+            "capabilities $requiredCapabilities ...")
+        if (createRemoteAgent(setup)) {
           break
         }
         null
@@ -368,22 +421,19 @@ class CloudManager : CoroutineVerticle() {
         break
       }
 
-      log.warn("Could not create remote agent with setup `${setup.id}'. " +
-          "Trying next setup ...", t)
+      log.warn("Could not create remote agent with setup `${setup.id}' and" +
+          "capabilities $requiredCapabilities. Trying next setup ...", t)
       setup = setupQueue.poll()
     }
   }
 
   /**
-   * Create a virtual machine with the given [setup] and the corresponding
-   * [requiredCapabilities] (optional) and deploy a remote agent to it. Returns
-   * `true` if the remote agent has been created or `false` if some precondition
-   * (e.g. too many VMs with this setup have already been created) prevented
-   * the VMs from being created. Throws an exception if an attempt to create
-   * a VM was made but failed.
+   * Create a virtual machine with the given [setup] and deploy a remote agent
+   * to it. Returns `true` if the remote agent has been created or is currently
+   * being created. Returns `false` if there are already too many VMs with this
+   * setup. Throws an exception if an attempt to create a VM was made but failed.
    */
-  private suspend fun createRemoteAgent(setup: Setup,
-      requiredCapabilities: Set<String>? = null): Boolean {
+  private suspend fun createRemoteAgent(setup: Setup): Boolean {
     // get number of existing VMs with this setup
     val counter = vertx.sharedData().getCounterAwait(COUNTER_PREFIX + setup.id)
     val nBefore = counter.getAwait()
@@ -395,7 +445,7 @@ class CloudManager : CoroutineVerticle() {
     } catch (t: Throwable) {
       // Could not acquire lock. Assume someone else is already creating a VM
       // with this setup.
-      return false
+      return true
     }
 
     try {
@@ -403,19 +453,14 @@ class CloudManager : CoroutineVerticle() {
       if (nAfter > nBefore) {
         // we just finished creating a VM with this setup while we tried to
         // acquire the lock
-        return false
+        return true
       }
       if (nAfter >= setup.maxVMs.toLong()) {
         // we already created more than enough virtual machines with this setup
         return false
       }
 
-      if (requiredCapabilities != null) {
-        log.info("Creating virtual machine with setup `${setup.id}' for " +
-            "capabilities $requiredCapabilities ...")
-      } else {
-        log.info("Creating virtual machine with setup `${setup.id}' ...")
-      }
+      log.info("Creating virtual machine with setup `${setup.id}' ...")
 
       if (backoffSeconds > 10) {
         log.info("Backing off for $backoffSeconds seconds due to too many failed attempts.")

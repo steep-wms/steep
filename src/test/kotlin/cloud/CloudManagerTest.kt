@@ -17,9 +17,11 @@ import io.mockk.mockkObject
 import io.mockk.slot
 import io.mockk.unmockkAll
 import io.vertx.core.Vertx
+import io.vertx.core.json.JsonArray
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.DeploymentOptions
+import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.core.shareddata.getAsyncMapAwait
@@ -83,7 +85,7 @@ class CloudManagerTest {
    * Deploy the [CloudManager] verticle and complete the given test context
    */
   private fun deployCloudManager(tempDir: Path, setups: List<Setup>,
-      vertx: Vertx, ctx: VertxTestContext) {
+      vertx: Vertx, ctx: VertxTestContext, agentPool: JsonArray = JsonArray()) {
     // create setups file
     val tempDirFile = tempDir.toRealPath().toFile()
     val setupFile = File(tempDirFile, "test_setups.yaml")
@@ -97,7 +99,8 @@ class CloudManagerTest {
             ConfigConstants.CLOUD_SSH_USERNAME to "user",
             ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION to "myprivatekey.pem",
             ConfigConstants.CLOUD_SETUPS_FILE to setupFile.toString(),
-            ConfigConstants.CLOUD_SYNC_INTERVAL to SYNC_INTERVAL
+            ConfigConstants.CLOUD_SYNC_INTERVAL to SYNC_INTERVAL,
+            ConfigConstants.CLOUD_AGENTPOOL to agentPool
         )
       }
       val options = DeploymentOptions(config)
@@ -472,6 +475,160 @@ class CloudManagerTest {
             client.createVM(testSetupMin.flavor, any(),
                 testSetupMin.availabilityZone, any())
             client.getIPAddress(any())
+          }
+        }
+
+        ctx.completeNow()
+      }
+    }
+  }
+
+  /**
+   * Test that agent pool parameters are considered
+   */
+  @Nested
+  inner class AgentPool {
+    private lateinit var testSetup: Setup
+    private lateinit var testSetup2: Setup
+    private lateinit var testSetup3: Setup
+
+    @BeforeEach
+    fun setUp(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
+      // mock client
+      coEvery { client.listVMs(any()) } returns emptyList()
+
+      // create test setups
+      val tempDirFile = tempDir.toRealPath().toFile()
+      val testSh = File(tempDirFile, "test.sh")
+      testSh.writeText("{{ agentId }}")
+
+      testSetup = Setup("test", "myflavor", "myImage", AZ01, 500000,
+          null, 0, 1, listOf(testSh.absolutePath), listOf("foo"))
+      testSetup2 = Setup("test2", "myflavor2", "myImage2", AZ02, 500000,
+          null, 0, 1, listOf(testSh.absolutePath), listOf("foo", "bar"))
+      testSetup3 = Setup("test3", "myflavor3", "myImage3", AZ02, 500000,
+          null, 0, 1, listOf(testSh.absolutePath), listOf("test"))
+
+      // mock client
+      val createdVMs = mutableListOf<String>()
+      coEvery { client.listVMs(any()) } answers { createdVMs }
+      coEvery { client.getImageID(testSetup.imageName) } returns testSetup.imageName
+      coEvery { client.getImageID(testSetup2.imageName) } returns testSetup2.imageName
+      coEvery { client.getImageID(testSetup3.imageName) } returns testSetup3.imageName
+      coEvery { client.createBlockDevice(testSetup.imageName,
+          testSetup.blockDeviceSizeGb, testSetup.blockDeviceVolumeType,
+          testSetup.availabilityZone, any()) } answers { UniqueID.next() }
+      coEvery { client.createBlockDevice(testSetup2.imageName,
+          testSetup2.blockDeviceSizeGb, testSetup2.blockDeviceVolumeType,
+          testSetup2.availabilityZone, any()) } answers { UniqueID.next() }
+      coEvery { client.createBlockDevice(testSetup3.imageName,
+          testSetup3.blockDeviceSizeGb, testSetup3.blockDeviceVolumeType,
+          testSetup3.availabilityZone, any()) } answers { UniqueID.next() }
+      coEvery { client.createVM(testSetup.flavor, any(),
+          testSetup.availabilityZone, any()) } answers {
+        UniqueID.next().also { createdVMs.add(it) }
+      }
+      coEvery { client.createVM(testSetup2.flavor, any(),
+          testSetup2.availabilityZone, any()) } answers {
+        UniqueID.next().also { createdVMs.add(it) }
+      }
+      coEvery { client.createVM(testSetup3.flavor, any(),
+          testSetup3.availabilityZone, any()) } answers {
+        UniqueID.next().also { createdVMs.add(it) }
+      }
+      coEvery { client.getIPAddress(any()) } answers { UniqueID.next() }
+      coEvery { client.waitForVM(any()) } just Runs
+
+      // mock SSH agent
+      var agentId = ""
+      val testShSrcSlot = slot<String>()
+      val testShDstSlot = slot<String>()
+      coEvery { anyConstructed<SSHClient>().uploadFile(capture(testShSrcSlot),
+          capture(testShDstSlot)) } answers {
+        agentId = File(testShSrcSlot.captured).readText()
+      }
+
+      // send REMOTE_AGENT_ADDED when the VM has been provisioned
+      coEvery { anyConstructed<SSHClient>().execute(any()) } coAnswers {
+        vertx.eventBus().publish(REMOTE_AGENT_ADDED,
+            REMOTE_AGENT_ADDRESS_PREFIX + agentId)
+      }
+
+      deployCloudManager(tempDir, listOf(testSetup, testSetup2, testSetup3),
+          vertx, ctx, json {
+        array(
+            obj(
+                "capabilities" to array("foo"),
+                "min" to 2
+            ),
+            obj(
+                "capabilities" to array("bar"),
+                "min" to 1
+            ),
+            obj(
+                "capabilities" to array("test"),
+                "min" to 1
+            )
+        )
+      })
+    }
+
+    /**
+     * Make sure we always create at least a remote agent with required
+     * capabilities ["test"] with setup [testSetup3]
+     */
+    @Test
+    fun tryCreateMin(vertx: Vertx, ctx: VertxTestContext) {
+      GlobalScope.launch(vertx.dispatcher()) {
+        // give the CloudManager enough time to call sync() at least three times
+        delay(SYNC_INTERVAL * 4 * 1000L)
+
+        ctx.coVerify {
+          coVerify(exactly = 1) {
+            client.getImageID(testSetup3.imageName)
+            client.createBlockDevice(testSetup3.imageName,
+                testSetup3.blockDeviceSizeGb,
+                testSetup3.blockDeviceVolumeType,
+                testSetup3.availabilityZone, any())
+            client.createVM(testSetup3.flavor, any(),
+                testSetup3.availabilityZone, any())
+          }
+        }
+
+        ctx.completeNow()
+      }
+    }
+
+    /**
+     * Make sure we always create at least two remote agents with required
+     * capabilities ["foo"] (one with setup [testSetup] and another one with
+     * setup [testSetup2]) and that we do not create [testSetup2] too often
+     * even if we also require ["bar"]
+     */
+    @Test
+    fun tryCreateMinTwo(vertx: Vertx, ctx: VertxTestContext) {
+      GlobalScope.launch(vertx.dispatcher()) {
+        // give the CloudManager enough time to call sync() at least three times
+        delay(SYNC_INTERVAL * 4 * 1000L)
+
+        ctx.coVerify {
+          coVerify(exactly = 1) {
+            client.getImageID(testSetup.imageName)
+            client.createBlockDevice(testSetup.imageName,
+                testSetup.blockDeviceSizeGb,
+                testSetup.blockDeviceVolumeType,
+                testSetup.availabilityZone, any())
+            client.createVM(testSetup.flavor, any(),
+                testSetup.availabilityZone, any())
+          }
+          coVerify(exactly = 1) {
+            client.getImageID(testSetup2.imageName)
+            client.createBlockDevice(testSetup2.imageName,
+                testSetup2.blockDeviceSizeGb,
+                testSetup2.blockDeviceVolumeType,
+                testSetup2.availabilityZone, any())
+            client.createVM(testSetup2.flavor, any(),
+                testSetup2.availabilityZone, any())
           }
         }
 

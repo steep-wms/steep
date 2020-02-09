@@ -65,6 +65,11 @@ steep:
     syncIntervalSeconds: 120
     keepAliveIntervalSeconds: 30
 
+    # agentPool:
+    #   - capabilities:
+    #       - docker
+    #     min: 2
+
     openstack:
       endpoint: https://example.com:5000/v3
       username: myusername
