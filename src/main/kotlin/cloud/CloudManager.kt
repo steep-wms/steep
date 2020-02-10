@@ -182,7 +182,7 @@ class CloudManager : CoroutineVerticle() {
       leftAgents.remove(agentId)
     }
 
-    syncTimerStart()
+    syncTimerStart(true)
     sendKeepAliveTimerStart()
 
     // create new virtual machines on demand
@@ -199,9 +199,9 @@ class CloudManager : CoroutineVerticle() {
   /**
    * Sync now and then regularly
    */
-  private suspend fun syncTimerStart() {
+  private suspend fun syncTimerStart(cleanupOnly: Boolean = false) {
     try {
-      sync()
+      sync(cleanupOnly)
     } catch (t: Throwable) {
       log.error("Could not sync state with Cloud", t)
     }
@@ -223,7 +223,7 @@ class CloudManager : CoroutineVerticle() {
   /**
    * Synchronize our shared maps with the Cloud
    */
-  private suspend fun sync() {
+  private suspend fun sync(cleanupOnly: Boolean = false) {
     log.debug("Syncing VMs ...")
 
     // destroy all virtual machines whose agents have left
@@ -272,41 +272,43 @@ class CloudManager : CoroutineVerticle() {
       }
     }
 
-    // ensure there's a minimum number of VMs
-    for (setup in setups) {
-      if (setup.minVMs > 0) {
-        // get number of existing VMs with this setup
-        val counter = vertx.sharedData().getCounterAwait(COUNTER_PREFIX + setup.id)
-        val n = counter.getAwait()
-        if (n < setup.minVMs) {
-          launch {
-            createRemoteAgent(setup)
+    if (!cleanupOnly) {
+      // ensure there's a minimum number of VMs
+      for (setup in setups) {
+        if (setup.minVMs > 0) {
+          // get number of existing VMs with this setup
+          val counter = vertx.sharedData().getCounterAwait(COUNTER_PREFIX + setup.id)
+          val n = counter.getAwait()
+          if (n < setup.minVMs) {
+            launch {
+              createRemoteAgent(setup)
+            }
           }
         }
       }
-    }
 
-    // check agent pool parameters and ensure there's a minimum number of
-    // agents with certain capabilities
-    for (params in poolAgentParams) {
-      if (params.min > 0) {
-        val vmsPerSetup = getVMsPerSetup()
-        val setupsById = setups.map { it.id to it }.toMap()
+      // check agent pool parameters and ensure there's a minimum number of
+      // agents with certain capabilities
+      for (params in poolAgentParams) {
+        if (params.min > 0) {
+          val vmsPerSetup = getVMsPerSetup()
+          val setupsById = setups.map { it.id to it }.toMap()
 
-        // count number of created VMs that provide the required capabilities
-        val n = vmsPerSetup.map { (setupId, vms) ->
-          val setup = setupsById[setupId]
-          if (setup?.providedCapabilities?.containsAll(params.capabilities) == true) {
-            vms.size
-          } else {
-            0
+          // count number of created VMs that provide the required capabilities
+          val n = vmsPerSetup.map { (setupId, vms) ->
+            val setup = setupsById[setupId]
+            if (setup?.providedCapabilities?.containsAll(params.capabilities) == true) {
+              vms.size
+            } else {
+              0
+            }
+          }.sum()
+
+          if (n < params.min) {
+            // There are not enough VMs that provide the required capabilities.
+            // Create more.
+            createRemoteAgent(params.capabilities)
           }
-        }.sum()
-
-        if (n < params.min) {
-          // There are not enough VMs that provide the required capabilities.
-          // Create more.
-          createRemoteAgent(params.capabilities)
         }
       }
     }
