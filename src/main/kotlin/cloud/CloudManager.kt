@@ -307,7 +307,9 @@ class CloudManager : CoroutineVerticle() {
           if (n < params.min) {
             // There are not enough VMs that provide the required capabilities.
             // Create more.
-            createRemoteAgent(params.capabilities)
+            launch {
+              createRemoteAgent(params.capabilities)
+            }
           }
         }
       }
