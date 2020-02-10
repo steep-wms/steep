@@ -348,17 +348,41 @@ class CloudManager : CoroutineVerticle() {
 
   /**
    * Send keep-alive messages to a minimum of remote agents again (so that they
-   * do not shut down themselves). See [model.setup.Setup.minVMs].
+   * do not shut down themselves). See [model.setup.Setup.minVMs] and
+   * [PoolAgentParams.min]
    */
   private suspend fun sendKeepAlive() {
     val vmsPerSetup = getVMsPerSetup()
     val setupsById = setups.map { it.id to it }.toMap()
+    val pap = poolAgentParams.toMutableList()
     for ((setupId, vmIDs) in vmsPerSetup) {
       val setup = setupsById[setupId] ?: continue
 
-      if (setup.minVMs > 0) {
-        // set a minimum number of VMs
-        val minVmIDs = vmIDs.asSequence().take(setup.minVMs)
+      // get minimum number of VMs defined by setup
+      var minimum = min(vmIDs.size, setup.minVMs)
+
+      // check if there are pool agent parameters that also require a minimum
+      // number of VMs
+      val papToAdd = mutableListOf<PoolAgentParams>()
+      val papi = pap.iterator()
+      while (papi.hasNext()) {
+        val p = papi.next()
+        if (setup.providedCapabilities.containsAll(p.capabilities)) {
+          // we found parameters our setup satisfies
+          if (p.min > minimum) {
+            minimum = min(vmIDs.size, p.min)
+          }
+          papi.remove()
+          if (p.min - minimum > 0) {
+            papToAdd.add(p.copy(min = p.min - minimum))
+          }
+        }
+      }
+      pap.addAll(papToAdd)
+
+      if (minimum > 0) {
+        // get a minimum number of VMs
+        val minVmIDs = vmIDs.asSequence().take(minimum)
 
         // send keep-alive message to these VMs
         for (vmID in minVmIDs) {

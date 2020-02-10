@@ -18,6 +18,7 @@ import io.mockk.slot
 import io.mockk.unmockkAll
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
+import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.DeploymentOptions
@@ -57,6 +58,7 @@ class CloudManagerTest {
     private const val CREATED_BY_TAG = "CloudManagerTest"
     private const val TEST_SETUP2_ID = "TestSetup2"
     private const val SYNC_INTERVAL = 2
+    private const val KEEP_ALIVE_INTERVAL = 1
     private const val AZ01 = "az-01"
     private const val AZ02 = "az-02"
   }
@@ -100,6 +102,7 @@ class CloudManagerTest {
             ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION to "myprivatekey.pem",
             ConfigConstants.CLOUD_SETUPS_FILE to setupFile.toString(),
             ConfigConstants.CLOUD_SYNC_INTERVAL to SYNC_INTERVAL,
+            ConfigConstants.CLOUD_KEEP_ALIVE_INTERVAL to KEEP_ALIVE_INTERVAL,
             ConfigConstants.CLOUD_AGENTPOOL to agentPool
         )
       }
@@ -414,6 +417,7 @@ class CloudManagerTest {
   @Nested
   inner class Min {
     private lateinit var testSetupMin: Setup
+    private val keepAliveCounts = mutableMapOf<String, Int>()
 
     @BeforeEach
     fun setUp(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
@@ -439,18 +443,25 @@ class CloudManagerTest {
       coEvery { client.waitForVM(any()) } just Runs
 
       // mock SSH agent
-      var agentId = ""
       val testShSrcSlot = slot<String>()
       val testShDstSlot = slot<String>()
+      coEvery { anyConstructed<SSHClient>().execute(any()) } just Runs
       coEvery { anyConstructed<SSHClient>().uploadFile(capture(testShSrcSlot),
           capture(testShDstSlot)) } answers {
-        agentId = File(testShSrcSlot.captured).readText()
-      }
+        val agentId = File(testShSrcSlot.captured).readText()
+        val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId
 
-      // send REMOTE_AGENT_ADDED when the VM has been provisioned
-      coEvery { anyConstructed<SSHClient>().execute(any()) } coAnswers {
-        vertx.eventBus().publish(REMOTE_AGENT_ADDED,
-            REMOTE_AGENT_ADDRESS_PREFIX + agentId)
+        // count keep-alive messages
+        vertx.eventBus().consumer<JsonObject>(address) { msg ->
+          val jsonObj: JsonObject = msg.body()
+          val action = jsonObj.getString("action")
+          if (action == "keepAlive") {
+            keepAliveCounts.compute(agentId) { _, n -> (n ?: 0) + 1 }
+          }
+        }
+
+        // send REMOTE_AGENT_ADDED when the VM has been provisioned
+        vertx.eventBus().publish(REMOTE_AGENT_ADDED, address)
       }
 
       deployCloudManager(tempDir, listOf(testSetupMin), vertx, ctx)
@@ -476,6 +487,9 @@ class CloudManagerTest {
                 testSetupMin.availabilityZone, any())
             client.getIPAddress(any())
           }
+
+          // check that keep-alive messages have been sent to two remote agents
+          assertThat(keepAliveCounts).hasSize(2)
         }
 
         ctx.completeNow()
@@ -491,6 +505,7 @@ class CloudManagerTest {
     private lateinit var testSetup: Setup
     private lateinit var testSetup2: Setup
     private lateinit var testSetup3: Setup
+    private val keepAliveCounts = mutableMapOf<String, Int>()
 
     @BeforeEach
     fun setUp(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
@@ -540,18 +555,25 @@ class CloudManagerTest {
       coEvery { client.waitForVM(any()) } just Runs
 
       // mock SSH agent
-      var agentId = ""
       val testShSrcSlot = slot<String>()
       val testShDstSlot = slot<String>()
+      coEvery { anyConstructed<SSHClient>().execute(any()) } just Runs
       coEvery { anyConstructed<SSHClient>().uploadFile(capture(testShSrcSlot),
           capture(testShDstSlot)) } answers {
-        agentId = File(testShSrcSlot.captured).readText()
-      }
+        val agentId = File(testShSrcSlot.captured).readText()
+        val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId
 
-      // send REMOTE_AGENT_ADDED when the VM has been provisioned
-      coEvery { anyConstructed<SSHClient>().execute(any()) } coAnswers {
-        vertx.eventBus().publish(REMOTE_AGENT_ADDED,
-            REMOTE_AGENT_ADDRESS_PREFIX + agentId)
+        // count keep-alive messages
+        vertx.eventBus().consumer<JsonObject>(address) { msg ->
+          val jsonObj: JsonObject = msg.body()
+          val action = jsonObj.getString("action")
+          if (action == "keepAlive") {
+            keepAliveCounts.compute(agentId) { _, n -> (n ?: 0) + 1 }
+          }
+        }
+
+        // send REMOTE_AGENT_ADDED when the VM has been provisioned
+        vertx.eventBus().publish(REMOTE_AGENT_ADDED, address)
       }
 
       deployCloudManager(tempDir, listOf(testSetup, testSetup2, testSetup3),
@@ -593,6 +615,9 @@ class CloudManagerTest {
             client.createVM(testSetup3.flavor, any(),
                 testSetup3.availabilityZone, any())
           }
+
+          // check that keep-alive messages have been sent to all remote agents
+          assertThat(keepAliveCounts).hasSize(3)
         }
 
         ctx.completeNow()
@@ -630,6 +655,9 @@ class CloudManagerTest {
             client.createVM(testSetup2.flavor, any(),
                 testSetup2.availabilityZone, any())
           }
+
+          // check that keep-alive messages have been sent to all remote agents
+          assertThat(keepAliveCounts).hasSize(3)
         }
 
         ctx.completeNow()
