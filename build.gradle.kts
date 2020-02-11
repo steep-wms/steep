@@ -240,4 +240,15 @@ tasks {
         dependsOn(minifyJs)
         dependsOn(less)
     }
+
+    distributions {
+        main {
+            contents {
+                // include 'conf' directory in distribution
+                from(projectDir) {
+                    include("conf/**/*")
+                }
+            }
+        }
+    }
 }
