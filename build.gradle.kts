@@ -241,6 +241,22 @@ tasks {
         dependsOn(less)
     }
 
+    // customize start scripts
+    startScripts {
+        // customize application name
+        applicationName = "steep"
+
+        // change current directory to APP_HOME
+        doLast {
+            val windowsScriptFile = file(getWindowsScript())
+            val unixScriptFile = file(getUnixScript())
+            windowsScriptFile.writeText(windowsScriptFile.readText()
+                .replace("@rem Execute steep".toRegex(), "$0\r\ncd \"%APP_HOME%\""))
+            unixScriptFile.writeText(unixScriptFile.readText()
+                .replaceFirst("\nexec.+".toRegex(), "\ncd \"\\\$APP_HOME\"$0"))
+        }
+    }
+
     distributions {
         main {
             contents {
