@@ -478,7 +478,8 @@ class HttpEndpoint : CoroutineVerticle() {
 
     if (includeDetails) {
       val strStatus = submission.getString("status")
-      if (strStatus == Submission.Status.SUCCESS.toString()) {
+      if (strStatus == Submission.Status.SUCCESS.toString() ||
+          strStatus == Submission.Status.PARTIAL_SUCCESS.toString()) {
         val results = submissionRegistry.getSubmissionResults(submissionId)
         if (results != null) {
           submission.put("results", results)
