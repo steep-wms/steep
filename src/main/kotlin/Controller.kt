@@ -42,7 +42,7 @@ class Controller : CoroutineVerticle() {
     private const val PROCESSING_SUBMISSION_LOCK_PREFIX = "Controller.ProcessingSubmission."
 
     /**
-     * The current number of process chains we are currently waiting for
+     * The number of process chains we are currently waiting for
      */
     private val gaugeProcessChains = Gauge.build()
         .name("steep_controller_process_chains")
@@ -52,7 +52,7 @@ class Controller : CoroutineVerticle() {
 
   /**
    * Results produced by [waitForProcessChains]
-   * @param results the results of suceeded process chains
+   * @param results the results of succeeded process chains
    * @param failed the number of failed process chains
    * @param cancelled the number of cancelled process chains
    */
