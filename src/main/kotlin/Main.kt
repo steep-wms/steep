@@ -230,7 +230,9 @@ class Main : CoroutineVerticle() {
     if (config.getBoolean(ConfigConstants.SCHEDULER_ENABLED, true)) {
       vertx.deployVerticleAwait(Scheduler::class.qualifiedName!!, options)
     }
-    vertx.deployVerticleAwait(Controller::class.qualifiedName!!, options)
+    if (config.getBoolean(ConfigConstants.CONTROLLER_ENABLED, true)) {
+      vertx.deployVerticleAwait(Controller::class.qualifiedName!!, options)
+    }
     if (config.getBoolean(ConfigConstants.AGENT_ENABLED, true)) {
       vertx.deployVerticleAwait(Steep::class.qualifiedName!!, options)
     }

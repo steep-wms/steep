@@ -109,6 +109,12 @@ object ConfigConstants {
   const val HTTP_BASE_PATH = "steep.http.basePath"
 
   /**
+   * `true` if the controller should be enabled. Set this value to `false` if
+   * your Steep instance does not have access to the shared database.
+   */
+  const val CONTROLLER_ENABLED = "steep.controller.enabled"
+
+  /**
    * The interval in which the controller looks for accepted submissions
    */
   const val CONTROLLER_LOOKUP_INTERVAL = "steep.controller.lookupIntervalMilliseconds"
