@@ -8,7 +8,7 @@ docker run -d --name steep --restart=on-failure \
   -p 5701:5701 -p {{ config["steep.cluster.eventBus.publicPort"] }}:{{ config["steep.cluster.eventBus.port"] }} \
   -e "STEEP_CLUSTER_EVENTBUS_PUBLICHOST={{ ipAddress }}" \
   -e "STEEP_CLUSTER_HAZELCAST_PUBLICADDRESS={{ ipAddress }}:5701" \
-  -e "STEEÜ_CLUSTER_HAZELCAST_PORT=5701" \
+  -e "STEEP_CLUSTER_HAZELCAST_PORT=5701" \
   -e "STEEP_CLUSTER_HAZELCAST_MEMBERS=[\"{{ config["steep.cluster.hazelcast.publicAddress"] }}\"]" \
   -e "STEEP_CLUSTER_HAZELCAST_INTERFACES=[\"172.*.*.*\"]" \
   -e "STEEP_CLUSTER_HAZELCAST_TCPENABLED=true" \
