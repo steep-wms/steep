@@ -77,7 +77,12 @@ class Steep : CoroutineVerticle() {
       vertx.setPeriodic(1000 * 30) { checkAutoShutdown() }
     }
 
-    log.info("Remote agent `${Main.agentId}' successfully deployed")
+    if (capabilities.isEmpty()) {
+      log.info("Remote agent `${Main.agentId}' successfully deployed")
+    } else {
+      log.info("Remote agent `${Main.agentId}' with capabilities " +
+          "`$capabilities' successfully deployed")
+    }
   }
 
   /**
