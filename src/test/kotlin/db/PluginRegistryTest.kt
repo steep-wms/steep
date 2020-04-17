@@ -5,6 +5,7 @@ import assertThatThrownBy
 import coVerify
 import com.fasterxml.jackson.databind.exc.InvalidTypeIdException
 import io.vertx.core.Vertx
+import io.vertx.core.json.JsonArray
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.json.json
@@ -21,6 +22,7 @@ import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import model.processchain.ProcessChain
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import javax.script.ScriptException
@@ -31,6 +33,23 @@ import javax.script.ScriptException
  */
 @ExtendWith(VertxExtension::class)
 class PluginRegistryTest {
+  @AfterEach
+  fun tearDown(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      // initialize the PluginRegistryFactory with an empty list of plugins
+      // after each test, so we don't spill into other tests (from this class
+      // as well as from other test classes!)
+      val config = json {
+        obj(
+            ConfigConstants.PLUGINS to JsonArray()
+        )
+      }
+      PluginRegistryFactory.initialize(vertx, config)
+
+      ctx.completeNow()
+    }
+  }
+
   /**
    * Test if a simple output adapter can be compiled and executed
    */
