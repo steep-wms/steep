@@ -3,7 +3,11 @@ package cloud
 import AddressConstants.REMOTE_AGENT_ADDED
 import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import ConfigConstants
+import agent.AgentRegistry
+import agent.AgentRegistryFactory
 import coVerify
+import db.VMRegistry
+import db.VMRegistryFactory
 import helper.UniqueID
 import helper.YamlUtils
 import io.mockk.Runs
@@ -25,17 +29,12 @@ import io.vertx.kotlin.core.DeploymentOptions
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
-import io.vertx.kotlin.core.shareddata.getAsyncMapAwait
-import io.vertx.kotlin.core.shareddata.getAwait
-import io.vertx.kotlin.core.shareddata.getCounterAwait
-import io.vertx.kotlin.core.shareddata.incrementAndGetAwait
-import io.vertx.kotlin.core.shareddata.putAwait
-import io.vertx.kotlin.core.shareddata.sizeAwait
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import model.cloud.VM
 import model.setup.Setup
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
@@ -56,7 +55,6 @@ class CloudManagerTest {
   companion object {
     private const val MY_OLD_VM = "MY_OLD_VM"
     private const val CREATED_BY_TAG = "CloudManagerTest"
-    private const val TEST_SETUP2_ID = "TestSetup2"
     private const val SYNC_INTERVAL = 2
     private const val KEEP_ALIVE_INTERVAL = 1
     private const val AZ01 = "az-01"
@@ -156,7 +154,7 @@ class CloudManagerTest {
         coEvery { client.createBlockDevice(setup.imageName, setup.blockDeviceSizeGb,
             setup.blockDeviceVolumeType, setup.availabilityZone,
             metadata) } answers { UniqueID.next() }
-        coEvery { client.createVM(setup.flavor, any(), setup.availabilityZone,
+        coEvery { client.createVM(any(), setup.flavor, any(), setup.availabilityZone,
             metadata) } answers { UniqueID.next() }
       }
       coEvery { client.getIPAddress(any()) } answers { UniqueID.next() }
@@ -202,7 +200,7 @@ class CloudManagerTest {
             client.createBlockDevice(testSetup.imageName,
                 testSetup.blockDeviceSizeGb, null,
                 testSetup.availabilityZone, any())
-            client.createVM(testSetup.flavor, any(),
+            client.createVM(any(), testSetup.flavor, any(),
                 testSetup.availabilityZone, any())
             client.getIPAddress(any())
           }
@@ -230,7 +228,7 @@ class CloudManagerTest {
             client.createBlockDevice(testSetup.imageName,
                 testSetup.blockDeviceSizeGb, null,
                 testSetup.availabilityZone, any())
-            client.createVM(testSetup.flavor, any(),
+            client.createVM(any(), testSetup.flavor, any(),
                 testSetup.availabilityZone, any())
             client.getIPAddress(any())
           }
@@ -255,7 +253,7 @@ class CloudManagerTest {
             client.createBlockDevice(testSetup.imageName,
                 testSetup.blockDeviceSizeGb, null,
                 testSetup.availabilityZone, any())
-            client.createVM(testSetup.flavor, any(),
+            client.createVM(any(), testSetup.flavor, any(),
                 testSetup.availabilityZone, any())
             client.getIPAddress(any())
           }
@@ -283,7 +281,7 @@ class CloudManagerTest {
             client.createBlockDevice(testSetupLarge.imageName,
                 testSetupLarge.blockDeviceSizeGb, "SSD",
                 testSetupLarge.availabilityZone, any())
-            client.createVM(testSetupLarge.flavor, any(),
+            client.createVM(any(), testSetupLarge.flavor, any(),
                 testSetupLarge.availabilityZone, any())
             client.getIPAddress(any())
           }
@@ -300,9 +298,9 @@ class CloudManagerTest {
     fun createVMAlternativeSetup(vertx: Vertx, ctx: VertxTestContext) {
       GlobalScope.launch(vertx.dispatcher()) {
         // let the first setup throw an exception and the second succeed
-        coEvery { client.createVM(testSetup.flavor, any(),
+        coEvery { client.createVM(any(), testSetup.flavor, any(),
             testSetup.availabilityZone, any()) } throws IllegalStateException()
-        coEvery { client.createVM(testSetupAlternative.flavor, any(),
+        coEvery { client.createVM(any(), testSetupAlternative.flavor, any(),
             testSetupAlternative.availabilityZone, any()) } answers { UniqueID.next() }
 
         // mock additional methods
@@ -326,14 +324,14 @@ class CloudManagerTest {
             client.createBlockDevice(testSetup.imageName,
                 testSetup.blockDeviceSizeGb, null,
                 testSetup.availabilityZone, any())
-            client.createVM(testSetup.flavor, any(),
+            client.createVM(any(), testSetup.flavor, any(),
                 testSetup.availabilityZone, any())
           }
           coVerify(exactly = 1) {
             client.createBlockDevice(testSetupAlternative.imageName,
                 testSetupAlternative.blockDeviceSizeGb, null,
                 testSetupAlternative.availabilityZone, any())
-            client.createVM(testSetupAlternative.flavor, any(),
+            client.createVM(any(), testSetupAlternative.flavor, any(),
                 testSetupAlternative.availabilityZone, any())
           }
           coVerify(exactly = 1) {
@@ -352,6 +350,11 @@ class CloudManagerTest {
    */
   @Nested
   inner class Destroy {
+    private val testSetup = Setup(id = "test", flavor = "myflavor",
+        imageName = "myImage", availabilityZone = AZ01,
+        blockDeviceSizeGb = 500000, maxVMs = 1)
+    private lateinit var vmRegistry: VMRegistry
+
     @BeforeEach
     fun setUp(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
       // return a VM that should be deleted when the verticle starts up
@@ -360,15 +363,9 @@ class CloudManagerTest {
       coEvery { client.destroyVM(MY_OLD_VM) } just Runs
 
       GlobalScope.launch(vertx.dispatcher()) {
-        // create a counter for a second setup
-        val counter = vertx.sharedData().getCounterAwait(
-            "CloudManager.Counter.$TEST_SETUP2_ID")
-        counter.incrementAndGetAwait()
-
-        // pretend we already created a VM with the second setup
-        val createdVMs = vertx.sharedData().getAsyncMapAwait<String, String>(
-            "CloudManager.CreatedVMs")
-        createdVMs.putAwait(UniqueID.next(), TEST_SETUP2_ID)
+        // pretend we already created a VM
+        vmRegistry = VMRegistryFactory.create(vertx)
+        vmRegistry.addVM(VM(setup = testSetup, status = VM.Status.RUNNING))
 
         deployCloudManager(tempDir, emptyList(), vertx, ctx)
       }
@@ -390,21 +387,15 @@ class CloudManagerTest {
     }
 
     /**
-     * Check if we have synced our internal maps on startup
+     * Check if we have updated the registry on startup
      */
     @Test
     fun removeNonExistingVM(vertx: Vertx, ctx: VertxTestContext) {
       GlobalScope.launch(vertx.dispatcher()) {
         ctx.coVerify {
-          // check that the counter was decreased
-          val counter = vertx.sharedData().getCounterAwait(
-              "CloudManager.Counter.$TEST_SETUP2_ID")
-          assertThat(counter.getAwait()).isEqualTo(0)
-
-          // check that the VM was removed from the internal map
-          val createdVMs = vertx.sharedData().getAsyncMapAwait<String, String>(
-              "CloudManager.CreatedVMs")
-          assertThat(createdVMs.sizeAwait()).isEqualTo(0)
+          val vms = vmRegistry.findVMs().toList()
+          assertThat(vms).hasSize(1)
+          assertThat(vms[0].status).isEqualTo(VM.Status.DESTROYED)
         }
         ctx.completeNow()
       }
@@ -416,6 +407,7 @@ class CloudManagerTest {
    */
   @Nested
   inner class Min {
+    private lateinit var agentRegistry: AgentRegistry
     private lateinit var testSetupMin: Setup
     private val keepAliveCounts = mutableMapOf<String, Int>()
 
@@ -428,6 +420,14 @@ class CloudManagerTest {
       testSetupMin = Setup("testMin", "myflavor", "myImage", AZ01, 500000,
           null, 2, 4, listOf(testSh.absolutePath))
 
+      // mock agent registry
+      agentRegistry = mockk()
+      mockkObject(AgentRegistryFactory)
+      every { AgentRegistryFactory.create(any()) } returns agentRegistry
+
+      val agentIds = mutableSetOf<String>()
+      coEvery { agentRegistry.getAgentIds() } returns agentIds
+
       // mock client
       val createdVMs = mutableListOf<String>()
       coEvery { client.listVMs(any()) } answers { createdVMs }
@@ -435,7 +435,7 @@ class CloudManagerTest {
       coEvery { client.createBlockDevice(testSetupMin.imageName,
           testSetupMin.blockDeviceSizeGb, testSetupMin.blockDeviceVolumeType,
           testSetupMin.availabilityZone, any()) } answers { UniqueID.next() }
-      coEvery { client.createVM(testSetupMin.flavor, any(),
+      coEvery { client.createVM(any(), testSetupMin.flavor, any(),
           testSetupMin.availabilityZone, any()) } answers {
         UniqueID.next().also { createdVMs.add(it) }
       }
@@ -460,6 +460,9 @@ class CloudManagerTest {
           }
         }
 
+        // add agent to mock registry
+        agentIds.add(agentId)
+
         // send REMOTE_AGENT_ADDED when the VM has been provisioned
         vertx.eventBus().publish(REMOTE_AGENT_ADDED, address)
       }
@@ -483,7 +486,7 @@ class CloudManagerTest {
                 testSetupMin.blockDeviceSizeGb,
                 testSetupMin.blockDeviceVolumeType,
                 testSetupMin.availabilityZone, any())
-            client.createVM(testSetupMin.flavor, any(),
+            client.createVM(any(), testSetupMin.flavor, any(),
                 testSetupMin.availabilityZone, any())
             client.getIPAddress(any())
           }
@@ -502,6 +505,7 @@ class CloudManagerTest {
    */
   @Nested
   inner class AgentPool {
+    private lateinit var agentRegistry: AgentRegistry
     private lateinit var testSetup: Setup
     private lateinit var testSetup2: Setup
     private lateinit var testSetup3: Setup
@@ -509,6 +513,14 @@ class CloudManagerTest {
 
     @BeforeEach
     fun setUp(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
+      // mock agent registry
+      agentRegistry = mockk()
+      mockkObject(AgentRegistryFactory)
+      every { AgentRegistryFactory.create(any()) } returns agentRegistry
+
+      val agentIds = mutableSetOf<String>()
+      coEvery { agentRegistry.getAgentIds() } returns agentIds
+
       // mock client
       coEvery { client.listVMs(any()) } returns emptyList()
 
@@ -539,15 +551,15 @@ class CloudManagerTest {
       coEvery { client.createBlockDevice(testSetup3.imageName,
           testSetup3.blockDeviceSizeGb, testSetup3.blockDeviceVolumeType,
           testSetup3.availabilityZone, any()) } answers { UniqueID.next() }
-      coEvery { client.createVM(testSetup.flavor, any(),
+      coEvery { client.createVM(any(), testSetup.flavor, any(),
           testSetup.availabilityZone, any()) } answers {
         UniqueID.next().also { createdVMs.add(it) }
       }
-      coEvery { client.createVM(testSetup2.flavor, any(),
+      coEvery { client.createVM(any(), testSetup2.flavor, any(),
           testSetup2.availabilityZone, any()) } answers {
         UniqueID.next().also { createdVMs.add(it) }
       }
-      coEvery { client.createVM(testSetup3.flavor, any(),
+      coEvery { client.createVM(any(), testSetup3.flavor, any(),
           testSetup3.availabilityZone, any()) } answers {
         UniqueID.next().also { createdVMs.add(it) }
       }
@@ -571,6 +583,9 @@ class CloudManagerTest {
             keepAliveCounts.compute(agentId) { _, n -> (n ?: 0) + 1 }
           }
         }
+
+        // add agent to mock registry
+        agentIds.add(agentId)
 
         // send REMOTE_AGENT_ADDED when the VM has been provisioned
         vertx.eventBus().publish(REMOTE_AGENT_ADDED, address)
@@ -612,7 +627,7 @@ class CloudManagerTest {
                 testSetup3.blockDeviceSizeGb,
                 testSetup3.blockDeviceVolumeType,
                 testSetup3.availabilityZone, any())
-            client.createVM(testSetup3.flavor, any(),
+            client.createVM(any(), testSetup3.flavor, any(),
                 testSetup3.availabilityZone, any())
           }
 
@@ -643,7 +658,7 @@ class CloudManagerTest {
                 testSetup.blockDeviceSizeGb,
                 testSetup.blockDeviceVolumeType,
                 testSetup.availabilityZone, any())
-            client.createVM(testSetup.flavor, any(),
+            client.createVM(any(), testSetup.flavor, any(),
                 testSetup.availabilityZone, any())
           }
           coVerify(exactly = 1) {
@@ -652,7 +667,7 @@ class CloudManagerTest {
                 testSetup2.blockDeviceSizeGb,
                 testSetup2.blockDeviceVolumeType,
                 testSetup2.availabilityZone, any())
-            client.createVM(testSetup2.flavor, any(),
+            client.createVM(any(), testSetup2.flavor, any(),
                 testSetup2.availabilityZone, any())
           }
 

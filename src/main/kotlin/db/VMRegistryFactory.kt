@@ -8,18 +8,18 @@ import org.slf4j.LoggerFactory
 import java.lang.IllegalStateException
 
 /**
- * Creates [SubmissionRegistry] objects
+ * Creates [VMRegistry] objects
  * @author Michel Kraemer
  */
-object SubmissionRegistryFactory {
-  private val log = LoggerFactory.getLogger(SubmissionRegistryFactory::class.java)
+object VMRegistryFactory {
+  private val log = LoggerFactory.getLogger(VMRegistryFactory::class.java)
 
   /**
-   * Create a new [SubmissionRegistry]
+   * Create a new [VMRegistry]
    * @param vertx the current Vert.x instance
-   * @return the [SubmissionRegistry]
+   * @return the [VMRegistry]
    */
-  fun create(vertx: Vertx): SubmissionRegistry {
+  fun create(vertx: Vertx): VMRegistry {
     val config = vertx.orCreateContext.config()
     val driver = config.getString(ConfigConstants.DB_DRIVER, DRIVER_INMEMORY)
     val url = config.getString(ConfigConstants.DB_URL)
@@ -27,11 +27,11 @@ object SubmissionRegistryFactory {
     val password = config.getString(ConfigConstants.DB_PASSWORD)
     log.info("Using database driver: $driver")
     val result = when (driver) {
-      DRIVER_INMEMORY -> InMemorySubmissionRegistry(vertx)
-      DRIVER_POSTGRESQL -> PostgreSQLSubmissionRegistry(vertx, url, username, password)
-      DRIVER_MONGODB -> MongoDBSubmissionRegistry(vertx, url)
+      DRIVER_INMEMORY -> InMemoryVMRegistry(vertx)
+      DRIVER_POSTGRESQL -> PostgreSQLVMRegistry(vertx, url, username, password)
+      DRIVER_MONGODB -> MongoDBVMRegistry(vertx, url)
       else -> throw IllegalStateException("Unknown database driver `$driver'")
     }
-    return NotifyingSubmissionRegistry(result, vertx)
+    return NotifyingVMRegistry(result, vertx)
   }
 }

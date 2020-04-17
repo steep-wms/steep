@@ -10,29 +10,27 @@ import ConfigConstants.CLOUD_CREATED_BY_TAG
 import ConfigConstants.CLOUD_SETUPS_FILE
 import ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION
 import ConfigConstants.CLOUD_SSH_USERNAME
+import agent.AgentRegistry
+import agent.AgentRegistryFactory
 import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.mitchellbosecke.pebble.PebbleEngine
+import db.VMRegistry
+import db.VMRegistryFactory
 import helper.JsonUtils
 import helper.YamlUtils
 import io.vertx.core.Future
 import io.vertx.core.json.JsonArray
-import io.vertx.core.shareddata.AsyncMap
+import io.vertx.core.shareddata.Lock
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
-import io.vertx.kotlin.core.shareddata.compareAndSetAwait
-import io.vertx.kotlin.core.shareddata.getAsyncMapAwait
-import io.vertx.kotlin.core.shareddata.getAwait
-import io.vertx.kotlin.core.shareddata.getCounterAwait
+import io.vertx.kotlin.core.shareddata.getLockAwait
 import io.vertx.kotlin.core.shareddata.getLockWithTimeoutAwait
-import io.vertx.kotlin.core.shareddata.incrementAndGetAwait
-import io.vertx.kotlin.core.shareddata.putAwait
-import io.vertx.kotlin.core.shareddata.removeAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
-import io.vertx.kotlin.coroutines.awaitResult
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import model.cloud.VM
 import model.setup.Setup
 import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
@@ -65,20 +63,17 @@ class CloudManager : CoroutineVerticle() {
     private const val SETUP_ID = "Setup-Id"
 
     /**
-     * The name of a map containing IDs of created virtual machines
+     * Name of a cluster-wide lock used to make atomic operations on the
+     * VM registry
      */
-    private const val CREATED_VMS_MAP_NAME = "CloudManager.CreatedVMs"
+    private const val LOCK_VMS = "CloudManager.VMs.Lock"
 
     /**
-     * Prefix for counters that keep track of how many VMs we created
-     * with a certain setup
+     * A prefix for a lock that will be set while a VM is being created and
+     * provisioned. The lock will be set before the creation starts and will
+     * be released as soon as the agent has been successfully deployed.
      */
-    private const val COUNTER_PREFIX = "CloudManager.Counter."
-
-    /**
-     * Prefix for locks that keep track of which setups we are currently creating
-     */
-    private const val CREATING_SETUPS_PREFIX = "CloudManager.CreatingSetups."
+    private const val VM_CREATION_LOCK_PREFIX = "CloudManager.VMs.CreationLock."
 
     /**
      * The maximum number of seconds to backoff between failed attempts to
@@ -119,7 +114,7 @@ class CloudManager : CoroutineVerticle() {
   private lateinit var sshPrivateKeyLocation: String
 
   /**
-   * Parameters of remote agents the CloudManager maintain in its pool
+   * Parameters of remote agents the CloudManager maintains in its pool
    */
   private lateinit var poolAgentParams: List<PoolAgentParams>
 
@@ -129,15 +124,14 @@ class CloudManager : CoroutineVerticle() {
   private lateinit var setups: List<Setup>
 
   /**
-   * A map containing IDs of created virtual machines and the respective ID of
-   * their setup
+   * Registry to save created VMs
    */
-  private lateinit var createdVMs: AsyncMap<String, String>
+  private lateinit var vmRegistry: VMRegistry
 
   /**
-   * A set of IDs of agents that have recently left the cluster
+   * Agent registry
    */
-  private val leftAgents = mutableSetOf<String>()
+  private lateinit var agentRegistry: AgentRegistry
 
   /**
    * The current number of seconds to wait before the next attempt to create a VM
@@ -164,22 +158,26 @@ class CloudManager : CoroutineVerticle() {
         "Missing configuration item `$CLOUD_SETUPS_FILE'")
     setups = YamlUtils.mapper.readValue(File(setupsFile))
 
-    // initialize shared maps
-    val sharedData = vertx.sharedData()
-    createdVMs = sharedData.getAsyncMapAwait(CREATED_VMS_MAP_NAME)
+    // initialize registries
+    vmRegistry = VMRegistryFactory.create(vertx)
+    agentRegistry = AgentRegistryFactory.create(vertx)
 
     // keep track of left agents
     vertx.eventBus().consumer<String>(REMOTE_AGENT_LEFT) { msg ->
       val agentId = msg.body().substring(REMOTE_AGENT_ADDRESS_PREFIX.length)
       log.info("Agent $agentId has left the cluster. Scheduling deletion of its VM ...")
-      leftAgents.add(agentId)
+      launch {
+        vmRegistry.setVMStatus(agentId, VM.Status.RUNNING, VM.Status.LEFT)
+      }
     }
     vertx.eventBus().consumer<String>(REMOTE_AGENT_ADDED) { msg ->
-      // remove the `agentId` from `leftAgents` if the agent has returned -- in
-      // the hope that the VM has not been deleted by `sync()` in the meantime
+      // reset the VM status if the agent has returned -- in the hope that the
+      // VM has not been deleted by `sync()` in the meantime
       val agentId = msg.body().substring(REMOTE_AGENT_ADDRESS_PREFIX.length)
       log.info("Agent $agentId has joined the cluster.")
-      leftAgents.remove(agentId)
+      launch {
+        vmRegistry.setVMStatus(agentId, VM.Status.LEFT, VM.Status.RUNNING)
+      }
     }
 
     syncTimerStart(true)
@@ -209,7 +207,7 @@ class CloudManager : CoroutineVerticle() {
   }
 
   /**
-   * Start a periodic timer that synchronizes our shared maps with the Cloud
+   * Start a periodic timer that synchronizes the VM registry with the Cloud
    */
   private fun syncTimer() {
     val seconds = config.getLong(ConfigConstants.CLOUD_SYNC_INTERVAL, 120L)
@@ -221,68 +219,106 @@ class CloudManager : CoroutineVerticle() {
   }
 
   /**
-   * Synchronize our shared maps with the Cloud
+   * Tries to create a lock for the VM with the given [id]. As long as the lock
+   * is held, the VM is being created and provisioned. The method returns `null`
+   * if the lock could not be acquired.
+   */
+  private suspend fun tryLockVM(id: String): Lock? {
+    val lockName = VM_CREATION_LOCK_PREFIX + id
+    return try {
+      vertx.sharedData().getLockWithTimeoutAwait(lockName, 1)
+    } catch (t: Throwable) {
+      // Could not acquire lock. Assume someone else is already creating the VM
+      null
+    }
+  }
+
+  /**
+   * Synchronize the VM registry with the Cloud
    */
   private suspend fun sync(cleanupOnly: Boolean = false) {
     log.debug("Syncing VMs ...")
 
     // destroy all virtual machines whose agents have left
-    val vmIDsToRemove = leftAgents.toList()
-    for (id in vmIDsToRemove) {
-      log.info("Destroying VM of left agent `$id' ...")
-      cloudClient.destroyVM(id)
-      leftAgents.remove(id)
+    val vmsToRemove = vmRegistry.findVMsByStatus(VM.Status.LEFT)
+    for (vm in vmsToRemove) {
+      log.info("Destroying VM of left agent `${vm.id}' ...")
+      if (vmRegistry.setVMStatus(vm.id, VM.Status.LEFT, VM.Status.DESTROYING)) {
+        if (vm.externalId != null) {
+          cloudClient.destroyVM(vm.externalId)
+        }
+        vmRegistry.setVMStatus(vm.id, VM.Status.DESTROYING, VM.Status.DESTROYED)
+      }
     }
 
-    // destroy all virtual machines that we created before but don't know anymore
+    // destroy orphaned VMs:
+    // - VMs that we created before but that are not in our registry
+    // - VMs that we created but that do not have an agent and won't get one
     val existingVMs = cloudClient.listVMs { createdByTag == it[CREATED_BY] }
-    for (id in existingVMs) {
-      if (createdVMs.getAwait(id) == null) {
+    for (externalId in existingVMs) {
+      val id = vmRegistry.findVMByExternalId(externalId)?.id
+      val shouldDelete = if (id == null) {
+        // we don't know this VM
+        true
+      } else {
+        val lock = tryLockVM(id)
+        if (lock == null) {
+          // someone else is currently creating the VM
+          false
+        } else {
+          lock.release()
+
+          // No one is currently creating the VM. Delete it if there is no
+          // corresponding agent.
+          !agentRegistry.getAgentIds().contains(id)
+        }
+      }
+
+      if (shouldDelete) {
         val active = try {
-          cloudClient.isVMActive(id)
+          cloudClient.isVMActive(externalId)
         } catch (e: NoSuchElementException) {
           false
         }
         if (active) {
-          log.info("Found orphaned VM `$id' ...")
-          cloudClient.destroyVM(id)
+          log.info("Found orphaned VM `$externalId' ...")
+          cloudClient.destroyVM(externalId)
         }
       }
     }
 
-    // remove virtual machines from our map if they don't exist anymore
-    val entries = awaitResult<Map<String, String>> { createdVMs.entries(it) }
-    for ((vmId, setupId) in entries) {
-      if (!existingVMs.contains(vmId)) {
-        log.info("Removing deleted VM `$vmId' from internal data structures.")
+    // update status of VMs that don't exist anymore
+    val nonTerminatedVMs = vmRegistry.findNonTerminatedVMs()
+    for (nonTerminatedVM in nonTerminatedVMs) {
+      val lock = tryLockVM(nonTerminatedVM.id)
+      val shouldUpdateStatus = if (lock == null) {
+        // someone is currently creating the VM
+        false
+      } else {
+        // no one is currently creating the VM
+        lock.release()
 
-        // remove from map of created VMs
-        createdVMs.removeAwait(vmId)
-
-        // decrement counter for setup but never get below 0
-        val counter = vertx.sharedData().getCounterAwait(COUNTER_PREFIX + setupId)
-        var v = counter.getAwait()
-        var success = false
-        while (v > 0L && !success) {
-          success = counter.compareAndSetAwait(v, v - 1)
-          if (!success) {
-            v = counter.getAwait()
-          }
+        if (nonTerminatedVM.externalId != null) {
+          // Entry has an external ID. Check if there is a corresponding VM.
+          !existingVMs.contains(nonTerminatedVM.externalId)
+        } else {
+          // Entry has no external ID. It's an orphan.
+          true
         }
+      }
+
+      if (shouldUpdateStatus) {
+        log.info("Setting status of deleted VM `${nonTerminatedVM.id}' to DESTROYED")
+        vmRegistry.forceSetVMStatus(nonTerminatedVM.id, VM.Status.DESTROYED)
       }
     }
 
     if (!cleanupOnly) {
       // ensure there's a minimum number of VMs
       for (setup in setups) {
-        if (setup.minVMs > 0) {
-          // get number of existing VMs with this setup
-          val counter = vertx.sharedData().getCounterAwait(COUNTER_PREFIX + setup.id)
-          val n = counter.getAwait()
-          if (n < setup.minVMs) {
-            launch {
-              createRemoteAgent(setup)
-            }
+        if (setup.minVMs > 0 && vmRegistry.countNonTerminatedVMsBySetup(setup.id) < setup.minVMs) {
+          launch {
+            createRemoteAgent(setup)
           }
         }
       }
@@ -291,7 +327,7 @@ class CloudManager : CoroutineVerticle() {
       // agents with certain capabilities
       for (params in poolAgentParams) {
         if (params.min > 0) {
-          val vmsPerSetup = getVMsPerSetup()
+          val vmsPerSetup = getNonTerminatedVMsPerSetup()
           val setupsById = setups.map { it.id to it }.toMap()
 
           // count number of created VMs that provide the required capabilities
@@ -329,37 +365,37 @@ class CloudManager : CoroutineVerticle() {
   }
 
   /**
-   * Return a map with IDs of [Setup]s and the corresponding set of created VMs
-   * sorted by the VM ID.
+   * Return a map with IDs of [Setup]s and the corresponding set of
+   * non-terminated VMs sorted by VM ID.
    */
-  private suspend fun getVMsPerSetup(): Map<String, TreeSet<String>> {
-    val entries = awaitResult<Map<String, String>> { createdVMs.entries(it) }
-    return entries.entries.groupingBy {
+  private suspend fun getNonTerminatedVMsPerSetup(): Map<String, TreeSet<VM>> {
+    val runningVMs = vmRegistry.findNonTerminatedVMs()
+    return runningVMs.groupingBy {
       // group by Setup ID
-      it.value
-    }.fold({ _, e ->
-      // add first vmID to a sorted set
-      TreeSet<String>().also { it.add(e.key) }
-    }, { _, s, e ->
-      // add all remaining vmIDs to this set
-      s.also { it.add(e.key) }
+      it.setup.id
+    }.fold({ _, vm ->
+      // add first VM to a sorted set
+      TreeSet<VM> { a, b -> a.id.compareTo(b.id) }.also { it.add(vm) }
+    }, { _, s, vm ->
+      // add all remaining VMs to this set
+      s.also { it.add(vm) }
     })
   }
 
   /**
-   * Send keep-alive messages to a minimum of remote agents again (so that they
+   * Send keep-alive messages to a minimum of remote agents (so that they
    * do not shut down themselves). See [model.setup.Setup.minVMs] and
    * [PoolAgentParams.min]
    */
   private suspend fun sendKeepAlive() {
-    val vmsPerSetup = getVMsPerSetup()
+    val vmsPerSetup = getNonTerminatedVMsPerSetup()
     val setupsById = setups.map { it.id to it }.toMap()
     val pap = poolAgentParams.toMutableList()
-    for ((setupId, vmIDs) in vmsPerSetup) {
+    for ((setupId, vms) in vmsPerSetup) {
       val setup = setupsById[setupId] ?: continue
 
       // get minimum number of VMs defined by setup
-      var minimum = min(vmIDs.size, setup.minVMs)
+      var minimum = min(vms.size, setup.minVMs)
 
       // check if there are pool agent parameters that also require a minimum
       // number of VMs
@@ -370,7 +406,7 @@ class CloudManager : CoroutineVerticle() {
         if (setup.providedCapabilities.containsAll(p.capabilities)) {
           // we found parameters our setup satisfies
           if (p.min > minimum) {
-            minimum = min(vmIDs.size, p.min)
+            minimum = min(vms.size, p.min)
           }
           papi.remove()
           if (p.min - minimum > 0) {
@@ -382,11 +418,11 @@ class CloudManager : CoroutineVerticle() {
 
       if (minimum > 0) {
         // get a minimum number of VMs
-        val minVmIDs = vmIDs.asSequence().take(minimum)
+        val minVMs = vms.asSequence().take(minimum)
 
         // send keep-alive message to these VMs
-        for (vmID in minVmIDs) {
-          val address = REMOTE_AGENT_ADDRESS_PREFIX + vmID
+        for (vm in minVMs) {
+          val address = REMOTE_AGENT_ADDRESS_PREFIX + vm.id
           val msg = json {
             obj(
                 "action" to "keepAlive"
@@ -458,37 +494,32 @@ class CloudManager : CoroutineVerticle() {
   /**
    * Create a virtual machine with the given [setup] and deploy a remote agent
    * to it. Returns `true` if the remote agent has been created or is currently
-   * being created. Returns `false` if there are already too many VMs with this
-   * setup. Throws an exception if an attempt to create a VM was made but failed.
+   * being created. Returns `false` if there are already too many running VMs
+   * with this setup. Throws an exception if an attempt to create a VM was made
+   * but failed.
    */
   private suspend fun createRemoteAgent(setup: Setup): Boolean {
-    // get number of existing VMs with this setup
-    val counter = vertx.sharedData().getCounterAwait(COUNTER_PREFIX + setup.id)
-    val nBefore = counter.getAwait()
-
-    // check if we're already creating a VM with this setup
-    val lockName = CREATING_SETUPS_PREFIX + setup.id + ".0"
-    val lock = try {
-      vertx.sharedData().getLockWithTimeoutAwait(lockName, 1)
-    } catch (t: Throwable) {
-      // Could not acquire lock. Assume someone else is already creating a VM
-      // with this setup.
-      return true
-    }
-
-    try {
-      val nAfter = counter.getAwait()
-      if (nAfter > nBefore) {
-        // we just finished creating a VM with this setup while we tried to
-        // acquire the lock
-        return true
-      }
-      if (nAfter >= setup.maxVMs.toLong()) {
+    // atomically count number of existing VMs with this setup in the
+    // registry and create new entry if necessary
+    val sharedData = vertx.sharedData()
+    val lock = sharedData.getLockAwait(LOCK_VMS)
+    val vm = try {
+      if (vmRegistry.countNonTerminatedVMsBySetup(setup.id) >= setup.maxVMs.toLong()) {
         // we already created more than enough virtual machines with this setup
         return false
       }
 
-      log.info("Creating virtual machine with setup `${setup.id}' ...")
+      VM(setup = setup).also {
+        vmRegistry.addVM(it)
+      }
+    } finally {
+      lock.release()
+    }
+
+    // hold a lock as long as we are creating this VM
+    val creatingLock = sharedData.getLockAwait(VM_CREATION_LOCK_PREFIX + vm.id)
+    try {
+      log.info("Creating virtual machine ${vm.id} with setup `${setup.id}' ...")
 
       if (backoffSeconds > 10) {
         log.info("Backing off for $backoffSeconds seconds due to too many failed attempts.")
@@ -496,43 +527,52 @@ class CloudManager : CoroutineVerticle() {
       }
 
       try {
-        val vmId = createVM(setup)
+        val externalId = createVM(vm.id, setup)
+        vmRegistry.setVMExternalID(vm.id, externalId)
+
         try {
-          createdVMs.putAwait(vmId, setup.id)
-          cloudClient.waitForVM(vmId)
-          val ipAddress = cloudClient.getIPAddress(vmId)
-          provisionVM(ipAddress, vmId, setup)
-          counter.incrementAndGetAwait()
+          cloudClient.waitForVM(externalId)
+
+          val ipAddress = cloudClient.getIPAddress(externalId)
+          vmRegistry.setVMIPAddress(vm.id, ipAddress)
+
+          vmRegistry.setVMStatus(vm.id, VM.Status.CREATING, VM.Status.PROVISIONING)
+          provisionVM(ipAddress, vm.id, externalId, setup)
         } catch (e: Throwable) {
-          createdVMs.removeAwait(vmId)
-          cloudClient.destroyVM(vmId)
+          vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYING)
+          cloudClient.destroyVM(externalId)
+          vmRegistry.forceSetVMStatus(vm.id, VM.Status.ERROR)
+          vmRegistry.setVMErrorMessage(vm.id, e.message ?: "Unknown error")
           throw e
         }
+
+        vmRegistry.setVMStatus(vm.id, VM.Status.PROVISIONING, VM.Status.RUNNING)
         backoffSeconds = 0
       } catch (t: Throwable) {
         backoffSeconds = min(MAX_BACKOFF_SECONDS, max(backoffSeconds * 2, 2))
         throw t
       }
     } finally {
-      // release lock that says we're currently creating a VM with this setup
-      lock.release()
+      creatingLock.release()
     }
 
     return true
   }
 
   /**
-   * Create a virtual machine with the given [Setup] and return its ID
+   * Create a virtual machine with the given internal [id] and [Setup] and
+   * return its external ID
    */
-  private suspend fun createVM(setup: Setup): String {
+  private suspend fun createVM(id: String, setup: Setup): String {
     val metadata = mapOf(CREATED_BY to createdByTag, SETUP_ID to setup.id)
 
+    val name = "fraunhofer-steep-${id}"
     val imageId = cloudClient.getImageID(setup.imageName)
     val blockDeviceId = cloudClient.createBlockDevice(imageId,
         setup.blockDeviceSizeGb, setup.blockDeviceVolumeType,
         setup.availabilityZone, metadata)
     try {
-      return cloudClient.createVM(setup.flavor, blockDeviceId,
+      return cloudClient.createVM(name, setup.flavor, blockDeviceId,
           setup.availabilityZone, metadata)
     } catch (t: Throwable) {
       cloudClient.destroyBlockDevice(blockDeviceId)
@@ -541,14 +581,16 @@ class CloudManager : CoroutineVerticle() {
   }
 
   /**
-   * Provisions a virtual machine
+   * Provision a virtual machine
    * @param ipAddress the VM's IP address
    * @param vmId the VM's ID
+   * @param externalId the VM's external ID
    * @param setup the setup that contains information how to provision the VM
    */
-  private suspend fun provisionVM(ipAddress: String, vmId: String, setup: Setup) {
+  private suspend fun provisionVM(ipAddress: String, vmId: String,
+      externalId: String, setup: Setup) {
     val ssh = SSHClient(ipAddress, sshUsername, sshPrivateKeyLocation, vertx)
-    waitForSSH(ipAddress, vmId, ssh)
+    waitForSSH(ipAddress, externalId, ssh)
 
     // register a handler that waits for the agent on the new virtual machine
     // to become available
@@ -617,15 +659,15 @@ class CloudManager : CoroutineVerticle() {
   /**
    * Wait for an SSH connection to become available
    * @param ipAddress the IP address of the virtual machine to wait for
-   * @param vmId the ID of the virtual machine to wait for
+   * @param externalId the external ID of the virtual machine to wait for
    * @param ssh an SSH client
    */
-  private suspend fun waitForSSH(ipAddress: String, vmId: String, ssh: SSHClient) {
+  private suspend fun waitForSSH(ipAddress: String, externalId: String, ssh: SSHClient) {
     val retries = 150
     val retrySeconds = 2
 
     for (i in 1..retries) {
-      cloudClient.waitForVM(vmId)
+      cloudClient.waitForVM(externalId)
 
       log.info("Waiting for SSH: $ipAddress")
 

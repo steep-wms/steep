@@ -188,12 +188,12 @@ class OpenStackClient(endpoint: String, username: String, password: String,
     }
   }
 
-  override suspend fun createVM(flavor: String, blockDeviceId: String,
+  override suspend fun createVM(name: String, flavor: String, blockDeviceId: String,
       availabilityZone: String, metadata: Map<String, String>): String {
     log.info("Creating VM ...")
 
     var builder = Builders.server()
-        .name("fraunhofer-steep-" + UniqueID.next())
+        .name(name)
         .addMetadata(metadata)
         .networks(listOf(networkId))
         .keypairName(keypairName)
