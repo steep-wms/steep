@@ -17,7 +17,8 @@ import AddressConstants.SUBMISSION_ENDTIME_CHANGED
 import AddressConstants.SUBMISSION_ERRORMESSAGE_CHANGED
 import AddressConstants.SUBMISSION_STARTTIME_CHANGED
 import AddressConstants.SUBMISSION_STATUS_CHANGED
-import agent.RemoteAgentRegistry
+import agent.AgentRegistry
+import agent.AgentRegistryFactory
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -60,8 +61,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.Submission
 import model.Version
-import model.workflow.Action
-import model.workflow.ForEachAction
 import model.workflow.Workflow
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FilenameUtils
@@ -112,13 +111,13 @@ class HttpEndpoint : CoroutineVerticle() {
   }
 
   private lateinit var metadataRegistry: MetadataRegistry
-  private lateinit var remoteAgentRegistry: RemoteAgentRegistry
+  private lateinit var agentRegistry: AgentRegistry
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var basePath: String
 
   override suspend fun start() {
     metadataRegistry = MetadataRegistryFactory.create(vertx)
-    remoteAgentRegistry = RemoteAgentRegistry(vertx)
+    agentRegistry = AgentRegistryFactory.create(vertx)
     submissionRegistry = SubmissionRegistryFactory.create(vertx)
 
     val host = config.getString(ConfigConstants.HTTP_HOST, "localhost")
@@ -333,7 +332,7 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onGetAgents(ctx: RoutingContext) {
     launch {
-      val agentIds = remoteAgentRegistry.getAgentIds()
+      val agentIds = agentRegistry.getAgentIds()
 
       val msg = json {
         obj(

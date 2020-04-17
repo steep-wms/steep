@@ -13,6 +13,11 @@ interface AgentRegistry {
       List<Pair<Collection<String>, String>>
 
   /**
+   * Get a list of registered agents
+   */
+  suspend fun getAgentIds(): Set<String>
+
+  /**
    * Try to allocate the agent with the given [address]. The method returns
    * the allocated agent or `null` if the agent rejected the allocation request
    * or was not reachable at all.
