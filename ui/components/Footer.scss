@@ -1,0 +1,79 @@
+@import "../css/variables";
+
+footer {
+  margin-top: 4em;
+
+  .footer-content {
+    background-color: $gray-100;
+    padding: 2em 0 2.5em 0;
+    text-align: right;
+    font-size: $font-size-sm;
+
+    a {
+      color: $gray-700;
+    }
+
+    .footer-row {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+
+      @media (max-width: $md) {
+        flex-direction: column;
+      }
+    }
+
+    .logo {
+      width: 100%;
+      max-width: 18%;
+
+      @media (max-width: $xl) {
+        max-width: 22%;
+      }
+
+      @media (max-width: $md) {
+        max-width: 35%;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      @media (max-width: $sm) {
+        max-width: 60%;
+      }
+    }
+
+    .copyright {
+      max-width: 40%;
+
+      @media (max-width: $md) {
+        max-width: 95%;
+      }
+
+      .social-icons {
+        margin-top: $spacer;
+        display: flex;
+        justify-content: flex-end;
+
+        @media (max-width: $md) {
+          justify-content: center;
+        }
+
+        .feather {
+          height: 1rem;
+        }
+
+        a:not(:first-child) {
+          margin-left: $spacer / 2;
+        }
+      }
+    }
+
+    @media (max-width: $md) {
+      text-align: center;
+
+      .copyright {
+        margin-top: 2rem;
+      }
+    }
+  }
+}

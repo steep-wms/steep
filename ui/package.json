@@ -1,0 +1,29 @@
+{
+  "name": "steep-ui",
+  "private": true,
+  "description": "User interface for Steep",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next",
+    "build": "next build && next export"
+  },
+  "author": "Michel Kraemer",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@zeit/next-sass": "^1.0.1",
+    "classnames": "^2.2.6",
+    "imagemin-svgo": "^7.1.0",
+    "next": "^9.3.5",
+    "next-compose-plugins": "^2.2.0",
+    "next-optimized-images": "^2.5.8",
+    "node-sass": "^4.13.1",
+    "normalize.css": "^8.0.1",
+    "nprogress": "^0.2.0",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1",
+    "react-feather": "^2.0.4",
+    "serve": "^11.3.0",
+    "swr": "^0.2.0",
+    "unfetch": "^4.1.0"
+  }
+}
