@@ -23,7 +23,6 @@ import helper.findOneAwait
 import helper.insertOneAwait
 import helper.readAwait
 import helper.updateManyAwait
-import helper.updateOneAwait
 import helper.writeAwait
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray

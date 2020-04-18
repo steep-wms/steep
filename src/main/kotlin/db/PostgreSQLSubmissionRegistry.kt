@@ -7,17 +7,13 @@ import helper.JsonUtils
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
-import io.vertx.ext.jdbc.JDBCClient
-import io.vertx.ext.jdbc.spi.impl.HikariCPDataSourceProvider
 import io.vertx.ext.sql.SQLConnection
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.core.shareddata.getLockAwait
 import io.vertx.kotlin.ext.sql.batchWithParamsAwait
-import io.vertx.kotlin.ext.sql.closeAwait
 import io.vertx.kotlin.ext.sql.executeAwait
-import io.vertx.kotlin.ext.sql.getConnectionAwait
 import io.vertx.kotlin.ext.sql.queryAwait
 import io.vertx.kotlin.ext.sql.querySingleAwait
 import io.vertx.kotlin.ext.sql.querySingleWithParamsAwait
@@ -25,7 +21,6 @@ import io.vertx.kotlin.ext.sql.queryWithParamsAwait
 import io.vertx.kotlin.ext.sql.updateWithParamsAwait
 import model.Submission
 import model.processchain.ProcessChain
-import org.flywaydb.core.Flyway
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
@@ -38,16 +33,15 @@ import java.util.concurrent.TimeUnit
  * @author Michel Kraemer
  */
 class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
-    username: String, password: String) : SubmissionRegistry {
+    username: String, password: String) : PostgreSQLRegistry(vertx, url, username, password),
+    SubmissionRegistry {
   companion object {
     /**
      * Table and column names
      */
     private const val SUBMISSIONS = "submissions"
     private const val PROCESS_CHAINS = "processchains"
-    private const val ID = "id"
     private const val SUBMISSION_ID = "submissionId"
-    private const val DATA = "data"
     private const val START_TIME = "startTime"
     private const val END_TIME = "endTime"
     private const val STATUS = "status"
@@ -76,8 +70,6 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     private const val LOCK = "PostgreSQLSubmissionRegistry.Lock"
   }
 
-  private val client: JDBCClient
-
   /**
    * A small cache that reduces the number of database requests for an
    * attribute that never changes
@@ -86,48 +78,6 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       .expireAfterAccess(60, TimeUnit.SECONDS)
       .maximumSize(10000)
       .build<String, String>()
-
-  init {
-    migrate(url, username, password)
-
-    val jdbcConfig = json {
-      obj(
-          "provider_class" to HikariCPDataSourceProvider::class.java.name,
-          "jdbcUrl" to url,
-          "username" to username,
-          "password" to password,
-          "minimumIdle" to 0,
-          "maximumPoolSize" to 5
-      )
-    }
-    client = JDBCClient.createShared(vertx, jdbcConfig)
-  }
-
-  override suspend fun close() {
-    client.closeAwait()
-  }
-
-  /**
-   * Perform database migrations
-   * @param url the JDBC url to the database
-   * @param user the username
-   * @param password the password
-   */
-  private fun migrate(url: String, user: String, password: String) {
-    val flyway = Flyway.configure()
-        .dataSource(url, user, password)
-        .load()
-    flyway.migrate()
-  }
-
-  private suspend fun <T> withConnection(block: suspend (SQLConnection) -> T): T {
-    val connection = client.getConnectionAwait()
-    try {
-      return block(connection)
-    } finally {
-      connection.closeAwait()
-    }
-  }
 
   /**
    * Atomically executes the given block. We are using two locks: a cluster-wide
@@ -209,66 +159,6 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     return withConnection { connection ->
       val rs = connection.querySingleAwait("SELECT COUNT(*) FROM $SUBMISSIONS")
       rs?.getLong(0) ?: 0L
-    }
-  }
-
-  private suspend fun updateProperties(table: String, id: String, newObj: JsonObject,
-      connection: SQLConnection) {
-    val updateStatement = "UPDATE $table SET $DATA=$DATA || ?::jsonb WHERE $ID=?"
-    val updateParams = json {
-      array(
-          newObj.encode(),
-          id
-      )
-    }
-    connection.updateWithParamsAwait(updateStatement, updateParams)
-  }
-
-  private suspend fun updateProperties(table: String, id: String, newObj: JsonObject) {
-    withConnection { connection ->
-      updateProperties(table, id, newObj, connection)
-    }
-  }
-
-  private suspend fun updateColumn(table: String, id: String, column: String,
-      newValue: Any?, jsonb: Boolean, connection: SQLConnection) {
-    val jsonbStr = if (jsonb) "::jsonb" else ""
-    val updateStatement = "UPDATE $table SET $column=?$jsonbStr WHERE $ID=?"
-    val updateParams = json {
-      array(
-          newValue,
-          id
-      )
-    }
-    connection.updateWithParamsAwait(updateStatement, updateParams)
-  }
-
-  private suspend fun updateColumn(table: String, id: String, column: String,
-      newValue: Any?, jsonb: Boolean) {
-    withConnection { connection ->
-      updateColumn(table, id, column, newValue, jsonb, connection)
-    }
-  }
-
-  private suspend fun updateColumn(table: String, id: String, column: String,
-      currentValue: Any?, newValue: Any?, jsonb: Boolean, connection: SQLConnection) {
-    val jsonbStr = if (jsonb) "::jsonb" else ""
-    val updateStatement = "UPDATE $table SET $column=?$jsonbStr WHERE $ID=? " +
-        "AND $column=?$jsonbStr"
-    val updateParams = json {
-      array(
-          newValue,
-          id,
-          currentValue
-      )
-    }
-    connection.updateWithParamsAwait(updateStatement, updateParams)
-  }
-
-  private suspend fun updateColumn(table: String, id: String, column: String,
-      currentValue: Any?, newValue: Any?, jsonb: Boolean) {
-    withConnection { connection ->
-      updateColumn(table, id, column, currentValue, newValue, jsonb, connection)
     }
   }
 
