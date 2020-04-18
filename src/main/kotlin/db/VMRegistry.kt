@@ -6,12 +6,7 @@ import model.cloud.VM
  * A registry for Cloud VMs created by Steep
  * @author Michel Kraemer
  */
-interface VMRegistry {
-  /**
-   * Close the registry and release all resources
-   */
-  suspend fun close()
-
+interface VMRegistry : Registry {
   /**
    * Add a [vm] to the registry
    */
@@ -59,12 +54,9 @@ interface VMRegistry {
 
   /**
    * Atomically set the status of the VM with the given [id] to [newStatus] if
-   * and only if its current status is [currentStatus]. Returns `true` if the
-   * status was [currentStatus] and is now [newStatus] or `false` if the status
-   * was not [currentStatus].
+   * and only if its current status is [currentStatus].
    */
-  suspend fun setVMStatus(id: String, currentStatus: VM.Status,
-      newStatus: VM.Status): Boolean
+  suspend fun setVMStatus(id: String, currentStatus: VM.Status, newStatus: VM.Status)
 
   /**
    * Set the status of the VM with the given [id] to [newStatus] regardless of

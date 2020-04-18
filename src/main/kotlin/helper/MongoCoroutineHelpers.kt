@@ -133,9 +133,13 @@ suspend fun <T> MongoCollection<T>.findAwait(filter: JsonObject, limit: Int = -1
 }
 
 suspend fun <T> MongoCollection<T>.findOneAwait(filter: JsonObject,
-    projection: JsonObject): T? {
+    projection: JsonObject? = null): T? {
   return wrapCoroutine {
-    find(wrap(filter)).projection(wrap(projection)).first()
+    var f = find(wrap(filter))
+    if (projection != null) {
+      f = f.projection(wrap(projection))
+    }
+    f.first()
   }
 }
 

@@ -1,15 +1,12 @@
 package db
 
 import com.fasterxml.jackson.module.kotlin.readValue
-import com.mongodb.ConnectionString
 import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.IndexModel
 import com.mongodb.client.model.IndexOptions
 import com.mongodb.client.model.Indexes
 import com.mongodb.client.model.InsertOneModel
-import com.mongodb.reactivestreams.client.MongoClient
 import com.mongodb.reactivestreams.client.MongoCollection
-import com.mongodb.reactivestreams.client.MongoDatabase
 import com.mongodb.reactivestreams.client.gridfs.GridFSBucket
 import com.mongodb.reactivestreams.client.gridfs.GridFSBuckets
 import db.SubmissionRegistry.ProcessChainStatus
@@ -50,22 +47,20 @@ import io.vertx.ext.mongo.impl.JsonObjectBsonAdapter as wrap
  * @author Michel Kraemer
  */
 class MongoDBSubmissionRegistry(private val vertx: Vertx,
-    connectionString: String, createIndexes: Boolean = true) : SubmissionRegistry {
+    connectionString: String, createIndexes: Boolean = true) :
+    MongoDBRegistry(connectionString), SubmissionRegistry {
   companion object {
     private val log = LoggerFactory.getLogger(MongoDBSubmissionRegistry::class.java)
 
     /**
      * Collection and property names
      */
-    private const val COLL_SEQUENCE = "sequence"
     private const val COLL_SUBMISSIONS = "submissions"
     private const val COLL_PROCESS_CHAINS = "processChains"
     private const val BUCKET_PROCESS_CHAINS = "processChains"
     private const val BUCKET_PROCESS_CHAIN_RESULTS = "processChainResults"
     private const val BUCKET_EXECUTION_STATES = "executionStates"
     private const val BUCKET_SUBMISSION_RESULTS = "submissionResults"
-    private const val INTERNAL_ID = "_id"
-    private const val ID = "id"
     private const val SUBMISSION_ID = "submissionId"
     private const val START_TIME = "startTime"
     private const val END_TIME = "endTime"
@@ -73,7 +68,6 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     private const val REQUIRED_CAPABILITIES = "requiredCapabilities"
     private const val ERROR_MESSAGE = "errorMessage"
     private const val SEQUENCE = "sequence"
-    private const val VALUE = "value"
 
     /**
      * Fields to exclude when querying the `submissions` collection
@@ -103,9 +97,6 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         PROCESS_CHAIN_EXCLUDES.copy().also { it.remove(SUBMISSION_ID) }
   }
 
-  private val client: MongoClient
-  private val db: MongoDatabase
-  private val collSequence: MongoCollection<JsonObject>
   private val collSubmissions: MongoCollection<JsonObject>
   private val collProcessChains: MongoCollection<JsonObject>
   private val bucketProcessChains: GridFSBucket
@@ -114,11 +105,6 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   private val bucketSubmissionResults: GridFSBucket
 
   init {
-    val cs = ConnectionString(connectionString)
-    client = SharedMongoClient.create(cs)
-    db = client.getDatabase(cs.database)
-
-    collSequence = db.getCollection(COLL_SEQUENCE, JsonObject::class.java)
     collSubmissions = db.getCollection(COLL_SUBMISSIONS, JsonObject::class.java)
     collProcessChains = db.getCollection(COLL_PROCESS_CHAINS, JsonObject::class.java)
 
@@ -150,28 +136,6 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         }
       })
     }
-  }
-
-  override suspend fun close() {
-    client.close()
-  }
-
-  /**
-   * Get a next [n] sequential numbers for a given [collection]
-   */
-  private suspend fun getNextSequence(collection: String, n: Int = 1): Long {
-    val doc = collSequence.findOneAndUpdateAwait(json {
-      obj(
-          INTERNAL_ID to collection
-      )
-    }, json {
-      obj(
-          "\$inc" to obj(
-              VALUE to n.toLong()
-          )
-      )
-    }, FindOneAndUpdateOptions().upsert(true))
-    return doc?.getLong(VALUE, 0L) ?: 0L
   }
 
   override suspend fun addSubmission(submission: Submission) {
@@ -226,57 +190,6 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   override suspend fun countSubmissions() =
       collSubmissions.countDocumentsAwait(JsonObject())
-
-  /**
-   * Set a [field] of a document with a given [id] in the given [collection] to
-   * a specified [value]
-   */
-  private suspend fun updateField(collection: MongoCollection<JsonObject>,
-      id: String, field: String, value: Any?) {
-    collection.updateOneAwait(json {
-      obj(
-          INTERNAL_ID to id
-      )
-    }, json {
-      obj(
-          if (value != null) {
-            "\$set" to obj(
-                field to value
-            )
-          } else {
-            "\$unset" to obj(
-                field to ""
-            )
-          }
-      )
-    })
-  }
-
-  /**
-   * Set a [field] of a document with a given [id] and an [expectedValue]
-   * in the given [collection] to a specified [newValue]
-   */
-  private suspend fun updateField(collection: MongoCollection<JsonObject>,
-      id: String, field: String, expectedValue: Any?, newValue: Any?) {
-    collection.updateOneAwait(json {
-      obj(
-          INTERNAL_ID to id,
-          field to expectedValue
-      )
-    }, json {
-      obj(
-          if (newValue != null) {
-            "\$set" to obj(
-                field to newValue
-            )
-          } else {
-            "\$unset" to obj(
-                field to ""
-            )
-          }
-      )
-    })
-  }
 
   /**
    * Get the value of a [field] of a document with the given [id] and [type]

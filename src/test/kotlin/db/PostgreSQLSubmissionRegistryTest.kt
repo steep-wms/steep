@@ -48,7 +48,7 @@ class PostgreSQLSubmissionRegistryTest : SubmissionRegistryTest() {
    * Clear database after each test
    */
   @AfterEach
-  override fun tearDown(vertx: Vertx, ctx: VertxTestContext) {
+  fun tearDown(vertx: Vertx, ctx: VertxTestContext) {
     val jdbcConfig = json {
       obj(
           "provider_class" to HikariCPDataSourceProvider::class.java.name,
@@ -63,7 +63,7 @@ class PostgreSQLSubmissionRegistryTest : SubmissionRegistryTest() {
       client.updateAwait("DELETE FROM submissions")
       client.updateAwait("DELETE FROM processchains")
       client.closeAwait()
-      super.tearDown(vertx, ctx)
+      ctx.completeNow()
     }
   }
 }

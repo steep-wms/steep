@@ -237,20 +237,18 @@ abstract class VMRegistryTest {
         assertThat(r12!!.status).isEqualTo(VM.Status.PROVISIONING)
       }
 
-      val b1 = vmRegistry.setVMStatus(vm1.id, VM.Status.CREATING, VM.Status.PROVISIONING)
+      vmRegistry.setVMStatus(vm1.id, VM.Status.CREATING, VM.Status.PROVISIONING)
       val r21 = vmRegistry.findVMById(vm1.id)
       val r22 = vmRegistry.findVMById(vm2.id)
       ctx.verify {
-        assertThat(b1).isEqualTo(true)
         assertThat(r21!!.status).isEqualTo(VM.Status.PROVISIONING)
         assertThat(r22!!.status).isEqualTo(VM.Status.PROVISIONING)
       }
 
-      val b2 = vmRegistry.setVMStatus(vm1.id, VM.Status.CREATING, VM.Status.ERROR)
+      vmRegistry.setVMStatus(vm1.id, VM.Status.CREATING, VM.Status.ERROR)
       val r31 = vmRegistry.findVMById(vm1.id)
       val r32 = vmRegistry.findVMById(vm2.id)
       ctx.verify {
-        assertThat(b2).isEqualTo(false)
         assertThat(r31!!.status).isEqualTo(VM.Status.PROVISIONING)
         assertThat(r32!!.status).isEqualTo(VM.Status.PROVISIONING)
       }

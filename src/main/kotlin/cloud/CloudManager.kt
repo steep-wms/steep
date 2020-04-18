@@ -243,12 +243,11 @@ class CloudManager : CoroutineVerticle() {
     val vmsToRemove = vmRegistry.findVMsByStatus(VM.Status.LEFT)
     for (vm in vmsToRemove) {
       log.info("Destroying VM of left agent `${vm.id}' ...")
-      if (vmRegistry.setVMStatus(vm.id, VM.Status.LEFT, VM.Status.DESTROYING)) {
-        if (vm.externalId != null) {
-          cloudClient.destroyVM(vm.externalId)
-        }
-        vmRegistry.setVMStatus(vm.id, VM.Status.DESTROYING, VM.Status.DESTROYED)
+      vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYING)
+      if (vm.externalId != null) {
+        cloudClient.destroyVM(vm.externalId)
       }
+      vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYED)
     }
 
     // destroy orphaned VMs:

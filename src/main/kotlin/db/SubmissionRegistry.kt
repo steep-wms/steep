@@ -9,7 +9,7 @@ import java.time.Instant
  * A registry for submissions and process chains
  * @author Michel Kraemer
  */
-interface SubmissionRegistry {
+interface SubmissionRegistry : Registry {
   /**
    * The status of a process chain
    */
@@ -39,11 +39,6 @@ interface SubmissionRegistry {
      */
     ERROR
   }
-
-  /**
-   * Close the registry and release all resources
-   */
-  suspend fun close()
 
   /**
    * Add a submission to the registry

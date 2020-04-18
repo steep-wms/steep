@@ -46,7 +46,7 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun setVMStatus(id: String, currentStatus: VM.Status,
-      newStatus: VM.Status): Boolean {
+      newStatus: VM.Status) {
     TODO("Not yet implemented")
   }
 

@@ -114,19 +114,15 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
   }
 
   override suspend fun setVMStatus(id: String, currentStatus: VM.Status,
-      newStatus: VM.Status): Boolean {
+      newStatus: VM.Status) {
     val sharedData = vertx.sharedData()
     val lock = sharedData.getLockAwait(LOCK_VMS)
     try {
-      val entry = findVMEntryById(id) ?: return false
-      if (entry.vm.status != currentStatus) {
-        return false
+      val entry = findVMEntryById(id) ?: return
+      if (entry.vm.status == currentStatus) {
+        val newEntry = entry.copy(vm = entry.vm.copy(status = newStatus))
+        vms.await().putAwait(entry.vm.id, JsonUtils.mapper.writeValueAsString(newEntry))
       }
-
-      val newEntry = entry.copy(vm = entry.vm.copy(status = newStatus))
-      vms.await().putAwait(entry.vm.id, JsonUtils.mapper.writeValueAsString(newEntry))
-
-      return true
     } finally {
       lock.release()
     }

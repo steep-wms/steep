@@ -37,7 +37,7 @@ abstract class SubmissionRegistryTest {
   }
 
   @AfterEach
-  open fun tearDown(vertx: Vertx, ctx: VertxTestContext) {
+  fun tearDownSubmissionRegistry(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
       submissionRegistry.close()
       ctx.completeNow()
