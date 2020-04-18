@@ -1,9 +1,22 @@
 @import "../css/variables";
 
+@keyframes list-item-just-added {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 .list-item {
   display: flex;
   justify-content: space-between;
   padding: $spacer * 2 0;
+
+  &.just-added {
+    animation: list-item-just-added 1s;
+  }
 
   &:not(:first-of-type) {
     border-top: 1px solid $gray-300;
@@ -26,7 +39,7 @@
     line-height: 1.4rem;
 
     .feather {
-      height: 3.5rem;
+      height: 3rem;
       width: auto;
       stroke: #1a6;
       margin-right: $spacer / 2;

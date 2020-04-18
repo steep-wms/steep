@@ -12,7 +12,9 @@
   "dependencies": {
     "@zeit/next-sass": "^1.0.1",
     "classnames": "^2.2.6",
+    "date-fns": "^2.12.0",
     "imagemin-svgo": "^7.1.0",
+    "moment": "^2.24.0",
     "next": "^9.3.5",
     "next-compose-plugins": "^2.2.0",
     "next-optimized-images": "^2.5.8",
@@ -22,8 +24,10 @@
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "react-feather": "^2.0.4",
+    "react-timeago": "^4.4.0",
     "serve": "^11.3.0",
     "swr": "^0.2.0",
-    "unfetch": "^4.1.0"
+    "unfetch": "^4.1.0",
+    "vertx3-eventbus-client": "^3.9.0"
   }
 }

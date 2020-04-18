@@ -5,6 +5,7 @@ const withPlugins = require("next-compose-plugins")
 
 const config = {
   env: {
+    baseUrl: "http://localhost:8080",
     buildYear: new Date().getFullYear()
   },
 

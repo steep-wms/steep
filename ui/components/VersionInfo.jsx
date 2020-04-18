@@ -1,11 +1,9 @@
-import fetch from "unfetch"
+import fetcher from "./lib/json-fetcher"
 import useSWR from "swr"
 import "./VersionInfo.scss"
 
-const fetcher = url => fetch(url).then(r => r.json())
-
 export default (props) => {
-  const { data: versionInfo } = useSWR("http://localhost:8080", fetcher)
+  const { data: versionInfo } = useSWR(process.env.baseUrl, fetcher)
 
   if (versionInfo) {
     let options = {
