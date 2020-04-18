@@ -109,6 +109,46 @@ object ConfigConstants {
   const val HTTP_BASE_PATH = "steep.http.basePath"
 
   /**
+   * `true` if Cross-Origin Resource Sharing (CORS) should be enabled
+   */
+  const val HTTP_CORS_ENABLE = "steep.http.cors.enable"
+
+  /**
+   * A regular expression specifying allowed CORS origins. Use *​ to allow all origins.
+   */
+  const val HTTP_CORS_ALLOW_ORIGIN = "steep.http.cors.allowOrigin"
+
+  /**
+   * `true` if the Access-​Control-​Allow-​Credentials` response header should
+   * be returned.
+   */
+  const val HTTP_CORS_ALLOW_CREDENTIALS = "steep.http.cors.allowCredentials"
+
+  /**
+   * A string or an array indicating which header field names can be used
+   * in a request.
+   */
+  const val HTTP_CORS_ALLOW_HEADERS = "steep.http.cors.allowHeaders"
+
+  /**
+   * A string or an array indicating which HTTP methods can be used in a
+   * request.
+   */
+  const val HTTP_CORS_ALLOW_METHODS = "steep.http.cors.allowMethods"
+
+  /**
+   * A string or an array indicating which headers are safe to expose to the
+   * API of a CORS API specification.
+   */
+  const val HTTP_CORS_EXPOSE_HEADERS = "steep.http.cors.exposeHeaders"
+
+  /**
+   * The number of seconds the results of a preflight request can be cached in
+   * a preflight result cache.
+   */
+  const val HTTP_CORS_MAX_AGE = "steep.http.cors.maxAge"
+
+  /**
    * `true` if the controller should be enabled. Set this value to `false` if
    * your Steep instance does not have access to the shared database.
    */

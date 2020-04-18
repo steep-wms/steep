@@ -47,6 +47,7 @@ import io.vertx.ext.bridge.PermittedOptions
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.BodyHandler
+import io.vertx.ext.web.handler.CorsHandler
 import io.vertx.ext.web.handler.ResponseContentTypeHandler
 import io.vertx.ext.web.handler.StaticHandler
 import io.vertx.ext.web.handler.sockjs.BridgeOptions
@@ -145,7 +146,13 @@ class HttpEndpoint : CoroutineVerticle() {
         .setHandleFileUploads(false)
         .setBodyLimit(config.getLong(ConfigConstants.HTTP_POST_MAX_SIZE, 1024 * 1024))
 
+    val corsEnable = config.getBoolean(ConfigConstants.HTTP_CORS_ENABLE, false)
+    if (corsEnable) {
+      router.route().handler(createCorsHandler())
+    }
+
     router.route("/*").handler(ResponseContentTypeHandler.create())
+
     router.get("/")
         .produces("application/json")
         .produces("text/html")
@@ -286,6 +293,72 @@ class HttpEndpoint : CoroutineVerticle() {
 
   override suspend fun stop() {
     submissionRegistry.close()
+  }
+
+  /**
+   * Create and configure a [CorsHandler]
+   */
+  private fun createCorsHandler(): CorsHandler {
+    val allowedOrigin: String = config.getString(
+        ConfigConstants.HTTP_CORS_ALLOW_ORIGIN, "$.") // match nothing by default
+    val corsHandler = CorsHandler.create(allowedOrigin)
+
+    // configure whether Access-Control-Allow-Credentials should be returned
+    if (config.getBoolean(ConfigConstants.HTTP_CORS_ALLOW_CREDENTIALS, false)) {
+      corsHandler.allowCredentials(true)
+    }
+
+    // configured allowed headers
+    val allowHeaders = config.getValue(ConfigConstants.HTTP_CORS_ALLOW_HEADERS)
+    when {
+      allowHeaders is String -> {
+        corsHandler.allowedHeader(allowHeaders)
+      }
+      allowHeaders is JsonArray -> {
+        corsHandler.allowedHeaders(allowHeaders.map { it as String }.toSet())
+      }
+      allowHeaders != null -> {
+        throw IllegalArgumentException(ConfigConstants.HTTP_CORS_ALLOW_HEADERS +
+            " must either be a string or an array.")
+      }
+    }
+
+    // configured allowed methods
+    val allowMethods = config.getValue(ConfigConstants.HTTP_CORS_ALLOW_METHODS)
+    when {
+      allowMethods is String -> {
+        corsHandler.allowedMethod(HttpMethod.valueOf(allowMethods))
+      }
+      allowMethods is JsonArray -> {
+        corsHandler.allowedMethods(allowMethods.map { it as String}
+            .map(HttpMethod::valueOf).toSet())
+      }
+      allowMethods != null -> {
+        throw IllegalArgumentException(ConfigConstants.HTTP_CORS_ALLOW_METHODS +
+            " must either be a string or an array.")
+      }
+    }
+
+    // configured exposed headers
+    val exposeHeaders = config.getValue(ConfigConstants.HTTP_CORS_EXPOSE_HEADERS)
+    when {
+      exposeHeaders is String -> {
+        corsHandler.exposedHeader(exposeHeaders)
+      }
+      exposeHeaders is JsonArray -> {
+        corsHandler.exposedHeaders(exposeHeaders.map { it as String }.toSet())
+      }
+      exposeHeaders != null -> {
+        throw IllegalArgumentException(ConfigConstants.HTTP_CORS_EXPOSE_HEADERS +
+            " must either be a string or an array.")
+      }
+    }
+
+    // configure max age in seconds
+    val maxAge = config.getInteger(ConfigConstants.HTTP_CORS_MAX_AGE, -1)
+    corsHandler.maxAgeSeconds(maxAge)
+
+    return corsHandler
   }
 
   /**
