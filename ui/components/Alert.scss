@@ -1,0 +1,20 @@
+@import "../css/variables";
+
+.alert {
+  background-color: $gray-100;
+  padding: $spacer;
+  margin: $spacer * 1.5 0;
+  border-left: 9px solid transparent;
+
+  &.info {
+    border-color: $primary;
+  }
+
+  &.warning {
+    border-color: #ffa46c;
+  }
+
+  &.error {
+    border-color: #ff546c;
+  }
+}

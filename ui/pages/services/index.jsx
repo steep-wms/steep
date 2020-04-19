@@ -1,4 +1,5 @@
 import Page from "../../components/layouts/Page"
+import Alert from "../../components/Alert"
 import ListItem from "../../components/ListItem"
 import useSWR from "swr"
 import fetcher from "../../components/lib/json-fetcher"
@@ -7,16 +8,13 @@ export default () => {
   const { data: services, error: servicesError } =
       useSWR(process.env.baseUrl + "/services", fetcher)
 
-  let serviceLoading
   let serviceError
   let serviceElements = []
 
   if (typeof servicesError !== "undefined") {
-    serviceError = "Could not load services"
+    serviceError = <Alert error>Could not load services</Alert>
     console.error(servicesError)
-  } else if (typeof services === "undefined") {
-    serviceLoading = "Loading ..."
-  } else {
+  } else if (typeof services !== "undefined") {
     for (let service of services) {
       let linkHref = "/services/[id]"
       let linkAs = `/services/${service.id}`
@@ -36,7 +34,6 @@ export default () => {
     <Page>
       <h1>Services</h1>
       {serviceElements}
-      {serviceLoading}
       {serviceError}
     </Page>
   )

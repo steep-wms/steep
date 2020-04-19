@@ -1,6 +1,7 @@
 import EventBusContext from "../components/lib/EventBusContext"
 import EventBus from "vertx3-eventbus-client"
 import Page from "../components/layouts/Page"
+import Alert from "../components/Alert"
 import ListItem from "../components/ListItem"
 import { useContext, useEffect, useReducer } from "react"
 import useSWR from "swr"
@@ -87,16 +88,13 @@ export default () => {
     }
   }, [eventBus])
 
-  let workflowLoading
   let workflowError
   let workflowElements = []
 
   if (typeof fetchedWorkflowsError !== "undefined") {
-    workflowError = "Could not load workflows"
+    workflowError = <Alert error>Could not load workflows</Alert>
     console.error(fetchedWorkflowsError)
-  } else if (typeof fetchedWorkflows === "undefined") {
-    workflowLoading = "Loading ..."
-  } else {
+  } else if (typeof fetchedWorkflows !== "undefined") {
     for (let workflow of fetchedWorkflows) {
       if (workflows.findIndex(w => w.id === workflow.id) < 0) {
         initWorkflow(workflow)
@@ -125,7 +123,6 @@ export default () => {
     <Page>
       <h1>Workflows</h1>
       {workflowElements}
-      {workflowLoading}
       {workflowError}
     </Page>
   )
