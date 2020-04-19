@@ -107,9 +107,10 @@ export default (props) => {
         Finished <TimeAgo date={workflow.endTime} formatter={formatterToNow} title={timeAgoTitle} /> and
         took <span title={durationTitle}>{duration}</span>
       </>)
+      let href = `/workflows/${workflow.id}`
       workflowElements.push(
         <ListItem key={workflow.id} justAdded={workflow.justAdded}
-          title={workflow.id} subtitle={subtitle} />
+          href={href} title={workflow.id} subtitle={subtitle} />
       )
     }
   }
