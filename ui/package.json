@@ -10,11 +10,12 @@
   "author": "Michel Kraemer",
   "license": "Apache-2.0",
   "dependencies": {
+    "@next/bundle-analyzer": "^9.3.5",
     "@zeit/next-sass": "^1.0.1",
     "classnames": "^2.2.6",
     "date-fns": "^2.12.0",
+    "dayjs": "^1.8.24",
     "imagemin-svgo": "^7.1.0",
-    "moment": "^2.24.0",
     "next": "^9.3.5",
     "next-compose-plugins": "^2.2.0",
     "next-optimized-images": "^2.5.8",

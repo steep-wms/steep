@@ -1,3 +1,6 @@
+const bundleAnalyzer = require("@next/bundle-analyzer")({
+  enabled: process.env.ANALYZE === "true"
+})
 const optimizedImages = require("next-optimized-images");
 const sass = require("@zeit/next-sass")
 
@@ -24,4 +27,5 @@ const config = {
 module.exports = withPlugins([
   [optimizedImages],
   [sass],
+  [bundleAnalyzer]
 ], config)

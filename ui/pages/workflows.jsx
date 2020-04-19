@@ -6,7 +6,12 @@ import useSWR from "swr"
 import fetcher from "../components/lib/json-fetcher"
 import TimeAgo from "react-timeago"
 import { formatDistanceToNow } from "date-fns"
-import moment from "moment"
+
+import dayjs from "dayjs"
+import Duration from "dayjs/plugin/duration"
+import RelativeTime from "dayjs/plugin/relativeTime"
+dayjs.extend(Duration)
+dayjs.extend(RelativeTime)
 
 const ADDRESS_SUBMISSION_ADDED = "steep.submissionRegistry.submissionAdded"
 
@@ -53,8 +58,8 @@ export default (props) => {
   }
 
   function workflowDuration(w) {
-    let diff = moment(w.endTime).diff(moment(w.startTime))
-    let duration = Math.ceil(moment.duration(diff).asSeconds())
+    let diff = dayjs(w.endTime).diff(dayjs(w.startTime))
+    let duration = Math.ceil(dayjs.duration(diff).asSeconds())
     let seconds = Math.floor(duration % 60)
     let minutes = Math.floor(duration / 60 % 60)
     let hours = Math.floor(duration / 60 / 60)
@@ -99,9 +104,9 @@ export default (props) => {
     }
 
     for (let workflow of workflows) {
-      let diff = moment(workflow.endTime).diff(moment(workflow.startTime))
-      let duration = moment.duration(diff).humanize()
-      let timeAgoTitle = moment(workflow.endTime).format("dddd, D MMMM YYYY, h:mm:ss a")
+      let diff = dayjs(workflow.endTime).diff(dayjs(workflow.startTime))
+      let duration = dayjs.duration(diff).humanize()
+      let timeAgoTitle = dayjs(workflow.endTime).format("dddd, D MMMM YYYY, h:mm:ss a")
       let durationTitle = workflowDuration(workflow)
       let subtitle = (<>
         Finished <TimeAgo date={workflow.endTime} formatter={formatterToNow} title={timeAgoTitle} /> and
