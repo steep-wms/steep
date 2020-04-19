@@ -8,8 +8,7 @@ const withPlugins = require("next-compose-plugins")
 
 const config = {
   env: {
-    baseUrl: "http://localhost:8080",
-    buildYear: new Date().getFullYear()
+    baseUrl: "http://localhost:8080"
   },
 
   // create a folder for each page
@@ -19,6 +18,7 @@ const config = {
   exportPathMap() {
     return {
       "/": { page: "/" },
+      "/services": { page: "/services" },
       "/workflows": { page: "/workflows" }
     };
   }

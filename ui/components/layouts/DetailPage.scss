@@ -1,0 +1,18 @@
+@import "../../css/variables";
+
+.detail-page-title {
+  margin-bottom: 0;
+}
+
+.detail-page-subtitle {
+  margin: 0;
+  font-size: 1.2rem;
+  color: $gray-600;
+}
+
+.detail-page-divider {
+  border: none;
+  border-top: 1px solid $gray-300;
+  height: 0;
+  margin: $spacer 0;
+}

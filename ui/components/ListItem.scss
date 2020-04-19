@@ -28,10 +28,16 @@
 
   .list-item-title {
     font-weight: 400;
+    display: flex;
+    align-items: center;
 
     a {
       text-decoration: none;
     }
+  }
+
+  .list-item-title > .label {
+    margin-left: .5rem;
   }
 
   .list-item-subtitle {

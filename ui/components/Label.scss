@@ -1,0 +1,17 @@
+@import "../css/variables";
+
+.label {
+  font-size: .75rem;
+  margin-top: .15rem;
+  background-color: $gray-200;
+  padding: .15rem .5rem .25rem .5rem;
+  border-radius: $border-radius / 2;
+
+  &.label-small {
+    font-size: .6rem;
+  }
+
+  & + & {
+    margin-left: $spacer / 4;
+  }
+}

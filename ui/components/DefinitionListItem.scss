@@ -1,0 +1,13 @@
+@import "../css/variables";
+
+.definition-list-title {
+  font-weight: 400;
+
+  &:not(:first-of-type) {
+    padding-top: $spacer;
+  }
+}
+
+.definition-list-content {
+  margin: 0;
+}

@@ -1,11 +1,22 @@
 import fetcher from "./lib/json-fetcher"
 import useSWR from "swr"
 import "./VersionInfo.scss"
+import DefinitionList from "./DefinitionList"
+import DefinitionListItem from "./DefinitionListItem"
 
 export default (props) => {
-  const { data: versionInfo } = useSWR(process.env.baseUrl, fetcher)
+  const { data: versionInfo, error: versionInfoError } = useSWR(process.env.baseUrl, fetcher)
 
-  if (versionInfo) {
+  if (typeof versionInfoError !== "undefined") {
+    console.error(versionInfoError)
+    return (
+      <>Could not load version information</>
+    )
+  } else if (typeof versionInfo === "undefined") {
+    return (
+      <>Loading...</>
+    )
+  } else {
     let options = {
       day: "numeric",
       month: "long",
@@ -19,22 +30,12 @@ export default (props) => {
     let timestamp = new Intl.DateTimeFormat("en-GB", options)
       .format(new Date(versionInfo.timestamp))
     return (
-      <div className="version-info">
-        <dl>
-          <dt>Version:</dt>
-          <dd>{versionInfo.version}</dd>
-          <dt>Build:</dt>
-          <dd>{versionInfo.build}</dd>
-          <dt>Commit:</dt>
-          <dd>{versionInfo.commit}</dd>
-          <dt>Timestamp:</dt>
-          <dd>{timestamp}</dd>
-        </dl>
-      </div>
-    )
-  } else {
-    return (
-      <>Loading...</>
+      <DefinitionList>
+        <DefinitionListItem title="Version">{versionInfo.version}</DefinitionListItem>
+        <DefinitionListItem title="Build">{versionInfo.build}</DefinitionListItem>
+        <DefinitionListItem title="Commit">{versionInfo.commit}</DefinitionListItem>
+        <DefinitionListItem title="Timestamp">{timestamp}</DefinitionListItem>
+      </DefinitionList>
     )
   }
 }

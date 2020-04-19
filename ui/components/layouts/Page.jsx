@@ -3,13 +3,13 @@ import Footer from "../Footer"
 import Sidebar from "../Sidebar"
 import "./Page.scss"
 
-export default (props) => (
+export default ({ title, children }) => (
   <div className="page">
-    <Header title={props.title}/>
+    <Header title={title}/>
     <Sidebar />
     <main>
       <div className="container">
-        {props.children}
+        {children}
       </div>
       <Footer />
     </main>

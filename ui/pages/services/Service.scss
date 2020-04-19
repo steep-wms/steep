@@ -1,0 +1,77 @@
+@import "../../css/variables";
+
+.service-details {
+  dl {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .service-details-left {
+    width: 40%;
+  }
+
+  .service-details-right {
+    flex: 1;
+  }
+
+  .service-details-left {
+    margin-bottom: $spacer;
+  }
+
+  @media (max-width: $md) {
+    dl {
+      flex-direction: column;
+    }
+
+    .service-details-left {
+      width: 100%;
+    }
+
+    .service-details-right {
+      width: 100%;
+      margin-top: $spacer;
+    }
+  }
+}
+
+.service-parameter {
+  display: flex;
+  border-top: 1px solid $gray-300;
+  padding: $spacer * 2 0;
+
+  h4, h5 {
+    font-size: 1rem;
+    margin: 0;
+  }
+
+  .service-parameter-left {
+    width: 30%;
+    border-right: 1px solid $gray-300;
+    padding-right: $spacer;
+    margin-right: $spacer;
+  }
+
+  .service-parameter-right {
+    flex: 1;
+  }
+
+  .service-parameter-right {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-column-gap: $spacer * 2;
+  }
+
+  @media (max-width: $md) {
+    flex-direction: column;
+
+    .service-parameter-left {
+      width: 100%;
+      border: none;
+    }
+
+    .service-parameter-right {
+      width: 100%;
+      margin-top: $spacer;
+    }
+  }
+}

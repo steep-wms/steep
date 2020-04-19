@@ -1,4 +1,5 @@
 import EventBusContext from "../components/lib/EventBusContext"
+import EventBus from "vertx3-eventbus-client"
 import Page from "../components/layouts/Page"
 import ListItem from "../components/ListItem"
 import { useContext, useEffect, useReducer } from "react"
@@ -29,7 +30,7 @@ function addWorkflowReducer(state, { type = "unshift", workflow }) {
   }
 }
 
-export default (props) => {
+export default () => {
   const [workflows, addWorkflow] = useReducer(addWorkflowReducer, []);
   const eventBus = useContext(EventBusContext)
   const { data: fetchedWorkflows, error: fetchedWorkflowsError } =
@@ -80,7 +81,7 @@ export default (props) => {
     }
 
     return () => {
-      if (eventBus) {
+      if (eventBus && eventBus.state === EventBus.OPEN) {
         eventBus.unregisterHandler(ADDRESS_SUBMISSION_ADDED, onSubmissionAdded)
       }
     }
@@ -115,7 +116,7 @@ export default (props) => {
       let href = `/workflows/${workflow.id}`
       workflowElements.push(
         <ListItem key={workflow.id} justAdded={workflow.justAdded}
-          href={href} title={workflow.id} subtitle={subtitle} />
+          linkHref={href} title={workflow.id} subtitle={subtitle} progress={{}} />
       )
     }
   }
