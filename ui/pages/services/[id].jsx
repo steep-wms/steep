@@ -54,7 +54,7 @@ export default () => {
       {data.runtime_args && data.runtime_args.length > 0 && (<>
         <h3>Runtime arguments</h3>
         {data.runtime_args.map(r => (
-          <div className="service-parameter">
+          <div className="service-parameter" key={r.id}>
             <div className="service-parameter-left">
               <h4>{r.name}</h4>
               {r.description}
@@ -62,7 +62,7 @@ export default () => {
             <div className="service-parameter-right">
               <h5>ID:</h5>
               {r.id}
-              
+
               <h5>Data type:</h5>
               {r.data_type}
 
@@ -87,7 +87,7 @@ export default () => {
             <div className="service-parameter-right">
               <h5>ID:</h5>
               {p.id}
-              
+
               <h5>Type:</h5>
               {p.type}
 

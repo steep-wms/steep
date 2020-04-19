@@ -21,6 +21,21 @@ const config = {
       "/services": { page: "/services" },
       "/workflows": { page: "/workflows" }
     };
+  },
+
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.module.rules.push({
+        test: /\.jsx?$/,
+        loader: "eslint-loader",
+        exclude: [/node_modules/, /\.next/, /out/],
+        enforce: "pre",
+        options: {
+          emitWarning: true
+        }
+      })
+    }
+    return config
   }
 }
 

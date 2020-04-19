@@ -1,7 +1,7 @@
 import Page from "../components/layouts/Page"
 import VersionInfo from "../components/VersionInfo"
 
-export default (props) => {
+export default () => {
   return (
     <Page>
       <h1>Overview</h1>

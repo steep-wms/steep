@@ -5,7 +5,7 @@ import DefinitionListItem from "./DefinitionListItem"
 import useSWR from "swr"
 import fetcher from "./lib/json-fetcher"
 
-export default (props) => {
+export default () => {
   const { data: versionInfo, error: versionInfoError } = useSWR(process.env.baseUrl, fetcher)
 
   if (typeof versionInfoError !== "undefined") {
@@ -27,7 +27,7 @@ export default (props) => {
       minute: "numeric",
       second: "numeric",
       timeZoneName: "short"
-    };
+    }
     let timestamp = new Intl.DateTimeFormat("en-GB", options)
       .format(new Date(versionInfo.timestamp))
     return (

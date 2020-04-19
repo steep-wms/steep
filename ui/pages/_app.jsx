@@ -14,9 +14,9 @@ export default ({ Component, pageProps }) => {
     }
 
     return () => {
-      eb.close();
+      eb.close()
     }
-  }, []);
+  }, [])
 
   return (
     <EventBusContext.Provider value={eventBus}>

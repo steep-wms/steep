@@ -25,7 +25,7 @@ export default () => {
       )
     }
 
-    if (services.length === 0) {
+    if (services.length === 0) {
       serviceError = "There are no configured services"
     }
   }

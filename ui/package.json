@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "next",
-    "build": "next build && next export"
+    "build": "npm run lint && next build && next export",
+    "lint": "eslint --ext js,jsx components pages"
   },
   "author": "Michel Kraemer",
   "license": "Apache-2.0",
@@ -15,6 +16,7 @@
     "classnames": "^2.2.6",
     "date-fns": "^2.12.0",
     "dayjs": "^1.8.24",
+    "eslint-loader": "^4.0.0",
     "imagemin-svgo": "^7.1.0",
     "next": "^9.3.5",
     "next-compose-plugins": "^2.2.0",
@@ -30,5 +32,10 @@
     "swr": "^0.2.0",
     "unfetch": "^4.1.0",
     "vertx3-eventbus-client": "^3.9.0"
+  },
+  "devDependencies": {
+    "eslint": "^6.8.0",
+    "eslint-plugin-react": "^7.19.0",
+    "eslint-plugin-react-hooks": "^3.0.0"
   }
 }

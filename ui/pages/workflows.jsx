@@ -32,7 +32,7 @@ function addWorkflowReducer(state, { type = "unshift", workflow }) {
 }
 
 export default () => {
-  const [workflows, addWorkflow] = useReducer(addWorkflowReducer, []);
+  const [workflows, addWorkflow] = useReducer(addWorkflowReducer, [])
   const eventBus = useContext(EventBusContext)
   const { data: fetchedWorkflows, error: fetchedWorkflowsError } =
       useSWR(process.env.baseUrl + "/workflows", fetcher)
@@ -41,18 +41,11 @@ export default () => {
     delete w.workflow
     w.runningProcessChains = w.runningProcessChains || 0
     w.succeededProcessChains = w.succeededProcessChains || 0
-    w.cancelledProcessChains = w.cancelledProcessChains || 0
+    w.cancelledProcessChains = w.cancelledProcessChains || 0
     w.failedProcessChains = w.failedProcessChains || 0
     w.totalProcessChains = w.totalProcessChains || 0
     w.startTime = w.startTime || null
     w.endTime = w.endTime || null
-  }
-
-  function onSubmissionAdded(error, message) {
-    let workflow = message.body
-    initWorkflow(workflow)
-    workflow.justAdded = true
-    addWorkflow({ workflow })
   }
 
   function formatterToNow(value, unit, suffix, epochSeconds) {
@@ -77,6 +70,13 @@ export default () => {
   }
 
   useEffect(() => {
+    function onSubmissionAdded(error, message) {
+      let workflow = message.body
+      initWorkflow(workflow)
+      workflow.justAdded = true
+      addWorkflow({ workflow })
+    }
+
     if (eventBus) {
       eventBus.registerHandler(ADDRESS_SUBMISSION_ADDED, onSubmissionAdded)
     }
