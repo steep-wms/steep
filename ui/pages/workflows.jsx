@@ -16,23 +16,32 @@ dayjs.extend(Duration)
 dayjs.extend(RelativeTime)
 
 const ADDRESS_SUBMISSION_ADDED = "steep.submissionRegistry.submissionAdded"
+const ADDRESS_SUBMISSION_STATUS_CHANGED = "steep.submissionRegistry.submissionStatusChanged"
 
-function addWorkflowReducer(state, { type = "unshift", workflow }) {
-  if (state.findIndex(w => w.id === workflow.id) >= 0) {
+function updateWorkflowsReducer(state, { action = "unshift", workflow }) {
+  let i = state.findIndex(w => w.id === workflow.id)
+  if (i >= 0 && action !== "update") {
     return state
   }
-  switch (type) {
+  switch (action) {
+    case "update": {
+      let newWorkflow = { ...state[i], ...workflow }
+      return [...state.slice(0, i), newWorkflow, ...state.slice(i + 1)]
+    }
+
     case "push":
       return [...state, workflow]
+
     case "unshift":
       return [workflow, ...state]
+
     default:
       return state
   }
 }
 
 export default () => {
-  const [workflows, addWorkflow] = useReducer(addWorkflowReducer, [])
+  const [workflows, updateWorkflows] = useReducer(updateWorkflowsReducer, [])
   const eventBus = useContext(EventBusContext)
   const { data: fetchedWorkflows, error: fetchedWorkflowsError } =
       useSWR(process.env.baseUrl + "/workflows", fetcher)
@@ -74,15 +83,26 @@ export default () => {
       let workflow = message.body
       initWorkflow(workflow)
       workflow.justAdded = true
-      addWorkflow({ workflow })
+      updateWorkflows({ action: "unshift", workflow })
+    }
+
+    function onSubmissionStatusChanged(error, message) {
+      updateWorkflows({
+        action: "update", workflow: {
+          id: message.body.submissionId,
+          status: message.body.status
+        }
+      })
     }
 
     if (eventBus) {
       eventBus.registerHandler(ADDRESS_SUBMISSION_ADDED, onSubmissionAdded)
+      eventBus.registerHandler(ADDRESS_SUBMISSION_STATUS_CHANGED, onSubmissionStatusChanged)
     }
 
     return () => {
       if (eventBus && eventBus.state === EventBus.OPEN) {
+        eventBus.unregisterHandler(ADDRESS_SUBMISSION_STATUS_CHANGED, onSubmissionStatusChanged)
         eventBus.unregisterHandler(ADDRESS_SUBMISSION_ADDED, onSubmissionAdded)
       }
     }
@@ -98,7 +118,7 @@ export default () => {
     for (let workflow of fetchedWorkflows) {
       if (workflows.findIndex(w => w.id === workflow.id) < 0) {
         initWorkflow(workflow)
-        addWorkflow({ type: "push", workflow })
+        updateWorkflows({ action: "push", workflow })
       }
     }
 
@@ -112,9 +132,13 @@ export default () => {
         took <span title={durationTitle}>{duration}</span>
       </>)
       let href = `/workflows/${workflow.id}`
+      let progress = {
+        status: workflow.status,
+        subtitle: <span>2 completed</span>
+      }
       workflowElements.push(
         <ListItem key={workflow.id} justAdded={workflow.justAdded}
-          linkHref={href} title={workflow.id} subtitle={subtitle} progress={{}} />
+          linkHref={href} title={workflow.id} subtitle={subtitle} progress={progress} />
       )
     }
   }

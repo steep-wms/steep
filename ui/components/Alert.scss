@@ -11,10 +11,10 @@
   }
 
   &.warning {
-    border-color: #ffa46c;
+    border-color: $warning;
   }
 
   &.error {
-    border-color: #ff546c;
+    border-color: $error;
   }
 }

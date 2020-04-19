@@ -1,18 +1,57 @@
 import classNames from "classnames"
 import "./ListItem.scss"
-import { CheckCircle } from "react-feather"
+import { AlertCircle, CheckCircle, Coffee, Delete, RotateCw, XCircle } from "react-feather"
 import Link from "next/link"
 import Label from "./Label"
 
 export default ({ title, linkHref, linkAs, subtitle, justAdded, labels = [], progress }) => {
   let progressBox
   if (typeof progress !== "undefined") {
+    let icon
+    let defaultTitle
+    switch (progress.status) {
+      case "ACCEPTED":
+        defaultTitle = "Accepted"
+        icon = <Coffee className="feather accepted" />
+        break
+
+      case "REGISTERED":
+        defaultTitle = "Registered"
+        icon = <Coffee className="feather accepted" />
+        break
+
+      case "RUNNING":
+        defaultTitle = "Running"
+        icon = <RotateCw className="feather running" />
+        break
+
+      case "CANCELLED":
+        defaultTitle = "Cancelled"
+        icon = <Delete className="feather cancelled" />
+        break
+
+      case "PARTIAL_SUCCESS":
+        defaultTitle = "Partial success"
+        icon = <AlertCircle className="feather partial-success" />
+        break
+
+      case "SUCCESS":
+        defaultTitle = "Success"
+        icon = <CheckCircle className="feather success" />
+        break
+
+      default:
+        defaultTitle = "Error"
+        icon = <XCircle className="feather error" />
+        break
+    }
+
     progressBox = (
       <div className="list-item-progress-box">
-        <CheckCircle className="feather" />
+        {icon}
         <div>
-          <strong>{progress.title || "Finished"}</strong><br />
-          2 completed
+          <strong>{progress.title || defaultTitle}</strong><br />
+          {progress.subtitle}
         </div>
       </div>
     )

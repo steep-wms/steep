@@ -11,6 +11,12 @@
   }
 }
 
+@keyframes list-item-spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 .list-item {
   display: flex;
   justify-content: space-between;
@@ -53,12 +59,38 @@
     line-height: 1.4rem;
     font-size: $font-size-sm;
     margin-left: $spacer;
+    width: 12rem;
+    max-width: 100%;
 
     .feather {
       height: 3rem;
       width: auto;
-      stroke: #1a6;
       margin-right: $spacer / 2;
+
+      &.accepted {
+        stroke: $gray-600;
+      }
+
+      &.running {
+        stroke: $gray-600;
+        animation: list-item-spin 4s linear infinite;
+      }
+
+      &.cancelled {
+        stroke: $gray-500;
+      }
+
+      &.partial-success {
+        strok: $warning;
+      }
+
+      &.success {
+        stroke: $success;
+      }
+
+      &.error {
+        stroke: $error;
+      }
     }
 
     @media (max-width: $sm) {
