@@ -1,11 +1,13 @@
 @import "../css/variables";
 
 footer {
+  z-index: 1;
   margin-top: 4em;
 
   .footer-content {
-    background-color: $gray-100;
-    padding: 2em 0 2.5em 0;
+    border-top: 1px solid $gray-300;
+    margin: 0 $spacer;
+    padding: 2em 0 2em 0;
     text-align: right;
     font-size: $font-size-sm;
 
@@ -18,62 +20,58 @@ footer {
       flex-direction: row;
       justify-content: space-between;
 
-      @media (max-width: $md) {
+      @media (max-width: $sm) {
         flex-direction: column;
+        align-items: center;
       }
+    }
+
+    .logo, .social-icons {
+      width: 30%;
     }
 
     .logo {
       width: 100%;
-      max-width: 18%;
+      max-width: 7rem;
+      filter: grayscale(1);
+      opacity: .75;
+      transition: opacity 150ms ease-in-out, filter 150ms ease-in-out;
 
-      @media (max-width: $xl) {
-        max-width: 22%;
-      }
-
-      @media (max-width: $md) {
-        max-width: 35%;
-        margin-left: auto;
-        margin-right: auto;
-      }
-
-      @media (max-width: $sm) {
-        max-width: 60%;
+      &:hover {
+        opacity: 1;
+        filter: grayscale(0);
       }
     }
 
-    .copyright {
-      max-width: 40%;
+    .social-icons {
+      display: flex;
+      justify-content: flex-end;
 
-      @media (max-width: $md) {
-        max-width: 95%;
+      @media (max-width: $sm) {
+        margin-top: $spacer;
+        justify-content: center;
       }
 
-      .social-icons {
-        margin-top: $spacer;
-        display: flex;
-        justify-content: flex-end;
+      .feather {
+        height: 1rem;
+      }
 
-        @media (max-width: $md) {
-          justify-content: center;
+      a {
+        opacity: .7;
+        transition: opacity 150ms ease-in-out;
+
+        &:hover {
+          opacity: 1;
         }
 
-        .feather {
-          height: 1rem;
-        }
-
-        a:not(:first-child) {
+        &:not(:first-child) {
           margin-left: $spacer / 2;
         }
       }
     }
 
-    @media (max-width: $md) {
+    @media (max-width: $sm) {
       text-align: center;
-
-      .copyright {
-        margin-top: 2rem;
-      }
     }
   }
 }

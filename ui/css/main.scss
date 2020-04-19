@@ -3,7 +3,22 @@
 
 html {
   box-sizing: border-box;
+}
+
+:root {
   font-size: $font-size-base;
+
+  @media (max-width: $lg) {
+    font-size: $font-size-base * 0.95;
+  }
+
+  @media (max-width: $md) {
+    font-size: $font-size-base * 0.9;
+  }
+
+  @media (max-width: $sm) {
+    font-size: $font-size-base * 0.85;
+  }
 }
 
 *, *::before, *::after {
@@ -23,31 +38,32 @@ h1, h2, h3, h4, h5 {
 }
 
 h1 {
-  font-size: $font-size-base * 2;
-  margin-top: 0;
+  font-size: 2rem;
+  margin-top: $spacer * 1.65;
+  margin-bottom: $spacer * 1.45;
 }
 
 h2 {
-  font-size: $font-size-base * 1.75;
+  font-size: 1.75rem;
   margin-bottom: 4rem;
   padding-top: 7rem;
   text-align: center;
 }
 
 h3 {
-  font-size: $font-size-base * 1.5;
+  font-size: 1.5rem;
 }
 
 h4 {
-  font-size: $font-size-base * 1.25;
+  font-size: 1.25rem;
 }
 
 h5 {
-  font-size: $font-size-base * 1.10;
+  font-size: 1.10rem;
 }
 
 h6 {
-  font-size: $font-size-base * 1;
+  font-size: 1rem;
   font-weight: 400;
   margin-top: 2rem;
   margin-bottom: 1rem;

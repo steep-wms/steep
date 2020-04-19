@@ -1,6 +1,4 @@
 import Head from "next/head"
-import NavBar from "./NavBar"
-import "./Header.scss"
 
 export default ({ title = "Steep Workflow Management System" }) => (
   <header>
@@ -14,6 +12,5 @@ export default ({ title = "Steep Workflow Management System" }) => (
       <link href="https://fonts.googleapis.com/css?family=Roboto+Condensed:300,400" rel="stylesheet"/>
       <title>{title}</title>
     </Head>
-    <NavBar />
   </header>
 )

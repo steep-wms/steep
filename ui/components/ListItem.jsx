@@ -6,8 +6,8 @@ import Link from "next/link"
 export default ({ title, href, subtitle, justAdded }) => (
   <div className={classNames("list-item", { "just-added": justAdded })}>
     <div className="list-item-left">
-      <h4><Link href={href}><a>{title}</a></Link></h4>
-      {subtitle}
+      <div className="list-item-title"><Link href={href}><a>{title}</a></Link></div>
+      <div className="list-item-subtitle">{subtitle}</div>
     </div>
     <div className="list-item-right">
       <div className="list-item-progress-box">

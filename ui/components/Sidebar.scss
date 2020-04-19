@@ -1,0 +1,96 @@
+@import "../css/variables";
+
+aside, .sidebar {
+  width: 14rem;
+  overflow: hidden;
+
+  @media (max-width: $lg) {
+    width: 4rem;
+  }
+}
+
+.sidebar {
+  background-color: $gray-100;
+  padding-top: $spacer * 2;
+  position: fixed;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+
+  .sidebar-logo {
+    text-align: center;
+    margin-right: 1rem;
+
+    @media (max-width: $lg) {
+      margin-left: 1rem;
+      margin-top: .5rem;
+    }
+  }
+
+  .steep-icon {
+    display: none;
+    max-width: 100%;
+  }
+
+  @media (max-width: $lg) {
+    .steep-logo {
+      display: none;
+    }
+
+    .steep-icon {
+      display: block;
+    }
+  }
+
+  nav {
+    display: flex;
+    flex-direction: column;
+
+    margin-top: $spacer;
+    margin-left: $spacer * 2.5;
+
+    font-family: "Roboto Condensed", sans-serif;
+    font-weight: 400;
+
+    @media (max-width: $lg) {
+      margin-left: 0;
+    }
+
+    .nav-item {
+      display: inline-flex;
+      height: 3rem;
+
+      @media (max-width: $lg) {
+        justify-content: center;
+
+        .nav-item-text {
+          display: none;
+        }
+      }
+    }
+
+    a {
+      color: $gray-800;
+      margin-top: $spacer;
+      display: flex;
+      align-items: center;
+
+      &:hover {
+        text-decoration: none;
+        color: $gray-600;
+      }
+
+      .feather {
+        height: 1.1em;
+        width: auto;
+        margin-right: .5em;
+        margin-top: 1px;
+        line-height: 1.7;
+
+        @media (max-width: $lg) {
+          margin-right: 0;
+        }
+      }
+    }
+  }
+}

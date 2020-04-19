@@ -2,9 +2,11 @@
 
 @keyframes list-item-just-added {
   0% {
+    max-height: 0;
     opacity: 0;
   }
   100% {
+    max-height: 100rem;
     opacity: 1;
   }
 }
@@ -13,21 +15,27 @@
   display: flex;
   justify-content: space-between;
   padding: $spacer * 2 0;
+  border-top: 1px solid $gray-300;
+
+  @media (max-width: $sm) {
+    flex-direction: column;
+  }
 
   &.just-added {
     animation: list-item-just-added 1s;
+    overflow: hidden;
   }
 
-  &:not(:first-of-type) {
-    border-top: 1px solid $gray-300;
-  }
-
-  h4 {
-    margin: 0;
+  .list-item-title {
+    font-weight: 400;
 
     a {
       text-decoration: none;
     }
+  }
+
+  .list-item-subtitle {
+    font-size: $font-size-sm;
   }
 
   .list-item-progress-box {
@@ -37,12 +45,19 @@
     display: flex;
     align-items: center;
     line-height: 1.4rem;
+    font-size: $font-size-sm;
+    margin-left: $spacer;
 
     .feather {
       height: 3rem;
       width: auto;
       stroke: #1a6;
       margin-right: $spacer / 2;
+    }
+
+    @media (max-width: $sm) {
+      margin-left: 0;
+      margin-top: $spacer;
     }
   }
 }
