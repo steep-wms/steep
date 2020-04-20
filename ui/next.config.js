@@ -1,7 +1,7 @@
 const bundleAnalyzer = require("@next/bundle-analyzer")({
   enabled: process.env.ANALYZE === "true"
 })
-const optimizedImages = require("next-optimized-images");
+const optimizedImages = require("next-optimized-images")
 const sass = require("@zeit/next-sass")
 
 const withPlugins = require("next-compose-plugins")
@@ -18,9 +18,10 @@ const config = {
   exportPathMap() {
     return {
       "/": { page: "/" },
+      "/processchains": { page: "/processchains" },
       "/services": { page: "/services" },
       "/workflows": { page: "/workflows" }
-    };
+    }
   },
 
   webpack: (config, { dev }) => {
