@@ -6,6 +6,7 @@ import ListItem from "../components/ListItem"
 import { useContext, useEffect, useReducer, useRef } from "react"
 import useSWR from "swr"
 import fetcher from "../components/lib/json-fetcher"
+import listItemUpdateReducer from "../components/lib/listitem-update-reducer"
 
 import {
   SUBMISSION_ADDED,
@@ -75,125 +76,114 @@ function workflowToElement(workflow) {
   )
 }
 
-function updateWorkflowsReducer(state, { action = "unshift", workflows }) {
-  switch (action) {
-    case "update": {
-      for (let workflow of workflows) {
-        let i = state.findIndex(w => w.id === workflow.id)
-        if (i >= 0) {
-          let newWorkflow = { ...state[i], ...workflow }
-          newWorkflow.element = workflowToElement(newWorkflow)
-          state = [...state.slice(0, i), newWorkflow, ...state.slice(i + 1)]
+function updateWorkflowsReducer(pageSize) {
+  let liur = listItemUpdateReducer(pageSize, (workflow) => {
+    initWorkflow(workflow)
+    workflow.element = workflowToElement(workflow)
+  })
+
+  return (state, { action = "unshift", workflows }) => {
+    switch (action) {
+      case "update":
+      case "unshift":
+      case "push":
+        return liur(state, { action, items: workflows })
+
+      case "updateAddProcessChains": {
+        for (let workflow of workflows) {
+          let i = state.findIndex(w => w.id === workflow.id)
+          if (i >= 0) {
+            let newWorkflow = { ...state[i] }
+            if (typeof workflow.totalProcessChains !== "undefined") {
+              newWorkflow.totalProcessChains =
+                  Math.max(0, newWorkflow.totalProcessChains + workflow.totalProcessChains)
+            }
+            if (typeof workflow.runningProcessChains !== "undefined") {
+              newWorkflow.runningProcessChains =
+                  Math.max(0, newWorkflow.runningProcessChains + workflow.runningProcessChains)
+            }
+            if (typeof workflow.cancelledProcessChains !== "undefined") {
+              newWorkflow.cancelledProcessChains =
+                  Math.max(0, newWorkflow.cancelledProcessChains + workflow.cancelledProcessChains)
+            }
+            if (typeof workflow.failedProcessChains !== "undefined") {
+              newWorkflow.failedProcessChains =
+                  Math.max(0, newWorkflow.failedProcessChains + workflow.failedProcessChains)
+            }
+            if (typeof workflow.succeededProcessChains !== "undefined") {
+              newWorkflow.succeededProcessChains =
+                  Math.max(0, newWorkflow.succeededProcessChains + workflow.succeededProcessChains)
+            }
+            newWorkflow.element = workflowToElement(newWorkflow)
+            state = [...state.slice(0, i), newWorkflow, ...state.slice(i + 1)]
+          }
         }
+        return state
       }
-      return state
+
+      case "updateStatus": {
+        for (let workflow of workflows) {
+          if (workflow.currentStatus === workflow.newStatus) {
+            continue
+          }
+          let i = state.findIndex(w => w.id === workflow.id)
+          if (i >= 0) {
+            let w = { ...state[i] }
+            let n = 0
+            if (workflow.currentStatus === "REGISTERED") {
+              n = w.totalProcessChains - w.runningProcessChains -
+                  w.failedProcessChains - w.succeededProcessChains -
+                  w.cancelledProcessChains
+            } else if (workflow.currentStatus === "RUNNING") {
+              n = w.runningProcessChains
+              w.runningProcessChains = 0
+            } else if (workflow.currentStatus === "CANCELLED") {
+              n = w.cancelledProcessChains
+              w.cancelledProcessChains = 0
+            } else if (workflow.currentStatus === "ERROR") {
+              n = w.failedProcessChains
+              w.failedProcessChains = 0
+            } else if (workflow.currentStatus === "SUCCESS") {
+              n = w.succeededProcessChains
+              w.succeededProcessChains = 0
+            }
+
+            if (workflow.newStatus === "RUNNING") {
+              w.runningProcessChains += n
+            } else if (workflow.newStatus === "CANCELLED") {
+              w.cancelledProcessChains += n
+            } else if (workflow.newStatus === "ERROR") {
+              w.failedProcessChains += n
+            } else if (workflow.newStatus === "SUCCESS") {
+              w.succeededProcessChains += n
+            }
+
+            w.element = workflowToElement(w)
+            state = [...state.slice(0, i), w, ...state.slice(i + 1)]
+          }
+        }
+        return state
+      }
+
+      default:
+        return state
     }
-
-    case "updateAddProcessChains": {
-      for (let workflow of workflows) {
-        let i = state.findIndex(w => w.id === workflow.id)
-        if (i >= 0) {
-          let newWorkflow = { ...state[i] }
-          if (typeof workflow.totalProcessChains !== "undefined") {
-            newWorkflow.totalProcessChains =
-                Math.max(0, newWorkflow.totalProcessChains + workflow.totalProcessChains)
-          }
-          if (typeof workflow.runningProcessChains !== "undefined") {
-            newWorkflow.runningProcessChains =
-                Math.max(0, newWorkflow.runningProcessChains + workflow.runningProcessChains)
-          }
-          if (typeof workflow.cancelledProcessChains !== "undefined") {
-            newWorkflow.cancelledProcessChains =
-                Math.max(0, newWorkflow.cancelledProcessChains + workflow.cancelledProcessChains)
-          }
-          if (typeof workflow.failedProcessChains !== "undefined") {
-            newWorkflow.failedProcessChains =
-                Math.max(0, newWorkflow.failedProcessChains + workflow.failedProcessChains)
-          }
-          if (typeof workflow.succeededProcessChains !== "undefined") {
-            newWorkflow.succeededProcessChains =
-                Math.max(0, newWorkflow.succeededProcessChains + workflow.succeededProcessChains)
-          }
-          newWorkflow.element = workflowToElement(newWorkflow)
-          state = [...state.slice(0, i), newWorkflow, ...state.slice(i + 1)]
-        }
-      }
-      return state
-    }
-
-    case "updateStatus": {
-      for (let workflow of workflows) {
-        if (workflow.currentStatus === workflow.newStatus) {
-          continue
-        }
-        let i = state.findIndex(w => w.id === workflow.id)
-        if (i >= 0) {
-          let w = { ...state[i] }
-          let n = 0
-          if (workflow.currentStatus === "REGISTERED") {
-            n = w.totalProcessChains - w.runningProcessChains -
-                w.failedProcessChains - w.succeededProcessChains -
-                w.cancelledProcessChains
-          } else if (workflow.currentStatus === "RUNNING") {
-            n = w.runningProcessChains
-            w.runningProcessChains = 0
-          } else if (workflow.currentStatus === "CANCELLED") {
-            n = w.cancelledProcessChains
-            w.cancelledProcessChains = 0
-          } else if (workflow.currentStatus === "ERROR") {
-            n = w.failedProcessChains
-            w.failedProcessChains = 0
-          } else if (workflow.currentStatus === "SUCCESS") {
-            n = w.succeededProcessChains
-            w.succeededProcessChains = 0
-          }
-
-          if (workflow.newStatus === "RUNNING") {
-            w.runningProcessChains += n
-          } else if (workflow.newStatus === "CANCELLED") {
-            w.cancelledProcessChains += n
-          } else if (workflow.newStatus === "ERROR") {
-            w.failedProcessChains += n
-          } else if (workflow.newStatus === "SUCCESS") {
-            w.succeededProcessChains += n
-          }
-
-          w.element = workflowToElement(w)
-          state = [...state.slice(0, i), w, ...state.slice(i + 1)]
-        }
-      }
-      return state
-    }
-
-    case "unshift":
-    case "push": {
-      let workflowsToAdd = []
-      for (let workflow of workflows) {
-        if (state.findIndex(w => w.id === workflow.id) < 0) {
-          initWorkflow(workflow)
-          workflow.element = workflowToElement(workflow)
-          workflowsToAdd.push(workflow)
-        }
-      }
-
-      if (action === "push") {
-        return [...state, ...workflowsToAdd]
-      } else {
-        workflowsToAdd.reverse()
-        return [...workflowsToAdd, ...state]
-      }
-    }
-
-    default:
-      return state
   }
 }
 
 export default () => {
-  const [workflows, updateWorkflows] = useReducer(updateWorkflowsReducer, [])
+  // parse query params but do not use "next/router" because router.query
+  // is empty on initial render
+  let pageSize
+  if (typeof window !== "undefined") {
+    let params = new URLSearchParams(window.location.search)
+    pageSize = params.get("size") || 10
+  }
+
+  const [workflows, updateWorkflows] = useReducer(updateWorkflowsReducer(pageSize), [])
   const eventBus = useContext(EventBusContext)
   const { data: fetchedWorkflows, error: fetchedWorkflowsError } =
-      useSWR(process.env.baseUrl + "/workflows", fetcher)
+      useSWR(pageSize && `${process.env.baseUrl}/workflows?size=${pageSize}`, fetcher)
   const oldFetchedWorkflows = useRef()
 
   useEffect(() => {

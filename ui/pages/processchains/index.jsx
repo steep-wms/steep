@@ -6,6 +6,7 @@ import ListItem from "../../components/ListItem"
 import { useContext, useEffect, useReducer, useRef } from "react"
 import useSWR from "swr"
 import fetcher from "../../components/lib/json-fetcher"
+import listItemUpdateReducer from "../../components/lib/listitem-update-reducer"
 
 import {
   PROCESS_CHAINS_ADDED,
@@ -15,6 +16,12 @@ import {
   PROCESS_CHAIN_ALL_STATUS_CHANGED,
   PROCESS_CHAIN_ERROR_MESSAGE_CHANGED
 } from "../../components/lib/EventBusMessages"
+
+function initProcessChain(processChain) {
+  delete processChain.executables
+  processChain.startTime = processChain.startTime || null
+  processChain.endTime = processChain.endTime || null
+}
 
 function processChainToElement(processChain) {
   let href = `/processchains/${processChain.id}`
@@ -30,68 +37,52 @@ function processChainToElement(processChain) {
   )
 }
 
-function updateProcessChainsReducer(state, { action = "unshift", processChains }) {
-  switch (action) {
-    case "update": {
-      for (let processChain of processChains) {
-        let i = state.findIndex(pc => pc.id === processChain.id)
-        if (i >= 0) {
-          let newProcessChain = { ...state[i], ...processChain }
-          newProcessChain.element = processChainToElement(newProcessChain)
-          state = [...state.slice(0, i), newProcessChain, ...state.slice(i + 1)]
-        }
-      }
-      return state
-    }
+function updateProcessChainsReducer(pageSize) {
+  let liur = listItemUpdateReducer(pageSize, (processChain) => {
+    initProcessChain(processChain)
+    processChain.element = processChainToElement(processChain)
+  })
 
-    case "updateStatus": {
-      for (let update of processChains) {
-        for (let i = 0; i < status.length; ++i) {
-          let pc = status[i]
-          if (pc.submissionId === update.submissionId && pc.status === update.currentStatus) {
-            let newProcessChain = { ...pc, status: update.newStatus }
-            state = [...state.slice(0, i), newProcessChain, ...state.slice(i + 1)]
+  return (state, { action = "unshift", processChains }) => {
+    switch (action) {
+      case "update":
+      case "unshift":
+      case "push":
+        return liur(state, { action, items: processChains })
+
+      case "updateStatus": {
+        for (let update of processChains) {
+          for (let i = 0; i < status.length; ++i) {
+            let pc = status[i]
+            if (pc.submissionId === update.submissionId && pc.status === update.currentStatus) {
+              let newProcessChain = { ...pc, status: update.newStatus }
+              state = [...state.slice(0, i), newProcessChain, ...state.slice(i + 1)]
+            }
           }
         }
+        return state
       }
-      return state
+
+      default:
+        return state
     }
-
-    case "unshift":
-    case "push": {
-      let processChainsToAdd = []
-      for (let processChain of processChains) {
-        if (state.findIndex(pc => pc.id === processChain.id) < 0) {
-          processChain.element = processChainToElement(processChain)
-          processChainsToAdd.push(processChain)
-        }
-      }
-
-      if (action === "push") {
-        return [...state, ...processChainsToAdd]
-      } else {
-        processChainsToAdd.reverse()
-        return [...processChainsToAdd, ...state]
-      }
-    }
-
-    default:
-      return state
   }
 }
 
 export default () => {
-  const [processChains, updateProcessChains] = useReducer(updateProcessChainsReducer, [])
+  // parse query params but do not use "next/router" because router.query
+  // is empty on initial render
+  let pageSize
+  if (typeof window !== "undefined") {
+    let params = new URLSearchParams(window.location.search)
+    pageSize = params.get("size") || 10
+  }
+
+  const [processChains, updateProcessChains] = useReducer(updateProcessChainsReducer(pageSize), [])
   const eventBus = useContext(EventBusContext)
   const { data: fetchedProcessChains, error: fetchedProcessChainsError } =
-      useSWR(process.env.baseUrl + "/processchains", fetcher)
+      useSWR(pageSize && `${process.env.baseUrl}/processchains?size=${pageSize}`, fetcher)
   const oldFetchedProcessChains = useRef()
-
-  function initProcessChain(processChain) {
-    delete processChain.executables
-    processChain.startTime = processChain.startTime || null
-    processChain.endTime = processChain.endTime || null
-  }
 
   useEffect(() => {
     function onProcessChainsAdded(error, message) {
