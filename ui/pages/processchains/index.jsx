@@ -3,8 +3,7 @@ import EventBus from "vertx3-eventbus-client"
 import Page from "../../components/layouts/Page"
 import Alert from "../../components/Alert"
 import ListItem from "../../components/ListItem"
-import { useContext, useEffect, useReducer, useRef } from "react"
-import useSWR from "swr"
+import { useContext, useEffect, useReducer, useState } from "react"
 import fetcher from "../../components/lib/json-fetcher"
 import listItemUpdateReducer from "../../components/lib/listitem-update-reducer"
 
@@ -80,9 +79,16 @@ export default () => {
 
   const [processChains, updateProcessChains] = useReducer(updateProcessChainsReducer(pageSize), [])
   const eventBus = useContext(EventBusContext)
-  const { data: fetchedProcessChains, error: fetchedProcessChainsError } =
-      useSWR(pageSize && `${process.env.baseUrl}/processchains?size=${pageSize}`, fetcher)
-  const oldFetchedProcessChains = useRef()
+  const [error, setError] = useState()
+
+  useEffect(() => {
+    fetcher(`${process.env.baseUrl}/processchains?size=${pageSize}`)
+      .then(processChains => updateProcessChains({ action: "push", processChains }))
+      .catch(err => {
+        console.error(err)
+        setError(<Alert error>Could not load process chains</Alert>)
+      })
+  }, [pageSize])
 
   useEffect(() => {
     function onProcessChainsAdded(error, message) {
@@ -163,26 +169,11 @@ export default () => {
     }
   }, [eventBus])
 
-  let processChainError
-
-  if (typeof fetchedProcessChainsError !== "undefined") {
-    processChainError = <Alert error>Could not load process chains</Alert>
-    console.error(fetchedProcessChainsError)
-  } else if (typeof fetchedProcessChains !== "undefined") {
-    if (fetchedProcessChains !== oldFetchedProcessChains.current) {
-      oldFetchedProcessChains.current = fetchedProcessChains
-      for (let processChain of fetchedProcessChains) {
-        initProcessChain(processChain)
-      }
-      updateProcessChains({ action: "push", processChains: fetchedProcessChains })
-    }
-  }
-
   return (
     <Page>
       <h1>Process chains</h1>
       {processChains.map(pc => pc.element)}
-      {processChainError}
+      {error}
     </Page>
   )
 }

@@ -1,29 +1,35 @@
 import DetailPage from "../../components/layouts/DetailPage"
 import { useRouter } from "next/router"
+import { useEffect, useState } from "react"
 import Alert from "../../components/Alert"
 import DefinitionList from "../../components/DefinitionList"
 import DefinitionListItem from "../../components/DefinitionListItem"
 import Label from "../../components/Label"
 import "./Service.scss"
-import useSWR from "swr"
 import fetcher from "../../components/lib/json-fetcher"
 
 export default () => {
   const router = useRouter()
   const { id } = router.query
 
-  const { data, error } = useSWR(id && `${process.env.baseUrl}/services/${id}`, fetcher)
+  const [data, setData] = useState()
+  const [error, setError] = useState()
 
-  let errorMessage
+  useEffect(() => {
+    fetcher(`${process.env.baseUrl}/services/${id}`)
+      .then(setData)
+      .catch(err => {
+        console.log(err)
+        setError(<Alert error>Could not load service</Alert>)
+      })
+  }, [id])
+
   let title
   let subtitle
   let service
   let none = <span className="none"></span>
 
-  if (typeof error !== "undefined") {
-    console.log(error)
-    errorMessage = <Alert error>Could not load service</Alert>
-  } else if (typeof data !== "undefined") {
+  if (typeof data !== "undefined") {
     title = data.name
     subtitle = data.description
     let reqcap
@@ -115,7 +121,7 @@ export default () => {
   return (
     <DetailPage title={title} subtitle={subtitle}>
       {service}
-      {errorMessage}
+      {error}
     </DetailPage>
   )
 }

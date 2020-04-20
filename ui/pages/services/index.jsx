@@ -1,20 +1,24 @@
 import Page from "../../components/layouts/Page"
 import Alert from "../../components/Alert"
 import ListItem from "../../components/ListItem"
-import useSWR from "swr"
+import { useEffect, useState } from "react"
 import fetcher from "../../components/lib/json-fetcher"
 
 export default () => {
-  const { data: services, error: servicesError } =
-      useSWR(process.env.baseUrl + "/services", fetcher)
+  const [services, setServices] = useState()
+  const [error, setError] = useState()
 
-  let serviceError
+  useEffect(() => {
+    fetcher(`${process.env.baseUrl}/services`)
+      .then(setServices)
+      .catch(err => {
+        console.log(err)
+        setError(<Alert error>Could not load services</Alert>)
+      })
+  }, [])
+
   let serviceElements = []
-
-  if (typeof servicesError !== "undefined") {
-    serviceError = <Alert error>Could not load services</Alert>
-    console.error(servicesError)
-  } else if (typeof services !== "undefined") {
+  if (typeof services !== "undefined") {
     for (let service of services) {
       let linkHref = "/services/[id]"
       let linkAs = `/services/${service.id}`
@@ -24,17 +28,14 @@ export default () => {
           labels={[service.runtime]} />
       )
     }
-
-    if (services.length === 0) {
-      serviceError = "There are no configured services"
-    }
   }
 
   return (
     <Page>
       <h1>Services</h1>
       {serviceElements}
-      {serviceError}
+      {error}
+      {services && services.length === 0 && <Alert warning>There are no configured services</Alert>}
     </Page>
   )
 }

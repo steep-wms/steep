@@ -3,8 +3,7 @@ import EventBus from "vertx3-eventbus-client"
 import Page from "../components/layouts/Page"
 import Alert from "../components/Alert"
 import ListItem from "../components/ListItem"
-import { useContext, useEffect, useReducer, useRef } from "react"
-import useSWR from "swr"
+import { useContext, useEffect, useReducer, useState } from "react"
 import fetcher from "../components/lib/json-fetcher"
 import listItemUpdateReducer from "../components/lib/listitem-update-reducer"
 
@@ -182,9 +181,16 @@ export default () => {
 
   const [workflows, updateWorkflows] = useReducer(updateWorkflowsReducer(pageSize), [])
   const eventBus = useContext(EventBusContext)
-  const { data: fetchedWorkflows, error: fetchedWorkflowsError } =
-      useSWR(pageSize && `${process.env.baseUrl}/workflows?size=${pageSize}`, fetcher)
-  const oldFetchedWorkflows = useRef()
+  const [error, setError] = useState()
+
+  useEffect(() => {
+    fetcher(`${process.env.baseUrl}/workflows?size=${pageSize}`)
+      .then(workflows => updateWorkflows({ action: "push", workflows }))
+      .catch(err => {
+        console.error(err)
+        setError(<Alert error>Could not load workflows</Alert>)
+      })
+  }, [pageSize])
 
   useEffect(() => {
     function onSubmissionAdded(error, message) {
@@ -324,23 +330,11 @@ export default () => {
     }
   }, [eventBus])
 
-  let workflowError
-
-  if (typeof fetchedWorkflowsError !== "undefined") {
-    workflowError = <Alert error>Could not load workflows</Alert>
-    console.error(fetchedWorkflowsError)
-  } else if (typeof fetchedWorkflows !== "undefined") {
-    if (fetchedWorkflows !== oldFetchedWorkflows.current) {
-      oldFetchedWorkflows.current = fetchedWorkflows
-      updateWorkflows({ action: "push", workflows: fetchedWorkflows })
-    }
-  }
-
   return (
     <Page>
       <h1>Workflows</h1>
       {workflows.map(w => w.element)}
-      {workflowError}
+      {error}
     </Page>
   )
 }
