@@ -6,33 +6,100 @@ import ListItem from "../components/ListItem"
 import { useContext, useEffect, useReducer } from "react"
 import useSWR from "swr"
 import fetcher from "../components/lib/json-fetcher"
-import TimeAgo from "react-timeago"
-import { formatDistanceToNow } from "date-fns"
 
-import dayjs from "dayjs"
-import Duration from "dayjs/plugin/duration"
-import RelativeTime from "dayjs/plugin/relativeTime"
-dayjs.extend(Duration)
-dayjs.extend(RelativeTime)
-
-const ADDRESS_SUBMISSION_ADDED = "steep.submissionRegistry.submissionAdded"
-const ADDRESS_SUBMISSION_STATUS_CHANGED = "steep.submissionRegistry.submissionStatusChanged"
+import {
+  SUBMISSION_ADDED,
+  SUBMISSION_START_TIME_CHANGED,
+  SUBMISSION_END_TIME_CHANGED,
+  SUBMISSION_STATUS_CHANGED,
+  SUBMISSION_ERROR_MESSAGE_CHANGED,
+  PROCESS_CHAINS_ADDED_SIZE,
+  PROCESS_CHAIN_STATUS_CHANGED,
+  PROCESS_CHAIN_ALL_STATUS_CHANGED
+} from "../components/lib/EventBusMessages"
 
 function updateWorkflowsReducer(state, { action = "unshift", workflow }) {
   let i = state.findIndex(w => w.id === workflow.id)
-  if (i >= 0 && action !== "update") {
-    return state
-  }
+
   switch (action) {
     case "update": {
       let newWorkflow = { ...state[i], ...workflow }
       return [...state.slice(0, i), newWorkflow, ...state.slice(i + 1)]
     }
 
+    case "updateAddProcessChains": {
+      let newWorkflow = { ...state[i] }
+      if (typeof workflow.totalProcessChains !== "undefined") {
+        newWorkflow.totalProcessChains =
+            Math.max(0, newWorkflow.totalProcessChains + workflow.totalProcessChains)
+      }
+      if (typeof workflow.runningProcessChains !== "undefined") {
+        newWorkflow.runningProcessChains =
+            Math.max(0, newWorkflow.runningProcessChains + workflow.runningProcessChains)
+      }
+      if (typeof workflow.cancelledProcessChains !== "undefined") {
+        newWorkflow.cancelledProcessChains =
+            Math.max(0, newWorkflow.cancelledProcessChains + workflow.cancelledProcessChains)
+      }
+      if (typeof workflow.failedProcessChains !== "undefined") {
+        newWorkflow.failedProcessChains =
+            Math.max(0, newWorkflow.failedProcessChains + workflow.failedProcessChains)
+      }
+      if (typeof workflow.succeededProcessChains !== "undefined") {
+        newWorkflow.succeededProcessChains =
+            Math.max(0, newWorkflow.succeededProcessChains + workflow.succeededProcessChains)
+      }
+      return [...state.slice(0, i), newWorkflow, ...state.slice(i + 1)]
+    }
+
+    case "updateStatus": {
+      if (workflow.currentStatus === workflow.newStatus) {
+        return state
+      }
+
+      let w = { ...state[i] }
+      let n = 0
+      if (workflow.currentStatus === "REGISTERED") {
+        n = w.totalProcessChains - w.runningProcessChains -
+            w.failedProcessChains - w.succeededProcessChains -
+            w.cancelledProcessChains
+      } else if (workflow.currentStatus === "RUNNING") {
+        n = w.runningProcessChains
+        w.runningProcessChains = 0
+      } else if (workflow.currentStatus === "CANCELLED") {
+        n = w.cancelledProcessChains
+        w.cancelledProcessChains = 0
+      } else if (workflow.currentStatus === "ERROR") {
+        n = w.failedProcessChains
+        w.failedProcessChains = 0
+      } else if (workflow.currentStatus === "SUCCESS") {
+        n = w.succeededProcessChains
+        w.succeededProcessChains = 0
+      }
+
+      if (workflow.newStatus === "RUNNING") {
+        w.runningProcessChains += n
+      } else if (workflow.newStatus === "CANCELLED") {
+        w.cancelledProcessChains += n
+      } else if (workflow.newStatus === "ERROR") {
+        w.failedProcessChains += n
+      } else if (workflow.newStatus === "SUCCESS") {
+        w.succeededProcessChains += n
+      }
+
+      return [...state.slice(0, i), w, ...state.slice(i + 1)]
+    }
+
     case "push":
+      if (i >= 0) {
+        return state
+      }
       return [...state, workflow]
 
     case "unshift":
+      if (i >= 0) {
+        return state
+      }
       return [workflow, ...state]
 
     default:
@@ -57,33 +124,30 @@ export default () => {
     w.endTime = w.endTime || null
   }
 
-  function formatterToNow(value, unit, suffix, epochSeconds) {
-    return formatDistanceToNow(epochSeconds, { addSuffix: true, includeSeconds: true })
-  }
-
-  function workflowDuration(w) {
-    let diff = dayjs(w.endTime).diff(dayjs(w.startTime))
-    let duration = Math.ceil(dayjs.duration(diff).asSeconds())
-    let seconds = Math.floor(duration % 60)
-    let minutes = Math.floor(duration / 60 % 60)
-    let hours = Math.floor(duration / 60 / 60)
-    let result = ""
-    if (hours > 0) {
-      result += hours + "h "
-    }
-    if (result !== "" || minutes > 0) {
-      result += minutes + "m "
-    }
-    result += seconds + "s"
-    return result
-  }
-
   useEffect(() => {
     function onSubmissionAdded(error, message) {
       let workflow = message.body
       initWorkflow(workflow)
       workflow.justAdded = true
       updateWorkflows({ action: "unshift", workflow })
+    }
+
+    function onSubmissionStartTimeChanged(error, message) {
+      updateWorkflows({
+        action: "update", workflow: {
+          id: message.body.submissionId,
+          startTime: message.body.startTime
+        }
+      })
+    }
+
+    function onSubmissionEndTimeChanged(error, message) {
+      updateWorkflows({
+        action: "update", workflow: {
+          id: message.body.submissionId,
+          endTime: message.body.endTime
+        }
+      })
     }
 
     function onSubmissionStatusChanged(error, message) {
@@ -95,15 +159,106 @@ export default () => {
       })
     }
 
+    function onSubmissionErrorMessageChanged(error, message) {
+      updateWorkflows({
+        action: "update", workflow: {
+          id: message.body.submissionId,
+          errorMessage: message.body.errorMessage
+        }
+      })
+    }
+
+    function onProcessChainsAddedSize(error, message) {
+      let pcsSize = message.body.processChainsSize
+      let status = message.body.status
+
+      let workflow = {
+        id: message.body.submissionId,
+        totalProcessChains: pcsSize
+      }
+
+      if (status === "RUNNING") {
+        workflow.runningProcessChains = pcsSize
+      } else if (status === "CANCELLED") {
+        workflow.cancelledProcessChains = pcsSize
+      } else if (status === "ERROR") {
+        workflow.failedProcessChains = pcsSize
+      } else if (status === "SUCCESS") {
+        workflow.succeededProcessChains = pcsSize
+      }
+
+      updateWorkflows({ action: "updateAddProcessChains", workflow })
+    }
+
+    function onProcessChainStatusChanged(error, message) {
+      let status = message.body.status
+      let previousStatus = message.body.previousStatus
+
+      let workflow = {
+        id: message.body.submissionId,
+        runningProcessChains: 0,
+        cancelledProcessChains: 0,
+        failedProcessChains: 0,
+        succeededProcessChains: 0
+      }
+
+      if (previousStatus !== status) {
+        if (previousStatus === "RUNNING") {
+          workflow.runningProcessChains--
+        } else if (previousStatus === "CANCELLED") {
+          workflow.cancelledProcessChains--
+        } else if (previousStatus === "ERROR") {
+          workflow.failedProcessChains--
+        } else if (previousStatus === "SUCCESS") {
+          workflow.succeededProcessChains--
+        }
+
+        if (status === "RUNNING") {
+          workflow.runningProcessChains++
+        } else if (status === "CANCELLED") {
+          workflow.cancelledProcessChains++
+        } else if (status === "ERROR") {
+          workflow.failedProcessChains++
+        } else if (status === "SUCCESS") {
+          workflow.succeededProcessChains++
+        }
+
+        updateWorkflows({ action: "updateAddProcessChains", workflow })
+      }
+    }
+
+    function onProcessChainAllStatusChanged(error, message) {
+      updateWorkflows({
+        action: "updateStatus",
+        workflow: {
+          id: message.body.submissionId,
+          newStatus: message.body.newStatus,
+          currentStatus: message.body.currentStatus
+        }
+      })
+    }
+
     if (eventBus) {
-      eventBus.registerHandler(ADDRESS_SUBMISSION_ADDED, onSubmissionAdded)
-      eventBus.registerHandler(ADDRESS_SUBMISSION_STATUS_CHANGED, onSubmissionStatusChanged)
+      eventBus.registerHandler(SUBMISSION_ADDED, onSubmissionAdded)
+      eventBus.registerHandler(SUBMISSION_START_TIME_CHANGED, onSubmissionStartTimeChanged)
+      eventBus.registerHandler(SUBMISSION_END_TIME_CHANGED, onSubmissionEndTimeChanged)
+      eventBus.registerHandler(SUBMISSION_STATUS_CHANGED, onSubmissionStatusChanged)
+      eventBus.registerHandler(SUBMISSION_ERROR_MESSAGE_CHANGED, onSubmissionErrorMessageChanged)
+      eventBus.registerHandler(PROCESS_CHAINS_ADDED_SIZE, onProcessChainsAddedSize)
+      eventBus.registerHandler(PROCESS_CHAIN_STATUS_CHANGED, onProcessChainStatusChanged)
+      eventBus.registerHandler(PROCESS_CHAIN_ALL_STATUS_CHANGED, onProcessChainAllStatusChanged)
     }
 
     return () => {
       if (eventBus && eventBus.state === EventBus.OPEN) {
-        eventBus.unregisterHandler(ADDRESS_SUBMISSION_STATUS_CHANGED, onSubmissionStatusChanged)
-        eventBus.unregisterHandler(ADDRESS_SUBMISSION_ADDED, onSubmissionAdded)
+        eventBus.unregisterHandler(PROCESS_CHAIN_ALL_STATUS_CHANGED, onProcessChainAllStatusChanged)
+        eventBus.unregisterHandler(PROCESS_CHAIN_STATUS_CHANGED, onProcessChainStatusChanged)
+        eventBus.unregisterHandler(PROCESS_CHAINS_ADDED_SIZE, onProcessChainsAddedSize)
+        eventBus.unregisterHandler(SUBMISSION_ERROR_MESSAGE_CHANGED, onSubmissionErrorMessageChanged)
+        eventBus.unregisterHandler(SUBMISSION_STATUS_CHANGED, onSubmissionStatusChanged)
+        eventBus.unregisterHandler(SUBMISSION_END_TIME_CHANGED, onSubmissionEndTimeChanged)
+        eventBus.unregisterHandler(SUBMISSION_START_TIME_CHANGED, onSubmissionStartTimeChanged)
+        eventBus.unregisterHandler(SUBMISSION_ADDED, onSubmissionAdded)
       }
     }
   }, [eventBus])
@@ -123,22 +278,48 @@ export default () => {
     }
 
     for (let workflow of workflows) {
-      let diff = dayjs(workflow.endTime).diff(dayjs(workflow.startTime))
-      let duration = dayjs.duration(diff).humanize()
-      let timeAgoTitle = dayjs(workflow.endTime).format("dddd, D MMMM YYYY, h:mm:ss a")
-      let durationTitle = workflowDuration(workflow)
-      let subtitle = (<>
-        Finished <TimeAgo date={workflow.endTime} formatter={formatterToNow} title={timeAgoTitle} /> and
-        took <span title={durationTitle}>{duration}</span>
-      </>)
       let href = `/workflows/${workflow.id}`
-      let progress = {
-        status: workflow.status,
-        subtitle: <span>2 completed</span>
+
+      let status = workflow.status
+      if (status === "RUNNING" && workflow.cancelledProcessChains > 0) {
+        status = "CANCELLING"
       }
+
+      let progressTitle
+      let progressSubTitle
+      if (workflow.status === "RUNNING") {
+        let completed = workflow.succeededProcessChains +
+           workflow.failedProcessChains + workflow.cancelledProcessChains
+        progressTitle = `${workflow.runningProcessChains} Running`
+        progressSubTitle = (
+          <a href="#">
+            {completed} of {workflow.totalProcessChains} completed
+          </a>
+        )
+      } else if (workflow.status !== "ACCEPTED" && workflow.status !== "RUNNING") {
+        let text
+        if (workflow.failedProcessChains > 0) {
+          if (workflow.failedProcessChains !== workflow.totalProcessChains) {
+            text = `${workflow.failedProcessChains} of ${workflow.totalProcessChains} failed`
+          } else {
+            text = `${workflow.failedProcessChains} failed`
+          }
+        } else {
+          text = `${workflow.totalProcessChains} completed`
+        }
+        progressSubTitle = <a href="#">{text}</a>
+      }
+
+      let progress = {
+        status,
+        title: progressTitle,
+        subtitle: progressSubTitle
+      }
+
       workflowElements.push(
         <ListItem key={workflow.id} justAdded={workflow.justAdded}
-          linkHref={href} title={workflow.id} subtitle={subtitle} progress={progress} />
+          linkHref={href} title={workflow.id} startTime={workflow.startTime}
+          endTime={workflow.endTime} progress={progress} />
       )
     }
   }
