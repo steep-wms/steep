@@ -71,10 +71,14 @@ function updateProcessChainsReducer(pageSize) {
 export default () => {
   // parse query params but do not use "next/router" because router.query
   // is empty on initial render
+  let pageOffset
   let pageSize
+  let submissionId
   if (typeof window !== "undefined") {
     let params = new URLSearchParams(window.location.search)
+    pageOffset = params.get("offset") || undefined
     pageSize = params.get("size") || 10
+    submissionId = params.get("submissionId") || undefined
   }
 
   const [processChains, updateProcessChains] = useReducer(updateProcessChainsReducer(pageSize), [])
@@ -82,13 +86,22 @@ export default () => {
   const [error, setError] = useState()
 
   useEffect(() => {
-    fetcher(`${process.env.baseUrl}/processchains?size=${pageSize}`)
+    let params = new URLSearchParams()
+    if (typeof pageOffset !== "undefined") {
+      params.append("offset", pageOffset)
+    }
+    params.append("size", pageSize)
+    if (typeof submissionId !== "undefined") {
+      params.append("submissionId", submissionId)
+    }
+
+    fetcher(`${process.env.baseUrl}/processchains?${params.toString()}`)
       .then(processChains => updateProcessChains({ action: "push", processChains }))
       .catch(err => {
         console.error(err)
         setError(<Alert error>Could not load process chains</Alert>)
       })
-  }, [pageSize])
+  }, [pageOffset, pageSize, submissionId])
 
   useEffect(() => {
     function onProcessChainsAdded(error, message) {

@@ -1,11 +1,12 @@
-import EventBusContext from "../components/lib/EventBusContext"
+import EventBusContext from "../../components/lib/EventBusContext"
 import EventBus from "vertx3-eventbus-client"
-import Page from "../components/layouts/Page"
-import Alert from "../components/Alert"
-import ListItem from "../components/ListItem"
+import Page from "../../components/layouts/Page"
+import Alert from "../../components/Alert"
+import ListItem from "../../components/ListItem"
 import { useContext, useEffect, useReducer, useState } from "react"
-import fetcher from "../components/lib/json-fetcher"
-import listItemUpdateReducer from "../components/lib/listitem-update-reducer"
+import Link from "next/link"
+import fetcher from "../../components/lib/json-fetcher"
+import listItemUpdateReducer from "../../components/lib/listitem-update-reducer"
 
 import {
   SUBMISSION_ADDED,
@@ -16,7 +17,7 @@ import {
   PROCESS_CHAINS_ADDED_SIZE,
   PROCESS_CHAIN_STATUS_CHANGED,
   PROCESS_CHAIN_ALL_STATUS_CHANGED
-} from "../components/lib/EventBusMessages"
+} from "../../components/lib/EventBusMessages"
 
 function initWorkflow(w) {
   delete w.workflow
@@ -43,23 +44,25 @@ function workflowToElement(workflow) {
     let completed = workflow.succeededProcessChains +
        workflow.failedProcessChains + workflow.cancelledProcessChains
     progressTitle = `${workflow.runningProcessChains} Running`
-    progressSubTitle = (
-      <a href="#">
-        {completed} of {workflow.totalProcessChains} completed
-      </a>
-    )
+    progressSubTitle = `${completed} of ${workflow.totalProcessChains} completed`
   } else if (workflow.status !== "ACCEPTED" && workflow.status !== "RUNNING") {
-    let text
     if (workflow.failedProcessChains > 0) {
       if (workflow.failedProcessChains !== workflow.totalProcessChains) {
-        text = `${workflow.failedProcessChains} of ${workflow.totalProcessChains} failed`
+        progressSubTitle = `${workflow.failedProcessChains} of ${workflow.totalProcessChains} failed`
       } else {
-        text = `${workflow.failedProcessChains} failed`
+        progressSubTitle = `${workflow.failedProcessChains} failed`
       }
     } else {
-      text = `${workflow.totalProcessChains} completed`
+      progressSubTitle = `${workflow.totalProcessChains} completed`
     }
-    progressSubTitle = <a href="#">{text}</a>
+  }
+
+  if (typeof progressSubTitle !== "undefined") {
+    progressSubTitle = (
+      <Link href="/processchains/" as={`/processchains/?submissionId=${workflow.id}`}>
+        <a>{progressSubTitle}</a>
+      </Link>
+    )
   }
 
   let progress = {
@@ -173,9 +176,11 @@ function updateWorkflowsReducer(pageSize) {
 export default () => {
   // parse query params but do not use "next/router" because router.query
   // is empty on initial render
+  let pageOffset
   let pageSize
   if (typeof window !== "undefined") {
     let params = new URLSearchParams(window.location.search)
+    pageOffset = params.get("offset") || undefined
     pageSize = params.get("size") || 10
   }
 
@@ -184,13 +189,19 @@ export default () => {
   const [error, setError] = useState()
 
   useEffect(() => {
-    fetcher(`${process.env.baseUrl}/workflows?size=${pageSize}`)
+    let params = new URLSearchParams()
+    if (typeof pageOffset !== "undefined") {
+      params.append("offset", pageOffset)
+    }
+    params.append("size", pageSize)
+
+    fetcher(`${process.env.baseUrl}/workflows?${params.toString()}`)
       .then(workflows => updateWorkflows({ action: "push", workflows }))
       .catch(err => {
         console.error(err)
         setError(<Alert error>Could not load workflows</Alert>)
       })
-  }, [pageSize])
+  }, [pageOffset, pageSize])
 
   useEffect(() => {
     function onSubmissionAdded(error, message) {
