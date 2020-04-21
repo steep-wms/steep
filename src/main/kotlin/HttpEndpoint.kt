@@ -40,6 +40,7 @@ import io.vertx.core.http.HttpMethod
 import io.vertx.core.http.HttpServerOptions
 import io.vertx.core.http.HttpServerResponse
 import io.vertx.core.http.impl.HttpUtils
+import io.vertx.core.http.impl.MimeMapping
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.net.impl.URIDecoder
@@ -163,7 +164,7 @@ class HttpEndpoint : CoroutineVerticle() {
         .produces("text/html")
         .handler(this::onGetAgents)
 
-    router.get("/agents/:id")
+    router.get("/agents/:id/?")
         .produces("application/json")
         .produces("text/html")
         .handler(this::onGetAgentById)
@@ -173,7 +174,7 @@ class HttpEndpoint : CoroutineVerticle() {
         .produces("text/html")
         .handler(this::onGetServices)
 
-    router.get("/services/:id")
+    router.get("/services/:id/?")
         .produces("application/json")
         .produces("text/html")
         .handler(this::onGetServiceById)
@@ -183,12 +184,12 @@ class HttpEndpoint : CoroutineVerticle() {
         .produces("text/html")
         .handler(this::onGetProcessChains)
 
-    router.get("/processchains/:id")
+    router.get("/processchains/:id/?")
         .produces("application/json")
         .produces("text/html")
         .handler(this::onGetProcessChainById)
 
-    router.put("/processchains/:id")
+    router.put("/processchains/:id/?")
         .handler(bodyHandler)
         .produces("application/json")
         .handler(this::onPutProcessChainById)
@@ -198,12 +199,12 @@ class HttpEndpoint : CoroutineVerticle() {
         .produces("text/html")
         .handler(this::onGetWorkflows)
 
-    router.get("/workflows/:id")
+    router.get("/workflows/:id/?")
         .produces("application/json")
         .produces("text/html")
         .handler(this::onGetWorkflowById)
 
-    router.put("/workflows/:id")
+    router.put("/workflows/:id/?")
         .handler(bodyHandler)
         .produces("application/json")
         .handler(this::onPutWorkflowById)
@@ -247,6 +248,28 @@ class HttpEndpoint : CoroutineVerticle() {
     // a static handler for assets
     router.get("/assets/*").handler(StaticHandler.create("assets")
         .setMaxAgeSeconds(60 * 60 * 24 * 365) /* one year */)
+
+    // a static handler that replaces placeholders in assets
+    router.get("/_next/*").handler { context ->
+      val request = context.request()
+      if (request.method() != HttpMethod.GET && request.method() != HttpMethod.HEAD) {
+        context.next()
+      } else {
+        val path = HttpUtils.removeDots(URIDecoder.decodeURIComponent(context.normalisedPath(), false))?.let {
+          if (it.startsWith(basePath)) {
+            it.substring(basePath.length)
+          } else {
+            it
+          }
+        }
+        if (path == null) {
+          log.warn("Invalid path: " + context.request().path())
+          context.next()
+        } else {
+          renderAsset("ui$path", context.response())
+        }
+      }
+    }
 
     val sockJSHandler = SockJSHandler.create(vertx)
     sockJSHandler.bridge(BridgeOptions()
@@ -384,14 +407,51 @@ class HttpEndpoint : CoroutineVerticle() {
   }
 
   /**
+   * Renders an asset to the given HTTP response. Replaces placeholders.
+   */
+  private fun renderAsset(name: String, response: HttpServerResponse) {
+    val url = this.javaClass.getResource(name)
+    if (url == null) {
+      response
+          .setStatusCode(404)
+          .end()
+      return
+    }
+
+    val html = url.readText()
+        .replace("/\$\$MYBASEPATH\$\$", basePath)
+        .replace("/\$\$MYBASEURL\$\$", basePath)
+
+    val ext = name.substring(name.lastIndexOf('.') + 1)
+    val contentType = MimeMapping.getMimeTypeForExtension(ext)
+    response.putHeader("content-type", contentType)
+
+    if (contentType == "text/html") {
+      response
+          .putHeader("cache-control", "no-cache, no-store, must-revalidate")
+          .putHeader("expires", "0")
+    } else {
+      response
+          .putHeader("cache-control", "public, max-age=" + (60 * 60 * 24 * 365)) // one year
+    }
+
+    response.end(html)
+  }
+
+  /**
    * Get information about Steep
    * @param ctx the routing context
    */
   private fun onGet(ctx: RoutingContext) {
     if (ctx.acceptableContentType == "text/html") {
-      renderHtml("html/index.html", mapOf(
-          "version" to VERSION
-      ), ctx.response())
+      val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
+      if (beta) {
+        renderAsset("ui/index.html", ctx.response())
+      } else {
+        renderHtml("html/index.html", mapOf(
+            "version" to VERSION
+        ), ctx.response())
+      }
     } else {
       ctx.response()
           .putHeader("content-type", "application/json")
@@ -418,9 +478,14 @@ class HttpEndpoint : CoroutineVerticle() {
       val result = JsonArray(agents).encode()
 
       if (ctx.acceptableContentType == "text/html") {
-        renderHtml("html/agents/index.html", mapOf(
-            "agents" to result
-        ), ctx.response())
+        val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
+        if (beta) {
+          renderAsset("ui/agents/index.html", ctx.response())
+        } else {
+          renderHtml("html/agents/index.html", mapOf(
+              "agents" to result
+          ), ctx.response())
+        }
       } else {
         ctx.response()
             .putHeader("content-type", "application/json")
@@ -447,10 +512,15 @@ class HttpEndpoint : CoroutineVerticle() {
             REMOTE_AGENT_ADDRESS_PREFIX + id, msg).body()
 
         if (ctx.acceptableContentType == "text/html") {
-          renderHtml("html/agents/single.html", mapOf(
-              "id" to id,
-              "agents" to JsonArray(agent).encode()
-          ), ctx.response())
+          val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
+          if (beta) {
+            renderAsset("ui/agents/[id].html", ctx.response())
+          } else {
+            renderHtml("html/agents/single.html", mapOf(
+                "id" to id,
+                "agents" to JsonArray(agent).encode()
+            ), ctx.response())
+          }
         } else {
           ctx.response()
               .putHeader("content-type", "application/json")
@@ -481,9 +551,14 @@ class HttpEndpoint : CoroutineVerticle() {
       val result = JsonArray(services).encode()
 
       if (ctx.acceptableContentType == "text/html") {
-        renderHtml("html/services/index.html", mapOf(
-            "services" to result
-        ), ctx.response())
+        val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
+        if (beta) {
+          renderAsset("ui/services/index.html", ctx.response())
+        } else {
+          renderHtml("html/services/index.html", mapOf(
+              "services" to result
+          ), ctx.response())
+        }
       } else {
         ctx.response()
             .putHeader("content-type", "application/json")
@@ -509,11 +584,16 @@ class HttpEndpoint : CoroutineVerticle() {
       } else {
         val serviceObj = JsonUtils.toJson(service)
         if (ctx.acceptableContentType == "text/html") {
-          renderHtml("html/services/single.html", mapOf(
-              "id" to id,
-              "name" to service.name,
-              "services" to JsonArray(serviceObj).encode()
-          ), ctx.response())
+          val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
+          if (beta) {
+            renderAsset("ui/services/[id].html", ctx.response())
+          } else {
+            renderHtml("html/services/single.html", mapOf(
+                "id" to id,
+                "name" to service.name,
+                "services" to JsonArray(serviceObj).encode()
+            ), ctx.response())
+          }
         } else {
           ctx.response()
               .putHeader("content-type", "application/json")
@@ -591,14 +671,19 @@ class HttpEndpoint : CoroutineVerticle() {
       val encodedJson = JsonArray(list).encode()
 
       if (isHtml) {
-        renderHtml("html/workflows/index.html", mapOf(
-            "workflows" to encodedJson,
-            "page" to mapOf(
-                "size" to if (size < 0) total else size,
-                "offset" to offset,
-                "total" to total
-            )
-        ), ctx.response())
+        val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
+        if (beta) {
+          renderAsset("ui/workflows/index.html", ctx.response())
+        } else {
+          renderHtml("html/workflows/index.html", mapOf(
+              "workflows" to encodedJson,
+              "page" to mapOf(
+                  "size" to if (size < 0) total else size,
+                  "offset" to offset,
+                  "total" to total
+              )
+          ), ctx.response())
+        }
       } else {
         ctx.response()
             .putHeader("content-type", "application/json")
@@ -626,10 +711,15 @@ class HttpEndpoint : CoroutineVerticle() {
         val json = JsonUtils.toJson(submission)
         amendSubmission(json, true)
         if (ctx.acceptableContentType == "text/html") {
-          renderHtml("html/workflows/single.html", mapOf(
-              "id" to submission.id,
-              "workflows" to JsonArray(json).encode()
-          ), ctx.response())
+          val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
+          if (beta) {
+            renderAsset("ui/workflows/[id].html", ctx.response())
+          } else {
+            renderHtml("html/workflows/single.html", mapOf(
+                "id" to submission.id,
+                "workflows" to JsonArray(json).encode()
+            ), ctx.response())
+          }
         } else {
           ctx.response()
               .putHeader("content-type", "application/json")
@@ -909,15 +999,20 @@ class HttpEndpoint : CoroutineVerticle() {
       val encodedJson = JsonArray(list).encode()
 
       if (isHtml) {
-        renderHtml("html/processchains/index.html", mapOf(
-            "submissionId" to submissionId,
-            "processChains" to encodedJson,
-            "page" to mapOf(
-                "size" to if (size < 0) total else size,
-                "offset" to offset,
-                "total" to total
-            )
-        ), ctx.response())
+        val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
+        if (beta) {
+          renderAsset("ui/processchains/index.html", ctx.response())
+        } else {
+          renderHtml("html/processchains/index.html", mapOf(
+              "submissionId" to submissionId,
+              "processChains" to encodedJson,
+              "page" to mapOf(
+                  "size" to if (size < 0) total else size,
+                  "offset" to offset,
+                  "total" to total
+              )
+          ), ctx.response())
+        }
       } else {
         ctx.response()
             .putHeader("content-type", "application/json")
@@ -946,10 +1041,15 @@ class HttpEndpoint : CoroutineVerticle() {
         val submissionId = submissionRegistry.getProcessChainSubmissionId(id)
         amendProcessChain(json, submissionId, true)
         if (ctx.acceptableContentType == "text/html") {
-          renderHtml("html/processchains/single.html", mapOf(
-              "id" to id,
-              "processChains" to JsonArray(json).encode()
-          ), ctx.response())
+          val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
+          if (beta) {
+            renderAsset("ui/processchains/[id].html", ctx.response())
+          } else {
+            renderHtml("html/processchains/single.html", mapOf(
+                "id" to id,
+                "processChains" to JsonArray(json).encode()
+            ), ctx.response())
+          }
         } else {
           ctx.response()
               .putHeader("content-type", "application/json")

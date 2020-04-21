@@ -144,6 +144,7 @@ tasks {
                 resources {
                     srcDirs("$buildDir/assets")
                     srcDirs("$buildDir/generated-src/main/resources")
+                    srcDirs("$projectDir/ui/out")
                 }
             }
         }
@@ -239,6 +240,7 @@ tasks {
         dependsOn(extractAssets)
         dependsOn(minifyJs)
         dependsOn(less)
+        dependsOn(":ui:processResources")
     }
 
     // customize start scripts

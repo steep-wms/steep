@@ -16,12 +16,14 @@ export default () => {
   const [error, setError] = useState()
 
   useEffect(() => {
-    fetcher(`${process.env.baseUrl}/services/${id}`)
-      .then(setData)
-      .catch(err => {
-        console.log(err)
-        setError(<Alert error>Could not load service</Alert>)
-      })
+    if (id) {
+      fetcher(`${process.env.baseUrl}/services/${id}`)
+        .then(setData)
+        .catch(err => {
+          console.log(err)
+          setError(<Alert error>Could not load service</Alert>)
+        })
+    }
   }, [id])
 
   let title

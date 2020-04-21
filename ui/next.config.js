@@ -6,13 +6,23 @@ const sass = require("@zeit/next-sass")
 
 const withPlugins = require("next-compose-plugins")
 
+const isProd = process.env.NODE_ENV === "production"
+
 const config = {
   env: {
-    baseUrl: "http://localhost:8080"
+    // URL to Steep. Used to connect to the event bus.
+    // Magic string will be replaced by Steep's HttpEndpoint verticle
+    baseUrl: isProd ? "/$$MYBASEURL$$" : "http://localhost:8080"
   },
 
   // create a folder for each page
   exportTrailingSlash: true,
+
+  experimental: {
+    // Base path of the application
+    // Magic string will be replaced by Steep's HttpEndpoint verticle
+    basePath: isProd ? "/$$MYBASEPATH$$" : ""
+  },
 
   // list pages to export
   exportPathMap() {
@@ -20,6 +30,7 @@ const config = {
       "/": { page: "/" },
       "/processchains": { page: "/processchains" },
       "/services": { page: "/services" },
+      "/services/[id].html": { page: "/services/[id]" },
       "/workflows": { page: "/workflows" }
     }
   },

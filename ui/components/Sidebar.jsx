@@ -3,6 +3,13 @@ import "./Sidebar.scss"
 import { Grid, Link as LinkIcon, Pocket, Send, Server } from "react-feather"
 
 export default () => {
+  function switchToClassicUI() {
+    document.cookie = "beta=;path=/;expires=Thu, 01 Jan 1970 00:00:00 GMT"
+    let params = new URLSearchParams(window.location.search)
+    params.delete("beta")
+    window.location.search = params.toString()
+  }
+
   return (
     <aside>
       <div className="sidebar">
@@ -49,6 +56,11 @@ export default () => {
             </Link>
           </div>
         </nav>
+        <div className="sidebar-rest">
+          <div className="sidebar-switch-to-classic" onClick={switchToClassicUI}>
+            Back to classic UI ...
+          </div>
+        </div>
       </div>
     </aside>
   )

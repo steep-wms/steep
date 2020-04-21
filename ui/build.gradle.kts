@@ -35,6 +35,12 @@ tasks {
                 .withPathSensitivity(PathSensitivity.RELATIVE)
         }
 
+        for (f in listOf(".eslintrc.js", "next.config.js")) {
+            inputs.file(file(f))
+                .withPropertyName(f)
+                .withPathSensitivity(PathSensitivity.RELATIVE)
+        }
+
         inputs.files("package.json", "package-lock.json")
             .withPropertyName("package-jsons-2")
             .withPathSensitivity(PathSensitivity.RELATIVE)
@@ -45,5 +51,11 @@ tasks {
 
     processResources {
         dependsOn(buildUi)
+    }
+
+    clean {
+        delete(file(".next"))
+        delete(file("node_modules"))
+        delete(file("out"))
     }
 }

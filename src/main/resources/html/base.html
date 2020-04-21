@@ -13,10 +13,33 @@
 $% block additionalCSS %$
 $% endblock %$
 
+<script>
+function redirect_to_beta() {
+  if (window.location.href.indexOf("?") >= 0) {
+    window.location.href += "&beta=true";
+  } else {
+    window.location.href += "?beta=true";
+  }
+}
+
+function switch_to_beta() {
+  document.cookie = "beta=true; path=/";
+  redirect_to_beta();
+}
+
+if (document.cookie.replace(/(?:(?:^|.*;\s*)beta\s*\=\s*([^;]*).*$)|^.*$/, "$1") === "true") {
+  redirect_to_beta();
+}
+</script>
+
 </head>
 <body>
 
 <div class="ui container">
+  <div class="beta-switcher">
+    <a href="#" onclick="switch_to_beta(); return false">Switch to new beta UI ...</a>
+  </div>
+
   <div class="ui text top menu">
     <a class="header item" href="$$ basePath $$/">Steep</a>
     <a class="item" href="$$ basePath $$/workflows">Workflows</a>
