@@ -1,0 +1,30 @@
+@import "../../css/variables";
+
+.processchain-details {
+  .processchain-details-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+
+    @media (max-width: $sm) {
+      flex-direction: column;
+    }
+  }
+
+  h3 {
+    font-size: 1rem;
+    margin: 0;
+    padding-top: $spacer * 2;
+  }
+
+  .alert {
+    white-space: pre;
+    overflow-x: auto;
+    margin-top: $spacer / 2;
+    margin-bottom: $spacer / 2;
+  }
+
+  .code-box {
+    margin-top: $spacer / 2;
+  }
+}

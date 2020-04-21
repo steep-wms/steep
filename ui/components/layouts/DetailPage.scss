@@ -1,7 +1,14 @@
 @import "../../css/variables";
 
+.detail-page-breadcrumbs {
+  font-size: $font-size-sm;
+}
+
 .detail-page-title {
   margin-bottom: 0;
+  overflow-x: auto;
+  max-width: 100%;
+  display: block;
 }
 
 .detail-page-subtitle {

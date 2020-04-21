@@ -163,17 +163,3 @@ code {
 code, pre {
   font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
-
-.hljs, pre {
-  background: $gray-700;
-  color: #fff;
-}
-
-pre {
-  border-radius: $border-radius;
-
-  code {
-    margin: $spacer / 2 $spacer;
-    display: block;
-  }
-}

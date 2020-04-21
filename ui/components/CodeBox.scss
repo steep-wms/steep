@@ -1,0 +1,93 @@
+@import "../css/variables";
+@import "~highlight.js/styles/zenburn";
+
+.code-box {
+  display: flex;
+  flex-direction: column;
+
+  .code-box-title {
+    display: flex;
+    flex-direction: row;
+
+    .code-box-title-tab {
+      position: relative;
+      cursor: pointer;
+      display: inline-block;
+      padding: .5rem 1rem;
+      border-top-left-radius: $border-radius;
+      border-top-right-radius: $border-radius;
+      border: 1px solid $gray-300;
+      border-bottom: none;
+      z-index: 0;
+      transition: background-color 0.15s ease-in-out;
+      margin-right: -1px;
+
+      &:not(.active):hover {
+        background-color: $gray-300;
+      }
+
+      &.active {
+        transition: none;
+        background-color: $gray-700;
+        border-color: $gray-700;
+        color: #fff;
+        z-index: 1;
+      }
+    }
+  }
+
+  .code-box-tab {
+    display: none;
+
+    &.active {
+      display: block;
+    }
+  }
+
+  .code-box-copy-btn {
+    position: absolute;
+    top: $spacer;
+    right: $spacer;
+    color: #fff;
+    cursor: pointer;
+
+    :hover {
+      color: $gray-300;
+    }
+  }
+
+  .code-box-main {
+    position: relative;
+
+    .code-box-tooltip {
+      font-size: $font-size-sm;
+      background-color: $gray-100;
+      border-radius: $border-radius / 2;
+      padding: 0 .4rem;
+      box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
+      display: none;
+
+      &.visible {
+        display: block;
+      }
+    }
+  }
+
+  .hljs, pre {
+    background: $gray-700;
+    color: #fff;
+  }
+
+  pre {
+    border-radius: $border-radius;
+    border-top-left-radius: 0;
+    padding: $spacer / 2 0;
+    margin-top: 0;
+
+    code {
+      margin: $spacer / 2 $spacer;
+      display: block;
+      overflow: auto;
+    }
+  }
+}

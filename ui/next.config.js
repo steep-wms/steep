@@ -29,6 +29,7 @@ const config = {
     return {
       "/": { page: "/" },
       "/processchains": { page: "/processchains" },
+      "/processchains/[id].html": { page: "/processchains/[id]" },
       "/services": { page: "/services" },
       "/services/[id].html": { page: "/services/[id]" },
       "/workflows": { page: "/workflows" }
