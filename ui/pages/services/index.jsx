@@ -31,7 +31,7 @@ export default () => {
   }
 
   return (
-    <Page>
+    <Page title="Services">
       <h1>Services</h1>
       {serviceElements}
       {error}

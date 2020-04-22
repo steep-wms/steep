@@ -11,7 +11,7 @@ function Breadcrumbs({ breadcrumbs }) {
 }
 
 export default ({ breadcrumbs, title, subtitle, children }) => (
-  <Page>
+  <Page title={title}>
     {title && <h1 className="detail-page-title">{title}</h1>}
     {subtitle && <p className="detail-page-subtitle">{subtitle}</p>}
     {breadcrumbs && <Breadcrumbs breadcrumbs={breadcrumbs} />}

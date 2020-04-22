@@ -63,7 +63,7 @@ export default () => {
   }
 
   return (
-    <Page>
+    <Page title="Workflows">
       <h1>Workflows</h1>
       <WorkflowContext.Provider pageSize={pageSize} onWorkflowChanged={onWorkflowChanged}>
         <WorkflowList pageSize={pageSize} pageOffset={pageOffset} />

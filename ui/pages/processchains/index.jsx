@@ -64,7 +64,7 @@ export default () => {
   }
 
   return (
-    <Page>
+    <Page title="Process chains">
       <h1>Process chains</h1>
       <ProcessChainContext.Provider pageSize={pageSize} onProcessChainChanged={onProcessChainChanged}>
         <ProcessChainList pageSize={pageSize} pageOffset={pageOffset} submissionId={submissionId} />

@@ -1,6 +1,6 @@
 import Head from "next/head"
 
-export default ({ title = "Steep Workflow Management System" }) => (
+export default ({ title }) => (
   <header>
     <Head>
       <meta httpEquiv="X-UA-Compatible" content="IE=edge"/>
@@ -10,7 +10,7 @@ export default ({ title = "Steep Workflow Management System" }) => (
       <meta name="robots" content="index,follow"/>
       <link href="https://fonts.googleapis.com/css?family=Roboto:300,400" rel="stylesheet"/>
       <link href="https://fonts.googleapis.com/css?family=Roboto+Condensed:300,400" rel="stylesheet"/>
-      <title>{title}</title>
+      <title>{title && title + " « "}Steep Workflow Management System</title>
     </Head>
   </header>
 )
