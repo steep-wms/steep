@@ -41,6 +41,13 @@ h1 {
   font-size: 2rem;
   margin-top: $spacer * 1.8;
   margin-bottom: $spacer * 1.45;
+  overflow-x: auto;
+  max-width: 100%;
+  display: block;
+
+  &.no-margin-bottom {
+    margin-bottom: 0;
+  }
 }
 
 h2 {

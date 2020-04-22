@@ -1,7 +1,11 @@
+import classNames from "classnames"
+import Link from "next/link"
 import Page from "../../components/layouts/Page"
+import Breadcrumbs from "../../components/Breadcrumbs"
 import Alert from "../../components/Alert"
 import ListItem from "../../components/ListItem"
 import ProcessChainContext from "../../components/processchains/ProcessChainContext"
+import "./index.scss"
 import { useContext, useEffect, useState } from "react"
 import fetcher from "../../components/lib/json-fetcher"
 
@@ -63,12 +67,29 @@ export default () => {
     submissionId = params.get("submissionId") || undefined
   }
 
+  let [breadcrumbs, setBreadcrumbs] = useState()
+
+  useEffect(() => {
+    if (typeof submissionId !== "undefined") {
+      setBreadcrumbs([
+        <Link href="/workflows" key="workflows"><a>Workflows</a></Link>,
+        <Link href="/workflows/[id]" as={`/workflows/${submissionId}`} key={submissionId}>
+          <a>{submissionId}</a>
+        </Link>,
+        "Process chains"
+      ])
+    }
+  }, [submissionId])
+
   return (
     <Page title="Process chains">
-      <h1>Process chains</h1>
-      <ProcessChainContext.Provider pageSize={pageSize} onProcessChainChanged={onProcessChainChanged}>
-        <ProcessChainList pageSize={pageSize} pageOffset={pageOffset} submissionId={submissionId} />
-      </ProcessChainContext.Provider>
+      <div className="process-chain-overview">
+        <h1 className={classNames({ "no-margin-bottom": breadcrumbs })}>Process chains</h1>
+        {breadcrumbs && <Breadcrumbs breadcrumbs={breadcrumbs} />}
+        <ProcessChainContext.Provider pageSize={pageSize} onProcessChainChanged={onProcessChainChanged}>
+          <ProcessChainList pageSize={pageSize} pageOffset={pageOffset} submissionId={submissionId} />
+        </ProcessChainContext.Provider>
+      </div>
     </Page>
   )
 }

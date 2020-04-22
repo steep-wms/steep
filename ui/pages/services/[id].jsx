@@ -5,7 +5,7 @@ import Alert from "../../components/Alert"
 import DefinitionList from "../../components/DefinitionList"
 import DefinitionListItem from "../../components/DefinitionListItem"
 import Label from "../../components/Label"
-import "./Service.scss"
+import "./[id].scss"
 import fetcher from "../../components/lib/json-fetcher"
 
 export default () => {
