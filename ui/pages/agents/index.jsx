@@ -5,6 +5,7 @@ import AgentContext from "../../components/agents/AgentContext"
 import { useContext, useEffect, useState } from "react"
 import { formatDistanceToNow } from "date-fns"
 import TimeAgo from "react-timeago"
+import agentToProgress from "../../components/agents/agent-to-progress"
 import { formatDate } from "../../components/lib/date-time-utils"
 import fetcher from "../../components/lib/json-fetcher"
 
@@ -15,17 +16,7 @@ function formatterToNow(value, unit, suffix, epochSeconds) {
 function onAgentChanged(agent) {
   let href = `/agents/${agent.id}`
 
-  let progress = {
-    status: agent.available ? "IDLE" : "RUNNING"
-  }
-
-  if (!agent.available) {
-    progress.title = "Busy"
-  }
-
-  let changedTitle = formatDate(agent.stateChangedTime)
-  progress.subtitle = <TimeAgo date={agent.stateChangedTime}
-    formatter={formatterToNow} title={changedTitle} />
+  let progress = agentToProgress(agent)
 
   let upSinceTitle = formatDate(agent.startTime)
   let subtitle = <>Up since <TimeAgo date={agent.startTime}
@@ -34,7 +25,7 @@ function onAgentChanged(agent) {
   agent.element = (
     <ListItem key={agent.id} justAdded={agent.justAdded} justLeft={agent.left}
       linkHref={href} title={agent.id} subtitle={subtitle}
-      progress={progress} />
+      progress={progress} labels={agent.capabilities} />
   )
 }
 

@@ -74,7 +74,7 @@
     align-items: center;
   }
 
-  .list-item-title > .label {
+  .list-item-title > .label:first-of-type {
     margin-left: .5rem;
   }
 

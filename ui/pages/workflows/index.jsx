@@ -3,7 +3,7 @@ import Alert from "../../components/Alert"
 import ListItem from "../../components/ListItem"
 import WorkflowContext from "../../components/workflows/WorkflowContext"
 import { useContext, useEffect, useState } from "react"
-import workflowToProgress from "../../components/lib/workflow-to-progress"
+import workflowToProgress from "../../components/workflows/workflow-to-progress"
 import fetcher from "../../components/lib/json-fetcher"
 
 function onWorkflowChanged(workflow) {

@@ -10,7 +10,7 @@ import ListItemProgressBox from "../../components/ListItemProgressBox"
 import LiveDuration from "../../components/LiveDuration"
 import WorkflowContext from "../../components/workflows/WorkflowContext"
 import { formatDate, formatDurationTitle } from "../../components/lib/date-time-utils"
-import workflowToProgress from "../../components/lib/workflow-to-progress"
+import workflowToProgress from "../../components/workflows/workflow-to-progress"
 import fetcher from "../../components/lib/json-fetcher"
 
 function Workflow({ id }) {
