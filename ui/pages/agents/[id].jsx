@@ -9,6 +9,7 @@ import Label from "../../components/Label"
 import ListItemProgressBox from "../../components/ListItemProgressBox"
 import LiveDuration from "../../components/LiveDuration"
 import AgentContext from "../../components/agents/AgentContext"
+import "./[id].scss"
 import { formatDate } from "../../components/lib/date-time-utils"
 import agentToProgress from "../../components/agents/agent-to-progress"
 import fetcher from "../../components/lib/json-fetcher"
@@ -57,8 +58,8 @@ function Agent({ id }) {
             <DefinitionListItem title="Start time">
               {a.startTime ? formatDate(a.startTime) : <>&ndash;</>}
             </DefinitionListItem>
-            <DefinitionListItem title="Utime">
-              {a.startTime ? <LiveDuration startTime={a.startTime} /> : <>&ndash;</>}
+            <DefinitionListItem title="Uptime">
+              {a.startTime && !a.left ? <LiveDuration startTime={a.startTime} /> : <>&ndash;</>}
             </DefinitionListItem>
             <DefinitionListItem title="Capabilities">
               {caps}
@@ -69,6 +70,11 @@ function Agent({ id }) {
           <ListItemProgressBox progress={progress} />
         </div>
       </div>
+      {a.left && (<>
+        <div className="agent-detail-left">
+          <Alert error>Agent has left the cluster</Alert>
+        </div>
+      </>)}
     </>)
   }
 

@@ -11,7 +11,9 @@ export default function agentToProgress(agent) {
     status: agent.available ? "IDLE" : "RUNNING"
   }
 
-  if (!agent.available) {
+  if (agent.left) {
+    progress.status = "LEFT"
+  } else if (!agent.available) {
     progress.title = "Busy"
   }
 

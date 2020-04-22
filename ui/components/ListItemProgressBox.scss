@@ -26,11 +26,7 @@
       animation: list-item-spin 4s linear infinite;
     }
 
-    &.cancelled {
-      stroke: $gray-500;
-    }
-
-    &.paused {
+    &.cancelled, &.idle {
       stroke: $gray-500;
     }
 
@@ -42,7 +38,7 @@
       stroke: $success;
     }
 
-    &.error {
+    &.error, &.left {
       stroke: $error;
     }
   }

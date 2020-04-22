@@ -1,5 +1,5 @@
 import "./ListItemProgressBox.scss"
-import { AlertCircle, CheckCircle, Coffee, Delete, PauseCircle, RotateCw, XCircle } from "react-feather"
+import { AlertCircle, CheckCircle, Coffee, Delete, PauseCircle, Power, RotateCw, XCircle } from "react-feather"
 
 export default ({ progress }) => {
   let icon
@@ -33,7 +33,12 @@ export default ({ progress }) => {
 
     case "IDLE":
       defaultTitle = "Idle"
-      icon = <PauseCircle className="feather paused" />
+      icon = <PauseCircle className="feather idle" />
+      break
+
+    case "LEFT":
+      defaultTitle = "Left"
+      icon = <Power className="feather left" />
       break
 
     case "PARTIAL_SUCCESS":

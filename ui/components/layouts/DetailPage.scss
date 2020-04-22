@@ -14,6 +14,10 @@
 }
 
 .detail-page-main {
+  .alert.error:first-child {
+    margin-top: 3rem;
+  }
+
   .detail-header {
     display: flex;
     flex-direction: row;
