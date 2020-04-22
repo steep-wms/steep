@@ -14,7 +14,7 @@ export default (pageSize, initItem) => (state, { action = "unshift", items }) =>
 
     case "unshift":
     case "push": {
-      if (action === "push" && state.length >= pageSize) {
+      if (action === "push" && typeof pageSize !== "undefined" && state.length >= pageSize) {
         return state
       }
 
@@ -26,11 +26,15 @@ export default (pageSize, initItem) => (state, { action = "unshift", items }) =>
       }
 
       if (action === "push") {
-        itemsToAdd = itemsToAdd.slice(0, pageSize - state.length)
+        if (typeof pageSize !== "undefined") {
+          itemsToAdd = itemsToAdd.slice(0, pageSize - state.length)
+        }
       } else {
         itemsToAdd.reverse()
-        itemsToAdd = itemsToAdd.slice(0, pageSize)
-        state = state.slice(0, pageSize - itemsToAdd.length)
+        if (typeof pageSize !== "undefined") {
+          itemsToAdd = itemsToAdd.slice(0, pageSize)
+          state = state.slice(0, pageSize - itemsToAdd.length)
+        }
       }
 
       for (let item of itemsToAdd) {

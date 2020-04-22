@@ -11,7 +11,7 @@ function formatterToNow(value, unit, suffix, epochSeconds) {
   return formatDistanceToNow(epochSeconds, { addSuffix: true, includeSeconds: true })
 }
 
-export default ({ title, linkHref, linkAs, subtitle, justAdded,
+export default ({ title, linkHref, linkAs, subtitle, justAdded, justLeft,
     startTime, endTime, labels = [], progress }) => {
   let defaultSubtitle
   if (typeof progress !== "undefined") {
@@ -50,7 +50,7 @@ export default ({ title, linkHref, linkAs, subtitle, justAdded,
   }
 
   return (
-    <div className={classNames("list-item", { "just-added": justAdded })}>
+    <div className={classNames("list-item", { "just-added": justAdded && !justLeft, "just-left": justLeft })}>
       <div className="list-item-left">
         <div className="list-item-title">
           <Link href={linkHref} as={linkAs}><a>{title}</a></Link>

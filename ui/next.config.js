@@ -28,6 +28,7 @@ const config = {
   exportPathMap() {
     return {
       "/": { page: "/" },
+      "/agents": { page: "/agents" },
       "/processchains": { page: "/processchains" },
       "/processchains/[id].html": { page: "/processchains/[id]" },
       "/services": { page: "/services" },
