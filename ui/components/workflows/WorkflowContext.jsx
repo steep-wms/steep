@@ -65,7 +65,7 @@ function updateWorkflowsReducer(pageSize, onWorkflowChanged) {
               newWorkflow.succeededProcessChains =
                   Math.max(0, newWorkflow.succeededProcessChains + workflow.succeededProcessChains)
             }
-            onWorkflowChanged && onWorkflowChanged(workflow)
+            onWorkflowChanged && onWorkflowChanged(newWorkflow)
             state = [...state.slice(0, i), newWorkflow, ...state.slice(i + 1)]
           }
         }
@@ -109,7 +109,7 @@ function updateWorkflowsReducer(pageSize, onWorkflowChanged) {
               w.succeededProcessChains += n
             }
 
-            onWorkflowChanged && onWorkflowChanged(workflow)
+            onWorkflowChanged && onWorkflowChanged(w)
             state = [...state.slice(0, i), w, ...state.slice(i + 1)]
           }
         }
