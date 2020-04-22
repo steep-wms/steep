@@ -4,7 +4,7 @@ import Page from "../../components/layouts/Page"
 import Alert from "../../components/Alert"
 import ListItem from "../../components/ListItem"
 import { useContext, useEffect, useReducer, useState } from "react"
-import Link from "next/link"
+import workflowToProgress from "../../components/lib/workflow-to-progress"
 import fetcher from "../../components/lib/json-fetcher"
 import listItemUpdateReducer from "../../components/lib/listitem-update-reducer"
 
@@ -38,38 +38,7 @@ function workflowToElement(workflow) {
     status = "CANCELLING"
   }
 
-  let progressTitle
-  let progressSubTitle
-  if (workflow.status === "RUNNING") {
-    let completed = workflow.succeededProcessChains +
-       workflow.failedProcessChains + workflow.cancelledProcessChains
-    progressTitle = `${workflow.runningProcessChains} Running`
-    progressSubTitle = `${completed} of ${workflow.totalProcessChains} completed`
-  } else if (workflow.status !== "ACCEPTED" && workflow.status !== "RUNNING") {
-    if (workflow.failedProcessChains > 0) {
-      if (workflow.failedProcessChains !== workflow.totalProcessChains) {
-        progressSubTitle = `${workflow.failedProcessChains} of ${workflow.totalProcessChains} failed`
-      } else {
-        progressSubTitle = `${workflow.failedProcessChains} failed`
-      }
-    } else {
-      progressSubTitle = `${workflow.totalProcessChains} completed`
-    }
-  }
-
-  if (typeof progressSubTitle !== "undefined") {
-    progressSubTitle = (
-      <Link href="/processchains/" as={`/processchains/?submissionId=${workflow.id}`}>
-        <a>{progressSubTitle}</a>
-      </Link>
-    )
-  }
-
-  let progress = {
-    status,
-    title: progressTitle,
-    subtitle: progressSubTitle
-  }
+  let progress = workflowToProgress(workflow)
 
   return (
     <ListItem key={workflow.id} justAdded={workflow.justAdded}

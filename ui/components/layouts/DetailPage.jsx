@@ -16,6 +16,8 @@ export default ({ breadcrumbs, title, subtitle, children }) => (
     {subtitle && <p className="detail-page-subtitle">{subtitle}</p>}
     {breadcrumbs && <Breadcrumbs breadcrumbs={breadcrumbs} />}
     {(title || subtitle) && <hr className="detail-page-divider" />}
-    {children}
+    <div className="detail-page-main">
+      {children}
+    </div>
   </Page>
 )

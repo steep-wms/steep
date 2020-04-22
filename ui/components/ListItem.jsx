@@ -1,11 +1,11 @@
 import classNames from "classnames"
-import "./ListItem.scss"
 import Label from "./Label"
 import ListItemProgressBox from "./ListItemProgressBox"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
 import TimeAgo from "react-timeago"
 import { formatDate, formatDuration, formatDurationTitle } from "./lib/date-time-utils"
+import "./ListItem.scss"
 
 function formatterToNow(value, unit, suffix, epochSeconds) {
   return formatDistanceToNow(epochSeconds, { addSuffix: true, includeSeconds: true })

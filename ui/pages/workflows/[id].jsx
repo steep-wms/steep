@@ -8,31 +8,23 @@ import Alert from "../../components/Alert"
 import CodeBox from "../../components/CodeBox"
 import DefinitionList from "../../components/DefinitionList"
 import DefinitionListItem from "../../components/DefinitionListItem"
-import Label from "../../components/Label"
 import ListItemProgressBox from "../../components/ListItemProgressBox"
 import LiveDuration from "../../components/LiveDuration"
 import { formatDate, formatDurationTitle } from "../../components/lib/date-time-utils"
+import workflowToProgress from "../../components/lib/workflow-to-progress"
 import fetcher from "../../components/lib/json-fetcher"
 
 import {
-  PROCESS_CHAIN_START_TIME_CHANGED,
-  PROCESS_CHAIN_END_TIME_CHANGED,
-  PROCESS_CHAIN_STATUS_CHANGED,
-  PROCESS_CHAIN_ALL_STATUS_CHANGED,
-  PROCESS_CHAIN_ERROR_MESSAGE_CHANGED
+  SUBMISSION_START_TIME_CHANGED,
+  SUBMISSION_END_TIME_CHANGED,
+  SUBMISSION_STATUS_CHANGED,
+  SUBMISSION_ERROR_MESSAGE_CHANGED
 } from "../../components/lib/EventBusMessages"
 
 function updateDataReducer(state, { action = "update", data }) {
   switch (action) {
     case "set":
       return data
-
-    case "updateAllStatus":
-      if (typeof state === "undefined" || state.submissionId !== data.submissionId ||
-          state.status !== data.currentStatus) {
-        return state
-      }
-      return { ...state, status: data.newStatus }
 
     case "update":
       if (typeof state === "undefined" || state.id !== data.id) {
@@ -55,11 +47,11 @@ export default () => {
 
   useEffect(() => {
     if (id) {
-      fetcher(`${process.env.baseUrl}/processchains/${id}`)
+      fetcher(`${process.env.baseUrl}/workflows/${id}`)
         .then(data => updateData({ action: "set", data }))
         .catch(err => {
           console.log(err)
-          setError(<Alert error>Could not load process chain</Alert>)
+          setError(<Alert error>Could not load workflow</Alert>)
         })
     }
   }, [id])
@@ -68,7 +60,7 @@ export default () => {
     function onStartTimeChanged(error, message) {
       updateData({
         data: {
-          id: message.body.processChainId,
+          id: message.body.submissionId,
           startTime: message.body.startTime
         }
       })
@@ -77,7 +69,7 @@ export default () => {
     function onEndTimeChanged(error, message) {
       updateData({
         data: {
-          id: message.body.processChainId,
+          id: message.body.submissionId,
           endTime: message.body.endTime
         }
       })
@@ -86,19 +78,8 @@ export default () => {
     function onStatusChanged(error, message) {
       updateData({
         data: {
-          id: message.body.processChainId,
+          id: message.body.submissionId,
           status: message.body.status
-        }
-      })
-    }
-
-    function onAllStatusChanged(error, message) {
-      updateData({
-        action: "updateAllStatus",
-        data: {
-          submissionId: message.body.submissionId,
-          currentStatus: message.body.currentStatus,
-          newStatus: message.body.newStatus
         }
       })
     }
@@ -106,60 +87,45 @@ export default () => {
     function onErrorMessageChanged(error, message) {
       updateData({
         data: {
-          id: message.body.processChainId,
+          id: message.body.submissionId,
           errorMessage: message.body.errorMessage
         }
       })
     }
 
     if (eventBus) {
-      eventBus.registerHandler(PROCESS_CHAIN_START_TIME_CHANGED, onStartTimeChanged)
-      eventBus.registerHandler(PROCESS_CHAIN_END_TIME_CHANGED, onEndTimeChanged)
-      eventBus.registerHandler(PROCESS_CHAIN_STATUS_CHANGED, onStatusChanged)
-      eventBus.registerHandler(PROCESS_CHAIN_ALL_STATUS_CHANGED, onAllStatusChanged)
-      eventBus.registerHandler(PROCESS_CHAIN_ERROR_MESSAGE_CHANGED, onErrorMessageChanged)
+      eventBus.registerHandler(SUBMISSION_START_TIME_CHANGED, onStartTimeChanged)
+      eventBus.registerHandler(SUBMISSION_END_TIME_CHANGED, onEndTimeChanged)
+      eventBus.registerHandler(SUBMISSION_STATUS_CHANGED, onStatusChanged)
+      eventBus.registerHandler(SUBMISSION_ERROR_MESSAGE_CHANGED, onErrorMessageChanged)
+      // eventBus.registerHandler(PROCESS_CHAIN_ALL_STATUS_CHANGED, onAllStatusChanged)
     }
 
     return () => {
       if (eventBus && eventBus.state === EventBus.OPEN) {
-        eventBus.unregisterHandler(PROCESS_CHAIN_ERROR_MESSAGE_CHANGED, onErrorMessageChanged)
-        eventBus.unregisterHandler(PROCESS_CHAIN_ALL_STATUS_CHANGED, onAllStatusChanged)
-        eventBus.unregisterHandler(PROCESS_CHAIN_STATUS_CHANGED, onStatusChanged)
-        eventBus.unregisterHandler(PROCESS_CHAIN_END_TIME_CHANGED, onEndTimeChanged)
-        eventBus.unregisterHandler(PROCESS_CHAIN_START_TIME_CHANGED, onStartTimeChanged)
+        // eventBus.unregisterHandler(PROCESS_CHAIN_ALL_STATUS_CHANGED, onAllStatusChanged)
+        eventBus.unregisterHandler(SUBMISSION_ERROR_MESSAGE_CHANGED, onErrorMessageChanged)
+        eventBus.unregisterHandler(SUBMISSION_STATUS_CHANGED, onStatusChanged)
+        eventBus.unregisterHandler(SUBMISSION_END_TIME_CHANGED, onEndTimeChanged)
+        eventBus.unregisterHandler(SUBMISSION_START_TIME_CHANGED, onStartTimeChanged)
       }
     }
   }, [eventBus])
 
   let breadcrumbs
   let title
-  let processchain
+  let workflow
 
   if (typeof data !== "undefined") {
     title = data.id
     breadcrumbs = [
       <Link href="/workflows" key="workflows"><a>Workflows</a></Link>,
-      <Link href="/workflows/[id]" as={`/workflows/${data.submissionId}`} key={data.submissionId}>
-        <a>{data.submissionId}</a>
-      </Link>,
-      <Link href="/processchains" as={`/processchains/?submissionId=${data.submissionId}`} key="processchains">
-        <a>Process chains</a>
-      </Link>,
       data.id
     ]
 
-    let reqcap
-    if (typeof data.requiredCapabilities === "undefined" || data.requiredCapabilities.length === 0) {
-      reqcap = <>&ndash;</>
-    } else {
-      reqcap = data.requiredCapabilities.map((r, i) => <Label key={i}>{r}</Label>)
-    }
+    let progress = workflowToProgress(data)
 
-    let progress = {
-      status: data.status
-    }
-
-    processchain = (<>
+    workflow = (<>
       <div className="detail-header">
         <div className="detail-header-left">
           <DefinitionList>
@@ -176,9 +142,6 @@ export default () => {
                 )
               }
             </DefinitionListItem>
-            <DefinitionListItem title="Required capabilities">
-              {reqcap}
-            </DefinitionListItem>
           </DefinitionList>
         </div>
         <div className="detail-header-right">
@@ -189,14 +152,14 @@ export default () => {
         <h2>Error message</h2>
         <Alert error>{data.errorMessage}</Alert>
       </>)}
-      <h2>Executables</h2>
-      <CodeBox json={data.executables} />
+      <h2>Source</h2>
+      <CodeBox json={data.workflow} />
     </>)
   }
 
   return (
     <DetailPage breadcrumbs={breadcrumbs} title={title}>
-      {processchain}
+      {workflow}
       {error}
     </DetailPage>
   )

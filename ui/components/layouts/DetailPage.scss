@@ -23,3 +23,37 @@
   height: 0;
   margin: $spacer 0;
 }
+
+.detail-page-main {
+  .detail-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+
+    @media (max-width: $sm) {
+      flex-direction: column;
+    }
+  }
+
+  h2 {
+    font-size: 1.5rem;
+    margin-bottom: $spacer;
+  }
+
+  h3 {
+    font-size: 1rem;
+    margin: 0;
+    padding-top: $spacer * 2;
+  }
+
+  .alert {
+    white-space: pre;
+    overflow-x: auto;
+    margin-top: $spacer / 2;
+    margin-bottom: $spacer / 2;
+  }
+
+  .code-box {
+    margin-top: $spacer / 2;
+  }
+}
