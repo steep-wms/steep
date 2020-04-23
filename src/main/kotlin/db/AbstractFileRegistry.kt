@@ -1,12 +1,15 @@
 package db
 
 import com.fasterxml.jackson.module.kotlin.jacksonTypeRef
-import helper.FileSystemUtils
 import helper.JsonUtils
 import helper.YamlUtils
+import io.vertx.core.Future
+import io.vertx.core.Handler
 import io.vertx.core.Vertx
+import io.vertx.kotlin.core.executeBlockingAwait
 import io.vertx.kotlin.core.file.readFileAwait
-import java.nio.file.FileSystems
+import org.apache.sshd.common.util.io.DirectoryScanner
+import java.io.File
 import java.nio.file.Path
 
 /**
@@ -23,22 +26,23 @@ abstract class AbstractFileRegistry {
    */
   protected suspend inline fun <reified I, reified T : List<I>> find(
       paths: List<String>, vertx: Vertx): List<I> {
-    val matchers = paths.map { path ->
-      FileSystems.getDefault().getPathMatcher("glob:$path")
-    }
-    val cwd = Path.of("").toAbsolutePath().toString().let {
-      if (it.endsWith("/")) it else "$it/"
-    }
+    val files = vertx.executeBlockingAwait(Handler<Future<List<String>>> { future ->
+      val cwd = Path.of("").toAbsolutePath().toString().let {
+        if (it.endsWith("/")) it else "$it/"
+      }
+
+      val ds = DirectoryScanner()
+      ds.basedir = File(cwd)
+      ds.setIncludes(paths.toTypedArray())
+      ds.scan()
+
+      future.complete(ds.includedFiles.map { "$cwd$it" })
+    }) ?: emptyList()
 
     // We need this here to get access to T.
     // com.fasterxml.jackson.module.kotlin.readValue does not work inside
     // the flatMap
     val tr = jacksonTypeRef<T>()
-
-    val files = FileSystemUtils.readRecursive(cwd, vertx.fileSystem()) { file ->
-      val p = Path.of(file.substring(cwd.length))
-      matchers.any { it.matches(p) }
-    }
 
     return files.flatMap { file ->
       val content = vertx.fileSystem().readFileAwait(file).toString()
