@@ -26,6 +26,10 @@ abstract class AbstractFileRegistry {
    */
   protected suspend inline fun <reified I, reified T : List<I>> find(
       paths: List<String>, vertx: Vertx): List<I> {
+    if (paths.isEmpty()) {
+      return emptyList()
+    }
+
     val files = vertx.executeBlockingAwait(Handler<Future<List<String>>> { future ->
       val cwd = Path.of("").toAbsolutePath().toString().let {
         if (it.endsWith("/")) it else "$it/"
