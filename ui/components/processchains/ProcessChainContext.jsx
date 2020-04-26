@@ -28,6 +28,7 @@ function updateProcessChainsReducer(pageSize, onProcessChainChanged) {
 
   return (state, { action = "unshift", processChains }) => {
     switch (action) {
+      case "set":
       case "update":
       case "unshift":
       case "push":

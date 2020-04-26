@@ -1,4 +1,9 @@
 export default (pageSize, initItem) => (state, { action = "unshift", items }) => {
+  if (action === "set") {
+    action = "push"
+    state = []
+  }
+
   switch (action) {
     case "update": {
       for (let item of items) {

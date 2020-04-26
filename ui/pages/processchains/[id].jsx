@@ -41,7 +41,12 @@ function ProcessChain({ id }) {
       <Link href="/workflows/[id]" as={`/workflows/${pc.submissionId}`} key={pc.submissionId}>
         <a>{pc.submissionId}</a>
       </Link>,
-      <Link href="/processchains" as={`/processchains/?submissionId=${pc.submissionId}`} key="processchains">
+      <Link href={{
+        pathname: "/processchains",
+        query: {
+          submissionId: pc.submissionId
+        }
+      }} key="processchains">
         <a>Process chains</a>
       </Link>,
       pc.id

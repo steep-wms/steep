@@ -22,7 +22,12 @@ export default function workflowToProgress(workflow) {
 
   if (typeof progressSubTitle !== "undefined") {
     progressSubTitle = (
-      <Link href="/processchains/" as={`/processchains/?submissionId=${workflow.id}`}>
+      <Link href={{
+        pathname: "/processchains",
+        query: {
+          submissionId: workflow.id
+        }
+      }}>
         <a>{progressSubTitle}</a>
       </Link>
     )

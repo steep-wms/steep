@@ -1,9 +1,10 @@
 import classNames from "classnames"
 import Link from "next/link"
-import Page from "../../components/layouts/Page"
+import ListPage from "../../components/layouts/ListPage"
 import Breadcrumbs from "../../components/Breadcrumbs"
 import Alert from "../../components/Alert"
 import ListItem from "../../components/ListItem"
+import Pagination from "../../components/Pagination"
 import ProcessChainContext from "../../components/processchains/ProcessChainContext"
 import "./index.scss"
 import { useContext, useEffect, useState } from "react"
@@ -12,7 +13,8 @@ import fetcher from "../../components/lib/json-fetcher"
 function onProcessChainChanged(processChain) {
   delete processChain.executables
 
-  let href = `/processchains/${processChain.id}`
+  let href = "/processchains/[id]"
+  let as = `/processchains/${processChain.id}`
 
   let progress = {
     status: processChain.status
@@ -20,7 +22,7 @@ function onProcessChainChanged(processChain) {
 
   processChain.element = (
     <ListItem key={processChain.id} justAdded={processChain.justAdded}
-      linkHref={href} title={processChain.id} startTime={processChain.startTime}
+      linkHref={href} linkAs={as} title={processChain.id} startTime={processChain.startTime}
       endTime={processChain.endTime} progress={progress} />
   )
 }
@@ -29,6 +31,7 @@ function ProcessChainList({ pageSize, pageOffset, submissionId }) {
   const processChains = useContext(ProcessChainContext.State)
   const updateProcessChains = useContext(ProcessChainContext.Dispatch)
   const [error, setError] = useState()
+  const [pageTotal, setPageTotal] = useState(0)
 
   useEffect(() => {
     let params = new URLSearchParams()
@@ -40,17 +43,35 @@ function ProcessChainList({ pageSize, pageOffset, submissionId }) {
       params.append("submissionId", submissionId)
     }
 
-    fetcher(`${process.env.baseUrl}/processchains?${params.toString()}`)
-      .then(processChains => updateProcessChains({ action: "push", processChains }))
+    fetcher(`${process.env.baseUrl}/processchains?${params.toString()}`, true)
+      .then(r => {
+        let processChains = r.body
+        updateProcessChains({ action: "set", processChains })
+        let pageTotalHeader = r.headers.get("x-page-total")
+        if (pageTotalHeader !== null) {
+          setPageTotal(+pageTotalHeader)
+        }
+      })
       .catch(err => {
         console.error(err)
         setError(<Alert error>Could not load process chains</Alert>)
       })
   }, [pageOffset, pageSize, submissionId, updateProcessChains])
 
+  function reset(newOffset) {
+    if (newOffset !== pageOffset) {
+      updateProcessChains({ action: "set", processChains: [] })
+      setPageTotal(0)
+    }
+  }
+
   return (<>
     {processChains && processChains.map(pc => pc.element)}
     {error}
+    {pageTotal > 0 && (
+      <Pagination pageSize={pageSize} pageOffset={pageOffset} pageTotal={pageTotal}
+        onChangeOffset={reset} />
+    )}
   </>)
 }
 
@@ -82,7 +103,7 @@ export default () => {
   }, [submissionId])
 
   return (
-    <Page title="Process chains">
+    <ListPage title="Process chains">
       <div className="process-chain-overview">
         <h1 className={classNames({ "no-margin-bottom": breadcrumbs })}>Process chains</h1>
         {breadcrumbs && <Breadcrumbs breadcrumbs={breadcrumbs} />}
@@ -90,6 +111,6 @@ export default () => {
           <ProcessChainList pageSize={pageSize} pageOffset={pageOffset} submissionId={submissionId} />
         </ProcessChainContext.Provider>
       </div>
-    </Page>
+    </ListPage>
   )
 }

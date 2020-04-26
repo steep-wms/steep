@@ -1,0 +1,34 @@
+@import "../css/variables";
+
+.pagination {
+  display: flex;
+  flex-direction: row;
+
+  .pagination-page {
+    display: flex;
+    align-items: center;
+    min-width: 1em;
+    justify-content: center;
+
+    a {
+      border-radius: $border-radius / 2;
+      margin: 0 1px;
+      padding: .5rem .75rem;
+
+      &:hover {
+        background-color: $gray-200;
+        text-decoration: none;
+      }
+    }
+
+    &.disabled {
+      color: $gray-600;
+      padding: .5rem .75rem;
+    }
+
+    &.active a {
+      background-color: $primary;
+      color: #fff;
+    }
+  }
+}

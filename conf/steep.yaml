@@ -33,6 +33,10 @@ steep:
     cors:
       enable: false
       allowOrigin: https?://localhost(:[0-9]+)?
+      exposeHeaders:
+        - x-page-offset
+        - x-page-size
+        - x-page-total
 
   agent:
     enabled: true

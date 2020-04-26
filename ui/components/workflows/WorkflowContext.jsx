@@ -35,6 +35,7 @@ function updateWorkflowsReducer(pageSize, onWorkflowChanged) {
 
   return (state, { action = "unshift", workflows }) => {
     switch (action) {
+      case "set":
       case "update":
       case "unshift":
       case "push":
