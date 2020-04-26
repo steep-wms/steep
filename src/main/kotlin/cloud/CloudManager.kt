@@ -282,6 +282,9 @@ class CloudManager : CoroutineVerticle() {
         if (active) {
           log.info("Found orphaned VM `$externalId' ...")
           cloudClient.destroyVM(externalId)
+          if (id != null) {
+            vmRegistry.forceSetVMStatus(id, VM.Status.DESTROYED)
+          }
         }
       }
     }
