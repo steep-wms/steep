@@ -10,6 +10,8 @@ package model.setup
  * @param blockDeviceVolumeType the type of the VM's block device (may be
  * `null` if the type should be selected automatically)
  * @param maxVMs the maximum number of VMs to create with this setup
+ * @param maxCreateConcurrent the maximum number of VMs to create and provision
+ * concurrently
  * @param provisioningScripts a list of scripts that should be executed after
  * the VM has been created to deploy software on it
  * @param providedCapabilities a list of capabilities that VMs with this setup
@@ -25,6 +27,7 @@ data class Setup(
     val blockDeviceVolumeType: String? = null,
     val minVMs: Int = 0,
     val maxVMs: Int,
+    val maxCreateConcurrent: Int = 1,
     val provisioningScripts: List<String> = emptyList(),
     val providedCapabilities: List<String> = emptyList()
 )

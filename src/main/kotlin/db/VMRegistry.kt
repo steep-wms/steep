@@ -59,6 +59,12 @@ interface VMRegistry : Registry {
   suspend fun countNonTerminatedVMsBySetup(setupId: String): Long
 
   /**
+   * Get the number of VMs with a given [setupId] that are currently being
+   * started (i.e. that have the status [VM.Status.CREATING] or [VM.Status.PROVISIONING])
+   */
+  suspend fun countStartingVMsBySetup(setupId: String): Long
+
+  /**
    * Set the [creationTime] of the VM with the given [id] (i.e. the time the
    * VM was created)
    */

@@ -517,6 +517,11 @@ class CloudManager : CoroutineVerticle() {
         return false
       }
 
+      if (vmRegistry.countStartingVMsBySetup(setup.id) >= setup.maxCreateConcurrent) {
+        // we are currently already creating enough virtual machines with this setup
+        return false
+      }
+
       VM(setup = setup).also {
         vmRegistry.addVM(it)
       }

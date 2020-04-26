@@ -141,6 +141,22 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
     }
   }
 
+  override suspend fun countStartingVMsBySetup(setupId: String): Long {
+    return withConnection { connection ->
+      val statement = "SELECT COUNT(*) FROM $VMS WHERE $DATA->'$SETUP'->'$ID'=?::jsonb " +
+          "AND ($DATA->'$STATUS'=?::jsonb OR $DATA->'$STATUS'=?::jsonb)"
+      val params = json {
+        array(
+            JsonUtils.mapper.writeValueAsString(setupId),
+            "\"${VM.Status.CREATING}\"",
+            "\"${VM.Status.PROVISIONING}\""
+        )
+      }
+      val rs = connection.querySingleWithParamsAwait(statement, params)
+      rs?.getLong(0) ?: 0L
+    }
+  }
+
   override suspend fun setVMCreationTime(id: String, creationTime: Instant) {
     val newObj = json {
       obj(

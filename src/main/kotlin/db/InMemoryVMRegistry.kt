@@ -119,6 +119,15 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
             it.vm.setup.id == setupId }.toLong()
   }
 
+  override suspend fun countStartingVMsBySetup(setupId: String): Long {
+    val map = vms.await()
+    val values = awaitResult<List<String>> { map.values(it) }
+    return values
+        .map { JsonUtils.mapper.readValue<VMEntry>(it) }
+        .count { (it.vm.status == VM.Status.CREATING || it.vm.status == VM.Status.PROVISIONING) &&
+            it.vm.setup.id == setupId }.toLong()
+  }
+
   override suspend fun setVMStatus(id: String, currentStatus: VM.Status,
       newStatus: VM.Status) {
     val sharedData = vertx.sharedData()

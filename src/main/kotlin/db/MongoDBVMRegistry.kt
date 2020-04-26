@@ -61,6 +61,17 @@ class MongoDBVMRegistry(private val vertx: Vertx,
           )
       )
     }
+
+    private val STARTING_QUERY = json {
+      "\$or" to array(
+          obj(
+              STATUS to VM.Status.CREATING.toString()
+          ),
+          obj(
+              STATUS to VM.Status.PROVISIONING.toString()
+          )
+      )
+    }
   }
 
   private val collVMs: MongoCollection<JsonObject>
@@ -152,6 +163,15 @@ class MongoDBVMRegistry(private val vertx: Vertx,
     return collVMs.countDocumentsAwait(json {
       obj(
           NON_TERMINATED_QUERY,
+          "$SETUP.$ID" to setupId
+      )
+    })
+  }
+
+  override suspend fun countStartingVMsBySetup(setupId: String): Long {
+    return collVMs.countDocumentsAwait(json {
+      obj(
+          STARTING_QUERY,
           "$SETUP.$ID" to setupId
       )
     })

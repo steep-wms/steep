@@ -259,6 +259,42 @@ abstract class VMRegistryTest {
   }
 
   @Test
+  fun countStartingVMsBySetup(vertx: Vertx, ctx: VertxTestContext) {
+    val setup2 = setup.copy(id = "another-test-setup")
+
+    val vm1 = VM(setup = setup, status = VM.Status.CREATING)
+    val vm2 = VM(setup = setup, status = VM.Status.PROVISIONING)
+    val vm3 = VM(setup = setup, status = VM.Status.RUNNING)
+    val vm4 = VM(setup = setup, status = VM.Status.LEFT)
+    val vm5 = VM(setup = setup, status = VM.Status.DESTROYING)
+    val vm6 = VM(setup = setup, status = VM.Status.DESTROYED)
+    val vm7 = VM(setup = setup, status = VM.Status.ERROR)
+    val vm8 = VM(setup = setup2, status = VM.Status.RUNNING)
+    val vm9 = VM(setup = setup2, status = VM.Status.ERROR)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      vmRegistry.addVM(vm1)
+      vmRegistry.addVM(vm2)
+      vmRegistry.addVM(vm3)
+      vmRegistry.addVM(vm4)
+      vmRegistry.addVM(vm5)
+      vmRegistry.addVM(vm6)
+      vmRegistry.addVM(vm7)
+      vmRegistry.addVM(vm8)
+      vmRegistry.addVM(vm9)
+
+      val r1 = vmRegistry.countStartingVMsBySetup(setup.id)
+      val r2 = vmRegistry.countStartingVMsBySetup(setup2.id)
+      ctx.verify {
+        assertThat(r1).isEqualTo(2)
+        assertThat(r2).isEqualTo(0)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun setVMCreationTime(vertx: Vertx, ctx: VertxTestContext) {
     val expectedTime = Instant.now()
     val vm1 = VM(setup = setup, status = VM.Status.CREATING)

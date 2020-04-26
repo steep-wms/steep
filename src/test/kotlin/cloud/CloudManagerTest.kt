@@ -122,6 +122,7 @@ class CloudManagerTest {
     private lateinit var testSetup: Setup
     private lateinit var testSetupLarge: Setup
     private lateinit var testSetupAlternative: Setup
+    private lateinit var testSetupTwo: Setup
 
     @BeforeEach
     fun setUp(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
@@ -134,15 +135,22 @@ class CloudManagerTest {
       testSh.writeText("{{ agentId }}")
 
       testSetup = Setup("test", "myflavor", "myImage", AZ01, 500000,
-          null, 0, 1, listOf(testSh.absolutePath), listOf("test1", "foo"))
+          null, 0, 1, provisioningScripts = listOf(testSh.absolutePath),
+          providedCapabilities = listOf("test1", "foo"))
       testSetupLarge = Setup("testLarge", "myFlavor", "myImage", AZ01, 500000,
-          "SSD", 0, 4, listOf(testSh.absolutePath), listOf("test2"))
+          "SSD", 0, 4, provisioningScripts = listOf(testSh.absolutePath),
+          providedCapabilities = listOf("test2"))
       testSetupAlternative = Setup("testAlternative", "myAlternativeFlavor",
-          "myImage", AZ02, 500000, null, 0, 1, listOf(testSh.absolutePath),
-          listOf("test3", "foo"))
+          "myImage", AZ02, 500000, null, 0, 1,
+          provisioningScripts = listOf(testSh.absolutePath),
+          providedCapabilities = listOf("test3", "foo"))
+      testSetupTwo = Setup("testTwo", "myflavorTwo", "myImageTwo", AZ01, 500000,
+          null, 0, 3, maxCreateConcurrent = 2,
+          provisioningScripts = listOf(testSh.absolutePath),
+          providedCapabilities = listOf("test4", "foo"))
 
       deployCloudManager(tempDir, listOf(testSetup, testSetupLarge,
-          testSetupAlternative), vertx, ctx)
+          testSetupAlternative, testSetupTwo), vertx, ctx)
     }
 
     private suspend fun doCreateOnDemand(setup: Setup, vertx: Vertx,
@@ -347,6 +355,62 @@ class CloudManagerTest {
         ctx.completeNow()
       }
     }
+
+    /**
+     * Make sure we can only create two VMs with [testSetupTwo] at a time
+     */
+    @Test
+    fun tryCreateThreeOfTwoAsync(vertx: Vertx, ctx: VertxTestContext) {
+      GlobalScope.launch(vertx.dispatcher()) {
+        val d1 = async { doCreateOnDemand(testSetupTwo, vertx, ctx) }
+        val d2 = async { doCreateOnDemand(testSetupTwo, vertx, ctx) }
+        val d3 = async { doCreateOnDemand(testSetupTwo, vertx, ctx) }
+
+        d1.await()
+        d2.await()
+        d3.await()
+
+        ctx.coVerify {
+          coVerify(exactly = 2) {
+            client.getImageID(testSetupTwo.imageName)
+            client.createBlockDevice(testSetupTwo.imageName,
+                testSetupTwo.blockDeviceSizeGb, null,
+                testSetupTwo.availabilityZone, any())
+            client.createVM(any(), testSetupTwo.flavor, any(),
+                testSetupTwo.availabilityZone, any())
+            client.getIPAddress(any())
+          }
+        }
+
+        ctx.completeNow()
+      }
+    }
+
+    /**
+     * Make sure we can exyctly create three VMs with [testSetupTwo]
+     */
+    @Test
+    fun tryCreateThreeOfTwoSync(vertx: Vertx, ctx: VertxTestContext) {
+      GlobalScope.launch(vertx.dispatcher()) {
+        doCreateOnDemand(testSetupTwo, vertx, ctx)
+        doCreateOnDemand(testSetupTwo, vertx, ctx)
+        doCreateOnDemand(testSetupTwo, vertx, ctx)
+
+        ctx.coVerify {
+          coVerify(exactly = 3) {
+            client.getImageID(testSetupTwo.imageName)
+            client.createBlockDevice(testSetupTwo.imageName,
+                testSetupTwo.blockDeviceSizeGb, null,
+                testSetupTwo.availabilityZone, any())
+            client.createVM(any(), testSetupTwo.flavor, any(),
+                testSetupTwo.availabilityZone, any())
+            client.getIPAddress(any())
+          }
+        }
+
+        ctx.completeNow()
+      }
+    }
   }
 
   /**
@@ -422,7 +486,7 @@ class CloudManagerTest {
       testSh.writeText("{{ agentId }}")
 
       testSetupMin = Setup("testMin", "myflavor", "myImage", AZ01, 500000,
-          null, 2, 4, listOf(testSh.absolutePath))
+          null, 2, 4, provisioningScripts = listOf(testSh.absolutePath))
 
       // mock agent registry
       agentRegistry = mockk()
@@ -534,11 +598,14 @@ class CloudManagerTest {
       testSh.writeText("{{ agentId }}")
 
       testSetup = Setup("test", "myflavor", "myImage", AZ01, 500000,
-          null, 0, 1, listOf(testSh.absolutePath), listOf("foo"))
+          null, 0, 1, provisioningScripts = listOf(testSh.absolutePath),
+          providedCapabilities = listOf("foo"))
       testSetup2 = Setup("test2", "myflavor2", "myImage2", AZ02, 500000,
-          null, 0, 1, listOf(testSh.absolutePath), listOf("foo", "bar"))
+          null, 0, 1, provisioningScripts = listOf(testSh.absolutePath),
+          providedCapabilities = listOf("foo", "bar"))
       testSetup3 = Setup("test3", "myflavor3", "myImage3", AZ02, 500000,
-          null, 0, 1, listOf(testSh.absolutePath), listOf("test"))
+          null, 0, 1, provisioningScripts = listOf(testSh.absolutePath),
+          providedCapabilities = listOf("test"))
 
       // mock client
       val createdVMs = mutableListOf<String>()
