@@ -7,6 +7,7 @@ import io.vertx.kotlin.core.eventbus.DeliveryOptions
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import model.cloud.VM
+import java.time.Instant
 
 /**
  * Wraps around a VM registry and published events whenever the
@@ -20,6 +21,36 @@ class NotifyingVMRegistry(private val delegate: VMRegistry, private val vertx: V
     vertx.eventBus().publish(AddressConstants.VM_ADDED, {
       JsonUtils.toJson(vm)
     }, DeliveryOptions(codecName = "lazyjsonobject"))
+  }
+
+  override suspend fun setVMCreationTime(id: String, creationTime: Instant) {
+    delegate.setVMCreationTime(id, creationTime)
+    vertx.eventBus().publish(AddressConstants.VM_CREATIONTIME_CHANGED, json {
+      obj(
+          "id" to id,
+          "creationTime" to creationTime
+      )
+    })
+  }
+
+  override suspend fun setVMAgentJoinTime(id: String, agentJoinTime: Instant) {
+    delegate.setVMAgentJoinTime(id, agentJoinTime)
+    vertx.eventBus().publish(AddressConstants.VM_AGENTJOINTIME_CHANGED, json {
+      obj(
+          "id" to id,
+          "agentJoinTime" to agentJoinTime
+      )
+    })
+  }
+
+  override suspend fun setVMDestructionTime(id: String, destructionTime: Instant) {
+    delegate.setVMDestructionTime(id, destructionTime)
+    vertx.eventBus().publish(AddressConstants.VM_DESTRUCTIONTIME_CHANGED, json {
+      obj(
+          "id" to id,
+          "destructionTime" to destructionTime
+      )
+    })
   }
 
   override suspend fun setVMStatus(id: String, currentStatus: VM.Status, newStatus: VM.Status) {

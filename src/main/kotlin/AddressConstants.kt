@@ -140,6 +140,21 @@ object AddressConstants {
   const val VM_ADDED = "steep.vmRegistry.vmAdded"
 
   /**
+   * Will be published when a VM's creation time has changed
+   */
+  const val VM_CREATIONTIME_CHANGED = "steep.vmRegistry.vmCreationTimeChanged"
+
+  /**
+   * Will be published when the time a remote agent on a VM joined the cluster has changed
+   */
+  const val VM_AGENTJOINTIME_CHANGED = "steep.vmRegistry.vmAgentJoinTimeChanged"
+
+  /**
+   * Will be published when a VM's destruction time has changed
+   */
+  const val VM_DESTRUCTIONTIME_CHANGED = "steep.vmRegistry.vmDestructionTimeChanged"
+
+  /**
    * Will be published when a VM's status has changed
    */
   const val VM_STATUS_CHANGED = "steep.vmRegistry.vmStatusChanged"

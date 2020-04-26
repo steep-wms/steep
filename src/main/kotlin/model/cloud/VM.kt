@@ -2,6 +2,7 @@ package model.cloud
 
 import helper.UniqueID
 import model.setup.Setup
+import java.time.Instant
 
 /**
  * A virtual machine that has dynamically been created by the [cloud.CloudManager]
@@ -9,6 +10,9 @@ import model.setup.Setup
  * @param externalId the unique identifier of the VM returned by [cloud.CloudClient.createVM]
  * @param ipAddress the VM's IP address (if it has one)
  * @param setup the [Setup] for which the VM was created
+ * @param creationTime the time when the VM was created
+ * @param agentJoinTime the time when the remote agent on the VM joined the cluster
+ * @param destructionTime the time when the VM was destroyed
  * @param status the current status of the VM
  * @param reason the reason why the VM has the current status (e.g. an error
  * message if it has the ERROR status or a simple message indicating why it has
@@ -20,6 +24,9 @@ data class VM(
     val externalId: String? = null,
     val ipAddress: String? = null,
     val setup: Setup,
+    val creationTime: Instant? = null,
+    val agentJoinTime: Instant? = null,
+    val destructionTime: Instant? = null,
     val status: Status = Status.CREATING,
     val reason: String? = null
 ) {

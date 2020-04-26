@@ -12,6 +12,7 @@ import io.vertx.kotlin.core.shareddata.sizeAwait
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitResult
 import model.cloud.VM
+import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -150,6 +151,18 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
 
   private suspend fun updateVM(id: String, updater: (VM) -> VM) {
     updateVMEntry(id) { it.copy(vm = updater(it.vm)) }
+  }
+
+  override suspend fun setVMCreationTime(id: String, creationTime: Instant) {
+    updateVM(id) { it.copy(creationTime = creationTime) }
+  }
+
+  override suspend fun setVMAgentJoinTime(id: String, agentJoinTime: Instant) {
+    updateVM(id) { it.copy(agentJoinTime = agentJoinTime) }
+  }
+
+  override suspend fun setVMDestructionTime(id: String, destructionTime: Instant) {
+    updateVM(id) { it.copy(destructionTime = destructionTime) }
   }
 
   override suspend fun forceSetVMStatus(id: String, newStatus: VM.Status) {

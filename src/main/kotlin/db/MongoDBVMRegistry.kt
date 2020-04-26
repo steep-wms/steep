@@ -17,6 +17,7 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import model.cloud.VM
 import org.slf4j.LoggerFactory
+import java.time.Instant
 
 /**
  * A VM registry that keeps objects in a MongoDB database
@@ -39,6 +40,9 @@ class MongoDBVMRegistry(private val vertx: Vertx,
     private const val EXTERNAL_ID = "externalId"
     private const val IP_ADDRESS = "ipAddress"
     private const val SETUP = "setup"
+    private const val CREATION_TIME = "creationTime"
+    private const val AGENT_JOIN_TIME = "agentJoinTime"
+    private const val DESTRUCTION_TIME = "destructionTime"
     private const val STATUS = "status"
     private const val REASON = "reason"
     private const val SEQUENCE = "sequence"
@@ -164,6 +168,18 @@ class MongoDBVMRegistry(private val vertx: Vertx,
       )
     }) ?: throw NoSuchElementException("There is no VM with ID `$id'")
     return doc.getValue(field) as T
+  }
+
+  override suspend fun setVMCreationTime(id: String, creationTime: Instant) {
+    updateField(collVMs, id, CREATION_TIME, creationTime)
+  }
+
+  override suspend fun setVMAgentJoinTime(id: String, agentJoinTime: Instant) {
+    updateField(collVMs, id, AGENT_JOIN_TIME, agentJoinTime)
+  }
+
+  override suspend fun setVMDestructionTime(id: String, destructionTime: Instant) {
+    updateField(collVMs, id, DESTRUCTION_TIME, destructionTime)
   }
 
   override suspend fun setVMStatus(id: String, currentStatus: VM.Status,

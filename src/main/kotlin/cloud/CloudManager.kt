@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.IOException
 import java.io.StringWriter
+import java.time.Instant
 import java.util.ArrayDeque
 import java.util.TreeSet
 import kotlin.math.max
@@ -249,6 +250,7 @@ class CloudManager : CoroutineVerticle() {
       }
       vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYED)
       vmRegistry.setVMReason(vm.id, "Agent has left the cluster")
+      vmRegistry.setVMDestructionTime(vm.id, Instant.now())
     }
 
     // destroy orphaned VMs:
@@ -286,6 +288,7 @@ class CloudManager : CoroutineVerticle() {
           if (id != null) {
             vmRegistry.forceSetVMStatus(id, VM.Status.DESTROYED)
             vmRegistry.setVMReason(id, "VM was orphaned")
+            vmRegistry.setVMDestructionTime(id, Instant.now())
           }
         }
       }
@@ -534,6 +537,7 @@ class CloudManager : CoroutineVerticle() {
       try {
         val externalId = createVM(vm.id, setup)
         vmRegistry.setVMExternalID(vm.id, externalId)
+        vmRegistry.setVMCreationTime(vm.id, Instant.now())
 
         try {
           cloudClient.waitForVM(externalId)
@@ -548,10 +552,12 @@ class CloudManager : CoroutineVerticle() {
           cloudClient.destroyVM(externalId)
           vmRegistry.forceSetVMStatus(vm.id, VM.Status.ERROR)
           vmRegistry.setVMReason(vm.id, e.message ?: "Unknown error")
+          vmRegistry.setVMDestructionTime(vm.id, Instant.now())
           throw e
         }
 
         vmRegistry.setVMStatus(vm.id, VM.Status.PROVISIONING, VM.Status.RUNNING)
+        vmRegistry.setVMAgentJoinTime(vm.id, Instant.now())
         backoffSeconds = 0
       } catch (t: Throwable) {
         backoffSeconds = min(MAX_BACKOFF_SECONDS, max(backoffSeconds * 2, 2))

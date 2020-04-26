@@ -1,6 +1,7 @@
 package db
 
 import model.cloud.VM
+import java.time.Instant
 
 /**
  * A registry for Cloud VMs created by Steep
@@ -56,6 +57,24 @@ interface VMRegistry : Registry {
    * that don't have the status [VM.Status.DESTROYED] or [VM.Status.ERROR])
    */
   suspend fun countNonTerminatedVMsBySetup(setupId: String): Long
+
+  /**
+   * Set the [creationTime] of the VM with the given [id] (i.e. the time the
+   * VM was created)
+   */
+  suspend fun setVMCreationTime(id: String, creationTime: Instant)
+
+  /**
+   * Set the [agentJoinTime] of the VM with the given [id] (i.e the time
+   * when the remote agent on the VM joined the cluster)
+   */
+  suspend fun setVMAgentJoinTime(id: String, agentJoinTime: Instant)
+
+  /**
+   * Set the [destructionTime] of the VM with the given [id] (i.e. the time
+   * the VM was destroyed)
+   */
+  suspend fun setVMDestructionTime(id: String, destructionTime: Instant)
 
   /**
    * Atomically set the status of the VM with the given [id] to [newStatus] if

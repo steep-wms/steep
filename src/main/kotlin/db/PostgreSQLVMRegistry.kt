@@ -12,6 +12,7 @@ import io.vertx.kotlin.ext.sql.querySingleWithParamsAwait
 import io.vertx.kotlin.ext.sql.queryWithParamsAwait
 import io.vertx.kotlin.ext.sql.updateWithParamsAwait
 import model.cloud.VM
+import java.time.Instant
 
 /**
  * A VM registry that keeps objects in a PostgreSQL database
@@ -33,6 +34,9 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
     private const val EXTERNAL_ID = "externalId"
     private const val IP_ADDRESS = "ipAddress"
     private const val SETUP = "setup"
+    private const val CREATION_TIME = "creationTime"
+    private const val AGENT_JOIN_TIME = "agentJoinTime"
+    private const val DESTRUCTION_TIME = "destructionTime"
     private const val STATUS = "status"
     private const val REASON = "reason"
   }
@@ -135,6 +139,33 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
       val rs = connection.querySingleWithParamsAwait(statement, params)
       rs?.getLong(0) ?: 0L
     }
+  }
+
+  override suspend fun setVMCreationTime(id: String, creationTime: Instant) {
+    val newObj = json {
+      obj(
+          CREATION_TIME to creationTime
+      )
+    }
+    updateProperties(VMS, id, newObj)
+  }
+
+  override suspend fun setVMAgentJoinTime(id: String, agentJoinTime: Instant) {
+    val newObj = json {
+      obj(
+          AGENT_JOIN_TIME to agentJoinTime
+      )
+    }
+    updateProperties(VMS, id, newObj)
+  }
+
+  override suspend fun setVMDestructionTime(id: String, destructionTime: Instant) {
+    val newObj = json {
+      obj(
+          DESTRUCTION_TIME to destructionTime
+      )
+    }
+    updateProperties(VMS, id, newObj)
   }
 
   override suspend fun setVMStatus(id: String, currentStatus: VM.Status,

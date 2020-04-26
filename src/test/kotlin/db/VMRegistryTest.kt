@@ -15,6 +15,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import java.time.Instant
 
 /**
  * Tests for all [VMRegistry] implementations
@@ -251,6 +252,72 @@ abstract class VMRegistryTest {
       ctx.verify {
         assertThat(r1).isEqualTo(5)
         assertThat(r2).isEqualTo(1)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun setVMCreationTime(vertx: Vertx, ctx: VertxTestContext) {
+    val expectedTime = Instant.now()
+    val vm1 = VM(setup = setup, status = VM.Status.CREATING)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      vmRegistry.addVM(vm1)
+
+      val r1 = vmRegistry.findVMById(vm1.id)
+      vmRegistry.setVMCreationTime(vm1.id, expectedTime)
+      val r2 = vmRegistry.findVMById(vm1.id)
+      ctx.verify {
+        assertThat(r1).isNotNull
+        assertThat(r1!!.creationTime).isNull()
+        assertThat(r2).isNotNull
+        assertThat(r2!!.creationTime).isEqualTo(expectedTime)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun setVMAgentJoinTime(vertx: Vertx, ctx: VertxTestContext) {
+    val expectedTime = Instant.now()
+    val vm1 = VM(setup = setup, status = VM.Status.RUNNING)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      vmRegistry.addVM(vm1)
+
+      val r1 = vmRegistry.findVMById(vm1.id)
+      vmRegistry.setVMAgentJoinTime(vm1.id, expectedTime)
+      val r2 = vmRegistry.findVMById(vm1.id)
+      ctx.verify {
+        assertThat(r1).isNotNull
+        assertThat(r1!!.agentJoinTime).isNull()
+        assertThat(r2).isNotNull
+        assertThat(r2!!.agentJoinTime).isEqualTo(expectedTime)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun setVMDestructionTime(vertx: Vertx, ctx: VertxTestContext) {
+    val expectedTime = Instant.now()
+    val vm1 = VM(setup = setup, status = VM.Status.DESTROYED)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      vmRegistry.addVM(vm1)
+
+      val r1 = vmRegistry.findVMById(vm1.id)
+      vmRegistry.setVMDestructionTime(vm1.id, expectedTime)
+      val r2 = vmRegistry.findVMById(vm1.id)
+      ctx.verify {
+        assertThat(r1).isNotNull
+        assertThat(r1!!.destructionTime).isNull()
+        assertThat(r2).isNotNull
+        assertThat(r2!!.destructionTime).isEqualTo(expectedTime)
       }
 
       ctx.completeNow()
