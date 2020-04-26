@@ -142,6 +142,8 @@ class MongoDBVMRegistry(private val vertx: Vertx,
     return docs.map { deserializeVM(it) }
   }
 
+  override suspend fun countVMs() = collVMs.countDocumentsAwait(JsonObject())
+
   override suspend fun countNonTerminatedVMsBySetup(setupId: String): Long {
     return collVMs.countDocumentsAwait(json {
       obj(

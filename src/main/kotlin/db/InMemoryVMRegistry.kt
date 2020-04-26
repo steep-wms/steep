@@ -8,6 +8,7 @@ import io.vertx.core.shareddata.AsyncMap
 import io.vertx.kotlin.core.shareddata.getAwait
 import io.vertx.kotlin.core.shareddata.getLockAwait
 import io.vertx.kotlin.core.shareddata.putAwait
+import io.vertx.kotlin.core.shareddata.sizeAwait
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitResult
 import model.cloud.VM
@@ -102,6 +103,10 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
         .map { JsonUtils.mapper.readValue<VMEntry>(it) }
         .filter { it.vm.status != VM.Status.DESTROYED && it.vm.status != VM.Status.ERROR }
         .map { it.vm }
+  }
+
+  override suspend fun countVMs(): Long {
+    return vms.await().sizeAwait().toLong()
   }
 
   override suspend fun countNonTerminatedVMsBySetup(setupId: String): Long {

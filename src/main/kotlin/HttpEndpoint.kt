@@ -30,6 +30,8 @@ import db.MetadataRegistry
 import db.MetadataRegistryFactory
 import db.SubmissionRegistry
 import db.SubmissionRegistryFactory
+import db.VMRegistry
+import db.VMRegistryFactory
 import helper.JsonUtils
 import helper.YamlUtils
 import io.prometheus.client.hotspot.DefaultExports
@@ -115,12 +117,14 @@ class HttpEndpoint : CoroutineVerticle() {
   private lateinit var metadataRegistry: MetadataRegistry
   private lateinit var agentRegistry: AgentRegistry
   private lateinit var submissionRegistry: SubmissionRegistry
+  private lateinit var vmRegistry: VMRegistry
   private lateinit var basePath: String
 
   override suspend fun start() {
     metadataRegistry = MetadataRegistryFactory.create(vertx)
     agentRegistry = AgentRegistryFactory.create(vertx)
     submissionRegistry = SubmissionRegistryFactory.create(vertx)
+    vmRegistry = VMRegistryFactory.create(vertx)
 
     val host = config.getString(ConfigConstants.HTTP_HOST, "localhost")
     val port = config.getInteger(ConfigConstants.HTTP_PORT, 8080)
@@ -193,6 +197,16 @@ class HttpEndpoint : CoroutineVerticle() {
         .handler(bodyHandler)
         .produces("application/json")
         .handler(this::onPutProcessChainById)
+
+    router.get("/vms")
+        .produces("application/json")
+        .produces("text/html")
+        .handler(this::onGetVMs)
+
+    router.get("/vms/:id/?")
+        .produces("application/json")
+        .produces("text/html")
+        .handler(this::onGetVMById)
 
     router.get("/workflows")
         .produces("application/json")
@@ -921,6 +935,68 @@ class HttpEndpoint : CoroutineVerticle() {
         ctx.response()
             .setStatusCode(500)
             .end(e.message)
+      }
+    }
+  }
+
+  /**
+   * Get list of VMs
+   * @param ctx the routing context
+   */
+  private fun onGetVMs(ctx: RoutingContext) {
+    launch {
+      val isHtml = ctx.acceptableContentType == "text/html"
+      val offset = max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
+      val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
+
+      val list = vmRegistry.findVMs(size, offset, -1).map { JsonUtils.toJson(it) }
+      val total = vmRegistry.countVMs()
+      val encodedJson = JsonArray(list).encode()
+
+      if (isHtml) {
+        val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
+        if (beta) {
+          renderAsset("ui/vms/index.html", ctx.response())
+        } else {
+          renderHtml("html/vms/index.html", emptyMap(), ctx.response())
+        }
+      } else {
+        ctx.response()
+            .putHeader("content-type", "application/json")
+            .putHeader("x-page-size", size.toString())
+            .putHeader("x-page-offset", offset.toString())
+            .putHeader("x-page-total", total.toString())
+            .end(encodedJson)
+      }
+    }
+  }
+
+  /**
+   * Get a single VM by ID
+   * @param ctx the routing context
+   */
+  private fun onGetVMById(ctx: RoutingContext) {
+    launch {
+      val id = ctx.pathParam("id")
+      val vm = vmRegistry.findVMById(id)
+      if (vm == null) {
+        ctx.response()
+            .setStatusCode(404)
+            .end("There is no VM with ID `$id'")
+      } else {
+        val json = JsonUtils.toJson(vm)
+        if (ctx.acceptableContentType == "text/html") {
+          val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
+          if (beta) {
+            renderAsset("ui/vms/[id].html", ctx.response())
+          } else {
+            renderHtml("html/vms/index.html", emptyMap(), ctx.response())
+          }
+        } else {
+          ctx.response()
+              .putHeader("content-type", "application/json")
+              .end(json.encode())
+        }
       }
     }
   }

@@ -7,6 +7,7 @@ import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.ext.sql.queryAwait
+import io.vertx.kotlin.ext.sql.querySingleAwait
 import io.vertx.kotlin.ext.sql.querySingleWithParamsAwait
 import io.vertx.kotlin.ext.sql.queryWithParamsAwait
 import io.vertx.kotlin.ext.sql.updateWithParamsAwait
@@ -110,6 +111,13 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
       }
       val rs = connection.queryWithParamsAwait(statement, params)
       rs.results.map { JsonUtils.mapper.readValue<VM>(it.getString(0)) }
+    }
+  }
+
+  override suspend fun countVMs(): Long {
+    return withConnection { connection ->
+      val rs = connection.querySingleAwait("SELECT COUNT(*) FROM $VMS")
+      rs?.getLong(0) ?: 0L
     }
   }
 

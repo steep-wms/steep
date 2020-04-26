@@ -34,6 +34,8 @@ const config = {
       "/processchains/[id].html": { page: "/processchains/[id]" },
       "/services": { page: "/services" },
       "/services/[id].html": { page: "/services/[id]" },
+      "/vms": { page: "/vms" },
+      "/vms/[id].html": { page: "/vms/[id]" },
       "/workflows": { page: "/workflows" },
       "/workflows/[id].html": { page: "/workflows/[id]" }
     }

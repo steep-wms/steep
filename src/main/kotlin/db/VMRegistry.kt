@@ -47,6 +47,11 @@ interface VMRegistry : Registry {
   suspend fun findNonTerminatedVMs(): Collection<VM>
 
   /**
+   * Get the total number of VMs in the registry
+   */
+  suspend fun countVMs(): Long
+
+  /**
    * Get the number of VMs with a given [setupId] that are not terminated (i.e.
    * that don't have the status [VM.Status.DESTROYED] or [VM.Status.ERROR])
    */

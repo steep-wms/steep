@@ -84,7 +84,13 @@ export default () => {
   if (typeof window !== "undefined") {
     let params = new URLSearchParams(window.location.search)
     pageOffset = params.get("offset") || undefined
+    if (typeof pageOffset !== "undefined") {
+      pageOffset = Math.max(0, parseInt(pageOffset))
+    }
     pageSize = params.get("size") || 10
+    if (typeof pageSize !== "undefined") {
+      pageSize = Math.max(0, parseInt(pageSize))
+    }
     submissionId = params.get("submissionId") || undefined
   }
 
