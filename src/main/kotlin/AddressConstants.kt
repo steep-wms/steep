@@ -133,4 +133,29 @@ object AddressConstants {
    * Will be published when a process chain's error message have changed
    */
   const val PROCESSCHAIN_ERRORMESSAGE_CHANGED = "steep.submissionRegistry.processChainErrorMessageChanged"
+
+  /**
+   * Will be published when a VM has been added to the registry
+   */
+  const val VM_ADDED = "steep.vmRegistry.vmAdded"
+
+  /**
+   * Will be published when a VM's status has changed
+   */
+  const val VM_STATUS_CHANGED = "steep.vmRegistry.vmStatusChanged"
+
+  /**
+   * Will be published when a VM's external ID has changed
+   */
+  const val VM_EXTERNALID_CHANGED = "steep.vmRegistry.vmExternalIdChanged"
+
+  /**
+   * Will be published when a VM's IP address has changed
+   */
+  const val VM_IPADDRESS_CHANGED = "steep.vmRegistry.vmIpAddressChanged"
+
+  /**
+   * Will be published when the reason for the status of a VM's has changed
+   */
+  const val VM_REASON_CHANGED = "steep.vmRegistry.vmReasonChanged"
 }

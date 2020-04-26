@@ -17,6 +17,14 @@ import AddressConstants.SUBMISSION_ENDTIME_CHANGED
 import AddressConstants.SUBMISSION_ERRORMESSAGE_CHANGED
 import AddressConstants.SUBMISSION_STARTTIME_CHANGED
 import AddressConstants.SUBMISSION_STATUS_CHANGED
+import AddressConstants.VM_ADDED
+import AddressConstants.VM_AGENTJOINTIME_CHANGED
+import AddressConstants.VM_CREATIONTIME_CHANGED
+import AddressConstants.VM_DESTRUCTIONTIME_CHANGED
+import AddressConstants.VM_EXTERNALID_CHANGED
+import AddressConstants.VM_IPADDRESS_CHANGED
+import AddressConstants.VM_REASON_CHANGED
+import AddressConstants.VM_STATUS_CHANGED
 import agent.AgentRegistry
 import agent.AgentRegistryFactory
 import com.fasterxml.jackson.databind.SerializationFeature
@@ -318,7 +326,23 @@ class HttpEndpoint : CoroutineVerticle() {
         .addOutboundPermitted(PermittedOptions()
             .setAddress(REMOTE_AGENT_BUSY))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(REMOTE_AGENT_IDLE)))
+            .setAddress(REMOTE_AGENT_IDLE))
+        .addOutboundPermitted(PermittedOptions()
+            .setAddress(VM_ADDED))
+        .addOutboundPermitted(PermittedOptions()
+            .setAddress(VM_CREATIONTIME_CHANGED))
+        .addOutboundPermitted(PermittedOptions()
+            .setAddress(VM_AGENTJOINTIME_CHANGED))
+        .addOutboundPermitted(PermittedOptions()
+            .setAddress(VM_DESTRUCTIONTIME_CHANGED))
+        .addOutboundPermitted(PermittedOptions()
+            .setAddress(VM_STATUS_CHANGED))
+        .addOutboundPermitted(PermittedOptions()
+            .setAddress(VM_EXTERNALID_CHANGED))
+        .addOutboundPermitted(PermittedOptions()
+            .setAddress(VM_IPADDRESS_CHANGED))
+        .addOutboundPermitted(PermittedOptions()
+            .setAddress(VM_REASON_CHANGED)))
     router.route("/eventbus/*").handler(sockJSHandler)
 
     val baseRouter = Router.router(vertx)

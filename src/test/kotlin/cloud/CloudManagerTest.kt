@@ -8,6 +8,7 @@ import agent.AgentRegistryFactory
 import coVerify
 import db.VMRegistry
 import db.VMRegistryFactory
+import helper.LazyJsonObjectMessageCodec
 import helper.UniqueID
 import helper.YamlUtils
 import io.mockk.Runs
@@ -65,7 +66,7 @@ class CloudManagerTest {
   private lateinit var cloudManager: CloudManager
 
   @BeforeEach
-  fun setUp() {
+  fun setUp(vertx: Vertx) {
     // mock cloud client
     client = mockk()
     mockkObject(CloudClientFactory)
@@ -74,6 +75,9 @@ class CloudManagerTest {
     // mock SSH client
     mockkConstructor(SSHClient::class)
     coEvery { anyConstructed<SSHClient>().tryConnect(any()) } just Runs
+
+    // necessary for the NotifyingVMRegistry
+    vertx.eventBus().registerCodec(LazyJsonObjectMessageCodec())
   }
 
   @AfterEach

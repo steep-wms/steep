@@ -156,6 +156,11 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
     updateVM(id) { it.copy(status = newStatus) }
   }
 
+  override suspend fun getVMStatus(id: String): VM.Status {
+    return findVMById(id)?.status ?: throw NoSuchElementException(
+        "There is no VM with ID `$id'")
+  }
+
   override suspend fun setVMExternalID(id: String, externalId: String) {
     updateVM(id) { it.copy(externalId = externalId) }
   }

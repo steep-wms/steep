@@ -167,6 +167,20 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
     updateProperties(VMS, id, newObj)
   }
 
+  override suspend fun getVMStatus(id: String): VM.Status {
+    return withConnection { connection ->
+      val statement = "SELECT $DATA->'$STATUS' FROM $VMS WHERE $ID=?"
+      val params = json {
+        array(
+            id
+        )
+      }
+      val rs = connection.querySingleWithParamsAwait(statement, params) ?:
+          throw NoSuchElementException("There is no VM with ID `$id'")
+      VM.Status.valueOf(JsonUtils.mapper.readValue(rs.getString(0)))
+    }
+  }
+
   override suspend fun setVMExternalID(id: String, externalId: String) {
     val newObj = json {
       obj(

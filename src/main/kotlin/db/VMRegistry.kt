@@ -73,6 +73,11 @@ interface VMRegistry : Registry {
   suspend fun forceSetVMStatus(id: String, newStatus: VM.Status)
 
   /**
+   * Get the status of the VM with the given [id]
+   */
+  suspend fun getVMStatus(id: String): VM.Status
+
+  /**
    * Set the [externalId] of the VM with the given [id]
    */
   suspend fun setVMExternalID(id: String, externalId: String)

@@ -1,5 +1,7 @@
 package db
 
+import assertThatThrownBy
+import coVerify
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
@@ -314,6 +316,39 @@ abstract class VMRegistryTest {
       ctx.verify {
         assertThat(r21!!.status).isEqualTo(VM.Status.ERROR)
         assertThat(r22!!.status).isEqualTo(VM.Status.PROVISIONING)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun getVMStatus(vertx: Vertx, ctx: VertxTestContext) {
+    val vm1 = VM(setup = setup, status = VM.Status.CREATING)
+    val vm2 = VM(setup = setup, status = VM.Status.PROVISIONING)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      vmRegistry.addVM(vm1)
+      vmRegistry.addVM(vm2)
+
+      val r11 = vmRegistry.getVMStatus(vm1.id)
+      val r12 = vmRegistry.getVMStatus(vm2.id)
+      ctx.verify {
+        assertThat(r11).isEqualTo(VM.Status.CREATING)
+        assertThat(r12).isEqualTo(VM.Status.PROVISIONING)
+      }
+
+      vmRegistry.forceSetVMStatus(vm1.id, VM.Status.ERROR)
+      val r21 = vmRegistry.getVMStatus(vm1.id)
+      val r22 = vmRegistry.getVMStatus(vm2.id)
+      ctx.verify {
+        assertThat(r21).isEqualTo(VM.Status.ERROR)
+        assertThat(r22).isEqualTo(VM.Status.PROVISIONING)
+      }
+
+      ctx.coVerify {
+        assertThatThrownBy { vmRegistry.getVMStatus("FOOBAR") }
+            .isInstanceOf(NoSuchElementException::class.java)
       }
 
       ctx.completeNow()

@@ -153,6 +153,19 @@ class MongoDBVMRegistry(private val vertx: Vertx,
     })
   }
 
+  private suspend inline fun <reified T> getField(id: String, field: String): T {
+    val doc = collVMs.findOneAwait(json {
+      obj(
+          INTERNAL_ID to id
+      )
+    }, json {
+      obj(
+          field to 1
+      )
+    }) ?: throw NoSuchElementException("There is no VM with ID `$id'")
+    return doc.getValue(field) as T
+  }
+
   override suspend fun setVMStatus(id: String, currentStatus: VM.Status,
       newStatus: VM.Status) {
     updateField(collVMs, id, STATUS, currentStatus.toString(), newStatus.toString())
@@ -160,6 +173,10 @@ class MongoDBVMRegistry(private val vertx: Vertx,
 
   override suspend fun forceSetVMStatus(id: String, newStatus: VM.Status) {
     updateField(collVMs, id, STATUS, newStatus.toString())
+  }
+
+  override suspend fun getVMStatus(id: String) = getField<String>(id, STATUS).let {
+    VM.Status.valueOf(it)
   }
 
   override suspend fun setVMExternalID(id: String, externalId: String) {
