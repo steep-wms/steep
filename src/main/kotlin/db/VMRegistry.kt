@@ -83,8 +83,8 @@ interface VMRegistry : Registry {
   suspend fun setVMIPAddress(id: String, ipAddress: String)
 
   /**
-   * Set the [errorMessage] of the VM with the given [id]. If the [errorMessage]
-   * is `null`, any existing value will be removed from the VM.
+   * Set the [reason] for the current status of the VM with the given [id]. If
+   * the [reason] is `null`, any existing value will be removed from the VM.
    */
-  suspend fun setVMErrorMessage(id: String, errorMessage: String?)
+  suspend fun setVMReason(id: String, reason: String?)
 }

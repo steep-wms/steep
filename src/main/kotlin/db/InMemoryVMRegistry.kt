@@ -164,7 +164,7 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
     updateVM(id) { it.copy(ipAddress = ipAddress) }
   }
 
-  override suspend fun setVMErrorMessage(id: String, errorMessage: String?) {
-    updateVM(id) { it.copy(errorMessage = errorMessage) }
+  override suspend fun setVMReason(id: String, reason: String?) {
+    updateVM(id) { it.copy(reason = reason) }
   }
 }

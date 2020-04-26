@@ -248,6 +248,7 @@ class CloudManager : CoroutineVerticle() {
         cloudClient.destroyVM(vm.externalId)
       }
       vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYED)
+      vmRegistry.setVMReason(vm.id, "Agent has left the cluster")
     }
 
     // destroy orphaned VMs:
@@ -284,6 +285,7 @@ class CloudManager : CoroutineVerticle() {
           cloudClient.destroyVM(externalId)
           if (id != null) {
             vmRegistry.forceSetVMStatus(id, VM.Status.DESTROYED)
+            vmRegistry.setVMReason(id, "VM was orphaned")
           }
         }
       }
@@ -312,6 +314,7 @@ class CloudManager : CoroutineVerticle() {
       if (shouldUpdateStatus) {
         log.info("Setting status of deleted VM `${nonTerminatedVM.id}' to DESTROYED")
         vmRegistry.forceSetVMStatus(nonTerminatedVM.id, VM.Status.DESTROYED)
+        vmRegistry.setVMReason(nonTerminatedVM.id, "VM did not exist anymore")
       }
     }
 
@@ -544,7 +547,7 @@ class CloudManager : CoroutineVerticle() {
           vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYING)
           cloudClient.destroyVM(externalId)
           vmRegistry.forceSetVMStatus(vm.id, VM.Status.ERROR)
-          vmRegistry.setVMErrorMessage(vm.id, e.message ?: "Unknown error")
+          vmRegistry.setVMReason(vm.id, e.message ?: "Unknown error")
           throw e
         }
 

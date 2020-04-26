@@ -40,7 +40,7 @@ class MongoDBVMRegistry(private val vertx: Vertx,
     private const val IP_ADDRESS = "ipAddress"
     private const val SETUP = "setup"
     private const val STATUS = "status"
-    private const val ERROR_MESSAGE = "errorMessage"
+    private const val REASON = "reason"
     private const val SEQUENCE = "sequence"
 
     private val NON_TERMINATED_QUERY = json {
@@ -170,7 +170,7 @@ class MongoDBVMRegistry(private val vertx: Vertx,
     updateField(collVMs, id, IP_ADDRESS, ipAddress)
   }
 
-  override suspend fun setVMErrorMessage(id: String, errorMessage: String?) {
-    updateField(collVMs, id, ERROR_MESSAGE, errorMessage)
+  override suspend fun setVMReason(id: String, reason: String?) {
+    updateField(collVMs, id, REASON, reason)
   }
 }

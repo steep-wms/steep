@@ -34,7 +34,7 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
     private const val IP_ADDRESS = "ipAddress"
     private const val SETUP = "setup"
     private const val STATUS = "status"
-    private const val ERROR_MESSAGE = "errorMessage"
+    private const val REASON = "reason"
   }
 
   override suspend fun addVM(vm: VM) {
@@ -185,10 +185,10 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
     updateProperties(VMS, id, newObj)
   }
 
-  override suspend fun setVMErrorMessage(id: String, errorMessage: String?) {
+  override suspend fun setVMReason(id: String, reason: String?) {
     val newObj = json {
       obj(
-          ERROR_MESSAGE to errorMessage
+          REASON to reason
       )
     }
     updateProperties(VMS, id, newObj)

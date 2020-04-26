@@ -359,8 +359,8 @@ abstract class VMRegistryTest {
   }
 
   @Test
-  fun setVMErrorMessage(vertx: Vertx, ctx: VertxTestContext) {
-    val expectedErrorMessage = "THIS IS AN ERROR"
+  fun setVMReason(vertx: Vertx, ctx: VertxTestContext) {
+    val expectedReason = "THIS IS AN ERROR"
     val vm1 = VM(setup = setup, status = VM.Status.CREATING)
 
     GlobalScope.launch(vertx.dispatcher()) {
@@ -369,21 +369,21 @@ abstract class VMRegistryTest {
       val r1 = vmRegistry.findVMById(vm1.id)
       ctx.verify {
         assertThat(r1).isNotNull
-        assertThat(r1!!.errorMessage).isNull()
+        assertThat(r1!!.reason).isNull()
       }
 
-      vmRegistry.setVMErrorMessage(vm1.id, expectedErrorMessage)
+      vmRegistry.setVMReason(vm1.id, expectedReason)
       val r2 = vmRegistry.findVMById(vm1.id)
       ctx.verify {
         assertThat(r2).isNotNull
-        assertThat(r2!!.errorMessage).isEqualTo(expectedErrorMessage)
+        assertThat(r2!!.reason).isEqualTo(expectedReason)
       }
 
-      vmRegistry.setVMErrorMessage(vm1.id, null)
+      vmRegistry.setVMReason(vm1.id, null)
       val r3 = vmRegistry.findVMById(vm1.id)
       ctx.verify {
         assertThat(r3).isNotNull
-        assertThat(r3!!.errorMessage).isNull()
+        assertThat(r3!!.reason).isNull()
       }
 
       ctx.completeNow()

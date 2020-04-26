@@ -10,6 +10,9 @@ import model.setup.Setup
  * @param ipAddress the VM's IP address (if it has one)
  * @param setup the [Setup] for which the VM was created
  * @param status the current status of the VM
+ * @param reason the reason why the VM has the current status (e.g. an error
+ * message if it has the ERROR status or a simple message indicating why it has
+ * been DESTROYED)
  * @author Michel Kraemer
  */
 data class VM(
@@ -18,7 +21,7 @@ data class VM(
     val ipAddress: String? = null,
     val setup: Setup,
     val status: Status = Status.CREATING,
-    val errorMessage: String? = null
+    val reason: String? = null
 ) {
   enum class Status {
     /**
