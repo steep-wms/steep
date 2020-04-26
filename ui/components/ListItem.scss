@@ -1,11 +1,5 @@
 @import "../css/variables";
 
-@keyframes list-item-spin {
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
 @keyframes list-item-just-added {
   0% {
     max-height: 0;
@@ -72,6 +66,7 @@
     font-weight: 400;
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
   }
 
   .list-item-title > .label:first-of-type {

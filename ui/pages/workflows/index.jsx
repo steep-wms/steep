@@ -13,11 +13,6 @@ function onWorkflowChanged(workflow) {
   let href = "/workflows/[id]"
   let as = `/workflows/${workflow.id}`
 
-  let status = workflow.status
-  if (status === "RUNNING" && workflow.cancelledProcessChains > 0) {
-    status = "CANCELLING"
-  }
-
   let progress = workflowToProgress(workflow)
 
   workflow.element = (

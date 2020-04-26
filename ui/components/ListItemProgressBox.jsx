@@ -1,10 +1,41 @@
 import "./ListItemProgressBox.scss"
-import { AlertCircle, CheckCircle, Coffee, Delete, PauseCircle, Power, RotateCw, XCircle } from "react-feather"
+import { Activity, AlertCircle, CheckCircle, Coffee, Delete, Download, Loader,
+  Moon, PauseCircle, Power, RotateCw, XCircle } from "react-feather"
 
 export default ({ progress }) => {
   let icon
   let defaultTitle
   switch (progress.status) {
+    case "CREATING":
+      defaultTitle = "Creating"
+      icon = <Loader className="feather creating" />
+      break
+
+    case "PROVISIONING":
+      defaultTitle = "Provisioning"
+      icon = <Download className="feather provisioning" />
+      break
+
+    case "UP":
+      defaultTitle = "Running"
+      icon = <Activity className="feather up" />
+      break
+
+    case "LEAVING":
+      defaultTitle = "Leaving"
+      icon = <Moon className="feather leaving" />
+      break
+
+    case "DESTROYING":
+      defaultTitle = "Destroying"
+      icon = <Delete className="feather destroying" />
+      break
+
+    case "DESTROYED":
+      defaultTitle = "Destroyed"
+      icon = <Delete className="feather destroyed" />
+      break
+
     case "ACCEPTED":
       defaultTitle = "Accepted"
       icon = <Coffee className="feather accepted" />

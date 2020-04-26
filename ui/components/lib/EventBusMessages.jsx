@@ -17,5 +17,14 @@ module.exports = {
   AGENT_ADDED: "steep.remoteAgentRegistry.agentAdded",
   AGENT_LEFT: "steep.remoteAgentRegistry.agentLeft",
   AGENT_BUSY: "steep.remoteAgentRegistry.agentBusy",
-  AGENT_IDLE: "steep.remoteAgentRegistry.agentIdle"
+  AGENT_IDLE: "steep.remoteAgentRegistry.agentIdle",
+
+  VM_ADDED: "steep.vmRegistry.vmAdded",
+  VM_CREATIONTIME_CHANGED: "steep.vmRegistry.vmCreationTimeChanged",
+  VM_AGENTJOINTIME_CHANGED: "steep.vmRegistry.vmAgentJoinTimeChanged",
+  VM_DESTRUCTIONTIME_CHANGED: "steep.vmRegistry.vmDestructionTimeChanged",
+  VM_STATUS_CHANGED: "steep.vmRegistry.vmStatusChanged",
+  VM_EXTERNALID_CHANGED: "steep.vmRegistry.vmExternalIdChanged",
+  VM_IPADDRESS_CHANGED: "steep.vmRegistry.vmIpAddressChanged",
+  VM_REASON_CHANGED: "steep.vmRegistry.vmReasonChanged"
 }
