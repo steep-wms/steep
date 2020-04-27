@@ -1,0 +1,28 @@
+@import "../../css/variables";
+
+.vm-details-two-column {
+  margin-top: $spacer;
+  display: flex;
+  flex-direction: row;
+
+  .vm-details-left {
+    width: 50%;
+    margin-bottom: $spacer;
+  }
+
+  .vm-details-right {
+    flex: 1;
+  }
+
+  @media (max-width: $md) {
+    flex-direction: column;
+
+    .vm-details-left {
+      width: 100%;
+    }
+
+    .vm-details-right {
+      width: 100%;
+    }
+  }
+}
