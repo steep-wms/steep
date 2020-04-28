@@ -1,5 +1,8 @@
 export default (pageSize, initItem) => (state, { action = "unshift", items }) => {
   if (action === "set") {
+    if (typeof items === "undefined") {
+      return undefined
+    }
     action = "push"
     state = []
   }

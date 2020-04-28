@@ -52,13 +52,14 @@ function WorkflowList({ pageSize, pageOffset }) {
 
   function reset(newOffset) {
     if (newOffset !== pageOffset) {
-      updateWorkflows({ action: "set", workflows: [] })
+      updateWorkflows({ action: "set", workflows: undefined })
       setPageTotal(0)
     }
   }
 
   return (<>
     {workflows && workflows.map(w => w.element)}
+    {workflows && workflows.length === 0 && <>There are no workflows.</>}
     {error}
     {pageTotal > 0 && (
       <Pagination pageSize={pageSize} pageOffset={pageOffset} pageTotal={pageTotal}

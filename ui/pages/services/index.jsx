@@ -17,8 +17,9 @@ export default () => {
       })
   }, [])
 
-  let serviceElements = []
+  let serviceElements
   if (typeof services !== "undefined") {
+    serviceElements = []
     for (let service of services) {
       let linkHref = "/services/[id]"
       let linkAs = `/services/${service.id}`
@@ -34,6 +35,7 @@ export default () => {
     <Page title="Services">
       <h1>Services</h1>
       {serviceElements}
+      {serviceElements && serviceElements.length === 0 && <>There are no services.</>}
       {error}
       {services && services.length === 0 && <Alert warning>There are no configured services</Alert>}
     </Page>

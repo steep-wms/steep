@@ -75,13 +75,14 @@ function VMList({ pageSize, pageOffset }) {
 
   function reset(newOffset) {
     if (newOffset !== pageOffset) {
-      updateVMs({ action: "set", vms: [] })
+      updateVMs({ action: "set", vms: undefined })
       setPageTotal(0)
     }
   }
 
   return (<>
     {vms && vms.map(w => w.element)}
+    {vms && vms.length === 0 && <>There are no VMs.</>}
     {error}
     {pageTotal > 0 && (
       <Pagination pageSize={pageSize} pageOffset={pageOffset} pageTotal={pageTotal}

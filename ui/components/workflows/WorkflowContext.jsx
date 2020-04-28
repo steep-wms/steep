@@ -34,6 +34,7 @@ function updateWorkflowsReducer(pageSize, onWorkflowChanged) {
   })
 
   return (state, { action = "unshift", workflows }) => {
+    state = state || []
     switch (action) {
       case "set":
       case "update":
@@ -125,7 +126,7 @@ function updateWorkflowsReducer(pageSize, onWorkflowChanged) {
 
 const Provider = ({ pageSize, onWorkflowChanged, allowAdd = true, children }) => {
   const [workflows, updateWorkflows] = useReducer(
-    updateWorkflowsReducer(pageSize, onWorkflowChanged), [])
+    updateWorkflowsReducer(pageSize, onWorkflowChanged))
   const eventBus = useContext(EventBusContext)
 
   useEffect(() => {

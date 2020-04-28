@@ -21,7 +21,9 @@ function updateAgentsReducer(onAgentChanged) {
   })
 
   return (state, { action = "unshift", agents }) => {
+    state = state || []
     switch (action) {
+      case "set":
       case "update":
       case "unshift":
       case "push":
@@ -34,7 +36,7 @@ function updateAgentsReducer(onAgentChanged) {
 }
 
 const Provider = ({ onAgentChanged, allowAdd = true, children }) => {
-  const [agents, updateAgents] = useReducer(updateAgentsReducer(onAgentChanged), [])
+  const [agents, updateAgents] = useReducer(updateAgentsReducer(onAgentChanged))
   const eventBus = useContext(EventBusContext)
 
   useEffect(() => {

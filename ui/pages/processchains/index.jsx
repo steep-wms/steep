@@ -60,13 +60,14 @@ function ProcessChainList({ pageSize, pageOffset, submissionId }) {
 
   function reset(newOffset) {
     if (newOffset !== pageOffset) {
-      updateProcessChains({ action: "set", processChains: [] })
+      updateProcessChains({ action: "set", processChains: undefined })
       setPageTotal(0)
     }
   }
 
   return (<>
     {processChains && processChains.map(pc => pc.element)}
+    {processChains && processChains.length === 0 && <>There are no process chains.</>}
     {error}
     {pageTotal > 0 && (
       <Pagination pageSize={pageSize} pageOffset={pageOffset} pageTotal={pageTotal}

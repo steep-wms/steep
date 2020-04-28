@@ -22,12 +22,14 @@ function updateVMsReducer(pageSize, onVMChanged) {
     onVMChanged && onVMChanged(vm)
   })
 
-  return (state, { action = "unshift", vms }) => liur(state, { action, items: vms })
+  return (state, { action = "unshift", vms }) => {
+    state = state || []
+    return liur(state, { action, items: vms })
+  }
 }
 
 const Provider = ({ pageSize, onVMChanged, allowAdd = true, children }) => {
-  const [vms, updateVMs] = useReducer(
-    updateVMsReducer(pageSize, onVMChanged), [])
+  const [vms, updateVMs] = useReducer(updateVMsReducer(pageSize, onVMChanged))
   const eventBus = useContext(EventBusContext)
 
   useEffect(() => {

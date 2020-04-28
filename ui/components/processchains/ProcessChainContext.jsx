@@ -27,6 +27,7 @@ function updateProcessChainsReducer(pageSize, onProcessChainChanged) {
   })
 
   return (state, { action = "unshift", processChains }) => {
+    state = state || []
     switch (action) {
       case "set":
       case "update":
@@ -56,7 +57,7 @@ function updateProcessChainsReducer(pageSize, onProcessChainChanged) {
 
 const Provider = ({ pageSize, onProcessChainChanged, allowAdd = true, children }) => {
   const [processChains, updateProcessChains] = useReducer(
-    updateProcessChainsReducer(pageSize, onProcessChainChanged), [])
+    updateProcessChainsReducer(pageSize, onProcessChainChanged))
   const eventBus = useContext(EventBusContext)
 
   useEffect(() => {

@@ -36,7 +36,7 @@ function AgentList() {
 
   useEffect(() => {
     fetcher(`${process.env.baseUrl}/agents`)
-      .then(agents => updateAgents({ action: "push", agents }))
+      .then(agents => updateAgents({ action: "set", agents }))
       .catch(err => {
         console.error(err)
         setError(<Alert error>Could not load agents</Alert>)
@@ -45,6 +45,7 @@ function AgentList() {
 
   return (<>
     {agents && agents.map(a => a.element)}
+    {agents && agents.length === 0 && <>There are no agents.</>}
     {error}
   </>)
 }
