@@ -555,9 +555,6 @@ class CloudManager : CoroutineVerticle() {
         } catch (e: Throwable) {
           vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYING)
           cloudClient.destroyVM(externalId)
-          vmRegistry.forceSetVMStatus(vm.id, VM.Status.ERROR)
-          vmRegistry.setVMReason(vm.id, e.message ?: "Unknown error")
-          vmRegistry.setVMDestructionTime(vm.id, Instant.now())
           throw e
         }
 
@@ -565,6 +562,9 @@ class CloudManager : CoroutineVerticle() {
         vmRegistry.setVMAgentJoinTime(vm.id, Instant.now())
         backoffSeconds = 0
       } catch (t: Throwable) {
+        vmRegistry.forceSetVMStatus(vm.id, VM.Status.ERROR)
+        vmRegistry.setVMReason(vm.id, t.message ?: "Unknown error")
+        vmRegistry.setVMDestructionTime(vm.id, Instant.now())
         backoffSeconds = min(MAX_BACKOFF_SECONDS, max(backoffSeconds * 2, 2))
         throw t
       }
