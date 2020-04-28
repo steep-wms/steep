@@ -3,6 +3,7 @@ import Link from "next/link"
 import { useRouter } from "next/router"
 import { useContext, useEffect, useState } from "react"
 import Alert from "../../components/Alert"
+import CancelModal from "../../components/CancelModal"
 import CodeBox from "../../components/CodeBox"
 import DefinitionList from "../../components/DefinitionList"
 import DefinitionListItem from "../../components/DefinitionListItem"
@@ -12,11 +13,13 @@ import LiveDuration from "../../components/LiveDuration"
 import ProcessChainContext from "../../components/processchains/ProcessChainContext"
 import { formatDate, formatDurationTitle } from "../../components/lib/date-time-utils"
 import fetcher from "../../components/lib/json-fetcher"
+import { disableBodyScroll, enableBodyScroll } from "body-scroll-lock"
 
 function ProcessChain({ id }) {
   const processChains = useContext(ProcessChainContext.State)
   const updateProcessChains = useContext(ProcessChainContext.Dispatch)
   const [error, setError] = useState()
+  const [cancelModalOpen, setCancelModalOpen] = useState()
 
   useEffect(() => {
     if (id) {
@@ -29,9 +32,34 @@ function ProcessChain({ id }) {
     }
   }, [id, updateProcessChains])
 
+  function onCancel() {
+    setCancelModalOpen(true)
+  }
+
+  function onDoCancel() {
+    setCancelModalOpen(false)
+    fetcher(`${process.env.baseUrl}/processchains/${id}`, false, {
+      method: "PUT",
+      body: JSON.stringify({
+        status: "CANCELLED"
+      })
+    }).catch(error => {
+      console.error(error)
+    })
+  }
+
+  function onCancelModalOpen() {
+    disableBodyScroll()
+  }
+
+  function onCancelModalClose() {
+    enableBodyScroll()
+  }
+
   let breadcrumbs
   let title
   let processchain
+  let menu
 
   if (typeof processChains !== "undefined" && processChains.length > 0) {
     let pc = processChains[0]
@@ -51,6 +79,14 @@ function ProcessChain({ id }) {
       </Link>,
       pc.id
     ]
+
+    if (pc.status === "REGISTERED" || pc.status === "RUNNING") {
+      menu = (
+        <ul>
+          <li onClick={onCancel}>Cancel</li>
+        </ul>
+      )
+    }
 
     let reqcap
     if (typeof pc.requiredCapabilities === "undefined" || pc.requiredCapabilities.length === 0) {
@@ -99,9 +135,15 @@ function ProcessChain({ id }) {
   }
 
   return (
-    <DetailPage breadcrumbs={breadcrumbs} title={title}>
+    <DetailPage breadcrumbs={breadcrumbs} title={title} menu={menu}>
       {processchain}
       {error}
+      <CancelModal isOpen={cancelModalOpen} contentLabel="Cancel modal"
+          onAfterOpen={onCancelModalOpen} onAfterClose={onCancelModalClose}
+          onRequestClose={() => setCancelModalOpen(false)} title="Cancel process chain"
+          onConfirm={onDoCancel} onDeny={() => setCancelModalOpen(false)}>
+        <p>Are you sure you want to cancel this process chain?</p>
+      </CancelModal>
     </DetailPage>
   )
 }

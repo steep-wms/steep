@@ -4,13 +4,14 @@ import "./json-fetcher.scss"
 
 NProgress.configure({ showSpinner: false })
 
-export default async (url, withHeaders = false) => {
+export default async (url, withHeaders = false, options = {}) => {
   let timer = setTimeout(NProgress.start, 100)
   try {
     let r = await fetch(url, {
       headers: {
         "accept": "application/json"
-      }
+      },
+      ...options
     })
     if (withHeaders) {
       return {

@@ -1,0 +1,53 @@
+@import "../css/variables";
+
+@keyframes cancel-modal-overlay-fadein {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.cancel-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, .75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100000;
+  will-change: opacity;
+  animation: cancel-modal-overlay-fadein 200ms;
+}
+
+.cancel-modal {
+  display: block;
+  background-color: #fff;
+  outline: none;
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.75);
+  border-radius: $border-radius;
+  padding: $spacer $spacer * 2;
+  margin-bottom: $spacer * 2;
+
+  .cancel-modal-title {
+    font-weight: 400;
+    font-size: 1.25rem;
+    margin-bottom: $spacer;
+  }
+
+  .cancel-modal-buttons {
+    margin-top: $spacer * 1.5;
+    margin-bottom: $spacer * 0.5;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+
+    button + button {
+      margin-left: $spacer / 2;
+    }
+  }
+}

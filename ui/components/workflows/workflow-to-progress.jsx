@@ -36,6 +36,7 @@ export default function workflowToProgress(workflow) {
   let status = workflow.status
   if (status === "RUNNING" && workflow.cancelledProcessChains > 0) {
     status = "CANCELLING"
+    progressTitle = undefined
   }
 
   return {

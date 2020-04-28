@@ -37,6 +37,10 @@ steep:
         - x-page-offset
         - x-page-size
         - x-page-total
+      allowMethods:
+        - GET
+        - POST
+        - PUT
 
   agent:
     enabled: true
