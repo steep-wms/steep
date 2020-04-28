@@ -2,7 +2,7 @@
 
 aside, .sidebar {
   width: 14rem;
-  overflow: hidden;
+  z-index: 1;
 
   @media (max-width: $lg) {
     width: 4rem;
@@ -46,7 +46,7 @@ aside, .sidebar {
     display: flex;
     flex-direction: column;
 
-    margin-top: $spacer;
+    margin-top: $spacer * 2;
     margin-left: $spacer * 2.5;
 
     font-family: "Roboto Condensed", sans-serif;
@@ -59,6 +59,7 @@ aside, .sidebar {
     .nav-item {
       display: inline-flex;
       height: 3rem;
+      position: relative;
 
       @media (max-width: $lg) {
         justify-content: center;
@@ -71,13 +72,33 @@ aside, .sidebar {
 
     a {
       color: $gray-800;
-      margin-top: $spacer;
-      display: flex;
+      display: block;
+      width: 100%;
       align-items: center;
 
       &:hover {
         text-decoration: none;
         color: $gray-600;
+      }
+
+      &.hover {
+        @media (max-width: $lg) {
+          color: $gray-800;
+          background-color: $gray-300;
+
+          .nav-item-text {
+            position: absolute;
+            top: 0;
+            left: 100%;
+            display: block;
+            white-space: nowrap;
+            background-color: $gray-300;
+            display: flex;
+            height: 100%;
+            align-items: center;
+            padding: 0 $spacer;
+          }
+        }
       }
 
       .feather {

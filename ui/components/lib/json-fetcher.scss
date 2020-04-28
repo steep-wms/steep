@@ -1,6 +1,13 @@
 @import "~nprogress/nprogress";
 @import "../../css/variables";
 
+#nprogress {
+  // progress bar should also be in front of the sidebar, so position should
+  // be fixed and z-index should be high enough
+  position: fixed;
+  z-index: 9999;
+}
+
 #nprogress .bar {
   background: $primary;
 }

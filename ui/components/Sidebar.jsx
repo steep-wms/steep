@@ -1,6 +1,28 @@
+import classNames from "classnames"
 import Link from "next/link"
 import "./Sidebar.scss"
 import { Grid, Link as LinkIcon, Pocket, Send, Server } from "react-feather"
+import { useState } from "react"
+
+function NavItem({ href, icon, text }) {
+  // On small screens, the sidebar shows icons only. "nav-item-text" will be
+  // shown when the cursor hovers over the nav item (like a tooltip). We handle
+  // hover state in JavaScript and not in pure CSS because we want the tooltip
+  // to disappear when we click a nav item.
+  let [hover, setHover] = useState()
+
+  return (
+    <div className="nav-item">
+      <Link href={href}>
+        <a className={classNames("nav-item", { hover })}
+            onMouseEnter={() => setHover(true)}
+            onMouseLeave={() => setHover(false)}>
+          {icon} <span className="nav-item-text">{text}</span>
+        </a>
+      </Link>
+    </div>
+  )
+}
 
 export default () => {
   function switchToClassicUI() {
@@ -20,41 +42,11 @@ export default () => {
           </a>
         </Link>
         <nav>
-          <div className="nav-item">
-            <Link href="/workflows/">
-              <a className="nav-item">
-                <Send className="feather" /> <span className="nav-item-text">Workflows</span>
-              </a>
-            </Link>
-          </div>
-          <div className="nav-item">
-            <Link href="/processchains/">
-              <a className="nav-item">
-                <LinkIcon className="feather" /> <span className="nav-item-text">Process Chains</span>
-              </a>
-            </Link>
-          </div>
-          <div className="nav-item">
-            <Link href="/agents/">
-              <a className="nav-item">
-                <Pocket className="feather" /> <span className="nav-item-text">Agents</span>
-              </a>
-            </Link>
-          </div>
-          <div className="nav-item">
-            <Link href="/vms/">
-              <a className="nav-item">
-                <Server className="feather" /> <span className="nav-item-text">VMs</span>
-              </a>
-            </Link>
-          </div>
-          <div className="nav-item">
-            <Link href="/services/">
-              <a className="nav-item">
-                <Grid className="feather" /> <span className="nav-item-text">Services</span>
-              </a>
-            </Link>
-          </div>
+          <NavItem href="/workflows/" icon={<Send className="feather" />} text="Workflows" />
+          <NavItem href="/processchains/" icon={<LinkIcon className="feather" />} text="Process Chains" />
+          <NavItem href="/agents/" icon={<Pocket className="feather" />} text="Agents" />
+          <NavItem href="/vms/" icon={<Server className="feather" />} text="VMs" />
+          <NavItem href="/services/" icon={<Grid className="feather" />} text="Services" />
         </nav>
         <div className="sidebar-rest">
           <div className="sidebar-switch-to-classic" onClick={switchToClassicUI}>
