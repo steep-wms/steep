@@ -6,7 +6,7 @@ import Clipboard from "clipboard"
 import { Clipboard as ClipboardIcon } from "react-feather"
 import { createPopper } from "@popperjs/core"
 
-import hljs from "highlight.js/lib/highlight"
+import hljs from "highlight.js/lib/core"
 import json from "highlight.js/lib/languages/json"
 import yaml from "highlight.js/lib/languages/yaml"
 hljs.registerLanguage("json", json)
