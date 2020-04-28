@@ -1,6 +1,7 @@
 const bundleAnalyzer = require("@next/bundle-analyzer")({
   enabled: process.env.ANALYZE === "true"
 })
+const FilterWarningsPlugin = require("webpack-filter-warnings-plugin")
 const optimizedImages = require("next-optimized-images")
 const sass = require("@zeit/next-sass")
 
@@ -53,6 +54,15 @@ const config = {
         }
       })
     }
+
+    // We can ignore the order to CSS files because we use very strict scoping.
+    // There should never be any conflicts in our CSS files.
+    config.plugins.push(
+      new FilterWarningsPlugin({
+        exclude: /mini-css-extract-plugin[^]*Conflicting order between:/
+      })
+    )
+
     return config
   }
 }

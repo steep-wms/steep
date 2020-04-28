@@ -1,12 +1,13 @@
 import ListPage from "../../components/layouts/ListPage"
+import Ago from "../../components/Ago"
 import Alert from "../../components/Alert"
 import ListItem from "../../components/ListItem"
 import Pagination from "../../components/Pagination"
+import Tooltip from "../../components/Tooltip"
 import VMContext from "../../components/vms/VMContext"
 import { useContext, useEffect, useState } from "react"
 import vmToProgress from "../../components/vms/vm-to-progress"
 import { formatDistanceToNow } from "date-fns"
-import TimeAgo from "react-timeago"
 import { formatDate, formatDuration, formatDurationTitle } from "../../components/lib/date-time-utils"
 import fetcher from "../../components/lib/json-fetcher"
 
@@ -27,13 +28,13 @@ function onVMChanged(vm) {
     let duration = formatDuration(vm.creationTime, vm.destructionTime)
     let durationTitle = formatDurationTitle(vm.creationTime, vm.destructionTime)
     subtitle = (<>
-      Destroyed <TimeAgo date={vm.destructionTime}
+      Destroyed <Ago date={vm.destructionTime}
         formatter={formatterToNow(true)} title={agoEndTitle} /> (was
-        up for <span title={durationTitle}>{duration}</span>)
+        up for <Tooltip title={durationTitle}>{duration}</Tooltip>)
     </>)
   } else if (vm.creationTime) {
     let agoTitle = formatDate(vm.creationTime)
-    subtitle = <>Up since <TimeAgo date={vm.creationTime}
+    subtitle = <>Up since <Ago date={vm.creationTime}
       formatter={formatterToNow(false)} title={agoTitle} /></>
   }
 

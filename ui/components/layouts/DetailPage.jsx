@@ -7,9 +7,9 @@ import { useEffect, useRef, useState } from "react"
 
 export default ({ breadcrumbs, title, subtitle, menu, children }) => {
   let dropdown
-  let [menuVisible, setMenuVisible] = useState(false)
-  let dropdownRef = useRef()
-  let dropdownBtnRef = useRef()
+  const [menuVisible, setMenuVisible] = useState(false)
+  const dropdownRef = useRef()
+  const dropdownBtnRef = useRef()
 
   function onDropDownClick() {
     if (menuVisible) {

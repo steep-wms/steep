@@ -1,4 +1,4 @@
-import TimeAgo from "react-timeago"
+import Ago from "../Ago"
 import { formatDistanceToNow } from "date-fns"
 import { formatDate } from "../lib/date-time-utils"
 
@@ -13,7 +13,7 @@ export default function vmToProgress(vm) {
     case "RUNNING": {
       progress.status = "UP"
       let upTitle = formatDate(vm.agentJoinTime)
-      progress.subtitle = <TimeAgo date={vm.agentJoinTime}
+      progress.subtitle = <Ago date={vm.agentJoinTime}
         formatter={formatterToNow} title={upTitle} />
       break
     }

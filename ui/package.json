@@ -36,7 +36,8 @@
     "react-timeago": "^4.4.0",
     "serve": "^11.3.0",
     "unfetch": "^4.1.0",
-    "vertx3-eventbus-client": "^3.9.0"
+    "vertx3-eventbus-client": "^3.9.0",
+    "webpack-filter-warnings-plugin": "^1.2.1"
   },
   "devDependencies": {
     "eslint": "^6.8.0",

@@ -95,7 +95,7 @@ export default () => {
     submissionId = params.get("submissionId") || undefined
   }
 
-  let [breadcrumbs, setBreadcrumbs] = useState()
+  const [breadcrumbs, setBreadcrumbs] = useState()
 
   useEffect(() => {
     if (typeof submissionId !== "undefined") {

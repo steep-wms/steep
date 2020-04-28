@@ -1,9 +1,10 @@
 import classNames from "classnames"
+import Ago from "./Ago"
 import Label from "./Label"
 import ListItemProgressBox from "./ListItemProgressBox"
+import Tooltip from "./Tooltip"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
-import TimeAgo from "react-timeago"
 import { formatDate, formatDuration, formatDurationTitle } from "./lib/date-time-utils"
 import "./ListItem.scss"
 
@@ -26,7 +27,7 @@ export default ({ title, linkHref, linkAs, subtitle, justAdded, justLeft,
         if (startTime) {
           let agoTitle = formatDate(startTime)
           defaultSubtitle = (
-            <>Started <TimeAgo date={startTime} formatter={formatterToNow} title={agoTitle} /></>
+            <>Started <Ago date={startTime} formatter={formatterToNow} title={agoTitle} /></>
           )
         } else {
           defaultSubtitle = "Not started yet"
@@ -44,8 +45,8 @@ export default ({ title, linkHref, linkAs, subtitle, justAdded, justLeft,
     let duration = formatDuration(startTime, endTime)
     let durationTitle = formatDurationTitle(startTime, endTime)
     defaultSubtitle = (
-      <>Finished <TimeAgo date={endTime} formatter={formatterToNow} title={agoTitle} /> and
-      took <span title={durationTitle}>{duration}</span></>
+      <>Finished <Ago date={endTime} formatter={formatterToNow} title={agoTitle} /> and
+      took <Tooltip title={durationTitle}>{duration}</Tooltip></>
     )
   }
 

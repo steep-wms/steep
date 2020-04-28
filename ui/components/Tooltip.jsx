@@ -1,0 +1,82 @@
+import classNames from "classnames"
+import { createPopper } from "@popperjs/core"
+import { useEffect, useRef, useState } from "react"
+import "./Tooltip.scss"
+
+export default ({ title, delay = 300, forceVisible = undefined, className,
+    onShow, onHide, children }) => {
+  const targetRef = useRef()
+  const tooltipRef = useRef()
+  const timer = useRef()
+  const [visible, setVisible] = useState(false)
+  const [tooltip, setTooltip] = useState()
+
+  if (typeof forceVisible !== "undefined" && forceVisible !== visible) {
+    setVisible(forceVisible)
+  }
+
+  useEffect(() => {
+    let t = tooltip
+    return () => {
+      if (t) {
+        t.destroy()
+      }
+    }
+  }, [tooltip])
+
+  useEffect(() => {
+    if (tooltip) {
+      tooltip.update()
+    }
+  }, [title, tooltip])
+
+  function show() {
+    onShow && onShow()
+
+    timer.current = setTimeout(() => {
+      if (typeof tooltip === "undefined") {
+        let options = {
+          modifiers: [{
+            name: "offset",
+            options: {
+              offset: [0, 8]
+            }
+          }]
+        }
+
+        setTooltip(createPopper(targetRef.current, tooltipRef.current, options))
+      }
+
+      setVisible(true)
+    }, delay)
+  }
+
+  function hide() {
+    onHide && onHide()
+
+    if (timer.current) {
+      clearTimeout(timer.current)
+      timer.current = undefined
+    }
+
+    if (tooltip) {
+      tooltip.destroy()
+      setTooltip(undefined)
+    }
+
+    setVisible(false)
+  }
+
+  return (
+    <>
+      <span ref={targetRef} className={className}
+          onMouseEnter={() => show()} onMouseLeave={() => hide()}>
+        {children}
+      </span>
+      <div className={classNames("tooltip", { visible })} ref={tooltipRef}>
+        {title}
+        <div className="tooltip-arrow" data-popper-arrow></div>
+      </div>
+    </>
+  )
+}

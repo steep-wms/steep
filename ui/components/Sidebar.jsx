@@ -9,7 +9,7 @@ function NavItem({ href, icon, text }) {
   // shown when the cursor hovers over the nav item (like a tooltip). We handle
   // hover state in JavaScript and not in pure CSS because we want the tooltip
   // to disappear when we click a nav item.
-  let [hover, setHover] = useState()
+  const [hover, setHover] = useState()
 
   return (
     <div className="nav-item">

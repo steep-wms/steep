@@ -1,4 +1,4 @@
-import TimeAgo from "react-timeago"
+import Ago from "../Ago"
 import { formatDistanceToNow } from "date-fns"
 import { formatDate } from "../lib/date-time-utils"
 
@@ -18,7 +18,7 @@ export default function agentToProgress(agent) {
   }
 
   let changedTitle = formatDate(agent.stateChangedTime)
-  progress.subtitle = <TimeAgo date={agent.stateChangedTime}
+  progress.subtitle = <Ago date={agent.stateChangedTime}
     formatter={formatterToNow} title={changedTitle} />
 
   return progress
