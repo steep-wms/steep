@@ -35,11 +35,11 @@ function ProcessChainList({ pageSize, pageOffset, submissionId }) {
 
   useEffect(() => {
     let params = new URLSearchParams()
-    if (typeof pageOffset !== "undefined") {
+    if (pageOffset !== undefined) {
       params.append("offset", pageOffset)
     }
     params.append("size", pageSize)
-    if (typeof submissionId !== "undefined") {
+    if (submissionId !== undefined) {
       params.append("submissionId", submissionId)
     }
 
@@ -85,11 +85,11 @@ export default () => {
   if (typeof window !== "undefined") {
     let params = new URLSearchParams(window.location.search)
     pageOffset = params.get("offset") || undefined
-    if (typeof pageOffset !== "undefined") {
+    if (pageOffset !== undefined) {
       pageOffset = Math.max(0, parseInt(pageOffset))
     }
     pageSize = params.get("size") || 10
-    if (typeof pageSize !== "undefined") {
+    if (pageSize !== undefined) {
       pageSize = Math.max(0, parseInt(pageSize))
     }
     submissionId = params.get("submissionId") || undefined
@@ -98,7 +98,7 @@ export default () => {
   const [breadcrumbs, setBreadcrumbs] = useState()
 
   useEffect(() => {
-    if (typeof submissionId !== "undefined") {
+    if (submissionId !== undefined) {
       setBreadcrumbs([
         <Link href="/workflows" key="workflows"><a>Workflows</a></Link>,
         <Link href="/workflows/[id]" as={`/workflows/${submissionId}`} key={submissionId}>

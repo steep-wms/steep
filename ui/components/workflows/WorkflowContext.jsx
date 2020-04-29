@@ -47,23 +47,23 @@ function updateWorkflowsReducer(pageSize, onWorkflowChanged) {
           let i = state.findIndex(w => w.id === workflow.id)
           if (i >= 0) {
             let newWorkflow = { ...state[i] }
-            if (typeof workflow.totalProcessChains !== "undefined") {
+            if (workflow.totalProcessChains !== undefined) {
               newWorkflow.totalProcessChains =
                   Math.max(0, newWorkflow.totalProcessChains + workflow.totalProcessChains)
             }
-            if (typeof workflow.runningProcessChains !== "undefined") {
+            if (workflow.runningProcessChains !== undefined) {
               newWorkflow.runningProcessChains =
                   Math.max(0, newWorkflow.runningProcessChains + workflow.runningProcessChains)
             }
-            if (typeof workflow.cancelledProcessChains !== "undefined") {
+            if (workflow.cancelledProcessChains !== undefined) {
               newWorkflow.cancelledProcessChains =
                   Math.max(0, newWorkflow.cancelledProcessChains + workflow.cancelledProcessChains)
             }
-            if (typeof workflow.failedProcessChains !== "undefined") {
+            if (workflow.failedProcessChains !== undefined) {
               newWorkflow.failedProcessChains =
                   Math.max(0, newWorkflow.failedProcessChains + workflow.failedProcessChains)
             }
-            if (typeof workflow.succeededProcessChains !== "undefined") {
+            if (workflow.succeededProcessChains !== undefined) {
               newWorkflow.succeededProcessChains =
                   Math.max(0, newWorkflow.succeededProcessChains + workflow.succeededProcessChains)
             }

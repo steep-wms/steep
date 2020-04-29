@@ -34,7 +34,7 @@ function VM({ id }) {
   let title
   let result
 
-  if (typeof vms !== "undefined" && vms.length > 0) {
+  if (vms !== undefined && vms.length > 0) {
     let vm = vms[0]
     title = vm.id
     breadcrumbs = [
@@ -43,7 +43,7 @@ function VM({ id }) {
     ]
 
     let caps
-    if (typeof vm.setup.providedCapabilities === "undefined" ||
+    if (vm.setup.providedCapabilities === undefined ||
         vm.setup.providedCapabilities.length === 0) {
       caps = <>&ndash;</>
     } else {

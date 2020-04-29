@@ -54,7 +54,7 @@ function VMList({ pageSize, pageOffset }) {
 
   useEffect(() => {
     let params = new URLSearchParams()
-    if (typeof pageOffset !== "undefined") {
+    if (pageOffset !== undefined) {
       params.append("offset", pageOffset)
     }
     params.append("size", pageSize)
@@ -100,11 +100,11 @@ export default () => {
   if (typeof window !== "undefined") {
     let params = new URLSearchParams(window.location.search)
     pageOffset = params.get("offset") || undefined
-    if (typeof pageOffset !== "undefined") {
+    if (pageOffset !== undefined) {
       pageOffset = Math.max(0, parseInt(pageOffset))
     }
     pageSize = params.get("size") || 10
-    if (typeof pageSize !== "undefined") {
+    if (pageSize !== undefined) {
       pageSize = Math.max(0, parseInt(pageSize))
     }
   }

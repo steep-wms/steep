@@ -61,7 +61,7 @@ function ProcessChain({ id }) {
   let processchain
   let menu
 
-  if (typeof processChains !== "undefined" && processChains.length > 0) {
+  if (processChains !== undefined && processChains.length > 0) {
     let pc = processChains[0]
     title = pc.id
     breadcrumbs = [
@@ -89,7 +89,7 @@ function ProcessChain({ id }) {
     }
 
     let reqcap
-    if (typeof pc.requiredCapabilities === "undefined" || pc.requiredCapabilities.length === 0) {
+    if (pc.requiredCapabilities === undefined || pc.requiredCapabilities.length === 0) {
       reqcap = <>&ndash;</>
     } else {
       reqcap = pc.requiredCapabilities.map((r, i) => <Label key={i}>{r}</Label>)

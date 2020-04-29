@@ -11,7 +11,7 @@ export default ({ title, delay = 300, forceVisible = undefined, className,
   const [visible, setVisible] = useState(false)
   const [tooltip, setTooltip] = useState()
 
-  if (typeof forceVisible !== "undefined") {
+  if (forceVisible !== undefined) {
     delay = 0
     if (forceVisible !== visible) {
       setVisible(forceVisible)
@@ -35,7 +35,7 @@ export default ({ title, delay = 300, forceVisible = undefined, className,
 
   function show() {
     function showNow() {
-      if (typeof tooltip === "undefined") {
+      if (tooltip === undefined) {
         let options = {
           modifiers: [{
             name: "offset",

@@ -15,7 +15,7 @@ function formatterToNow(value, unit, suffix, epochSeconds) {
 export default ({ title, linkHref, linkAs, subtitle, justAdded, justLeft,
     startTime, endTime, labels = [], progress }) => {
   let defaultSubtitle
-  if (typeof progress !== "undefined") {
+  if (progress !== undefined) {
     switch (progress.status) {
       case "ACCEPTED":
       case "REGISTERED":

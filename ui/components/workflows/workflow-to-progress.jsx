@@ -20,7 +20,7 @@ export default function workflowToProgress(workflow) {
     }
   }
 
-  if (typeof progressSubTitle !== "undefined") {
+  if (progressSubTitle !== undefined) {
     progressSubTitle = (
       <Link href={{
         pathname: "/processchains",

@@ -18,7 +18,7 @@ export default () => {
   }, [])
 
   let serviceElements
-  if (typeof services !== "undefined") {
+  if (services !== undefined) {
     serviceElements = []
     for (let service of services) {
       let linkHref = "/services/[id]"

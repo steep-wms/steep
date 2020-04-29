@@ -34,7 +34,7 @@ function Agent({ id }) {
   let title
   let agent
 
-  if (typeof agents !== "undefined" && agents.length > 0) {
+  if (agents !== undefined && agents.length > 0) {
     let a = agents[0]
     title = a.id
     breadcrumbs = [
@@ -43,7 +43,7 @@ function Agent({ id }) {
     ]
 
     let caps
-    if (typeof a.capabilities === "undefined" || a.capabilities.length === 0) {
+    if (a.capabilities === undefined || a.capabilities.length === 0) {
       caps = <>&ndash;</>
     } else {
       caps = a.capabilities.map((r, i) => <Label key={i}>{r}</Label>)

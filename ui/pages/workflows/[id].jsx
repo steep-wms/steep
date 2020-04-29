@@ -61,7 +61,7 @@ function Workflow({ id }) {
   let workflow
   let menu
 
-  if (typeof workflows !== "undefined" && workflows.length > 0) {
+  if (workflows !== undefined && workflows.length > 0) {
     let w = workflows[0]
     title = w.id
     breadcrumbs = [

@@ -1,6 +1,6 @@
 export default (pageSize, initItem) => (state, { action = "unshift", items }) => {
   if (action === "set") {
-    if (typeof items === "undefined") {
+    if (items === undefined) {
       return undefined
     }
     action = "push"
@@ -22,7 +22,7 @@ export default (pageSize, initItem) => (state, { action = "unshift", items }) =>
 
     case "unshift":
     case "push": {
-      if (action === "push" && typeof pageSize !== "undefined" && state.length >= pageSize) {
+      if (action === "push" && pageSize !== undefined && state.length >= pageSize) {
         return state
       }
 
@@ -34,12 +34,12 @@ export default (pageSize, initItem) => (state, { action = "unshift", items }) =>
       }
 
       if (action === "push") {
-        if (typeof pageSize !== "undefined") {
+        if (pageSize !== undefined) {
           itemsToAdd = itemsToAdd.slice(0, pageSize - state.length)
         }
       } else {
         itemsToAdd.reverse()
-        if (typeof pageSize !== "undefined") {
+        if (pageSize !== undefined) {
           itemsToAdd = itemsToAdd.slice(0, pageSize)
           state = state.slice(0, pageSize - itemsToAdd.length)
         }

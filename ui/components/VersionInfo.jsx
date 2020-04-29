@@ -18,9 +18,9 @@ export default () => {
       })
   }, [])
 
-  if (typeof error !== "undefined") {
+  if (error !== undefined) {
     return error
-  } else if (typeof data === "undefined") {
+  } else if (data === undefined) {
     return (
       <></>
     )

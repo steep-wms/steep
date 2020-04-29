@@ -31,11 +31,11 @@ export default () => {
   let service
   let none = <span className="none"></span>
 
-  if (typeof data !== "undefined") {
+  if (data !== undefined) {
     title = data.name
     subtitle = data.description
     let reqcap
-    if (typeof data.required_capabilities === "undefined" || data.required_capabilities.length === 0) {
+    if (data.required_capabilities === undefined || data.required_capabilities.length === 0) {
       reqcap = <>&ndash;</>
     } else {
       reqcap = data.required_capabilities.map((r, i) => <Label key={i}>{r}</Label>)
