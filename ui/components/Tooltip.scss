@@ -12,10 +12,6 @@
 
   &.visible {
     display: block;
-
-    // do not show the tooltip if a position has not been set yet
-    position: absolute;
-    transform: scale(0);
   }
 
   .tooltip-arrow, .tooltip-arrow::before {

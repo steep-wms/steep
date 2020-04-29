@@ -76,9 +76,8 @@ export default ({ json }) => {
         <div className={classNames("code-box-tab", { active: activeLang === "json" })}>
           <pre><code lang="json" ref={jsonRef}>{str}</code></pre>
         </div>
-        <Tooltip title={copyTooltipTitle} delay={0}
-            forceVisible={copyTooltipVisible} className="code-box-copy-btn"
-            onShow={() => setCopyTooltipVisible(true)}
+        <Tooltip title={copyTooltipTitle} forceVisible={copyTooltipVisible}
+            className="code-box-copy-btn" onShow={() => setCopyTooltipVisible(true)}
             onHide={onCopyBtnMouseLeave}>
           <span ref={copyBtnRef}>
             <ClipboardIcon className="feather" />

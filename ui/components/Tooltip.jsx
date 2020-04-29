@@ -11,8 +11,11 @@ export default ({ title, delay = 300, forceVisible = undefined, className,
   const [visible, setVisible] = useState(false)
   const [tooltip, setTooltip] = useState()
 
-  if (typeof forceVisible !== "undefined" && forceVisible !== visible) {
-    setVisible(forceVisible)
+  if (typeof forceVisible !== "undefined") {
+    delay = 0
+    if (forceVisible !== visible) {
+      setVisible(forceVisible)
+    }
   }
 
   useEffect(() => {
@@ -31,9 +34,7 @@ export default ({ title, delay = 300, forceVisible = undefined, className,
   }, [title, tooltip])
 
   function show() {
-    onShow && onShow()
-
-    timer.current = setTimeout(() => {
+    function showNow() {
       if (typeof tooltip === "undefined") {
         let options = {
           modifiers: [{
@@ -48,7 +49,15 @@ export default ({ title, delay = 300, forceVisible = undefined, className,
       }
 
       setVisible(true)
-    }, delay)
+    }
+
+    onShow && onShow()
+
+    if (delay === 0) {
+      showNow()
+    } else {
+      timer.current = setTimeout(showNow, delay)
+    }
   }
 
   function hide() {
