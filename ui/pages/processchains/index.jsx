@@ -4,10 +4,11 @@ import ListPage from "../../components/layouts/ListPage"
 import Breadcrumbs from "../../components/Breadcrumbs"
 import Alert from "../../components/Alert"
 import ListItem from "../../components/ListItem"
+import Notification from "../../components/Notification"
 import Pagination from "../../components/Pagination"
 import ProcessChainContext from "../../components/processchains/ProcessChainContext"
 import "./index.scss"
-import { useContext, useEffect, useState } from "react"
+import { useCallback, useContext, useEffect, useState } from "react"
 import fetcher from "../../components/lib/json-fetcher"
 
 function onProcessChainChanged(processChain) {
@@ -27,11 +28,19 @@ function onProcessChainChanged(processChain) {
   )
 }
 
-function ProcessChainList({ pageSize, pageOffset, submissionId }) {
-  const processChains = useContext(ProcessChainContext.State)
-  const updateProcessChains = useContext(ProcessChainContext.Dispatch)
+function ProcessChainList({ pageSize, pageOffset, submissionId, forceUpdate }) {
+  const processChains = useContext(ProcessChainContext.ProcessChains)
+  const updateProcessChains = useContext(ProcessChainContext.UpdateProcessChains)
+  const addedProcessChains = useContext(ProcessChainContext.AddedProcessChains)
+  const updateAddedProcessChains = useContext(ProcessChainContext.UpdateAddedProcessChains)
   const [error, setError] = useState()
   const [pageTotal, setPageTotal] = useState(0)
+
+  const forceReset = useCallback(() => {
+    updateProcessChains({ action: "set", processChains: undefined })
+    setPageTotal(0)
+    updateAddedProcessChains({ action: "set", n: 0 })
+  }, [updateProcessChains, updateAddedProcessChains])
 
   useEffect(() => {
     let params = new URLSearchParams()
@@ -43,6 +52,8 @@ function ProcessChainList({ pageSize, pageOffset, submissionId }) {
       params.append("submissionId", submissionId)
     }
 
+    forceReset()
+
     fetcher(`${process.env.baseUrl}/processchains?${params.toString()}`, true)
       .then(r => {
         let processChains = r.body
@@ -50,18 +61,19 @@ function ProcessChainList({ pageSize, pageOffset, submissionId }) {
         let pageTotalHeader = r.headers.get("x-page-total")
         if (pageTotalHeader !== null) {
           setPageTotal(+pageTotalHeader)
+          updateAddedProcessChains({ action: "set", n: 0 })
         }
       })
       .catch(err => {
         console.error(err)
         setError(<Alert error>Could not load process chains</Alert>)
       })
-  }, [pageOffset, pageSize, submissionId, updateProcessChains])
+  }, [pageOffset, pageSize, submissionId, updateProcessChains,
+      updateAddedProcessChains, forceUpdate, forceReset])
 
   function reset(newOffset) {
     if (newOffset !== pageOffset) {
-      updateProcessChains({ action: "set", processChains: undefined })
-      setPageTotal(0)
+      forceReset()
     }
   }
 
@@ -69,9 +81,9 @@ function ProcessChainList({ pageSize, pageOffset, submissionId }) {
     {processChains && processChains.map(pc => pc.element)}
     {processChains && processChains.length === 0 && <>There are no process chains.</>}
     {error}
-    {pageTotal > 0 && (
-      <Pagination pageSize={pageSize} pageOffset={pageOffset} pageTotal={pageTotal}
-        onChangeOffset={reset} />
+    {pageTotal + addedProcessChains > 0 && (
+      <Pagination pageSize={pageSize} pageOffset={pageOffset}
+        pageTotal={pageTotal + addedProcessChains} onChangeOffset={reset} />
     )}
   </>)
 }
@@ -96,6 +108,8 @@ export default () => {
   }
 
   const [breadcrumbs, setBreadcrumbs] = useState()
+  const [updatesAvailable, setUpdatesAvailable] = useState(false)
+  const [forceUpdate, setForceUpdate] = useState(0)
 
   useEffect(() => {
     if (submissionId !== undefined) {
@@ -109,14 +123,35 @@ export default () => {
     }
   }, [submissionId])
 
+  useEffect(() => {
+    setUpdatesAvailable(false)
+  }, [pageOffset, pageSize, submissionId, forceUpdate])
+
+  const addFilter = useCallback((processChain) => {
+    if (submissionId !== undefined) {
+      return processChain.submissionId === submissionId
+    }
+    if (pageOffset > 0) {
+      setUpdatesAvailable(true)
+      return false
+    }
+    return true
+  }, [submissionId, pageOffset])
+
   return (
     <ListPage title="Process chains">
       <div className="process-chain-overview">
         <h1 className={classNames({ "no-margin-bottom": breadcrumbs })}>Process chains</h1>
         {breadcrumbs && <Breadcrumbs breadcrumbs={breadcrumbs} />}
-        <ProcessChainContext.Provider pageSize={pageSize} onProcessChainChanged={onProcessChainChanged}>
-          <ProcessChainList pageSize={pageSize} pageOffset={pageOffset} submissionId={submissionId} />
+        <ProcessChainContext.Provider pageSize={pageSize} addFilter={addFilter}
+            onProcessChainChanged={onProcessChainChanged}>
+          <ProcessChainList pageSize={pageSize} pageOffset={pageOffset}
+              submissionId={submissionId} forceUpdate={forceUpdate} />
         </ProcessChainContext.Provider>
+        {updatesAvailable && (<Notification>
+          New process chains available. <a href="#" onClick={() =>
+            setForceUpdate(forceUpdate + 1)}>Refresh</a>.
+        </Notification>)}
       </div>
     </ListPage>
   )

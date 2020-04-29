@@ -16,8 +16,8 @@ import fetcher from "../../components/lib/json-fetcher"
 import { disableBodyScroll, enableBodyScroll } from "body-scroll-lock"
 
 function ProcessChain({ id }) {
-  const processChains = useContext(ProcessChainContext.State)
-  const updateProcessChains = useContext(ProcessChainContext.Dispatch)
+  const processChains = useContext(ProcessChainContext.ProcessChains)
+  const updateProcessChains = useContext(ProcessChainContext.UpdateProcessChains)
   const [error, setError] = useState()
   const [cancelModalOpen, setCancelModalOpen] = useState()
 

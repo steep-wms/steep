@@ -19,6 +19,12 @@ const config = {
   // create a folder for each page
   exportTrailingSlash: true,
 
+  // do not display static optimization indicator
+  // it gets in the way of notifications
+  devIndicators: {
+    autoPrerender: false
+  },
+
   experimental: {
     // Base path of the application
     // Magic string will be replaced by Steep's HttpEndpoint verticle

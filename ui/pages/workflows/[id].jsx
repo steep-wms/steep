@@ -16,8 +16,8 @@ import fetcher from "../../components/lib/json-fetcher"
 import { disableBodyScroll, enableBodyScroll } from "body-scroll-lock"
 
 function Workflow({ id }) {
-  const workflows = useContext(WorkflowContext.State)
-  const updateWorkflows = useContext(WorkflowContext.Dispatch)
+  const workflows = useContext(WorkflowContext.Workflows)
+  const updateWorkflows = useContext(WorkflowContext.UpdateWorkflows)
   const [error, setError] = useState()
   const [cancelModalOpen, setCancelModalOpen] = useState()
 

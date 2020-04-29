@@ -14,8 +14,10 @@ import {
   PROCESS_CHAIN_ALL_STATUS_CHANGED
 } from "../lib/EventBusMessages"
 
-const State = createContext()
-const Dispatch = createContext()
+const Workflows = createContext()
+const UpdateWorkflows = createContext()
+const AddedWorkflows = createContext()
+const UpdateAddedWorkflows = createContext()
 
 function initWorkflow(w) {
   w.runningProcessChains = w.runningProcessChains || 0
@@ -124,18 +126,22 @@ function updateWorkflowsReducer(pageSize, onWorkflowChanged) {
   }
 }
 
-const Provider = ({ pageSize, onWorkflowChanged, allowAdd = true, children }) => {
+function updateAddedWorkflowsReducer(state, { action, n }) {
+  if (action === "inc") {
+    return state + n
+  } else {
+    return n
+  }
+}
+
+const Provider = ({ pageSize, onWorkflowChanged, allowAdd = true, addFilter, children }) => {
   const [workflows, updateWorkflows] = useReducer(
     updateWorkflowsReducer(pageSize, onWorkflowChanged))
+  const [addedWorkflows, updateAddedWorkflows] = useReducer(
+    updateAddedWorkflowsReducer, 0)
   const eventBus = useContext(EventBusContext)
 
   useEffect(() => {
-    function onSubmissionAdded(error, message) {
-      let workflow = message.body
-      workflow.justAdded = true
-      updateWorkflows({ action: "unshift", workflows: [workflow] })
-    }
-
     function onSubmissionStartTimeChanged(error, message) {
       updateWorkflows({
         action: "update", workflows: [{
@@ -243,9 +249,6 @@ const Provider = ({ pageSize, onWorkflowChanged, allowAdd = true, children }) =>
     }
 
     if (eventBus) {
-      if (allowAdd) {
-        eventBus.registerHandler(SUBMISSION_ADDED, onSubmissionAdded)
-      }
       eventBus.registerHandler(SUBMISSION_START_TIME_CHANGED, onSubmissionStartTimeChanged)
       eventBus.registerHandler(SUBMISSION_END_TIME_CHANGED, onSubmissionEndTimeChanged)
       eventBus.registerHandler(SUBMISSION_STATUS_CHANGED, onSubmissionStatusChanged)
@@ -264,22 +267,49 @@ const Provider = ({ pageSize, onWorkflowChanged, allowAdd = true, children }) =>
         eventBus.unregisterHandler(SUBMISSION_STATUS_CHANGED, onSubmissionStatusChanged)
         eventBus.unregisterHandler(SUBMISSION_END_TIME_CHANGED, onSubmissionEndTimeChanged)
         eventBus.unregisterHandler(SUBMISSION_START_TIME_CHANGED, onSubmissionStartTimeChanged)
-        if (allowAdd) {
-          eventBus.unregisterHandler(SUBMISSION_ADDED, onSubmissionAdded)
-        }
       }
     }
-  }, [eventBus, allowAdd])
+  }, [eventBus])
+
+  useEffect(() => {
+    function onSubmissionAdded(error, message) {
+      let workflow = message.body
+      if (addFilter && addFilter(workflow) === false) {
+        return
+      }
+      workflow.justAdded = true
+      updateAddedWorkflows({ action: "inc", n: 1 })
+      updateWorkflows({ action: "unshift", workflows: [workflow] })
+    }
+
+    if (eventBus && allowAdd) {
+      eventBus.registerHandler(SUBMISSION_ADDED, onSubmissionAdded)
+    }
+
+    return () => {
+      if (eventBus && eventBus.state === EventBus.OPEN && allowAdd) {
+        eventBus.unregisterHandler(SUBMISSION_ADDED, onSubmissionAdded)
+      }
+    }
+  }, [eventBus, allowAdd, addFilter])
 
   return (
-    <State.Provider value={workflows}>
-      <Dispatch.Provider value={updateWorkflows}>{children}</Dispatch.Provider>
-    </State.Provider>
+    <Workflows.Provider value={workflows}>
+      <UpdateWorkflows.Provider value={updateWorkflows}>
+        <AddedWorkflows.Provider value={addedWorkflows}>
+          <UpdateAddedWorkflows.Provider value={updateAddedWorkflows}>
+            {children}
+          </UpdateAddedWorkflows.Provider>
+        </AddedWorkflows.Provider>
+      </UpdateWorkflows.Provider>
+    </Workflows.Provider>
   )
 }
 
 export default {
-  State,
-  Dispatch,
+  AddedWorkflows,
+  UpdateAddedWorkflows,
+  Workflows,
+  UpdateWorkflows,
   Provider
 }

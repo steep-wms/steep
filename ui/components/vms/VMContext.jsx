@@ -14,8 +14,10 @@ import {
   VM_REASON_CHANGED
 } from "../lib/EventBusMessages"
 
-const State = createContext()
-const Dispatch = createContext()
+const VMs = createContext()
+const UpdateVMs = createContext()
+const AddedVMs = createContext()
+const UpdateAddedVMs = createContext()
 
 function updateVMsReducer(pageSize, onVMChanged) {
   let liur = listItemUpdateReducer(pageSize, (vm) => {
@@ -28,17 +30,20 @@ function updateVMsReducer(pageSize, onVMChanged) {
   }
 }
 
-const Provider = ({ pageSize, onVMChanged, allowAdd = true, children }) => {
+function updateAddedVMsReducer(state, { action, n }) {
+  if (action === "inc") {
+    return state + n
+  } else {
+    return n
+  }
+}
+
+const Provider = ({ pageSize, onVMChanged, allowAdd = true, addFilter, children }) => {
   const [vms, updateVMs] = useReducer(updateVMsReducer(pageSize, onVMChanged))
+  const [addedVMs, updateAddedVMs] = useReducer(updateAddedVMsReducer, 0)
   const eventBus = useContext(EventBusContext)
 
   useEffect(() => {
-    function onAdded(error, message) {
-      let vm = message.body
-      vm.justAdded = true
-      updateVMs({ action: "unshift", vms: [vm] })
-    }
-
     function onCreationTimeChanged(error, message) {
       updateVMs({
         action: "update", vms: [{
@@ -103,9 +108,6 @@ const Provider = ({ pageSize, onVMChanged, allowAdd = true, children }) => {
     }
 
     if (eventBus) {
-      if (allowAdd) {
-        eventBus.registerHandler(VM_ADDED, onAdded)
-      }
       eventBus.registerHandler(VM_CREATIONTIME_CHANGED, onCreationTimeChanged)
       eventBus.registerHandler(VM_AGENTJOINTIME_CHANGED, onAgentJoinTimeChanged)
       eventBus.registerHandler(VM_DESTRUCTIONTIME_CHANGED, onDestructionTimeChanged)
@@ -124,22 +126,49 @@ const Provider = ({ pageSize, onVMChanged, allowAdd = true, children }) => {
         eventBus.unregisterHandler(VM_DESTRUCTIONTIME_CHANGED, onDestructionTimeChanged)
         eventBus.unregisterHandler(VM_AGENTJOINTIME_CHANGED, onAgentJoinTimeChanged)
         eventBus.unregisterHandler(VM_CREATIONTIME_CHANGED, onCreationTimeChanged)
-        if (allowAdd) {
-          eventBus.unregisterHandler(VM_ADDED, onAdded)
-        }
       }
     }
-  }, [eventBus, allowAdd])
+  }, [eventBus])
+
+  useEffect(() => {
+    function onAdded(error, message) {
+      let vm = message.body
+      if (addFilter && addFilter === false) {
+        return
+      }
+      vm.justAdded = true
+      updateAddedVMs({ action: "inc", n: 1 })
+      updateVMs({ action: "unshift", vms: [vm] })
+    }
+
+    if (eventBus && allowAdd) {
+      eventBus.registerHandler(VM_ADDED, onAdded)
+    }
+
+    return () => {
+      if (eventBus && eventBus.state === EventBus.OPEN && allowAdd) {
+        eventBus.unregisterHandler(VM_ADDED, onAdded)
+      }
+    }
+  }, [eventBus, allowAdd, addFilter])
 
   return (
-    <State.Provider value={vms}>
-      <Dispatch.Provider value={updateVMs}>{children}</Dispatch.Provider>
-    </State.Provider>
+    <VMs.Provider value={vms}>
+      <UpdateVMs.Provider value={updateVMs}>
+        <AddedVMs.Provider value={addedVMs}>
+          <UpdateAddedVMs.Provider value={updateAddedVMs}>
+            {children}
+          </UpdateAddedVMs.Provider>
+        </AddedVMs.Provider>
+      </UpdateVMs.Provider>
+    </VMs.Provider>
   )
 }
 
 export default {
-  State,
-  Dispatch,
+  AddedVMs,
+  UpdateAddedVMs,
+  VMs,
+  UpdateVMs,
   Provider
 }

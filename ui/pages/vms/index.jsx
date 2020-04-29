@@ -2,10 +2,11 @@ import ListPage from "../../components/layouts/ListPage"
 import Ago from "../../components/Ago"
 import Alert from "../../components/Alert"
 import ListItem from "../../components/ListItem"
+import Notification from "../../components/Notification"
 import Pagination from "../../components/Pagination"
 import Tooltip from "../../components/Tooltip"
 import VMContext from "../../components/vms/VMContext"
-import { useContext, useEffect, useState } from "react"
+import { useCallback, useContext, useEffect, useState } from "react"
 import vmToProgress from "../../components/vms/vm-to-progress"
 import { formatDistanceToNow } from "date-fns"
 import { formatDate, formatDuration, formatDurationTitle } from "../../components/lib/date-time-utils"
@@ -46,11 +47,19 @@ function onVMChanged(vm) {
   )
 }
 
-function VMList({ pageSize, pageOffset }) {
-  const vms = useContext(VMContext.State)
-  const updateVMs = useContext(VMContext.Dispatch)
+function VMList({ pageSize, pageOffset, forceUpdate }) {
+  const vms = useContext(VMContext.VMs)
+  const updateVMs = useContext(VMContext.UpdateVMs)
+  const addedVMs = useContext(VMContext.AddedVMs)
+  const updateAddedVMs = useContext(VMContext.UpdateAddedVMs)
   const [error, setError] = useState()
   const [pageTotal, setPageTotal] = useState(0)
+
+  const forceReset = useCallback(() => {
+    updateVMs({ action: "set", vms: undefined })
+    setPageTotal(0)
+    updateAddedVMs({ action: "set", n: 0 })
+  }, [updateVMs, updateAddedVMs])
 
   useEffect(() => {
     let params = new URLSearchParams()
@@ -59,6 +68,8 @@ function VMList({ pageSize, pageOffset }) {
     }
     params.append("size", pageSize)
 
+    forceReset()
+
     fetcher(`${process.env.baseUrl}/vms?${params.toString()}`, true)
       .then(r => {
         let vms = r.body
@@ -66,18 +77,18 @@ function VMList({ pageSize, pageOffset }) {
         let pageTotalHeader = r.headers.get("x-page-total")
         if (pageTotalHeader !== null) {
           setPageTotal(+pageTotalHeader)
+          updateAddedVMs({ action: "set", n: 0 })
         }
       })
       .catch(err => {
         console.error(err)
         setError(<Alert error>Could not load VMs</Alert>)
       })
-  }, [pageOffset, pageSize, updateVMs])
+  }, [pageOffset, pageSize, updateVMs, updateAddedVMs, forceUpdate, forceReset])
 
   function reset(newOffset) {
     if (newOffset !== pageOffset) {
-      updateVMs({ action: "set", vms: undefined })
-      setPageTotal(0)
+      forceReset()
     }
   }
 
@@ -85,9 +96,9 @@ function VMList({ pageSize, pageOffset }) {
     {vms && vms.map(w => w.element)}
     {vms && vms.length === 0 && <>There are no VMs.</>}
     {error}
-    {pageTotal > 0 && (
-      <Pagination pageSize={pageSize} pageOffset={pageOffset} pageTotal={pageTotal}
-        onChangeOffset={reset} />
+    {pageTotal + addedVMs > 0 && (
+      <Pagination pageSize={pageSize} pageOffset={pageOffset}
+        pageTotal={pageTotal + addedVMs} onChangeOffset={reset} />
     )}
   </>)
 }
@@ -109,12 +120,32 @@ export default () => {
     }
   }
 
+  const [updatesAvailable, setUpdatesAvailable] = useState(false)
+  const [forceUpdate, setForceUpdate] = useState(0)
+
+  useEffect(() => {
+    setUpdatesAvailable(false)
+  }, [pageOffset, pageSize, forceUpdate])
+
+  const addFilter = useCallback(() => {
+    if (pageOffset > 0) {
+      setUpdatesAvailable(true)
+      return false
+    }
+    return true
+  }, [pageOffset])
+
   return (
     <ListPage title="VMs">
       <h1>VMs</h1>
-      <VMContext.Provider pageSize={pageSize} onVMChanged={onVMChanged}>
-        <VMList pageSize={pageSize} pageOffset={pageOffset} />
+      <VMContext.Provider pageSize={pageSize} addFilter={addFilter}
+          onVMChanged={onVMChanged}>
+        <VMList pageSize={pageSize} pageOffset={pageOffset} forceUpdate={forceUpdate} />
       </VMContext.Provider>
+      {updatesAvailable && (<Notification>
+        New VMs available. <a href="#" onClick={() =>
+          setForceUpdate(forceUpdate + 1)}>Refresh</a>.
+      </Notification>)}
     </ListPage>
   )
 }

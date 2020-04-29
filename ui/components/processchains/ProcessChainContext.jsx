@@ -12,8 +12,10 @@ import {
   PROCESS_CHAIN_ERROR_MESSAGE_CHANGED
 } from "../../components/lib/EventBusMessages"
 
-const State = createContext()
-const Dispatch = createContext()
+const ProcessChains = createContext()
+const UpdateProcessChains = createContext()
+const AddedProcessChains = createContext()
+const UpdateAddedProcessChains = createContext()
 
 function initProcessChain(processChain) {
   processChain.startTime = processChain.startTime || null
@@ -55,23 +57,23 @@ function updateProcessChainsReducer(pageSize, onProcessChainChanged) {
   }
 }
 
-const Provider = ({ pageSize, onProcessChainChanged, allowAdd = true, children }) => {
+function updateAddedProcessChainsReducer(state, { action, n }) {
+  if (action === "inc") {
+    return state + n
+  } else {
+    return n
+  }
+}
+
+const Provider = ({ pageSize, onProcessChainChanged, allowAdd = true,
+    addFilter, children }) => {
   const [processChains, updateProcessChains] = useReducer(
     updateProcessChainsReducer(pageSize, onProcessChainChanged))
+  const [addedProcessChains, updateAddedProcessChains] = useReducer(
+    updateAddedProcessChainsReducer, 0)
   const eventBus = useContext(EventBusContext)
 
   useEffect(() => {
-    function onProcessChainsAdded(error, message) {
-      let processChains = message.body.processChains
-      let status = message.body.status
-      for (let processChain of processChains) {
-        processChain.status = status
-        initProcessChain(processChain)
-        processChain.justAdded = true
-      }
-      updateProcessChains({ action: "unshift", processChains })
-    }
-
     function onProcessChainStartTimeChanged(error, message) {
       updateProcessChains({
         action: "update", processChains: [{
@@ -119,9 +121,6 @@ const Provider = ({ pageSize, onProcessChainChanged, allowAdd = true, children }
     }
 
     if (eventBus) {
-      if (allowAdd) {
-        eventBus.registerHandler(PROCESS_CHAINS_ADDED, onProcessChainsAdded)
-      }
       eventBus.registerHandler(PROCESS_CHAIN_START_TIME_CHANGED, onProcessChainStartTimeChanged)
       eventBus.registerHandler(PROCESS_CHAIN_END_TIME_CHANGED, onProcessChainEndTimeChanged)
       eventBus.registerHandler(PROCESS_CHAIN_STATUS_CHANGED, onProcessChainStatusChanged)
@@ -136,22 +135,60 @@ const Provider = ({ pageSize, onProcessChainChanged, allowAdd = true, children }
         eventBus.unregisterHandler(PROCESS_CHAIN_STATUS_CHANGED, onProcessChainStatusChanged)
         eventBus.unregisterHandler(PROCESS_CHAIN_END_TIME_CHANGED, onProcessChainEndTimeChanged)
         eventBus.unregisterHandler(PROCESS_CHAIN_START_TIME_CHANGED, onProcessChainStartTimeChanged)
-        if (allowAdd) {
-          eventBus.unregisterHandler(PROCESS_CHAINS_ADDED, onProcessChainsAdded)
-        }
       }
     }
-  }, [eventBus, allowAdd])
+  }, [eventBus])
+
+  useEffect(() => {
+    function onProcessChainsAdded(error, message) {
+      let processChains = message.body.processChains
+      let status = message.body.status
+      let i = processChains.length
+      while (i > 0) {
+        --i
+        let processChain = processChains[i]
+        processChain.status = status
+        if (addFilter && addFilter(processChain) === false) {
+          processChains.splice(i, 1)
+        } else {
+          initProcessChain(processChain)
+          processChain.justAdded = true
+        }
+      }
+      if (processChains.length > 0) {
+        updateAddedProcessChains({ action: "inc", n: processChains.length })
+        updateProcessChains({ action: "unshift", processChains })
+      }
+    }
+
+    if (eventBus && allowAdd) {
+      eventBus.registerHandler(PROCESS_CHAINS_ADDED, onProcessChainsAdded)
+    }
+
+    return () => {
+      if (eventBus && eventBus.state === EventBus.OPEN && allowAdd) {
+        eventBus.unregisterHandler(PROCESS_CHAINS_ADDED, onProcessChainsAdded)
+      }
+    }
+  }, [eventBus, allowAdd, addFilter])
 
   return (
-    <State.Provider value={processChains}>
-      <Dispatch.Provider value={updateProcessChains}>{children}</Dispatch.Provider>
-    </State.Provider>
+    <ProcessChains.Provider value={processChains}>
+      <UpdateProcessChains.Provider value={updateProcessChains}>
+        <AddedProcessChains.Provider value={addedProcessChains}>
+          <UpdateAddedProcessChains.Provider value={updateAddedProcessChains}>
+            {children}
+          </UpdateAddedProcessChains.Provider>
+        </AddedProcessChains.Provider>
+      </UpdateProcessChains.Provider>
+    </ProcessChains.Provider>
   )
 }
 
 export default {
-  State,
-  Dispatch,
+  AddedProcessChains,
+  UpdateAddedProcessChains,
+  ProcessChains,
+  UpdateProcessChains,
   Provider
 }

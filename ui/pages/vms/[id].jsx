@@ -15,8 +15,8 @@ import fetcher from "../../components/lib/json-fetcher"
 import "./[id].scss"
 
 function VM({ id }) {
-  const vms = useContext(VMContext.State)
-  const updateVMs = useContext(VMContext.Dispatch)
+  const vms = useContext(VMContext.VMs)
+  const updateVMs = useContext(VMContext.UpdateVMs)
   const [error, setError] = useState()
 
   useEffect(() => {

@@ -1,9 +1,10 @@
 import ListPage from "../../components/layouts/ListPage"
 import Alert from "../../components/Alert"
 import ListItem from "../../components/ListItem"
+import Notification from "../../components/Notification"
 import Pagination from "../../components/Pagination"
 import WorkflowContext from "../../components/workflows/WorkflowContext"
-import { useContext, useEffect, useState } from "react"
+import { useCallback, useContext, useEffect, useState } from "react"
 import workflowToProgress from "../../components/workflows/workflow-to-progress"
 import fetcher from "../../components/lib/json-fetcher"
 
@@ -22,11 +23,19 @@ function onWorkflowChanged(workflow) {
   )
 }
 
-function WorkflowList({ pageSize, pageOffset }) {
-  const workflows = useContext(WorkflowContext.State)
-  const updateWorkflows = useContext(WorkflowContext.Dispatch)
+function WorkflowList({ pageSize, pageOffset, forceUpdate }) {
+  const workflows = useContext(WorkflowContext.Workflows)
+  const updateWorkflows = useContext(WorkflowContext.UpdateWorkflows)
+  const addedWorkflows = useContext(WorkflowContext.AddedWorkflows)
+  const updateAddedWorkflows = useContext(WorkflowContext.UpdateAddedWorkflows)
   const [error, setError] = useState()
   const [pageTotal, setPageTotal] = useState(0)
+
+  const forceReset = useCallback(() => {
+    updateWorkflows({ action: "set", workflows: undefined })
+    setPageTotal(0)
+    updateAddedWorkflows({ action: "set", n: 0 })
+  }, [updateWorkflows, updateAddedWorkflows])
 
   useEffect(() => {
     let params = new URLSearchParams()
@@ -35,6 +44,8 @@ function WorkflowList({ pageSize, pageOffset }) {
     }
     params.append("size", pageSize)
 
+    forceReset()
+
     fetcher(`${process.env.baseUrl}/workflows?${params.toString()}`, true)
       .then(r => {
         let workflows = r.body
@@ -42,18 +53,19 @@ function WorkflowList({ pageSize, pageOffset }) {
         let pageTotalHeader = r.headers.get("x-page-total")
         if (pageTotalHeader !== null) {
           setPageTotal(+pageTotalHeader)
+          updateAddedWorkflows({ action: "set", n: 0 })
         }
       })
       .catch(err => {
         console.error(err)
         setError(<Alert error>Could not load workflows</Alert>)
       })
-  }, [pageOffset, pageSize, updateWorkflows])
+  }, [pageOffset, pageSize, updateWorkflows, updateAddedWorkflows,
+      forceUpdate, forceReset])
 
   function reset(newOffset) {
     if (newOffset !== pageOffset) {
-      updateWorkflows({ action: "set", workflows: undefined })
-      setPageTotal(0)
+      forceReset()
     }
   }
 
@@ -61,9 +73,9 @@ function WorkflowList({ pageSize, pageOffset }) {
     {workflows && workflows.map(w => w.element)}
     {workflows && workflows.length === 0 && <>There are no workflows.</>}
     {error}
-    {pageTotal > 0 && (
-      <Pagination pageSize={pageSize} pageOffset={pageOffset} pageTotal={pageTotal}
-        onChangeOffset={reset} />
+    {pageTotal + addedWorkflows > 0 && (
+      <Pagination pageSize={pageSize} pageOffset={pageOffset}
+        pageTotal={pageTotal + addedWorkflows} onChangeOffset={reset} />
     )}
   </>)
 }
@@ -85,12 +97,33 @@ export default () => {
     }
   }
 
+  const [updatesAvailable, setUpdatesAvailable] = useState(false)
+  const [forceUpdate, setForceUpdate] = useState(0)
+
+  useEffect(() => {
+    setUpdatesAvailable(false)
+  }, [pageOffset, pageSize, forceUpdate])
+
+  const addFilter = useCallback(() => {
+    if (pageOffset > 0) {
+      setUpdatesAvailable(true)
+      return false
+    }
+    return true
+  }, [pageOffset])
+
   return (
     <ListPage title="Workflows">
       <h1>Workflows</h1>
-      <WorkflowContext.Provider pageSize={pageSize} onWorkflowChanged={onWorkflowChanged}>
-        <WorkflowList pageSize={pageSize} pageOffset={pageOffset} />
+      <WorkflowContext.Provider pageSize={pageSize} addFilter={addFilter}
+          onWorkflowChanged={onWorkflowChanged}>
+        <WorkflowList pageSize={pageSize} pageOffset={pageOffset}
+            forceUpdate={forceUpdate} />
       </WorkflowContext.Provider>
+      {updatesAvailable && (<Notification>
+        New workflows available. <a href="#" onClick={() =>
+          setForceUpdate(forceUpdate + 1)}>Refresh</a>.
+      </Notification>)}
     </ListPage>
   )
 }

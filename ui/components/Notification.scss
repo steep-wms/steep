@@ -1,0 +1,18 @@
+@import "../css/variables";
+
+.notification {
+  position: fixed;
+  right: $spacer;
+  bottom: $spacer;
+  padding: $spacer;
+  background-color: #fff;
+  border-left: 9px solid #ffa46c;
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+
+  @media (max-width: $sm) {
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+}
