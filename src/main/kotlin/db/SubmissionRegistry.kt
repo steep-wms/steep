@@ -178,6 +178,9 @@ interface SubmissionRegistry : Registry {
 
   /**
    * Get a list of all process chains in the registry
+   * @param submissionId an optional ID of a submission the process chains
+   * should belong to
+   * @param status an optional status the returned process chains should have
    * @param size the maximum number of process chains to return (may be negative
    * if all process chains should be returned)
    * @param offset the index of the first process chain to return
@@ -185,22 +188,9 @@ interface SubmissionRegistry : Registry {
    * an ascending order, negative otherwise
    * @return all process chains and the ID of their respective submission
    */
-  suspend fun findProcessChains(size: Int = -1, offset: Int = 0, order: Int = 1):
-      Collection<Pair<ProcessChain, String>>
-
-  /**
-   * Find all process chains that belong to a given submission
-   * @param submissionId the submission's ID
-   * @param size the maximum number of process chains to return (may be negative
-   * if all process chains should be returned)
-   * @param offset the index of the first process chain to return
-   * @param order a positive number if the process chains should be returned in
-   * an ascending order, negative otherwise
-   * @return the list of process chains (may be empty if the submission does not
-   * exist or if it has no process chains)
-   */
-  suspend fun findProcessChainsBySubmissionId(submissionId: String,
-      size: Int = -1, offset: Int = 0, order: Int = 1): Collection<ProcessChain>
+  suspend fun findProcessChains(submissionId: String? = null,
+      status: ProcessChainStatus? = null, size: Int = -1, offset: Int = 0,
+      order: Int = 1): Collection<Pair<ProcessChain, String>>
 
   /**
    * Find the IDs of all process chains that belong to a given submission
@@ -240,26 +230,13 @@ interface SubmissionRegistry : Registry {
 
   /**
    * Count the number of registered process chains
+   * @param submissionId an optional submission ID the process chains should
+   * belong to
+   * @param status an optional status the process chains should have
    * @return the number of process chains in the registry
    */
-  suspend fun countProcessChains(): Long
-
-  /**
-   * Count the number of process chains that belong to a given submission
-   * @param submissionId the submission's ID
-   * @return the number of process chains belonging to the given submission
-   */
-  suspend fun countProcessChainsBySubmissionId(submissionId: String): Long
-
-  /**
-   * Count the number of process chains from a certain submission that have a
-   * given status
-   * @param submissionId the submission's ID
-   * @param status the status
-   * @return the number of process chains that belong to the given submission
-   * and that have the given status
-   */
-  suspend fun countProcessChainsByStatus(submissionId: String, status: ProcessChainStatus): Long
+  suspend fun countProcessChains(submissionId: String? = null,
+      status: ProcessChainStatus? = null): Long
 
   /**
    * Atomically fetch a process chain that has the given [currentStatus] and

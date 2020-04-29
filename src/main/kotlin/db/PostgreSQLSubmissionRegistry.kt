@@ -21,6 +21,7 @@ import io.vertx.kotlin.ext.sql.queryWithParamsAwait
 import io.vertx.kotlin.ext.sql.updateWithParamsAwait
 import model.Submission
 import model.processchain.ProcessChain
+import java.lang.StringBuilder
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
@@ -297,31 +298,51 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
   }
 
-  override suspend fun findProcessChains(size: Int, offset: Int, order: Int): Collection<Pair<ProcessChain, String>> {
+  override suspend fun findProcessChains(submissionId: String?, status: ProcessChainStatus?,
+      size: Int, offset: Int, order: Int): Collection<Pair<ProcessChain, String>> {
     val asc = if (order >= 0) "ASC" else "DESC"
     val limit = if (size < 0) "ALL" else size.toString()
-    return withConnection { connection ->
-      val statement = "SELECT $DATA, $SUBMISSION_ID FROM $PROCESS_CHAINS " +
-          "ORDER BY $SERIAL $asc LIMIT $limit OFFSET $offset"
-      val rs = connection.queryAwait(statement)
-      rs.results.map { Pair(JsonUtils.mapper.readValue<ProcessChain>(it.getString(0)), it.getString(1)) }
-    }
-  }
 
-  override suspend fun findProcessChainsBySubmissionId(submissionId: String,
-      size: Int, offset: Int, order: Int): Collection<ProcessChain> {
-    val asc = if (order >= 0) "ASC" else "DESC"
-    val limit = if (size < 0) "ALL" else size.toString()
     return withConnection { connection ->
-      val statement = "SELECT $DATA FROM $PROCESS_CHAINS WHERE $SUBMISSION_ID=? " +
-          "ORDER BY $SERIAL $asc LIMIT $limit OFFSET $offset"
-      val params = json {
-        array(
-            submissionId
-        )
+      val statement = StringBuilder()
+      statement.append("SELECT $DATA, $SUBMISSION_ID FROM $PROCESS_CHAINS ")
+
+      val params = if (submissionId != null && status != null) {
+        statement.append("WHERE $SUBMISSION_ID=? AND $STATUS=? ")
+        json {
+          array(
+              submissionId,
+              status.toString()
+          )
+        }
+      } else if (submissionId != null) {
+        statement.append("WHERE $SUBMISSION_ID=? ")
+        json {
+          array(
+              submissionId
+          )
+        }
+      } else if (status != null) {
+        statement.append("WHERE $STATUS=? ")
+        json {
+          array(
+              status.toString()
+          )
+        }
+      } else {
+        null
       }
-      val rs = connection.queryWithParamsAwait(statement, params)
-      rs.results.map { JsonUtils.mapper.readValue<ProcessChain>(it.getString(0)) }
+
+      statement.append("ORDER BY $SERIAL $asc LIMIT $limit OFFSET $offset")
+
+      val rs = if (params != null) {
+        connection.queryWithParamsAwait(statement.toString(), params)
+      } else {
+        connection.queryAwait(statement.toString())
+      }
+
+      rs.results.map { Pair(JsonUtils.mapper.readValue<ProcessChain>(
+          it.getString(0)), it.getString(1)) }
     }
   }
 
@@ -384,39 +405,43 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
   }
 
-  override suspend fun countProcessChains(): Long {
+  override suspend fun countProcessChains(submissionId: String?,
+      status: ProcessChainStatus?): Long {
     return withConnection { connection ->
-      val statement = "SELECT COUNT(*) FROM $PROCESS_CHAINS"
-      val rs = connection.querySingleAwait(statement)
-      rs?.getLong(0) ?: 0L
-    }
-  }
+      val statement = StringBuilder()
+      statement.append("SELECT COUNT(*) FROM $PROCESS_CHAINS")
 
-  override suspend fun countProcessChainsBySubmissionId(submissionId: String): Long {
-    return withConnection { connection ->
-      val statement = "SELECT COUNT(*) FROM $PROCESS_CHAINS WHERE $SUBMISSION_ID=?"
-      val params = json {
-        array(
-            submissionId
-        )
+      val params = if (submissionId != null && status != null) {
+        statement.append(" WHERE $SUBMISSION_ID=? AND $STATUS=?")
+        json {
+          array(
+              submissionId,
+              status.toString()
+          )
+        }
+      } else if (submissionId != null) {
+        statement.append(" WHERE $SUBMISSION_ID=?")
+        json {
+          array(
+              submissionId
+          )
+        }
+      } else if (status != null) {
+        statement.append(" WHERE $STATUS=?")
+        json {
+          array(
+              status.toString()
+          )
+        }
+      } else {
+        null
       }
-      val rs = connection.querySingleWithParamsAwait(statement, params)
-      rs?.getLong(0) ?: 0L
-    }
-  }
 
-  override suspend fun countProcessChainsByStatus(submissionId: String,
-      status: ProcessChainStatus): Long {
-    return withConnection { connection ->
-      val statement = "SELECT COUNT(*) FROM $PROCESS_CHAINS WHERE " +
-          "$SUBMISSION_ID=? AND $STATUS=?"
-      val params = json {
-        array(
-            submissionId,
-            status.toString()
-        )
+      val rs = if (params != null) {
+        connection.querySingleWithParamsAwait(statement.toString(), params)
+      } else {
+        connection.querySingleAwait(statement.toString())
       }
-      val rs = connection.querySingleWithParamsAwait(statement, params)
       rs?.getLong(0) ?: 0L
     }
   }

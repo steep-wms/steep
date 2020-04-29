@@ -463,13 +463,13 @@ abstract class SubmissionRegistryTest {
     GlobalScope.launch(vertx.dispatcher()) {
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChains(listOf(pc), s.id)
-      val pcs = submissionRegistry.findProcessChainsBySubmissionId(s.id)
+      val pcs = submissionRegistry.findProcessChains(s.id)
       val registeredPc = submissionRegistry.findProcessChainById(pc.id)
 
       ctx.verify {
         assertThat(pcs)
             .hasSize(1)
-            .contains(pc)
+            .contains(pc to s.id)
         assertThat(registeredPc)
             .isEqualTo(pc)
       }
@@ -540,31 +540,92 @@ abstract class SubmissionRegistryTest {
       submissionRegistry.addProcessChains(listOf(pc4), s2.id)
 
       // check if order is correct
-      val r1 = submissionRegistry.findProcessChainsBySubmissionId(s1.id)
+      val r1 = submissionRegistry.findProcessChains(s1.id)
       ctx.verify {
-        assertThat(r1).isEqualTo(listOf(pc1, pc2, pc3))
+        assertThat(r1).isEqualTo(listOf(pc1 to s1.id, pc2 to s1.id, pc3 to s1.id))
       }
 
       // check if order can be reversed
-      val r2 = submissionRegistry.findProcessChainsBySubmissionId(s1.id, order = -1)
+      val r2 = submissionRegistry.findProcessChains(s1.id, order = -1)
       ctx.verify {
-        assertThat(r2).isEqualTo(listOf(pc3, pc2, pc1))
+        assertThat(r2).isEqualTo(listOf(pc3 to s1.id, pc2 to s1.id, pc1 to s1.id))
       }
 
       // check if we can query pages
-      val r3 = submissionRegistry.findProcessChainsBySubmissionId(s1.id, size = 1, offset = 0)
-      val r4 = submissionRegistry.findProcessChainsBySubmissionId(s1.id, size = 2, offset = 1)
+      val r3 = submissionRegistry.findProcessChains(s1.id, size = 1, offset = 0)
+      val r4 = submissionRegistry.findProcessChains(s1.id, size = 2, offset = 1)
       ctx.verify {
-        assertThat(r3).isEqualTo(listOf(pc1))
-        assertThat(r4).isEqualTo(listOf(pc2, pc3))
+        assertThat(r3).isEqualTo(listOf(pc1 to s1.id))
+        assertThat(r4).isEqualTo(listOf(pc2 to s1.id, pc3 to s1.id))
       }
 
       // check if we can query pages with reversed order
-      val r5 = submissionRegistry.findProcessChainsBySubmissionId(s1.id, size = 1, offset = 0, order = -1)
-      val r6 = submissionRegistry.findProcessChainsBySubmissionId(s1.id, size = 2, offset = 1, order = -1)
+      val r5 = submissionRegistry.findProcessChains(s1.id, size = 1, offset = 0, order = -1)
+      val r6 = submissionRegistry.findProcessChains(s1.id, size = 2, offset = 1, order = -1)
       ctx.verify {
-        assertThat(r5).isEqualTo(listOf(pc3))
-        assertThat(r6).isEqualTo(listOf(pc2, pc1))
+        assertThat(r5).isEqualTo(listOf(pc3 to s1.id))
+        assertThat(r6).isEqualTo(listOf(pc2 to s1.id, pc1 to s1.id))
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun findProcessChainsBySubmissionIdAndStatus(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow())
+    val pc1 = ProcessChain()
+    val pc2 = ProcessChain()
+    val pc3 = ProcessChain()
+    val s2 = Submission(workflow = Workflow())
+    val pc4 = ProcessChain()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addProcessChains(listOf(pc1, pc2), s1.id,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      submissionRegistry.addProcessChains(listOf(pc3), s1.id,
+          SubmissionRegistry.ProcessChainStatus.SUCCESS)
+      submissionRegistry.addProcessChains(listOf(pc4), s2.id)
+
+      val statuses0 = submissionRegistry.findProcessChains(
+          s1.id, SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      val statuses1 = submissionRegistry.findProcessChains(
+          s1.id, SubmissionRegistry.ProcessChainStatus.RUNNING)
+      val statuses2 = submissionRegistry.findProcessChains(
+          s1.id, SubmissionRegistry.ProcessChainStatus.SUCCESS)
+      val statuses3 = submissionRegistry.findProcessChains(
+          s1.id, SubmissionRegistry.ProcessChainStatus.CANCELLED)
+      val statuses4 = submissionRegistry.findProcessChains(
+          s2.id, SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      val statuses5 = submissionRegistry.findProcessChains(
+          s2.id, SubmissionRegistry.ProcessChainStatus.RUNNING)
+      ctx.verify {
+        assertThat(statuses0).isEmpty()
+        assertThat(statuses1).isEqualTo(listOf(pc1 to s1.id, pc2 to s1.id))
+        assertThat(statuses2).isEqualTo(listOf(pc3 to s1.id))
+        assertThat(statuses3).isEmpty()
+        assertThat(statuses4).isEqualTo(listOf(pc4 to s2.id))
+        assertThat(statuses5).isEmpty()
+      }
+
+      val statuses6 = submissionRegistry.findProcessChains(
+          s1.id, SubmissionRegistry.ProcessChainStatus.RUNNING, order = -1)
+      ctx.verify {
+        assertThat(statuses6).isEqualTo(listOf(pc2 to s1.id, pc1 to s1.id))
+      }
+
+      val statuses7 = submissionRegistry.findProcessChains(
+          s1.id, SubmissionRegistry.ProcessChainStatus.RUNNING, size = 1)
+      ctx.verify {
+        assertThat(statuses7).isEqualTo(listOf(pc1 to s1.id))
+      }
+
+      val statuses8 = submissionRegistry.findProcessChains(
+          s1.id, SubmissionRegistry.ProcessChainStatus.RUNNING, size = 1, order = -1)
+      ctx.verify {
+        assertThat(statuses8).isEqualTo(listOf(pc2 to s1.id))
       }
 
       ctx.completeNow()
@@ -689,9 +750,9 @@ abstract class SubmissionRegistryTest {
 
     GlobalScope.launch(vertx.dispatcher()) {
       submissionRegistry.addSubmission(s)
-      val count0 = submissionRegistry.countProcessChainsBySubmissionId(s.id)
+      val count0 = submissionRegistry.countProcessChains(s.id)
       submissionRegistry.addProcessChains(listOf(pc1, pc2), s.id)
-      val count2 = submissionRegistry.countProcessChainsBySubmissionId(s.id)
+      val count2 = submissionRegistry.countProcessChains(s.id)
 
       ctx.verify {
         assertThat(count0).isEqualTo(0)
@@ -712,24 +773,24 @@ abstract class SubmissionRegistryTest {
 
     GlobalScope.launch(vertx.dispatcher()) {
       submissionRegistry.addSubmission(s)
-      val count0 = submissionRegistry.countProcessChainsByStatus(s.id,
+      val count0 = submissionRegistry.countProcessChains(s.id,
           SubmissionRegistry.ProcessChainStatus.REGISTERED)
       submissionRegistry.addProcessChains(listOf(pc1), s.id)
-      val count1 = submissionRegistry.countProcessChainsByStatus(s.id,
+      val count1 = submissionRegistry.countProcessChains(s.id,
           SubmissionRegistry.ProcessChainStatus.REGISTERED)
       submissionRegistry.addProcessChains(listOf(pc2, pc3), s.id,
           SubmissionRegistry.ProcessChainStatus.RUNNING)
-      val count2 = submissionRegistry.countProcessChainsByStatus(s.id,
+      val count2 = submissionRegistry.countProcessChains(s.id,
           SubmissionRegistry.ProcessChainStatus.REGISTERED)
-      val count3 = submissionRegistry.countProcessChainsByStatus(s.id,
+      val count3 = submissionRegistry.countProcessChains(s.id,
           SubmissionRegistry.ProcessChainStatus.RUNNING)
       submissionRegistry.addProcessChains(listOf(pc4), s.id,
           SubmissionRegistry.ProcessChainStatus.SUCCESS)
-      val count4 = submissionRegistry.countProcessChainsByStatus(s.id,
+      val count4 = submissionRegistry.countProcessChains(s.id,
           SubmissionRegistry.ProcessChainStatus.REGISTERED)
-      val count5 = submissionRegistry.countProcessChainsByStatus(s.id,
+      val count5 = submissionRegistry.countProcessChains(s.id,
           SubmissionRegistry.ProcessChainStatus.RUNNING)
-      val count6 = submissionRegistry.countProcessChainsByStatus(s.id,
+      val count6 = submissionRegistry.countProcessChains(s.id,
           SubmissionRegistry.ProcessChainStatus.SUCCESS)
 
       ctx.verify {
@@ -1069,7 +1130,7 @@ abstract class SubmissionRegistryTest {
     GlobalScope.launch(vertx.dispatcher()) {
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChains(listOf(pc), s.id)
-      val pcs = submissionRegistry.findProcessChainsBySubmissionId(s.id)
+      val pcs = submissionRegistry.findProcessChains(s.id)
       val registeredPc1 = submissionRegistry.fetchNextProcessChain(
           SubmissionRegistry.ProcessChainStatus.REGISTERED,
           SubmissionRegistry.ProcessChainStatus.REGISTERED)
@@ -1081,7 +1142,7 @@ abstract class SubmissionRegistryTest {
       ctx.verify {
         assertThat(pcs)
             .hasSize(1)
-            .contains(pc)
+            .contains(pc to s.id)
         assertThat(registeredPc1)
             .isEqualTo(pc)
         assertThat(runningPc1)

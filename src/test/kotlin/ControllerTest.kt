@@ -337,7 +337,8 @@ class ControllerTest {
 
     // mock submission registry
     coEvery { submissionRegistry.getSubmissionStatus(submission.id) } returns Status.RUNNING
-    coEvery { submissionRegistry.findProcessChainsBySubmissionId(submission.id) } returns processChains
+    coEvery { submissionRegistry.findProcessChains(submission.id) } returns
+        processChains.map { it to submission.id }
     coEvery { submissionRegistry.getSubmissionExecutionState(submission.id) } returns
         JsonUtils.toJson(executionState)
 
@@ -346,9 +347,9 @@ class ControllerTest {
 
     // pretend that the first process chain has succeeded, the second was still
     // running, and the third failed
-    coEvery { submissionRegistry.countProcessChainsByStatus(submission.id,
+    coEvery { submissionRegistry.countProcessChains(submission.id,
         ProcessChainStatus.RUNNING) } returns 1
-    coEvery { submissionRegistry.countProcessChainsByStatus(submission.id,
+    coEvery { submissionRegistry.countProcessChains(submission.id,
         ProcessChainStatus.ERROR) } returns 1
     coEvery { submissionRegistry.findProcessChainStatusesBySubmissionId(submission.id) } returns mapOf(
         processChains[0].id to ProcessChainStatus.SUCCESS,

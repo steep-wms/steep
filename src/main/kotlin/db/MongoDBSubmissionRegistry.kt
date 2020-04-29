@@ -367,27 +367,20 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     return Pair(JsonUtils.mapper.readValue(buf.array()), submissionId)
   }
 
-  override suspend fun findProcessChains(size: Int, offset: Int, order: Int) =
-      collProcessChains.findAwait(JsonObject(), size, offset,
-          json {
-            obj(
-                SEQUENCE to order
-            )
-          }, PROCESS_CHAIN_EXCLUDES_BUT_SUBMISSION_ID)
-          .map { readProcessChain(it) }
-
-  override suspend fun findProcessChainsBySubmissionId(submissionId: String,
-      size: Int, offset: Int, order: Int) =
-      collProcessChains.findAwait(json {
-        obj(
-            SUBMISSION_ID to submissionId
-        )
+  override suspend fun findProcessChains(submissionId: String?,
+      status: ProcessChainStatus?, size: Int, offset: Int, order: Int) =
+      collProcessChains.findAwait(JsonObject().also {
+        if (submissionId != null) {
+          it.put(SUBMISSION_ID, submissionId)
+        }
+        if (status != null) {
+          it.put(STATUS, status.toString())
+        }
       }, size, offset, json {
         obj(
             SEQUENCE to order
         )
-      }, PROCESS_CHAIN_EXCLUDES)
-          .map { readProcessChain(it).first }
+      }, PROCESS_CHAIN_EXCLUDES_BUT_SUBMISSION_ID).map { readProcessChain(it) }
 
   override suspend fun findProcessChainIdsBySubmissionIdAndStatus(
       submissionId: String, status: ProcessChainStatus) =
@@ -438,23 +431,15 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     return doc?.let { readProcessChain(it).first }
   }
 
-  override suspend fun countProcessChains() =
-      collProcessChains.countDocumentsAwait(JsonObject())
-
-  override suspend fun countProcessChainsBySubmissionId(submissionId: String) =
-      collProcessChains.countDocumentsAwait(json {
-        obj(
-            SUBMISSION_ID to submissionId
-        )
-      })
-
-  override suspend fun countProcessChainsByStatus(submissionId: String,
-      status: ProcessChainStatus) =
-      collProcessChains.countDocumentsAwait(json {
-        obj(
-            SUBMISSION_ID to submissionId,
-            STATUS to status.toString()
-        )
+  override suspend fun countProcessChains(submissionId: String?,
+      status: ProcessChainStatus?) =
+      collProcessChains.countDocumentsAwait(JsonObject().also {
+        if (submissionId != null) {
+          it.put(SUBMISSION_ID, submissionId)
+        }
+        if (status != null) {
+          it.put(STATUS, status.toString())
+        }
       })
 
   override suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,

@@ -239,9 +239,9 @@ class Controller : CoroutineVerticle() {
         generator.loadState(executionState)
 
         // reset running process chains and repeat failed process chains
-        val runningProcessChains = submissionRegistry.countProcessChainsByStatus(submission.id,
+        val runningProcessChains = submissionRegistry.countProcessChains(submission.id,
             ProcessChainStatus.RUNNING)
-        val failedProcessChains = submissionRegistry.countProcessChainsByStatus(submission.id,
+        val failedProcessChains = submissionRegistry.countProcessChains(submission.id,
             ProcessChainStatus.ERROR)
         if (runningProcessChains > 0 || failedProcessChains > 0) {
           val pcstatuses = submissionRegistry.findProcessChainStatusesBySubmissionId(submission.id)
@@ -260,7 +260,8 @@ class Controller : CoroutineVerticle() {
         // Re-load all process chains. waitForProcessChains() will only
         // re-execute those that need to be executed but will collect the output
         // of all process chains so it can be passed to the generator.
-        processChainsToResume = submissionRegistry.findProcessChainsBySubmissionId(submission.id)
+        processChainsToResume = submissionRegistry.findProcessChains(
+            submission.id).map { it.first }
       }
 
       // main loop

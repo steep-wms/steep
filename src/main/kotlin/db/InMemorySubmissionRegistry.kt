@@ -259,22 +259,17 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
         .sortedBy { it.serial }
   }
 
-  override suspend fun findProcessChains(size: Int, offset: Int, order: Int):
-      Collection<Pair<ProcessChain, String>> =
+  override suspend fun findProcessChains(submissionId: String?,
+      status: ProcessChainStatus?, size: Int, offset: Int, order: Int) =
       findProcessChainEntries()
+          .filter {
+            (submissionId == null || it.submissionId == submissionId) &&
+                (status == null || it.status == status)
+          }
           .let { if (order < 0) it.reversed() else it }
           .drop(offset)
           .let { if (size >= 0) it.take(size) else it }
           .map { Pair(it.processChain, it.submissionId) }
-
-  override suspend fun findProcessChainsBySubmissionId(submissionId: String,
-      size: Int, offset: Int, order: Int) =
-      findProcessChainEntries()
-          .filter { it.submissionId == submissionId }
-          .let { if (order < 0) it.reversed() else it }
-          .drop(offset)
-          .let { if (size >= 0) it.take(size) else it }
-          .map { it.processChain }
 
   override suspend fun findProcessChainIdsBySubmissionIdAndStatus(
       submissionId: String, status: ProcessChainStatus) =
@@ -300,19 +295,13 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     }
   }
 
-  override suspend fun countProcessChains(): Long =
-      findProcessChainEntries().count().toLong()
-
-  override suspend fun countProcessChainsBySubmissionId(submissionId: String): Long =
+  override suspend fun countProcessChains(submissionId: String?,
+      status: ProcessChainStatus?): Long =
       findProcessChainEntries()
-          .filter { it.submissionId == submissionId }
-          .count().toLong()
-
-  override suspend fun countProcessChainsByStatus(submissionId: String,
-      status: ProcessChainStatus): Long =
-      findProcessChainEntries()
-          .filter { it.submissionId == submissionId }
-          .filter { it.status == status }
+          .filter {
+            (submissionId == null || it.submissionId == submissionId) &&
+                (status == null || it.status == status)
+          }
           .count().toLong()
 
   override suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,

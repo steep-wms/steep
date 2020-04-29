@@ -167,6 +167,8 @@ class SchedulerTest {
     coEvery { submissionRegistry.fetchNextProcessChain(REGISTERED, RUNNING, any()) } answers {
       if (registeredPcs.isEmpty()) null else registeredPcs.removeAt(0)
     }
+    coEvery { submissionRegistry.existsProcessChain(REGISTERED, any()) } answers {
+      registeredPcs.isNotEmpty() }
 
     vertx.eventBus().publish(AddressConstants.SCHEDULER_LOOKUP_NOW, null)
   }

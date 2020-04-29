@@ -650,16 +650,15 @@ class HttpEndpoint : CoroutineVerticle() {
   private suspend fun amendSubmission(submission: JsonObject,
       includeDetails: Boolean = false) {
     val submissionId = submission.getString("id")
-    val runningProcessChains = submissionRegistry.countProcessChainsByStatus(
+    val runningProcessChains = submissionRegistry.countProcessChains(
         submissionId, SubmissionRegistry.ProcessChainStatus.RUNNING)
-    val cancelledProcessChains = submissionRegistry.countProcessChainsByStatus(
+    val cancelledProcessChains = submissionRegistry.countProcessChains(
         submissionId, SubmissionRegistry.ProcessChainStatus.CANCELLED)
-    val succeededProcessChains = submissionRegistry.countProcessChainsByStatus(
+    val succeededProcessChains = submissionRegistry.countProcessChains(
         submissionId, SubmissionRegistry.ProcessChainStatus.SUCCESS)
-    val failedProcessChains = submissionRegistry.countProcessChainsByStatus(
+    val failedProcessChains = submissionRegistry.countProcessChains(
         submissionId, SubmissionRegistry.ProcessChainStatus.ERROR)
-    val totalProcessChains = submissionRegistry.countProcessChainsBySubmissionId(
-        submissionId)
+    val totalProcessChains = submissionRegistry.countProcessChains(submissionId)
     submission.put("runningProcessChains", runningProcessChains)
     submission.put("cancelledProcessChains", cancelledProcessChains)
     submission.put("succeededProcessChains", succeededProcessChains)
@@ -1078,23 +1077,27 @@ class HttpEndpoint : CoroutineVerticle() {
       val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
 
       val submissionId: String? = ctx.request().getParam("submissionId")
-      val list = if (submissionId == null) {
-        submissionRegistry.findProcessChains(size, offset, -1)
-      } else {
-        submissionRegistry.findProcessChainsBySubmissionId(submissionId, size, offset, -1)
-            .map { Pair(it, submissionId) }
-      }.map { p ->
+
+      val status = ctx.request().getParam("status")?.let {
+        try {
+          SubmissionRegistry.ProcessChainStatus.valueOf(it)
+        } catch (e: IllegalArgumentException) {
+          ctx.response()
+              .setStatusCode(400)
+              .end("Invalid status: $it")
+          return@launch
+        }
+      }
+
+      val list = submissionRegistry.findProcessChains(submissionId = submissionId,
+          status = status, size = size, offset = offset, order = -1).map { p ->
         JsonUtils.toJson(p.first).also {
           it.remove("executables")
           amendProcessChain(it, p.second)
         }
       }
 
-      val total = if (submissionId == null) {
-        submissionRegistry.countProcessChains()
-      } else {
-        submissionRegistry.countProcessChainsBySubmissionId(submissionId)
-      }
+      val total = submissionRegistry.countProcessChains(submissionId, status)
 
       val encodedJson = JsonArray(list).encode()
 
