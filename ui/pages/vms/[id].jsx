@@ -59,7 +59,7 @@ function VM({ id }) {
             <DefinitionListItem title="Creation time">
               {vm.creationTime ? formatDate(vm.creationTime) : <>&ndash;</>}
             </DefinitionListItem>
-            <DefinitionListItem title="Time the agent joined the cluster">
+            <DefinitionListItem title="Time when the agent joined the cluster">
               {vm.agentJoinTime ? formatDate(vm.agentJoinTime) : <>&ndash;</>}
             </DefinitionListItem>
             <DefinitionListItem title="Destruction time">
