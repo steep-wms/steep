@@ -1,0 +1,90 @@
+@import "../css/variables";
+
+.dropdown {
+  position: relative;
+
+  ul li {
+    white-space: nowrap;
+
+    .feather {
+      margin-bottom: 2px;
+    }
+  }
+
+  .dropdown-btn {
+    font-size: $font-size-base;
+    color: $gray-700;
+    border: 1px solid $gray-300;
+    border-radius: $border-radius / 2;
+    padding: .5em .75em .5em 1em;
+    cursor: pointer;
+    margin-left: $spacer;
+    white-space: nowrap;
+    margin-top: 2rem;
+
+    &.primary {
+      background-color: $primary;
+      border-color: $primary;
+      color: #fff;
+    }
+
+    &:hover, &:focus {
+      background-color: $gray-700;
+      border-color: $gray-700;
+      color: #fff;
+      outline: none;
+    }
+
+    @media (max-width: $sm) {
+      padding: .5em;
+      .dropdown-text {
+        display: none;
+      }
+    }
+  }
+
+  .dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 1rem;
+    z-index: 1;
+
+    &.right {
+      right: 0;
+      left: auto;
+    }
+
+    &.visible {
+      display: block;
+    }
+
+    @media (max-width: $sm) {
+      right: 0;
+      left: auto;
+    }
+
+    ul {
+      background-color: #fff;
+      margin: $spacer / 4 0 0 0;
+      list-style-type: none;
+
+      color: $gray-700;
+      border: 1px solid $gray-300;
+      border-radius: $border-radius / 2;
+      padding: .35em 0em;
+
+      box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.1);
+
+      li {
+        display: block;
+        padding: $spacer / 4 1em;
+        cursor: pointer;
+
+        &:hover {
+          background-color: $gray-300;
+        }
+      }
+    }
+  }
+}

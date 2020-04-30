@@ -44,10 +44,6 @@ h1 {
   overflow-x: auto;
   max-width: 100%;
   display: block;
-
-  &.no-margin-bottom {
-    margin-bottom: 0;
-  }
 }
 
 h2 {
@@ -99,6 +95,10 @@ h6 {
 
 .img-fluid {
   max-width: 100%;
+}
+
+.no-margin-bottom {
+  margin-bottom: 0 !important;
 }
 
 a {

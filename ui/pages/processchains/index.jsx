@@ -1,15 +1,18 @@
 import classNames from "classnames"
 import Link from "next/link"
 import ListPage from "../../components/layouts/ListPage"
-import Breadcrumbs from "../../components/Breadcrumbs"
 import Alert from "../../components/Alert"
+import Breadcrumbs from "../../components/Breadcrumbs"
+import DropDown from "../../components/DropDown"
 import ListItem from "../../components/ListItem"
 import Notification from "../../components/Notification"
 import Pagination from "../../components/Pagination"
 import ProcessChainContext from "../../components/processchains/ProcessChainContext"
 import "./index.scss"
 import { useCallback, useContext, useEffect, useState } from "react"
+import { useRouter } from "next/router"
 import fetcher from "../../components/lib/json-fetcher"
+import { Check } from "react-feather"
 
 function onProcessChainChanged(processChain) {
   delete processChain.executables
@@ -28,7 +31,7 @@ function onProcessChainChanged(processChain) {
   )
 }
 
-function ProcessChainList({ pageSize, pageOffset, submissionId, forceUpdate }) {
+function ProcessChainList({ pageSize, pageOffset, submissionId, status, forceUpdate }) {
   const processChains = useContext(ProcessChainContext.ProcessChains)
   const updateProcessChains = useContext(ProcessChainContext.UpdateProcessChains)
   const addedProcessChains = useContext(ProcessChainContext.AddedProcessChains)
@@ -51,6 +54,9 @@ function ProcessChainList({ pageSize, pageOffset, submissionId, forceUpdate }) {
     if (submissionId !== undefined) {
       params.append("submissionId", submissionId)
     }
+    if (status !== undefined) {
+      params.append("status", status)
+    }
 
     forceReset()
 
@@ -68,7 +74,7 @@ function ProcessChainList({ pageSize, pageOffset, submissionId, forceUpdate }) {
         console.error(err)
         setError(<Alert error>Could not load process chains</Alert>)
       })
-  }, [pageOffset, pageSize, submissionId, updateProcessChains,
+  }, [pageOffset, pageSize, submissionId, status, updateProcessChains,
       updateAddedProcessChains, forceUpdate, forceReset])
 
   function reset(newOffset) {
@@ -94,6 +100,7 @@ export default () => {
   let pageOffset
   let pageSize
   let submissionId
+  let status
   if (typeof window !== "undefined") {
     let params = new URLSearchParams(window.location.search)
     pageOffset = params.get("offset") || undefined
@@ -105,11 +112,15 @@ export default () => {
       pageSize = Math.max(0, parseInt(pageSize))
     }
     submissionId = params.get("submissionId") || undefined
+    status = params.get("status") || undefined
   }
 
+  const router = useRouter()
   const [breadcrumbs, setBreadcrumbs] = useState()
   const [updatesAvailable, setUpdatesAvailable] = useState(false)
   const [forceUpdate, setForceUpdate] = useState(0)
+  const [filtersActive, setFiltersActive] = useState(false)
+  const [filterFailedOnly, setFilterFailedOnly] = useState(false)
 
   useEffect(() => {
     if (submissionId !== undefined) {
@@ -120,33 +131,74 @@ export default () => {
         </Link>,
         "Process chains"
       ])
+    } else {
+      setBreadcrumbs(undefined)
     }
   }, [submissionId])
 
   useEffect(() => {
+    setFiltersActive(status !== undefined)
+    setFilterFailedOnly(status === "ERROR")
+  }, [status])
+
+  useEffect(() => {
     setUpdatesAvailable(false)
-  }, [pageOffset, pageSize, submissionId, forceUpdate])
+  }, [pageOffset, pageSize, submissionId, status, forceUpdate])
 
   const addFilter = useCallback((processChain) => {
+    let result = true
     if (submissionId !== undefined) {
-      return processChain.submissionId === submissionId
+      result = result && processChain.submissionId === submissionId
     }
-    if (pageOffset > 0) {
+    if (status !== undefined) {
+      result = result && processChain.status === status
+    }
+    if (result && pageOffset > 0) {
       setUpdatesAvailable(true)
       return false
     }
-    return true
-  }, [submissionId, pageOffset])
+    return result
+  }, [submissionId, status, pageOffset])
+
+  const onStatusChanged = useCallback(({ submissionId: sid, status: st }) => {
+    if (status === st) {
+      setUpdatesAvailable(submissionId === undefined || submissionId === sid)
+    }
+  }, [submissionId, status])
+
+  function toggleFilterFailedOnly() {
+    let query = { ...router.query }
+    delete query.offset
+    if (filterFailedOnly) {
+      delete query.status
+    } else {
+      query.status = "ERROR"
+    }
+    router.push({
+      pathname: router.pathname,
+      query
+    })
+  }
 
   return (
     <ListPage title="Process chains">
       <div className="process-chain-overview">
-        <h1 className={classNames({ "no-margin-bottom": breadcrumbs })}>Process chains</h1>
+        <div className={classNames("process-chain-title", { "no-margin-bottom": breadcrumbs })}>
+          <h1 className="no-margin-bottom">Process chains</h1>
+          <DropDown title="Filter" right primary={filtersActive}>
+            <ul>
+              <li onClick={toggleFilterFailedOnly}>
+                {filterFailedOnly && <><Check className="feather" /> </>}
+                Failed process chains only
+              </li>
+            </ul>
+          </DropDown>
+        </div>
         {breadcrumbs && <Breadcrumbs breadcrumbs={breadcrumbs} />}
         <ProcessChainContext.Provider pageSize={pageSize} addFilter={addFilter}
-            onProcessChainChanged={onProcessChainChanged}>
+            onStatusChanged={onStatusChanged} onProcessChainChanged={onProcessChainChanged}>
           <ProcessChainList pageSize={pageSize} pageOffset={pageOffset}
-              submissionId={submissionId} forceUpdate={forceUpdate} />
+              submissionId={submissionId} status={status} forceUpdate={forceUpdate} />
         </ProcessChainContext.Provider>
         {updatesAvailable && (<Notification>
           New process chains available. <a href="#" onClick={() =>

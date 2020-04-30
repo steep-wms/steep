@@ -65,8 +65,8 @@ function updateAddedProcessChainsReducer(state, { action, n }) {
   }
 }
 
-const Provider = ({ pageSize, onProcessChainChanged, allowAdd = true,
-    addFilter, children }) => {
+const Provider = ({ pageSize, onProcessChainChanged, onStatusChanged,
+    allowAdd = true, addFilter, children }) => {
   const [processChains, updateProcessChains] = useReducer(
     updateProcessChainsReducer(pageSize, onProcessChainChanged))
   const [addedProcessChains, updateAddedProcessChains] = useReducer(
@@ -92,25 +92,6 @@ const Provider = ({ pageSize, onProcessChainChanged, allowAdd = true,
       })
     }
 
-    function onProcessChainStatusChanged(error, message) {
-      updateProcessChains({
-        action: "update", processChains: [{
-          id: message.body.processChainId,
-          status: message.body.status
-        }]
-      })
-    }
-
-    function onProcessChainAllStatusChanged(error, message) {
-      updateProcessChains({
-        action: "updateStatus", processChains: [{
-          submissionId: message.body.submissionId,
-          currentStatus: message.body.currentStatus,
-          newStatus: message.body.newStatus
-        }]
-      })
-    }
-
     function onProcessChainErrorMessageChanged(error, message) {
       updateProcessChains({
         action: "update", processChains: [{
@@ -123,21 +104,58 @@ const Provider = ({ pageSize, onProcessChainChanged, allowAdd = true,
     if (eventBus) {
       eventBus.registerHandler(PROCESS_CHAIN_START_TIME_CHANGED, onProcessChainStartTimeChanged)
       eventBus.registerHandler(PROCESS_CHAIN_END_TIME_CHANGED, onProcessChainEndTimeChanged)
-      eventBus.registerHandler(PROCESS_CHAIN_STATUS_CHANGED, onProcessChainStatusChanged)
-      eventBus.registerHandler(PROCESS_CHAIN_ALL_STATUS_CHANGED, onProcessChainAllStatusChanged)
       eventBus.registerHandler(PROCESS_CHAIN_ERROR_MESSAGE_CHANGED, onProcessChainErrorMessageChanged)
     }
 
     return () => {
       if (eventBus && eventBus.state === EventBus.OPEN) {
         eventBus.unregisterHandler(PROCESS_CHAIN_ERROR_MESSAGE_CHANGED, onProcessChainErrorMessageChanged)
-        eventBus.unregisterHandler(PROCESS_CHAIN_ALL_STATUS_CHANGED, onProcessChainAllStatusChanged)
-        eventBus.unregisterHandler(PROCESS_CHAIN_STATUS_CHANGED, onProcessChainStatusChanged)
         eventBus.unregisterHandler(PROCESS_CHAIN_END_TIME_CHANGED, onProcessChainEndTimeChanged)
         eventBus.unregisterHandler(PROCESS_CHAIN_START_TIME_CHANGED, onProcessChainStartTimeChanged)
       }
     }
   }, [eventBus])
+
+  useEffect(() => {
+    function onProcessChainStatusChanged(error, message) {
+      updateProcessChains({
+        action: "update", processChains: [{
+          id: message.body.processChainId,
+          status: message.body.status
+        }]
+      })
+      onStatusChanged && onStatusChanged({
+        submissionId: message.body.submissionId,
+        status: message.body.status
+      })
+    }
+
+    function onProcessChainAllStatusChanged(error, message) {
+      updateProcessChains({
+        action: "updateStatus", processChains: [{
+          submissionId: message.body.submissionId,
+          currentStatus: message.body.currentStatus,
+          newStatus: message.body.newStatus
+        }]
+      })
+      onStatusChanged && onStatusChanged({
+        submissionId: message.body.submissionId,
+        status: message.body.status
+      })
+    }
+
+    if (eventBus) {
+      eventBus.registerHandler(PROCESS_CHAIN_STATUS_CHANGED, onProcessChainStatusChanged)
+      eventBus.registerHandler(PROCESS_CHAIN_ALL_STATUS_CHANGED, onProcessChainAllStatusChanged)
+    }
+
+    return () => {
+      if (eventBus && eventBus.state === EventBus.OPEN) {
+        eventBus.unregisterHandler(PROCESS_CHAIN_ALL_STATUS_CHANGED, onProcessChainAllStatusChanged)
+        eventBus.unregisterHandler(PROCESS_CHAIN_STATUS_CHANGED, onProcessChainStatusChanged)
+      }
+    }
+  }, [eventBus, onStatusChanged])
 
   useEffect(() => {
     function onProcessChainsAdded(error, message) {
