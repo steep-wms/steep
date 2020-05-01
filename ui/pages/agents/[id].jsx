@@ -15,14 +15,14 @@ import agentToProgress from "../../components/agents/agent-to-progress"
 import fetcher from "../../components/lib/json-fetcher"
 
 function Agent({ id }) {
-  const agents = useContext(AgentContext.State)
-  const updateAgents = useContext(AgentContext.Dispatch)
+  const agents = useContext(AgentContext.Items)
+  const updateAgents = useContext(AgentContext.UpdateItems)
   const [error, setError] = useState()
 
   useEffect(() => {
     if (id) {
       fetcher(`${process.env.baseUrl}/agents/${id}`)
-        .then(agent => updateAgents({ action: "set", agents: [agent] }))
+        .then(agent => updateAgents({ action: "set", items: [agent] }))
         .catch(err => {
           console.log(err)
           setError(<Alert error>Could not load agent</Alert>)
@@ -34,8 +34,8 @@ function Agent({ id }) {
   let title
   let agent
 
-  if (agents !== undefined && agents.length > 0) {
-    let a = agents[0]
+  if (agents.items !== undefined && agents.items.length > 0) {
+    let a = agents.items[0]
     title = a.id
     breadcrumbs = [
       <Link href="/agents" key="agents"><a>Agents</a></Link>,

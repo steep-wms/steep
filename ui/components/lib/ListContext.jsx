@@ -84,11 +84,12 @@ const Provider = ({ pageSize, allowAdd = true, addFilter,
       for (let address in addMessages) {
         let f = addMessages[address]
         let handler = (error, message) => {
-          let items = f(message.body)
-          for (let item of items) {
-            item.justAdded = true
-          }
-          updateItems({ action: "unshift", items })
+          Promise.resolve(f(message.body)).then(items => {
+            for (let item of items) {
+              item.justAdded = true
+            }
+            updateItems({ action: "unshift", items })
+          }).catch(err => console.error(err))
         }
         eventBus.registerHandler(address, handler)
         registeredHandlers[address] = handler
