@@ -6,7 +6,7 @@ import Notification from "../../components/Notification"
 import Pagination from "../../components/Pagination"
 import Tooltip from "../../components/Tooltip"
 import VMContext from "../../components/vms/VMContext"
-import { useCallback, useContext, useEffect, useState } from "react"
+import { useCallback, useContext, useEffect, useMemo, useState } from "react"
 import vmToProgress from "../../components/vms/vm-to-progress"
 import { formatDistanceToNow } from "date-fns"
 import { formatDate, formatDuration, formatDurationTitle } from "../../components/lib/date-time-utils"
@@ -17,49 +17,46 @@ function formatterToNow(addSuffix) {
     formatDistanceToNow(epochSeconds, { addSuffix, includeSeconds: true })
 }
 
-function onVMChanged(vm) {
-  let href = "/vms/[id]"
-  let as = `/vms/${vm.id}`
+function VMListItem({ vm }) {
+  return useMemo(() => {
+    let href = "/vms/[id]"
+    let as = `/vms/${vm.id}`
 
-  let progress = vmToProgress(vm)
+    let progress = vmToProgress(vm)
 
-  let subtitle
-  if (vm.creationTime && vm.destructionTime) {
-    let agoEndTitle = formatDate(vm.destructionTime)
-    let duration = formatDuration(vm.creationTime, vm.destructionTime)
-    let durationTitle = formatDurationTitle(vm.creationTime, vm.destructionTime)
-    subtitle = (<>
-      Destroyed <Ago date={vm.destructionTime}
-        formatter={formatterToNow(true)} title={agoEndTitle} /> (was
-        up for <Tooltip title={durationTitle}>{duration}</Tooltip>)
-    </>)
-  } else if (vm.creationTime) {
-    let agoTitle = formatDate(vm.creationTime)
-    subtitle = <>Up since <Ago date={vm.creationTime}
-      formatter={formatterToNow(false)} title={agoTitle} /></>
-  }
+    let subtitle
+    if (vm.creationTime && vm.destructionTime) {
+      let agoEndTitle = formatDate(vm.destructionTime)
+      let duration = formatDuration(vm.creationTime, vm.destructionTime)
+      let durationTitle = formatDurationTitle(vm.creationTime, vm.destructionTime)
+      subtitle = (<>
+        Destroyed <Ago date={vm.destructionTime}
+          formatter={formatterToNow(true)} title={agoEndTitle} /> (was
+          up for <Tooltip title={durationTitle}>{duration}</Tooltip>)
+      </>)
+    } else if (vm.creationTime) {
+      let agoTitle = formatDate(vm.creationTime)
+      subtitle = <>Up since <Ago date={vm.creationTime}
+        formatter={formatterToNow(false)} title={agoTitle} /></>
+    }
 
-  vm.element = (
-    <ListItem key={vm.id} justAdded={vm.justAdded}
-      linkHref={href} linkAs={as} title={vm.id} subtitle={subtitle}
-      startTime={vm.creationTime} endTime={vm.destructionTime} progress={progress}
-      labels={vm.setup.providedCapabilities} />
-  )
+    return <ListItem key={vm.id} justAdded={vm.justAdded}
+        linkHref={href} linkAs={as} title={vm.id} subtitle={subtitle}
+        startTime={vm.creationTime} endTime={vm.destructionTime} progress={progress}
+        labels={vm.setup.providedCapabilities} />
+  }, [vm])
 }
 
 function VMList({ pageSize, pageOffset, forceUpdate }) {
-  const vms = useContext(VMContext.VMs)
-  const updateVMs = useContext(VMContext.UpdateVMs)
-  const addedVMs = useContext(VMContext.AddedVMs)
-  const updateAddedVMs = useContext(VMContext.UpdateAddedVMs)
+  const vms = useContext(VMContext.Items)
+  const updateVMs = useContext(VMContext.UpdateItems)
   const [error, setError] = useState()
   const [pageTotal, setPageTotal] = useState(0)
 
   const forceReset = useCallback(() => {
-    updateVMs({ action: "set", vms: undefined })
+    updateVMs({ action: "set" })
     setPageTotal(0)
-    updateAddedVMs({ action: "set", n: 0 })
-  }, [updateVMs, updateAddedVMs])
+  }, [updateVMs])
 
   useEffect(() => {
     let params = new URLSearchParams()
@@ -72,19 +69,17 @@ function VMList({ pageSize, pageOffset, forceUpdate }) {
 
     fetcher(`${process.env.baseUrl}/vms?${params.toString()}`, true)
       .then(r => {
-        let vms = r.body
-        updateVMs({ action: "set", vms })
+        updateVMs({ action: "set", items: r.body })
         let pageTotalHeader = r.headers.get("x-page-total")
         if (pageTotalHeader !== null) {
           setPageTotal(+pageTotalHeader)
-          updateAddedVMs({ action: "set", n: 0 })
         }
       })
       .catch(err => {
         console.error(err)
         setError(<Alert error>Could not load VMs</Alert>)
       })
-  }, [pageOffset, pageSize, updateVMs, updateAddedVMs, forceUpdate, forceReset])
+  }, [pageOffset, pageSize, updateVMs, forceUpdate, forceReset])
 
   function reset(newOffset) {
     if (newOffset !== pageOffset) {
@@ -92,13 +87,18 @@ function VMList({ pageSize, pageOffset, forceUpdate }) {
     }
   }
 
+  let items
+  if (vms.items !== undefined) {
+    items = vms.items.map(vm => <VMListItem key={vm.id} vm={vm} />)
+  }
+
   return (<>
-    {vms && vms.map(w => w.element)}
-    {vms && vms.length === 0 && <>There are no VMs.</>}
+    {items}
+    {items && items.length === 0 && <>There are no VMs.</>}
     {error}
-    {pageTotal + addedVMs > 0 && (
+    {pageTotal + vms.added > 0 && (
       <Pagination pageSize={pageSize} pageOffset={pageOffset}
-        pageTotal={pageTotal + addedVMs} onChangeOffset={reset} />
+        pageTotal={pageTotal + vms.added} onChangeOffset={reset} />
     )}
   </>)
 }
@@ -127,19 +127,18 @@ export default () => {
     setUpdatesAvailable(false)
   }, [pageOffset, pageSize, forceUpdate])
 
-  const addFilter = useCallback(() => {
+  function addFilter() {
     if (pageOffset > 0) {
-      setUpdatesAvailable(true)
+      setTimeout(() => setUpdatesAvailable(true), 0)
       return false
     }
     return true
-  }, [pageOffset])
+  }
 
   return (
     <ListPage title="VMs">
       <h1>VMs</h1>
-      <VMContext.Provider pageSize={pageSize} addFilter={addFilter}
-          onVMChanged={onVMChanged}>
+      <VMContext.Provider pageSize={pageSize} addFilter={addFilter}>
         <VMList pageSize={pageSize} pageOffset={pageOffset} forceUpdate={forceUpdate} />
       </VMContext.Provider>
       {updatesAvailable && (<Notification>

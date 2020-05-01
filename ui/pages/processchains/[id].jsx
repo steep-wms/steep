@@ -16,15 +16,15 @@ import fetcher from "../../components/lib/json-fetcher"
 import { disableBodyScroll, enableBodyScroll } from "body-scroll-lock"
 
 function ProcessChain({ id }) {
-  const processChains = useContext(ProcessChainContext.ProcessChains)
-  const updateProcessChains = useContext(ProcessChainContext.UpdateProcessChains)
+  const processChains = useContext(ProcessChainContext.Items)
+  const updateProcessChains = useContext(ProcessChainContext.UpdateItems)
   const [error, setError] = useState()
   const [cancelModalOpen, setCancelModalOpen] = useState()
 
   useEffect(() => {
     if (id) {
       fetcher(`${process.env.baseUrl}/processchains/${id}`)
-        .then(pc => updateProcessChains({ action: "push", processChains: [pc] }))
+        .then(pc => updateProcessChains({ action: "set", items: [pc] }))
         .catch(err => {
           console.log(err)
           setError(<Alert error>Could not load process chain</Alert>)
@@ -61,8 +61,8 @@ function ProcessChain({ id }) {
   let processchain
   let menu
 
-  if (processChains !== undefined && processChains.length > 0) {
-    let pc = processChains[0]
+  if (processChains.items !== undefined && processChains.items.length > 0) {
+    let pc = processChains.items[0]
     title = pc.id
     breadcrumbs = [
       <Link href="/workflows" key="workflows"><a>Workflows</a></Link>,

@@ -9,41 +9,36 @@ import Notification from "../../components/Notification"
 import Pagination from "../../components/Pagination"
 import ProcessChainContext from "../../components/processchains/ProcessChainContext"
 import "./index.scss"
-import { useCallback, useContext, useEffect, useState } from "react"
+import { useCallback, useContext, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/router"
 import fetcher from "../../components/lib/json-fetcher"
 import { Check } from "react-feather"
 
-function onProcessChainChanged(processChain) {
-  delete processChain.executables
+function ProcessChainListItem({ processChain }) {
+  return useMemo(() => {
+    let href = "/processchains/[id]"
+    let as = `/processchains/${processChain.id}`
 
-  let href = "/processchains/[id]"
-  let as = `/processchains/${processChain.id}`
+    let progress = {
+      status: processChain.status
+    }
 
-  let progress = {
-    status: processChain.status
-  }
-
-  processChain.element = (
-    <ListItem key={processChain.id} justAdded={processChain.justAdded}
-      linkHref={href} linkAs={as} title={processChain.id} startTime={processChain.startTime}
-      endTime={processChain.endTime} progress={progress} />
-  )
+    return <ListItem justAdded={processChain.justAdded} linkHref={href}
+        linkAs={as} title={processChain.id} startTime={processChain.startTime}
+        endTime={processChain.endTime} progress={progress} />
+  }, [processChain])
 }
 
 function ProcessChainList({ pageSize, pageOffset, submissionId, status, forceUpdate }) {
-  const processChains = useContext(ProcessChainContext.ProcessChains)
-  const updateProcessChains = useContext(ProcessChainContext.UpdateProcessChains)
-  const addedProcessChains = useContext(ProcessChainContext.AddedProcessChains)
-  const updateAddedProcessChains = useContext(ProcessChainContext.UpdateAddedProcessChains)
+  const processChains = useContext(ProcessChainContext.Items)
+  const updateProcessChains = useContext(ProcessChainContext.UpdateItems)
   const [error, setError] = useState()
   const [pageTotal, setPageTotal] = useState(0)
 
   const forceReset = useCallback(() => {
-    updateProcessChains({ action: "set", processChains: undefined })
+    updateProcessChains({ action: "set" })
     setPageTotal(0)
-    updateAddedProcessChains({ action: "set", n: 0 })
-  }, [updateProcessChains, updateAddedProcessChains])
+  }, [updateProcessChains])
 
   useEffect(() => {
     let params = new URLSearchParams()
@@ -62,12 +57,10 @@ function ProcessChainList({ pageSize, pageOffset, submissionId, status, forceUpd
 
     fetcher(`${process.env.baseUrl}/processchains?${params.toString()}`, true)
       .then(r => {
-        let processChains = r.body
-        updateProcessChains({ action: "set", processChains })
+        updateProcessChains({ action: "set", items: r.body })
         let pageTotalHeader = r.headers.get("x-page-total")
         if (pageTotalHeader !== null) {
           setPageTotal(+pageTotalHeader)
-          updateAddedProcessChains({ action: "set", n: 0 })
         }
       })
       .catch(err => {
@@ -75,7 +68,7 @@ function ProcessChainList({ pageSize, pageOffset, submissionId, status, forceUpd
         setError(<Alert error>Could not load process chains</Alert>)
       })
   }, [pageOffset, pageSize, submissionId, status, updateProcessChains,
-      updateAddedProcessChains, forceUpdate, forceReset])
+      forceUpdate, forceReset])
 
   function reset(newOffset) {
     if (newOffset !== pageOffset) {
@@ -83,13 +76,18 @@ function ProcessChainList({ pageSize, pageOffset, submissionId, status, forceUpd
     }
   }
 
+  let items
+  if (processChains.items !== undefined) {
+    items = processChains.items.map(pc => <ProcessChainListItem key={pc.id} processChain={pc} />)
+  }
+
   return (<>
-    {processChains && processChains.map(pc => pc.element)}
-    {processChains && processChains.length === 0 && <>There are no process chains.</>}
+    {items}
+    {items && items.length === 0 && <>There are no process chains.</>}
     {error}
-    {pageTotal + addedProcessChains > 0 && (
+    {pageTotal + processChains.added > 0 && (
       <Pagination pageSize={pageSize} pageOffset={pageOffset}
-        pageTotal={pageTotal + addedProcessChains} onChangeOffset={reset} />
+        pageTotal={pageTotal + processChains.added} onChangeOffset={reset} />
     )}
   </>)
 }
@@ -145,7 +143,7 @@ export default () => {
     setUpdatesAvailable(false)
   }, [pageOffset, pageSize, submissionId, status, forceUpdate])
 
-  const addFilter = useCallback((processChain) => {
+  function addFilter(processChain) {
     let result = true
     if (submissionId !== undefined) {
       result = result && processChain.submissionId === submissionId
@@ -154,17 +152,23 @@ export default () => {
       result = result && processChain.status === status
     }
     if (result && pageOffset > 0) {
-      setUpdatesAvailable(true)
+      setTimeout(() => setUpdatesAvailable(true), 0)
       return false
     }
     return result
-  }, [submissionId, status, pageOffset])
+  }
 
-  const onStatusChanged = useCallback(({ submissionId: sid, status: st }) => {
-    if (status === st) {
-      setUpdatesAvailable(submissionId === undefined || submissionId === sid)
+  function reducer(state, { action, items }, next) {
+    if (action === "update") {
+      for (let item of items) {
+        if (item.status !== undefined && item.status === status &&
+          (submissionId === undefined || submissionId === item.submissionId)) {
+          setTimeout(() => setUpdatesAvailable(true), 0)
+        }
+      }
     }
-  }, [submissionId, status])
+    return next(state, { action, items })
+  }
 
   function toggleFilterFailedOnly() {
     let query = { ...router.query }
@@ -195,8 +199,7 @@ export default () => {
           </DropDown>
         </div>
         {breadcrumbs && <Breadcrumbs breadcrumbs={breadcrumbs} />}
-        <ProcessChainContext.Provider pageSize={pageSize} addFilter={addFilter}
-            onStatusChanged={onStatusChanged} onProcessChainChanged={onProcessChainChanged}>
+        <ProcessChainContext.Provider pageSize={pageSize} addFilter={addFilter} reducers={[reducer]}>
           <ProcessChainList pageSize={pageSize} pageOffset={pageOffset}
               submissionId={submissionId} status={status} forceUpdate={forceUpdate} />
         </ProcessChainContext.Provider>

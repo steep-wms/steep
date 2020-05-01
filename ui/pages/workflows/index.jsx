@@ -4,38 +4,33 @@ import ListItem from "../../components/ListItem"
 import Notification from "../../components/Notification"
 import Pagination from "../../components/Pagination"
 import WorkflowContext from "../../components/workflows/WorkflowContext"
-import { useCallback, useContext, useEffect, useState } from "react"
+import { useCallback, useContext, useEffect, useMemo, useState } from "react"
 import workflowToProgress from "../../components/workflows/workflow-to-progress"
 import fetcher from "../../components/lib/json-fetcher"
 
-function onWorkflowChanged(workflow) {
-  delete workflow.workflow
+function WorkflowListItem({ workflow }) {
+  return useMemo(() => {
+    let href = "/workflows/[id]"
+    let as = `/workflows/${workflow.id}`
 
-  let href = "/workflows/[id]"
-  let as = `/workflows/${workflow.id}`
+    let progress = workflowToProgress(workflow)
 
-  let progress = workflowToProgress(workflow)
-
-  workflow.element = (
-    <ListItem key={workflow.id} justAdded={workflow.justAdded}
-      linkHref={href} linkAs={as} title={workflow.id} startTime={workflow.startTime}
-      endTime={workflow.endTime} progress={progress} />
-  )
+    return <ListItem key={workflow.id} justAdded={workflow.justAdded}
+        linkHref={href} linkAs={as} title={workflow.id} startTime={workflow.startTime}
+        endTime={workflow.endTime} progress={progress} />
+  }, [workflow])
 }
 
 function WorkflowList({ pageSize, pageOffset, forceUpdate }) {
-  const workflows = useContext(WorkflowContext.Workflows)
-  const updateWorkflows = useContext(WorkflowContext.UpdateWorkflows)
-  const addedWorkflows = useContext(WorkflowContext.AddedWorkflows)
-  const updateAddedWorkflows = useContext(WorkflowContext.UpdateAddedWorkflows)
+  const workflows = useContext(WorkflowContext.Items)
+  const updateWorkflows = useContext(WorkflowContext.UpdateItems)
   const [error, setError] = useState()
   const [pageTotal, setPageTotal] = useState(0)
 
   const forceReset = useCallback(() => {
-    updateWorkflows({ action: "set", workflows: undefined })
+    updateWorkflows({ action: "set" })
     setPageTotal(0)
-    updateAddedWorkflows({ action: "set", n: 0 })
-  }, [updateWorkflows, updateAddedWorkflows])
+  }, [updateWorkflows])
 
   useEffect(() => {
     let params = new URLSearchParams()
@@ -48,20 +43,17 @@ function WorkflowList({ pageSize, pageOffset, forceUpdate }) {
 
     fetcher(`${process.env.baseUrl}/workflows?${params.toString()}`, true)
       .then(r => {
-        let workflows = r.body
-        updateWorkflows({ action: "set", workflows })
+        updateWorkflows({ action: "set", items: r.body })
         let pageTotalHeader = r.headers.get("x-page-total")
         if (pageTotalHeader !== null) {
           setPageTotal(+pageTotalHeader)
-          updateAddedWorkflows({ action: "set", n: 0 })
         }
       })
       .catch(err => {
         console.error(err)
         setError(<Alert error>Could not load workflows</Alert>)
       })
-  }, [pageOffset, pageSize, updateWorkflows, updateAddedWorkflows,
-      forceUpdate, forceReset])
+  }, [pageOffset, pageSize, updateWorkflows, forceUpdate, forceReset])
 
   function reset(newOffset) {
     if (newOffset !== pageOffset) {
@@ -69,13 +61,18 @@ function WorkflowList({ pageSize, pageOffset, forceUpdate }) {
     }
   }
 
+  let items
+  if (workflows.items !== undefined) {
+    items = workflows.items.map(w => <WorkflowListItem key={w.id} workflow={w} />)
+  }
+
   return (<>
-    {workflows && workflows.map(w => w.element)}
-    {workflows && workflows.length === 0 && <>There are no workflows.</>}
+    {items}
+    {items && items.length === 0 && <>There are no workflows.</>}
     {error}
-    {pageTotal + addedWorkflows > 0 && (
+    {pageTotal + workflows.added > 0 && (
       <Pagination pageSize={pageSize} pageOffset={pageOffset}
-        pageTotal={pageTotal + addedWorkflows} onChangeOffset={reset} />
+        pageTotal={pageTotal + workflows.added} onChangeOffset={reset} />
     )}
   </>)
 }
@@ -106,7 +103,7 @@ export default () => {
 
   const addFilter = useCallback(() => {
     if (pageOffset > 0) {
-      setUpdatesAvailable(true)
+      setTimeout(() => setUpdatesAvailable(true), 0)
       return false
     }
     return true
@@ -115,8 +112,7 @@ export default () => {
   return (
     <ListPage title="Workflows">
       <h1>Workflows</h1>
-      <WorkflowContext.Provider pageSize={pageSize} addFilter={addFilter}
-          onWorkflowChanged={onWorkflowChanged}>
+      <WorkflowContext.Provider pageSize={pageSize} addFilter={addFilter}>
         <WorkflowList pageSize={pageSize} pageOffset={pageOffset}
             forceUpdate={forceUpdate} />
       </WorkflowContext.Provider>

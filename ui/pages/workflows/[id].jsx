@@ -1,7 +1,7 @@
 import DetailPage from "../../components/layouts/DetailPage"
 import Link from "next/link"
 import { useRouter } from "next/router"
-import { useContext, useEffect, useState } from "react"
+import { useContext, useEffect, useMemo, useState } from "react"
 import Alert from "../../components/Alert"
 import CancelModal from "../../components/CancelModal"
 import CodeBox from "../../components/CodeBox"
@@ -16,15 +16,15 @@ import fetcher from "../../components/lib/json-fetcher"
 import { disableBodyScroll, enableBodyScroll } from "body-scroll-lock"
 
 function Workflow({ id }) {
-  const workflows = useContext(WorkflowContext.Workflows)
-  const updateWorkflows = useContext(WorkflowContext.UpdateWorkflows)
+  const workflows = useContext(WorkflowContext.Items)
+  const updateWorkflows = useContext(WorkflowContext.UpdateItems)
   const [error, setError] = useState()
   const [cancelModalOpen, setCancelModalOpen] = useState()
 
   useEffect(() => {
     if (id) {
       fetcher(`${process.env.baseUrl}/workflows/${id}`)
-        .then(workflow => updateWorkflows({ action: "push", workflows: [workflow] }))
+        .then(workflow => updateWorkflows({ action: "set", items: [workflow] }))
         .catch(err => {
           console.error(err)
           setError(<Alert error>Could not load workflow</Alert>)
@@ -56,18 +56,51 @@ function Workflow({ id }) {
     enableBodyScroll()
   }
 
-  let breadcrumbs
+  let workflowSource
+  let startTime
+  let endTime
+  if (workflows.items !== undefined && workflows.items.length > 0) {
+    let w = workflows.items[0]
+    id = w.id
+    startTime = w.startTime
+    endTime = w.endTime
+    workflowSource = w.workflow
+  }
+
+  const codeBox = useMemo(() => <CodeBox json={workflowSource} />, [workflowSource])
+
+  const breadcrumbs = useMemo(() => [
+    <Link href="/workflows/" key="workflows"><a>Workflows</a></Link>,
+    id
+  ], [id])
+
+  const detailHeaderLeft = useMemo(() => (
+    <div className="detail-header-left">
+      <DefinitionList>
+        <DefinitionListItem title="Start time">
+          {startTime ? formatDate(startTime) : <>&ndash;</>}
+        </DefinitionListItem>
+        <DefinitionListItem title="End time">
+          {endTime ? formatDate(endTime) : <>&ndash;</>}
+        </DefinitionListItem>
+        <DefinitionListItem title="Time elapsed">
+          {
+            startTime && endTime ? formatDurationTitle(startTime, endTime) : (
+              startTime ? <LiveDuration startTime={startTime} /> : <>&ndash;</>
+            )
+          }
+        </DefinitionListItem>
+      </DefinitionList>
+    </div>
+  ), [startTime, endTime])
+
   let title
   let workflow
   let menu
 
-  if (workflows !== undefined && workflows.length > 0) {
-    let w = workflows[0]
+  if (workflows.items !== undefined && workflows.items.length > 0) {
+    let w = workflows.items[0]
     title = w.id
-    breadcrumbs = [
-      <Link href="/workflows" key="workflows"><a>Workflows</a></Link>,
-      w.id
-    ]
 
     if (w.status === "ACCEPTED" || w.status === "RUNNING") {
       menu = (
@@ -81,23 +114,7 @@ function Workflow({ id }) {
 
     workflow = (<>
       <div className="detail-header">
-        <div className="detail-header-left">
-          <DefinitionList>
-            <DefinitionListItem title="Start time">
-              {w.startTime ? formatDate(w.startTime) : <>&ndash;</>}
-            </DefinitionListItem>
-            <DefinitionListItem title="End time">
-              {w.endTime ? formatDate(w.endTime) : <>&ndash;</>}
-            </DefinitionListItem>
-            <DefinitionListItem title="Time elapsed">
-              {
-                w.startTime && w.endTime ? formatDurationTitle(w.startTime, w.endTime) : (
-                  w.startTime ? <LiveDuration startTime={w.startTime} /> : <>&ndash;</>
-                )
-              }
-            </DefinitionListItem>
-          </DefinitionList>
-        </div>
+        {detailHeaderLeft}
         <div className="detail-header-right">
           <ListItemProgressBox progress={progress} />
         </div>
@@ -107,7 +124,7 @@ function Workflow({ id }) {
         <Alert error>{w.errorMessage}</Alert>
       </>)}
       <h2>Source</h2>
-      <CodeBox json={w.workflow} />
+      {codeBox}
     </>)
   }
 

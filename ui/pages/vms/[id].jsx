@@ -15,14 +15,14 @@ import fetcher from "../../components/lib/json-fetcher"
 import "./[id].scss"
 
 function VM({ id }) {
-  const vms = useContext(VMContext.VMs)
-  const updateVMs = useContext(VMContext.UpdateVMs)
+  const vms = useContext(VMContext.Items)
+  const updateVMs = useContext(VMContext.UpdateItems)
   const [error, setError] = useState()
 
   useEffect(() => {
     if (id) {
       fetcher(`${process.env.baseUrl}/vms/${id}`)
-        .then(vm => updateVMs({ action: "push", vms: [vm] }))
+        .then(vm => updateVMs({ action: "set", items: [vm] }))
         .catch(err => {
           console.log(err)
           setError(<Alert error>Could not load VM</Alert>)
@@ -34,8 +34,8 @@ function VM({ id }) {
   let title
   let result
 
-  if (vms !== undefined && vms.length > 0) {
-    let vm = vms[0]
+  if (vms.items !== undefined && vms.items.length > 0) {
+    let vm = vms.items[0]
     title = vm.id
     breadcrumbs = [
       <Link href="/vms" key="vms"><a>VMs</a></Link>,

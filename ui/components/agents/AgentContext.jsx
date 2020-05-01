@@ -26,7 +26,6 @@ function updateAgentsReducer(onAgentChanged) {
       case "set":
       case "update":
       case "unshift":
-      case "push":
         return liur(state, { action, items: agents })
 
       default:

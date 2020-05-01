@@ -1,59 +1,49 @@
-export default (pageSize, initItem) => (state, { action = "unshift", items }) => {
+export default (pageSize, onItemChanged) => (state, { action = "unshift", items }) => {
   if (action === "set") {
     if (items === undefined) {
       return undefined
     }
-    action = "push"
-    state = []
+    action = "unshift"
   }
 
   switch (action) {
     case "update": {
-      for (let item of items) {
-        let i = state.findIndex(w => w.id === item.id)
-        if (i >= 0) {
-          let newItem = { ...state[i], ...item }
-          initItem(newItem)
-          state = [...state.slice(0, i), newItem, ...state.slice(i + 1)]
+      if (state !== undefined) {
+        for (let item of items) {
+          let i = state.findIndex(w => w.id === item.id)
+          if (i >= 0) {
+            let oldItem = state[i]
+            let newItem = { ...oldItem, ...item }
+            onItemChanged && onItemChanged(newItem, oldItem)
+            state = [...state.slice(0, i), newItem, ...state.slice(i + 1)]
+          }
         }
       }
       return state
     }
 
-    case "unshift":
-    case "push": {
-      if (action === "push" && pageSize !== undefined && state.length >= pageSize) {
-        return state
-      }
+    case "unshift": {
+      state = state || []
 
       let itemsToAdd = []
       for (let item of items) {
         if (state.findIndex(w => w.id === item.id) < 0) {
-          itemsToAdd.push(item)
+          itemsToAdd.unshift(item)
         }
       }
 
-      if (action === "push") {
-        if (pageSize !== undefined) {
-          itemsToAdd = itemsToAdd.slice(0, pageSize - state.length)
-        }
-      } else {
-        itemsToAdd.reverse()
-        if (pageSize !== undefined) {
-          itemsToAdd = itemsToAdd.slice(0, pageSize)
-          state = state.slice(0, pageSize - itemsToAdd.length)
+      if (pageSize !== undefined) {
+        itemsToAdd = itemsToAdd.slice(0, pageSize)
+        state = state.slice(0, pageSize - itemsToAdd.length)
+      }
+
+      if (onItemChanged) {
+        for (let item of itemsToAdd) {
+          onItemChanged(item)
         }
       }
 
-      for (let item of itemsToAdd) {
-        initItem(item)
-      }
-
-      if (action === "push") {
-        return [...state, ...itemsToAdd]
-      } else {
-        return [...itemsToAdd, ...state]
-      }
+      return [...itemsToAdd, ...state]
     }
 
     default:

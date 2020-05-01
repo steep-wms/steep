@@ -22,7 +22,7 @@ function Agent({ id }) {
   useEffect(() => {
     if (id) {
       fetcher(`${process.env.baseUrl}/agents/${id}`)
-        .then(agent => updateAgents({ action: "push", agents: [agent] }))
+        .then(agent => updateAgents({ action: "set", agents: [agent] }))
         .catch(err => {
           console.log(err)
           setError(<Alert error>Could not load agent</Alert>)
