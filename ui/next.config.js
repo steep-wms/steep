@@ -9,11 +9,18 @@ const withPlugins = require("next-compose-plugins")
 
 const isProd = process.env.NODE_ENV === "production"
 
+// Base path of the application
+// Magic string will be replaced by Steep's HttpEndpoint verticle
+const basePath = isProd ? "/$$MYBASEPATH$$" : ""
+
 const config = {
   env: {
     // URL to Steep. Used to connect to the event bus.
     // Magic string will be replaced by Steep's HttpEndpoint verticle
-    baseUrl: isProd ? "/$$MYBASEURL$$" : "http://localhost:8080"
+    baseUrl: isProd ? "/$$MYBASEURL$$" : "http://localhost:8080",
+
+    // Base path of the web application (see above)
+    basePath
   },
 
   // create a folder for each page
@@ -26,9 +33,7 @@ const config = {
   },
 
   experimental: {
-    // Base path of the application
-    // Magic string will be replaced by Steep's HttpEndpoint verticle
-    basePath: isProd ? "/$$MYBASEPATH$$" : ""
+    basePath
   },
 
   // list pages to export

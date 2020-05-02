@@ -44,6 +44,7 @@ import helper.JsonUtils
 import helper.YamlUtils
 import io.prometheus.client.hotspot.DefaultExports
 import io.prometheus.client.vertx.MetricsHandler
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.ReplyException
 import io.vertx.core.eventbus.ReplyFailure
 import io.vertx.core.http.HttpMethod
@@ -272,7 +273,7 @@ class HttpEndpoint : CoroutineVerticle() {
         .setMaxAgeSeconds(60 * 60 * 24 * 365) /* one year */)
 
     // a static handler that replaces placeholders in assets
-    router.get("/_next/*").handler { context ->
+    val placeholderHandler = { replaceFavicons: Boolean -> { context: RoutingContext ->
       val request = context.request()
       if (request.method() != HttpMethod.GET && request.method() != HttpMethod.HEAD) {
         context.next()
@@ -288,10 +289,12 @@ class HttpEndpoint : CoroutineVerticle() {
           log.warn("Invalid path: " + context.request().path())
           context.next()
         } else {
-          renderAsset("ui$path", context.response())
+          renderAsset("ui$path", context.response(), replaceFavicons)
         }
       }
-    }
+    }}
+    router.get("/_next/*").handler(placeholderHandler(false))
+    router.get("/favicons/*").handler(placeholderHandler(true))
 
     val sockJSHandler = SockJSHandler.create(vertx)
     sockJSHandler.bridge(BridgeOptions()
@@ -447,7 +450,8 @@ class HttpEndpoint : CoroutineVerticle() {
   /**
    * Renders an asset to the given HTTP response. Replaces placeholders.
    */
-  private fun renderAsset(name: String, response: HttpServerResponse) {
+  private fun renderAsset(name: String, response: HttpServerResponse,
+      replaceFavicons: Boolean = false) {
     val url = this.javaClass.getResource(name)
     if (url == null) {
       response
@@ -456,13 +460,27 @@ class HttpEndpoint : CoroutineVerticle() {
       return
     }
 
-    val html = url.readText()
-        .replace("/\$\$MYBASEPATH\$\$", basePath)
-        .replace("/\$\$MYBASEURL\$\$", basePath)
-
     val ext = name.substring(name.lastIndexOf('.') + 1)
     val contentType = MimeMapping.getMimeTypeForExtension(ext)
-    response.putHeader("content-type", contentType)
+
+    val result = if (contentType == null || !contentType.startsWith("image/")) {
+      val text = url.readText()
+          .replace("/\$\$MYBASEPATH\$\$", basePath)
+          .replace("/\$\$MYBASEURL\$\$", basePath).let {
+            if (replaceFavicons) {
+              it.replace("\"/favicons/", "\"$basePath/favicons/")
+            } else {
+              it
+            }
+          }
+      Buffer.buffer(text)
+    } else {
+      Buffer.buffer(url.readBytes())
+    }
+
+    if (contentType != null) {
+      response.putHeader("content-type", contentType)
+    }
 
     if (contentType == "text/html") {
       response
@@ -473,7 +491,7 @@ class HttpEndpoint : CoroutineVerticle() {
           .putHeader("cache-control", "public, max-age=" + (60 * 60 * 24 * 365)) // one year
     }
 
-    response.end(html)
+    response.end(result)
   }
 
   /**
