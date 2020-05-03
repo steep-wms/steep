@@ -7,7 +7,7 @@ const UpdateItems = createContext()
 const AddedItems = createContext()
 const UpdateAddedItems = createContext()
 
-function defaultItemsReducer(state, { action = "unshift", items }, pageSize, addFilter) {
+function defaultItemsReducer(state, { action = "unshift", items }, pageSize, shouldAddItem) {
   switch (action) {
     case "update": {
       if (state.items !== undefined) {
@@ -36,7 +36,7 @@ function defaultItemsReducer(state, { action = "unshift", items }, pageSize, add
         itemsToAdd = []
         for (let item of items) {
           if ((state.items === undefined || state.items.findIndex(w => w.id === item.id) < 0) &&
-              (!addFilter || addFilter(item) === true)) {
+              (!shouldAddItem || shouldAddItem(item) === true)) {
             itemsToAdd.unshift(item)
           }
         }
@@ -58,11 +58,11 @@ function defaultItemsReducer(state, { action = "unshift", items }, pageSize, add
   }
 }
 
-function updateItemsReducer(reducers, pageSize, addFilter) {
+function updateItemsReducer(reducers, pageSize, shouldAddItem) {
   return (state, action) => {
     function callReducer(state, action, i) {
       if (i === reducers.length) {
-        return defaultItemsReducer(state, action, pageSize, addFilter)
+        return defaultItemsReducer(state, action, pageSize, shouldAddItem)
       }
       return reducers[i](state, action, (newState, newAction) =>
         callReducer(newState, newAction, i + 1))
@@ -71,10 +71,10 @@ function updateItemsReducer(reducers, pageSize, addFilter) {
   }
 }
 
-const Provider = ({ pageSize, allowAdd = true, addFilter,
+const Provider = ({ pageSize, allowAdd = true, shouldAddItem,
     addMessages, updateMessages, reducers = [], children }) => {
   const [items, updateItems] = useReducer(updateItemsReducer(reducers, pageSize,
-      addFilter), { items: undefined, added: 0 })
+      shouldAddItem), { items: undefined, added: 0 })
   const eventBus = useContext(EventBusContext)
 
   useEffect(() => {

@@ -5,4 +5,15 @@
     justify-content: center;
     margin: $spacer 0;
   }
+
+  .breadcrumbs {
+    margin-bottom: 1rem;
+  }
+
+  .list-page-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.45rem;
+  }
 }
