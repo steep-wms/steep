@@ -24,7 +24,8 @@ function ProcessChainListItem({ item: processChain }) {
 
     return <ListItem justAdded={processChain.justAdded} linkHref={href}
         linkAs={as} title={processChain.id} startTime={processChain.startTime}
-        endTime={processChain.endTime} progress={progress} />
+        endTime={processChain.endTime} progress={progress}
+        labels={processChain.requiredCapabilities} />
   }, [processChain])
 }
 

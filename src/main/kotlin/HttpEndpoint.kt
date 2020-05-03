@@ -714,12 +714,16 @@ class HttpEndpoint : CoroutineVerticle() {
       val submissions = submissionRegistry.findSubmissions(size, offset, -1)
 
       val list = submissions.map { submission ->
+        val reqCaps = submission.collectRequiredCapabilities(
+            metadataRegistry.findServices())
+
         // do not unnecessarily encode workflow to save time for large workflows
         val c = submission.copy(workflow = Workflow())
 
         JsonUtils.toJson(c).also {
           it.remove("workflow")
           amendSubmission(it)
+          it.put("requiredCapabilities", JsonArray(*(reqCaps.toTypedArray())))
         }
       }
 
@@ -764,7 +768,10 @@ class HttpEndpoint : CoroutineVerticle() {
             .end("There is no workflow with ID `$id'")
       } else {
         val json = JsonUtils.toJson(submission)
+        val reqCaps = submission.collectRequiredCapabilities(
+            metadataRegistry.findServices())
         amendSubmission(json, true)
+        json.put("requiredCapabilities", JsonArray(*(reqCaps.toTypedArray())))
         if (ctx.acceptableContentType == "text/html") {
           val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
           if (beta) {

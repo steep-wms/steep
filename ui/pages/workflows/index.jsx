@@ -12,8 +12,9 @@ function WorkflowListItem({ item: workflow }) {
     let progress = workflowToProgress(workflow)
 
     return <ListItem key={workflow.id} justAdded={workflow.justAdded}
-        linkHref={href} linkAs={as} title={workflow.id} startTime={workflow.startTime}
-        endTime={workflow.endTime} progress={progress} />
+        linkHref={href} linkAs={as} title={workflow.id}
+        startTime={workflow.startTime} endTime={workflow.endTime}
+        progress={progress} labels={workflow.requiredCapabilities} />
   }, [workflow])
 }
 

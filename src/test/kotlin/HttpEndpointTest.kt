@@ -227,6 +227,8 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.countProcessChains(s3.id,
         ProcessChainStatus.SUCCESS) } returns 1
 
+    coEvery { metadataRegistry.findServices() } returns emptyList()
+
     coEvery { submissionRegistry.findSubmissions(any(), any(), any()) } returns listOf(s1, s2, s3)
     coEvery { submissionRegistry.countSubmissions() } returns 3
 
@@ -252,7 +254,8 @@ class HttpEndpointTest {
                   "cancelledProcessChains" to 3,
                   "failedProcessChains" to 4,
                   "succeededProcessChains" to 5,
-                  "totalProcessChains" to 15
+                  "totalProcessChains" to 15,
+                  "requiredCapabilities" to array()
               ),
               obj(
                   "id" to s2.id,
@@ -261,7 +264,8 @@ class HttpEndpointTest {
                   "cancelledProcessChains" to 13,
                   "failedProcessChains" to 14,
                   "succeededProcessChains" to 15,
-                  "totalProcessChains" to 65
+                  "totalProcessChains" to 65,
+                  "requiredCapabilities" to array()
               ),
               obj(
                   "id" to s3.id,
@@ -270,7 +274,8 @@ class HttpEndpointTest {
                   "cancelledProcessChains" to 0,
                   "failedProcessChains" to 0,
                   "succeededProcessChains" to 1,
-                  "totalProcessChains" to 1
+                  "totalProcessChains" to 1,
+                  "requiredCapabilities" to array()
               )
           )
         })
@@ -296,6 +301,8 @@ class HttpEndpointTest {
         ProcessChainStatus.ERROR) } returns 4
     coEvery { submissionRegistry.countProcessChains(s1.id,
         ProcessChainStatus.SUCCESS) } returns 5
+
+    coEvery { metadataRegistry.findServices() } returns emptyList()
 
     coEvery { submissionRegistry.findSubmissionById(s1.id) } returns s1
     coEvery { submissionRegistry.findSubmissionById(neq(s1.id)) } returns null
@@ -323,8 +330,71 @@ class HttpEndpointTest {
                 "cancelledProcessChains" to 3,
                 "failedProcessChains" to 4,
                 "succeededProcessChains" to 5,
-                "totalProcessChains" to 15
+                "totalProcessChains" to 15,
+                "requiredCapabilities" to array()
             )
+        })
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that the endpoint returns a single workflow with required capabilities
+   */
+  @Test
+  fun getWorkflowByIdRequiredCapabilities(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow(actions = listOf(
+        ExecuteAction(service = "a"),
+        ForEachAction(actions = listOf(
+            ExecuteAction(service = "b")
+        ), input = Variable(), enumerator = Variable())
+    )))
+    coEvery { submissionRegistry.countProcessChains(s1.id) } returns 1
+    coEvery { submissionRegistry.countProcessChains(s1.id,
+        ProcessChainStatus.REGISTERED) } returns 1
+    coEvery { submissionRegistry.countProcessChains(s1.id,
+        ProcessChainStatus.RUNNING) } returns 0
+    coEvery { submissionRegistry.countProcessChains(s1.id,
+        ProcessChainStatus.CANCELLED) } returns 0
+    coEvery { submissionRegistry.countProcessChains(s1.id,
+        ProcessChainStatus.ERROR) } returns 0
+    coEvery { submissionRegistry.countProcessChains(s1.id,
+        ProcessChainStatus.SUCCESS) } returns 0
+
+    coEvery { metadataRegistry.findServices() } returns listOf(
+        Service(id = "a", name = "name a", description = "", path = "",
+            runtime = "", parameters = emptyList(),
+            requiredCapabilities = setOf("cap1", "cap2")),
+        Service(id = "b", name = "name b", description = "", path = "",
+            runtime = "", parameters = emptyList(),
+            requiredCapabilities = setOf("cap1", "cap3"))
+    )
+
+    coEvery { submissionRegistry.findSubmissionById(s1.id) } returns s1
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/workflows/${s1.id}")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.JSON)
+            .sendAwait()
+
+        assertThat(response.body()).isEqualTo(json {
+          obj(
+              "id" to s1.id,
+              "workflow" to JsonUtils.toJson(s1.workflow),
+              "status" to Submission.Status.ACCEPTED.toString(),
+              "runningProcessChains" to 0,
+              "cancelledProcessChains" to 0,
+              "failedProcessChains" to 0,
+              "succeededProcessChains" to 0,
+              "totalProcessChains" to 1,
+              "requiredCapabilities" to array("cap1", "cap2", "cap3")
+          )
         })
       }
 
@@ -350,6 +420,8 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.countProcessChains(s1.id,
         ProcessChainStatus.SUCCESS) } returns 1
 
+    coEvery { metadataRegistry.findServices() } returns emptyList()
+
     coEvery { submissionRegistry.findSubmissionById(s1.id) } returns s1
 
     val results = mapOf("output_file1" to listOf("/out/test.txt"))
@@ -374,7 +446,8 @@ class HttpEndpointTest {
               "failedProcessChains" to 0,
               "succeededProcessChains" to 1,
               "totalProcessChains" to 1,
-              "results" to JsonUtils.toJson(results)
+              "results" to JsonUtils.toJson(results),
+              "requiredCapabilities" to array()
           )
         })
       }
@@ -401,6 +474,8 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.countProcessChains(s1.id,
         ProcessChainStatus.SUCCESS) } returns 0
 
+    coEvery { metadataRegistry.findServices() } returns emptyList()
+
     coEvery { submissionRegistry.findSubmissionById(s1.id) } returns s1
 
     val errorMessage = "This is an error message"
@@ -425,7 +500,8 @@ class HttpEndpointTest {
               "failedProcessChains" to 1,
               "succeededProcessChains" to 0,
               "totalProcessChains" to 1,
-              "errorMessage" to errorMessage
+              "errorMessage" to errorMessage,
+              "requiredCapabilities" to array()
           )
         })
       }

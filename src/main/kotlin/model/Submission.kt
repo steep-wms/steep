@@ -1,6 +1,10 @@
 package model
 
 import helper.UniqueID
+import model.metadata.Service
+import model.workflow.Action
+import model.workflow.ExecuteAction
+import model.workflow.ForEachAction
 import model.workflow.Workflow
 import java.time.Instant
 
@@ -27,5 +31,35 @@ data class Submission(
     SUCCESS,
     PARTIAL_SUCCESS,
     ERROR
+  }
+
+  companion object {
+    private fun collectRequiredCapabilities(actions: List<Action>,
+        serviceMetadata: Map<String, Service>): Set<String> {
+      val result = mutableSetOf<String>()
+      for (a in actions) {
+        when (a) {
+          is ExecuteAction -> {
+            val service = serviceMetadata[a.service]
+            if (service != null) {
+              result.addAll(service.requiredCapabilities)
+            }
+          }
+
+          is ForEachAction ->
+            result.addAll(collectRequiredCapabilities(a.actions, serviceMetadata))
+        }
+      }
+      return result
+    }
+  }
+
+  /**
+   * Use the metadata of the given [services] to calculate a set of
+   * capabilities required to execute this submission
+   */
+  fun collectRequiredCapabilities(services: List<Service>): Set<String> {
+    val serviceMetadata = services.map { it.id to it }.toMap()
+    return collectRequiredCapabilities(workflow.actions, serviceMetadata)
   }
 }

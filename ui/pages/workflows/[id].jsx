@@ -7,6 +7,7 @@ import CancelModal from "../../components/CancelModal"
 import CodeBox from "../../components/CodeBox"
 import DefinitionList from "../../components/DefinitionList"
 import DefinitionListItem from "../../components/DefinitionListItem"
+import Label from "../../components/Label"
 import ListItemProgressBox from "../../components/ListItemProgressBox"
 import LiveDuration from "../../components/LiveDuration"
 import WorkflowContext from "../../components/workflows/WorkflowContext"
@@ -59,11 +60,13 @@ function Workflow({ id }) {
   let workflowSource
   let startTime
   let endTime
+  let requiredCapabilities
   if (workflows.items !== undefined && workflows.items.length > 0) {
     let w = workflows.items[0]
     id = w.id
     startTime = w.startTime
     endTime = w.endTime
+    requiredCapabilities = w.requiredCapabilities
     workflowSource = w.workflow
   }
 
@@ -74,25 +77,37 @@ function Workflow({ id }) {
     id
   ], [id])
 
-  const detailHeaderLeft = useMemo(() => (
-    <div className="detail-header-left">
-      <DefinitionList>
-        <DefinitionListItem title="Start time">
-          {startTime ? formatDate(startTime) : <>&ndash;</>}
-        </DefinitionListItem>
-        <DefinitionListItem title="End time">
-          {endTime ? formatDate(endTime) : <>&ndash;</>}
-        </DefinitionListItem>
-        <DefinitionListItem title="Time elapsed">
-          {
-            startTime && endTime ? formatDurationTitle(startTime, endTime) : (
-              startTime ? <LiveDuration startTime={startTime} /> : <>&ndash;</>
-            )
-          }
-        </DefinitionListItem>
-      </DefinitionList>
-    </div>
-  ), [startTime, endTime])
+  const detailHeaderLeft = useMemo(() => {
+    let reqcap
+    if (requiredCapabilities === undefined || requiredCapabilities.length === 0) {
+      reqcap = <>&ndash;</>
+    } else {
+      reqcap = requiredCapabilities.map((r, i) => <Label key={i}>{r}</Label>)
+    }
+
+    return (
+      <div className="detail-header-left">
+        <DefinitionList>
+          <DefinitionListItem title="Start time">
+            {startTime ? formatDate(startTime) : <>&ndash;</>}
+          </DefinitionListItem>
+          <DefinitionListItem title="End time">
+            {endTime ? formatDate(endTime) : <>&ndash;</>}
+          </DefinitionListItem>
+          <DefinitionListItem title="Time elapsed">
+            {
+              startTime && endTime ? formatDurationTitle(startTime, endTime) : (
+                startTime ? <LiveDuration startTime={startTime} /> : <>&ndash;</>
+              )
+            }
+          </DefinitionListItem>
+          <DefinitionListItem title="Required capabilities">
+            {reqcap}
+          </DefinitionListItem>
+        </DefinitionList>
+      </div>
+    )
+  }, [startTime, endTime, requiredCapabilities])
 
   let title
   let workflow
