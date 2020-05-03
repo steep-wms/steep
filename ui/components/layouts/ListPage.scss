@@ -16,4 +16,15 @@
     align-items: center;
     margin-bottom: 1.45rem;
   }
+
+  .filter-list {
+    &.has-enabled-filters {
+      li:not(.enabled) {
+        &:before {
+          content: "\00a0";
+          padding-left: 24px;
+        }
+      }
+    }
+  }
 }

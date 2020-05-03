@@ -11,6 +11,10 @@ const FILTERS = [{
   name: "status",
   title: "Failed process chains only",
   enabledValue: "ERROR"
+}, {
+  name: "status",
+  title: "Running process chains only",
+  enabledValue: "RUNNING"
 }]
 
 function ProcessChainListItem({ item: processChain }) {

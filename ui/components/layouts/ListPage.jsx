@@ -153,22 +153,30 @@ export default (props) => {
   }
 
   function reducer(state, { action, items }, next) {
-    if (action === "update" && enabledFilterValues !== undefined) {
+    if (!updatesAvailable && action === "update" && state.items !== undefined &&
+        enabledFilterValues !== undefined) {
       // Check if any of the items would match the current filter (if there
-      // is any) after the update. If so, set the updates-available flag.
-      for (let item of items) {
-        let result = true
-        let keys = Object.keys(enabledFilterValues)
-        keys.forEach(k => {
-          let v = enabledFilterValues[k]
-          result = result && item[k] === v
-        })
-        if (keys.length > 0 && result) {
-          setTimeout(() => setUpdatesAvailable(true), 0)
-          break
+      // is any) after the update - OR if it would not match anymore. If so,
+      // set the updates-available flag.
+      let keys = Object.keys(enabledFilterValues)
+      if (keys.length > 0) {
+        for (let item of items) {
+          let oldItem = state.items.find(oi => oi.id === item.id)
+          let didMatch = oldItem !== undefined
+          let willMatch = true
+          keys.forEach(k => {
+            let v = enabledFilterValues[k]
+            didMatch = didMatch && oldItem[k] === v
+            willMatch = willMatch && item[k] === v
+          })
+          if (didMatch !== willMatch) {
+            setTimeout(() => setUpdatesAvailable(true), 0)
+            break
+          }
         }
       }
     }
+
     return next(state, { action, items })
   }
 
@@ -188,7 +196,7 @@ export default (props) => {
 
   let filterDropDownElements = []
   if (props.filters !== undefined) {
-    for (let f of props.filters) {
+    props.filters.forEach((f, i) => {
       if (f.title !== undefined && f.enabledValue !== undefined) {
         let currentValue
         if (enabledFilterValues !== undefined) {
@@ -196,13 +204,14 @@ export default (props) => {
         }
         let enabled = currentValue === f.enabledValue
         filterDropDownElements.push(
-          <li onClick={() => toggleFilter(f, enabled)} key={f.name}>
+          <li onClick={() => toggleFilter(f, enabled)} key={i}
+              className={classNames({ enabled: enabled })}>
             {enabled && <><Check className="feather" /> </>}
             {f.title}
           </li>
         )
       }
-    }
+    })
   }
 
   return (
@@ -212,7 +221,7 @@ export default (props) => {
           <h1 className="no-margin-bottom">{props.title}</h1>
           {filterDropDownElements.length > 0 && (
             <DropDown title="Filter" right primary={hasEnabledFilters}>
-              <ul>
+              <ul className={classNames("filter-list", { "has-enabled-filters": hasEnabledFilters })}>
                 {filterDropDownElements}
               </ul>
             </DropDown>
@@ -226,7 +235,7 @@ export default (props) => {
               forceUpdate={forceUpdate} />
         </props.Context.Provider>
         {updatesAvailable && (<Notification>
-          New {props.subjects} available. <a href="#" onClick={() =>
+          Updates available. <a href="#" onClick={() =>
             setForceUpdate(forceUpdate + 1)}>Refresh</a>.
         </Notification>)}
       </div>
