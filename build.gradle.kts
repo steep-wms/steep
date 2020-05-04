@@ -166,8 +166,8 @@ tasks {
             val timestamp = format.format(Date())
             val versionText = """{
               |  "version": "$version",
-              |  "build": "${System.getenv("CI_PIPELINE_IID") ?: ""}",
-              |  "commit": "${System.getenv("CI_COMMIT_SHA") ?: ""}",
+              |  "build": "${System.getenv("GITHUB_RUN_NUMBER") ?: ""}",
+              |  "commit": "${System.getenv("GITHUB_SHA") ?: ""}",
               |  "timestamp": "$timestamp"
               |}""".trimMargin()
             versionFile.writeText(versionText)
