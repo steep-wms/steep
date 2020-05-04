@@ -8,6 +8,16 @@ import vmToProgress from "../../components/vms/vm-to-progress"
 import { formatDistanceToNow } from "date-fns"
 import { formatDate, formatDuration, formatDurationTitle } from "../../components/lib/date-time-utils"
 
+const FILTERS = [{
+  name: "status",
+  title: "Failed VMs only",
+  enabledValue: "ERROR"
+}, {
+  name: "status",
+  title: "Running VMs only",
+  enabledValue: "RUNNING"
+}]
+
 function formatterToNow(addSuffix) {
   return (value, unit, suffix, epochSeconds) =>
     formatDistanceToNow(epochSeconds, { addSuffix, includeSeconds: true })
@@ -45,5 +55,5 @@ function VMListItem({ item: vm }) {
 
 export default () => (
   <ListPage title="VMs" Context={VMContext}
-      ListItem={VMListItem} subjects="VMs" path="vms" />
+      ListItem={VMListItem} subjects="VMs" path="vms" filters={FILTERS} />
 )
