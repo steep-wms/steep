@@ -74,6 +74,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.Submission
 import model.Version
+import model.cloud.VM
 import model.workflow.Workflow
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FilenameUtils
@@ -1008,8 +1009,19 @@ class HttpEndpoint : CoroutineVerticle() {
       val offset = max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
       val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
 
-      val list = vmRegistry.findVMs(size, offset, -1).map { JsonUtils.toJson(it) }
-      val total = vmRegistry.countVMs()
+      val status = ctx.request().getParam("status")?.let {
+        try {
+          VM.Status.valueOf(it)
+        } catch (e: IllegalArgumentException) {
+          ctx.response()
+              .setStatusCode(400)
+              .end("Invalid status: $it")
+          return@launch
+        }
+      }
+
+      val list = vmRegistry.findVMs(status, size, offset, -1).map { JsonUtils.toJson(it) }
+      val total = vmRegistry.countVMs(status)
       val encodedJson = JsonArray(list).encode()
 
       if (isHtml) {

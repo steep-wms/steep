@@ -147,13 +147,19 @@ abstract class VMRegistryTest {
       vmRegistry.addVM(vm2)
       vmRegistry.addVM(vm3)
 
-      val r1 = vmRegistry.findVMsByStatus(VM.Status.CREATING)
-      val r2 = vmRegistry.findVMsByStatus(VM.Status.RUNNING)
-      val r3 = vmRegistry.findVMsByStatus(VM.Status.PROVISIONING)
+      val r1 = vmRegistry.findVMs(VM.Status.CREATING)
+      val r2 = vmRegistry.findVMs(VM.Status.RUNNING)
+      val r3 = vmRegistry.findVMs(VM.Status.PROVISIONING)
+      val r4 = vmRegistry.findVMs(VM.Status.CREATING, offset = 1, size = 1)
+      val r5 = vmRegistry.findVMs(VM.Status.CREATING, offset = 1, size = 1, order = -1)
+      val r6 = vmRegistry.findVMs(VM.Status.CREATING, order = -1)
       ctx.verify {
-        assertThat(r1).containsExactlyInAnyOrder(vm1, vm2)
-        assertThat(r2).containsExactlyInAnyOrder(vm3)
+        assertThat(r1).containsExactly(vm1, vm2)
+        assertThat(r2).containsExactly(vm3)
         assertThat(r3).isEmpty()
+        assertThat(r4).containsExactly(vm2)
+        assertThat(r5).containsExactly(vm1)
+        assertThat(r6).containsExactly(vm2, vm1)
       }
 
       ctx.completeNow()
@@ -216,6 +222,54 @@ abstract class VMRegistryTest {
       val r = vmRegistry.countVMs()
       ctx.verify {
         assertThat(r).isEqualTo(9)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun countVMsByStatus(vertx: Vertx, ctx: VertxTestContext) {
+    val setup2 = setup.copy(id = "another-test-setup")
+
+    val vm1 = VM(setup = setup, status = VM.Status.CREATING)
+    val vm2 = VM(setup = setup, status = VM.Status.PROVISIONING)
+    val vm3 = VM(setup = setup, status = VM.Status.RUNNING)
+    val vm4 = VM(setup = setup, status = VM.Status.LEFT)
+    val vm5 = VM(setup = setup, status = VM.Status.DESTROYING)
+    val vm6 = VM(setup = setup, status = VM.Status.DESTROYED)
+    val vm7 = VM(setup = setup, status = VM.Status.ERROR)
+    val vm8 = VM(setup = setup2, status = VM.Status.RUNNING)
+    val vm9 = VM(setup = setup2, status = VM.Status.ERROR)
+    val vm10 = VM(setup = setup, status = VM.Status.ERROR)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      vmRegistry.addVM(vm1)
+      vmRegistry.addVM(vm2)
+      vmRegistry.addVM(vm3)
+      vmRegistry.addVM(vm4)
+      vmRegistry.addVM(vm5)
+      vmRegistry.addVM(vm6)
+      vmRegistry.addVM(vm7)
+      vmRegistry.addVM(vm8)
+      vmRegistry.addVM(vm9)
+      vmRegistry.addVM(vm10)
+
+      val r1 = vmRegistry.countVMs(VM.Status.CREATING)
+      val r2 = vmRegistry.countVMs(VM.Status.PROVISIONING)
+      val r3 = vmRegistry.countVMs(VM.Status.RUNNING)
+      val r4 = vmRegistry.countVMs(VM.Status.LEFT)
+      val r5 = vmRegistry.countVMs(VM.Status.DESTROYING)
+      val r6 = vmRegistry.countVMs(VM.Status.DESTROYED)
+      val r7 = vmRegistry.countVMs(VM.Status.ERROR)
+      ctx.verify {
+        assertThat(r1).isEqualTo(1)
+        assertThat(r2).isEqualTo(1)
+        assertThat(r3).isEqualTo(2)
+        assertThat(r4).isEqualTo(1)
+        assertThat(r5).isEqualTo(1)
+        assertThat(r6).isEqualTo(1)
+        assertThat(r7).isEqualTo(3)
       }
 
       ctx.completeNow()

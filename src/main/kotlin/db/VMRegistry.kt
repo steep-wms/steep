@@ -15,6 +15,7 @@ interface VMRegistry : Registry {
 
   /**
    * Get a list of all VMs in the registry
+   * @param status an optional status the VMs should have
    * @param size the maximum number of VMs to return (may be negative
    * if all VMs should be returned)
    * @param offset the index of the first VM to return
@@ -22,7 +23,8 @@ interface VMRegistry : Registry {
    * ascending order, negative otherwise
    * @return all VMs
    */
-  suspend fun findVMs(size: Int = -1, offset: Int = 0, order: Int = 1): Collection<VM>
+  suspend fun findVMs(status: VM.Status? = null, size: Int = -1,
+      offset: Int = 0, order: Int = 1): Collection<VM>
 
   /**
    * Get a single VM with a given [id] from the registry or return `null` if
@@ -37,20 +39,16 @@ interface VMRegistry : Registry {
   suspend fun findVMByExternalId(externalId: String): VM?
 
   /**
-   * Get a list of VMs with a given [status]
-   */
-  suspend fun findVMsByStatus(status: VM.Status): Collection<VM>
-
-  /**
    * Get a list of VMs that are not terminated (i.e. that don't have the
    * status [VM.Status.DESTROYED] or [VM.Status.ERROR])
    */
   suspend fun findNonTerminatedVMs(): Collection<VM>
 
   /**
-   * Get the total number of VMs in the registry
+   * Get the total number of VMs in the registry, optionally count only those
+   * with a given [status]
    */
-  suspend fun countVMs(): Long
+  suspend fun countVMs(status: VM.Status? = null): Long
 
   /**
    * Get the number of VMs with a given [setupId] that are not terminated (i.e.

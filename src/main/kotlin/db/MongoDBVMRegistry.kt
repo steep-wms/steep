@@ -112,8 +112,13 @@ class MongoDBVMRegistry(private val vertx: Vertx,
     return JsonUtils.fromJson(document)
   }
 
-  override suspend fun findVMs(size: Int, offset: Int, order: Int): Collection<VM> {
-    val docs = collVMs.findAwait(JsonObject(), size, offset, json {
+  override suspend fun findVMs(status: VM.Status?, size: Int, offset: Int,
+      order: Int): Collection<VM> {
+    val docs = collVMs.findAwait(JsonObject().also {
+      if (status != null) {
+        it.put(STATUS, status.toString())
+      }
+    }, size, offset, json {
       obj(
           SEQUENCE to order
       )
@@ -139,15 +144,6 @@ class MongoDBVMRegistry(private val vertx: Vertx,
     return doc?.let { deserializeVM(it) }
   }
 
-  override suspend fun findVMsByStatus(status: VM.Status): Collection<VM> {
-    val docs = collVMs.findAwait(json {
-      obj(
-          STATUS to status.toString()
-      )
-    })
-    return docs.map { deserializeVM(it) }
-  }
-
   override suspend fun findNonTerminatedVMs(): Collection<VM> {
     val docs = collVMs.findAwait(json {
       obj(
@@ -157,7 +153,12 @@ class MongoDBVMRegistry(private val vertx: Vertx,
     return docs.map { deserializeVM(it) }
   }
 
-  override suspend fun countVMs() = collVMs.countDocumentsAwait(JsonObject())
+  override suspend fun countVMs(status: VM.Status?) =
+      collVMs.countDocumentsAwait(JsonObject().also {
+        if (status != null) {
+          it.put(STATUS, status.toString())
+        }
+      })
 
   override suspend fun countNonTerminatedVMsBySetup(setupId: String): Long {
     return collVMs.countDocumentsAwait(json {

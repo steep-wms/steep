@@ -12,6 +12,7 @@ import io.vertx.kotlin.ext.sql.querySingleWithParamsAwait
 import io.vertx.kotlin.ext.sql.queryWithParamsAwait
 import io.vertx.kotlin.ext.sql.updateWithParamsAwait
 import model.cloud.VM
+import java.lang.StringBuilder
 import java.time.Instant
 
 /**
@@ -54,12 +55,31 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
     }
   }
 
-  override suspend fun findVMs(size: Int, offset: Int, order: Int): Collection<VM> {
+  override suspend fun findVMs(status: VM.Status?, size: Int, offset: Int,
+      order: Int): Collection<VM> {
     val asc = if (order >= 0) "ASC" else "DESC"
     val limit = if (size < 0) "ALL" else size.toString()
     return withConnection { connection ->
-      val rs = connection.queryAwait("SELECT $DATA FROM $VMS " +
-          "ORDER BY $SERIAL $asc LIMIT $limit OFFSET $offset")
+      val statement = StringBuilder("SELECT $DATA FROM $VMS ")
+
+      val params = if (status != null) {
+        statement.append("WHERE $DATA->'$STATUS'=?::jsonb ")
+        json {
+          array(
+              "\"$status\""
+          )
+        }
+      } else {
+        null
+      }
+
+      statement.append("ORDER BY $SERIAL $asc LIMIT $limit OFFSET $offset")
+
+      val rs = if (params == null) {
+        connection.queryAwait(statement.toString())
+      } else {
+        connection.queryWithParamsAwait(statement.toString(), params)
+      }
       rs.results.map { JsonUtils.mapper.readValue<VM>(it.getString(0)) }
     }
   }
@@ -90,19 +110,6 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
     }
   }
 
-  override suspend fun findVMsByStatus(status: VM.Status): Collection<VM> {
-    return withConnection { connection ->
-      val statement = "SELECT $DATA FROM $VMS WHERE $DATA->'$STATUS'=?::jsonb"
-      val params = json {
-        array(
-            "\"$status\""
-        )
-      }
-      val rs = connection.queryWithParamsAwait(statement, params)
-      rs.results.map { JsonUtils.mapper.readValue<VM>(it.getString(0)) }
-    }
-  }
-
   override suspend fun findNonTerminatedVMs(): Collection<VM> {
     return withConnection { connection ->
       val statement = "SELECT $DATA FROM $VMS WHERE $DATA->'$STATUS'!=?::jsonb " +
@@ -118,9 +125,26 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
     }
   }
 
-  override suspend fun countVMs(): Long {
+  override suspend fun countVMs(status: VM.Status?): Long {
     return withConnection { connection ->
-      val rs = connection.querySingleAwait("SELECT COUNT(*) FROM $VMS")
+      val statement = StringBuilder("SELECT COUNT(*) FROM $VMS")
+
+      val params = if (status != null) {
+        statement.append(" WHERE $DATA->'$STATUS'=?::jsonb")
+        json {
+          array(
+              "\"$status\""
+          )
+        }
+      } else {
+        null
+      }
+
+      val rs = if (params == null) {
+        connection.querySingleAwait(statement.toString())
+      } else {
+        connection.querySingleWithParamsAwait(statement.toString(), params)
+      }
       rs?.getLong(0) ?: 0L
     }
   }

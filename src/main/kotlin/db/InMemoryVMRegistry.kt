@@ -59,11 +59,13 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
     vms.await().putAwait(vm.id, str)
   }
 
-  override suspend fun findVMs(size: Int, offset: Int, order: Int): Collection<VM> {
+  override suspend fun findVMs(status: VM.Status?, size: Int, offset: Int,
+      order: Int): Collection<VM> {
     val map = vms.await()
     val values = awaitResult<List<String>> { map.values(it) }
     return values
         .map { JsonUtils.mapper.readValue<VMEntry>(it) }
+        .filter { status == null || it.vm.status == status }
         .sortedBy { it.serial }
         .let { if (order < 0) it.reversed() else it }
         .drop(offset)
@@ -88,15 +90,6 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
         .find { it.vm.externalId == externalId }?.vm
   }
 
-  override suspend fun findVMsByStatus(status: VM.Status): Collection<VM> {
-    val map = vms.await()
-    val values = awaitResult<List<String>> { map.values(it) }
-    return values
-        .map { JsonUtils.mapper.readValue<VMEntry>(it) }
-        .filter { it.vm.status == status }
-        .map { it.vm }
-  }
-
   override suspend fun findNonTerminatedVMs(): Collection<VM> {
     val map = vms.await()
     val values = awaitResult<List<String>> { map.values(it) }
@@ -106,8 +99,17 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
         .map { it.vm }
   }
 
-  override suspend fun countVMs(): Long {
-    return vms.await().sizeAwait().toLong()
+  override suspend fun countVMs(status: VM.Status?): Long {
+    val map = vms.await()
+    return if (status == null) {
+      map.sizeAwait().toLong()
+    } else {
+      val values = awaitResult<List<String>> { map.values(it) }
+      values
+          .map { JsonUtils.mapper.readValue<VMEntry>(it) }
+          .filter { it.vm.status == status }
+          .count().toLong()
+    }
   }
 
   override suspend fun countNonTerminatedVMsBySetup(setupId: String): Long {

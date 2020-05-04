@@ -241,7 +241,7 @@ class CloudManager : CoroutineVerticle() {
     log.debug("Syncing VMs ...")
 
     // destroy all virtual machines whose agents have left
-    val vmsToRemove = vmRegistry.findVMsByStatus(VM.Status.LEFT)
+    val vmsToRemove = vmRegistry.findVMs(VM.Status.LEFT)
     for (vm in vmsToRemove) {
       log.info("Destroying VM of left agent `${vm.id}' ...")
       vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYING)

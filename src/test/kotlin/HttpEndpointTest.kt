@@ -4,6 +4,8 @@ import db.MetadataRegistryFactory
 import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus
 import db.SubmissionRegistryFactory
+import db.VMRegistry
+import db.VMRegistryFactory
 import helper.JsonUtils
 import helper.UniqueID
 import helper.YamlUtils
@@ -35,12 +37,14 @@ import io.vertx.kotlin.ext.web.client.sendJsonObjectAwait
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import model.Submission
+import model.cloud.VM
 import model.metadata.Cardinality
 import model.metadata.Service
 import model.metadata.ServiceParameter
 import model.processchain.Argument
 import model.processchain.Executable
 import model.processchain.ProcessChain
+import model.setup.Setup
 import model.workflow.ExecuteAction
 import model.workflow.ForEachAction
 import model.workflow.GenericParameter
@@ -65,6 +69,11 @@ class HttpEndpointTest {
   private var port: Int = 0
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var metadataRegistry: MetadataRegistry
+  private lateinit var vmRegistry: VMRegistry
+
+  private val setup = Setup(id = "test-setup", flavor = "myflavor",
+      imageName = "myimage", availabilityZone = "my-az", blockDeviceSizeGb = 20,
+      maxVMs = 10)
 
   @BeforeEach
   fun setUp(vertx: Vertx, ctx: VertxTestContext) {
@@ -80,6 +89,11 @@ class HttpEndpointTest {
     metadataRegistry = mockk()
     mockkObject(MetadataRegistryFactory)
     every { MetadataRegistryFactory.create(any()) } returns metadataRegistry
+
+    // mock VM registry
+    vmRegistry = mockk()
+    mockkObject(VMRegistryFactory)
+    every { VMRegistryFactory.create(any()) } returns vmRegistry
 
     // deploy verticle under test
     val config = json {
@@ -1312,6 +1326,99 @@ class HttpEndpointTest {
         })
       }
 
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that the endpoint returns a list of VMs
+   */
+  @Test
+  fun getVMs(vertx: Vertx, ctx: VertxTestContext) {
+    val vm1 = VM(setup = setup, status = VM.Status.CREATING)
+    val vm2 = VM(setup = setup, status = VM.Status.PROVISIONING)
+    val vm3 = VM(setup = setup, status = VM.Status.RUNNING)
+
+    coEvery { vmRegistry.findVMs(size = 10, order = -1) } returns listOf(vm1, vm2, vm3)
+    coEvery { vmRegistry.countVMs() } returns 3
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/vms")
+            .`as`(BodyCodec.jsonArray())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.JSON)
+            .sendAwait()
+
+        assertThat(response.headers()["x-page-size"]).isEqualTo("10")
+        assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
+        assertThat(response.headers()["x-page-total"]).isEqualTo("3")
+
+        assertThat(response.body()).isEqualTo(json {
+          array(
+              obj(
+                  "id" to vm1.id,
+                  "setup" to JsonUtils.toJson(setup),
+                  "status" to VM.Status.CREATING.toString()
+              ),
+              obj(
+                  "id" to vm2.id,
+                  "setup" to JsonUtils.toJson(setup),
+                  "status" to VM.Status.PROVISIONING.toString()
+              ),
+              obj(
+                  "id" to vm3.id,
+                  "setup" to JsonUtils.toJson(setup),
+                  "status" to VM.Status.RUNNING.toString()
+              )
+          )
+        })
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that the endpoint returns a list of VMs with a given status
+   */
+  @Test
+  fun getVMsByStatus(vertx: Vertx, ctx: VertxTestContext) {
+    val vm1 = VM(setup = setup, status = VM.Status.CREATING)
+    val vm2 = VM(setup = setup, status = VM.Status.CREATING)
+
+    coEvery { vmRegistry.findVMs(status = VM.Status.CREATING, size = 10,
+        order = -1) } returns listOf(vm1, vm2)
+    coEvery { vmRegistry.countVMs(status = VM.Status.CREATING) } returns 2
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/vms?status=CREATING")
+            .`as`(BodyCodec.jsonArray())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.JSON)
+            .sendAwait()
+
+        assertThat(response.headers()["x-page-size"]).isEqualTo("10")
+        assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
+        assertThat(response.headers()["x-page-total"]).isEqualTo("2")
+
+        assertThat(response.body()).isEqualTo(json {
+          array(
+              obj(
+                  "id" to vm1.id,
+                  "setup" to JsonUtils.toJson(setup),
+                  "status" to VM.Status.CREATING.toString()
+              ),
+              obj(
+                  "id" to vm2.id,
+                  "setup" to JsonUtils.toJson(setup),
+                  "status" to VM.Status.CREATING.toString()
+              )
+          )
+        })
+      }
       ctx.completeNow()
     }
   }
