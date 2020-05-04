@@ -48,6 +48,7 @@ interface SubmissionRegistry : Registry {
 
   /**
    * Get a list of all submissions in the registry
+   * @param status an optional status the returned submissions should have
    * @param size the maximum number of submissions to return (may be negative
    * if all submissions should be returned)
    * @param offset the index of the first submission to return
@@ -55,7 +56,8 @@ interface SubmissionRegistry : Registry {
    * ascending order, negative otherwise
    * @return all submissions
    */
-  suspend fun findSubmissions(size: Int = -1, offset: Int = 0, order: Int = 1): Collection<Submission>
+  suspend fun findSubmissions(status: Submission.Status? = null, size: Int = -1,
+      offset: Int = 0, order: Int = 1): Collection<Submission>
 
   /**
    * Get a single submission from the registry
@@ -73,9 +75,10 @@ interface SubmissionRegistry : Registry {
 
   /**
    * Get the number of existing submissions
+   * @param status an optional status the submissions should have
    * @return the number of submissions
    */
-  suspend fun countSubmissions(): Long
+  suspend fun countSubmissions(status: Submission.Status? = null): Long
 
   /**
    * Atomically fetch a submission that has the given `currentStatus` and

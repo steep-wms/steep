@@ -229,7 +229,8 @@ class HttpEndpointTest {
 
     coEvery { metadataRegistry.findServices() } returns emptyList()
 
-    coEvery { submissionRegistry.findSubmissions(any(), any(), any()) } returns listOf(s1, s2, s3)
+    coEvery { submissionRegistry.findSubmissions(any(), any(), any(), any()) } returns
+        listOf(s1, s2, s3)
     coEvery { submissionRegistry.countSubmissions() } returns 3
 
     val client = WebClient.create(vertx)
@@ -267,6 +268,63 @@ class HttpEndpointTest {
                   "totalProcessChains" to 65,
                   "requiredCapabilities" to array()
               ),
+              obj(
+                  "id" to s3.id,
+                  "status" to Submission.Status.SUCCESS.toString(),
+                  "runningProcessChains" to 0,
+                  "cancelledProcessChains" to 0,
+                  "failedProcessChains" to 0,
+                  "succeededProcessChains" to 1,
+                  "totalProcessChains" to 1,
+                  "requiredCapabilities" to array()
+              )
+          )
+        })
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that the endpoint returns a list of workflows with a given status
+   */
+  @Test
+  fun getWorkflowsByStatus(vertx: Vertx, ctx: VertxTestContext) {
+    val s3 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
+
+    coEvery { submissionRegistry.countProcessChains(s3.id) } returns 1
+    coEvery { submissionRegistry.countProcessChains(s3.id,
+        ProcessChainStatus.REGISTERED) } returns 0
+    coEvery { submissionRegistry.countProcessChains(s3.id,
+        ProcessChainStatus.RUNNING) } returns 0
+    coEvery { submissionRegistry.countProcessChains(s3.id,
+        ProcessChainStatus.CANCELLED) } returns 0
+    coEvery { submissionRegistry.countProcessChains(s3.id,
+        ProcessChainStatus.ERROR) } returns 0
+    coEvery { submissionRegistry.countProcessChains(s3.id,
+        ProcessChainStatus.SUCCESS) } returns 1
+
+    coEvery { metadataRegistry.findServices() } returns emptyList()
+
+    coEvery { submissionRegistry.findSubmissions(Submission.Status.SUCCESS,
+        any(), any(), any()) } returns listOf(s3)
+    coEvery { submissionRegistry.countSubmissions(Submission.Status.SUCCESS) } returns 1
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/workflows?status=SUCCESS")
+            .`as`(BodyCodec.jsonArray())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.JSON)
+            .sendAwait()
+
+        assertThat(response.headers()["x-page-size"]).isEqualTo("10")
+        assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
+        assertThat(response.headers()["x-page-total"]).isEqualTo("1")
+
+        assertThat(response.body()).isEqualTo(json {
+          array(
               obj(
                   "id" to s3.id,
                   "status" to Submission.Status.SUCCESS.toString(),

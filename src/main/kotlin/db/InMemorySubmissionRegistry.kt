@@ -99,11 +99,13 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     submissions.await().putAwait(submission.id, str)
   }
 
-  override suspend fun findSubmissions(size: Int, offset: Int, order: Int): List<Submission> {
+  override suspend fun findSubmissions(status: Submission.Status?, size: Int,
+      offset: Int, order: Int): List<Submission> {
     val map = submissions.await()
     val values = awaitResult<List<String>> { map.values(it) }
     return values
         .map { JsonUtils.mapper.readValue<SubmissionEntry>(it) }
+        .filter { status == null || it.submission.status == status }
         .sortedBy { it.serial }
         .let { if (order < 0) it.reversed() else it }
         .drop(offset)
@@ -129,8 +131,16 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
         .map { it.submission.id }
   }
 
-  override suspend fun countSubmissions(): Long {
-    return submissions.await().sizeAwait().toLong()
+  override suspend fun countSubmissions(status: Submission.Status?): Long {
+    val map = submissions.await()
+    return if (status == null) {
+      map.sizeAwait().toLong()
+    } else {
+      val values = awaitResult<List<String>> { map.values(it) }
+      values.map { JsonUtils.mapper.readValue<SubmissionEntry>(it) }
+          .filter { it.submission.status == status }
+          .size.toLong()
+    }
   }
 
   override suspend fun fetchNextSubmission(currentStatus: Submission.Status,

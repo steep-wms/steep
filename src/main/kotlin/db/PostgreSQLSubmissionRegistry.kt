@@ -119,12 +119,33 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
   }
 
-  override suspend fun findSubmissions(size: Int, offset: Int, order: Int): Collection<Submission> {
+  override suspend fun findSubmissions(status: Submission.Status?, size: Int,
+      offset: Int, order: Int): Collection<Submission> {
     val asc = if (order >= 0) "ASC" else "DESC"
     val limit = if (size < 0) "ALL" else size.toString()
+
+    val statement = StringBuilder()
+    statement.append("SELECT $DATA FROM $SUBMISSIONS ")
+
+    val params = if (status != null) {
+      statement.append("WHERE $DATA->'$STATUS'=?::jsonb ")
+      json {
+        array(
+            "\"$status\""
+        )
+      }
+    } else {
+      null
+    }
+
+    statement.append("ORDER BY $SERIAL $asc LIMIT $limit OFFSET $offset")
+
     return withConnection { connection ->
-      val rs = connection.queryAwait("SELECT $DATA FROM $SUBMISSIONS " +
-          "ORDER BY $SERIAL $asc LIMIT $limit OFFSET $offset")
+      val rs = if (params != null) {
+        connection.queryWithParamsAwait(statement.toString(), params)
+      } else {
+        connection.queryAwait(statement.toString())
+      }
       rs.results.map { JsonUtils.mapper.readValue<Submission>(it.getString(0)) }
     }
   }
@@ -156,9 +177,27 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
   }
 
-  override suspend fun countSubmissions(): Long {
+  override suspend fun countSubmissions(status: Submission.Status?): Long {
     return withConnection { connection ->
-      val rs = connection.querySingleAwait("SELECT COUNT(*) FROM $SUBMISSIONS")
+      val statement = StringBuilder()
+      statement.append("SELECT COUNT(*) FROM $SUBMISSIONS")
+
+      val params = if (status != null) {
+        statement.append(" WHERE $DATA->'$STATUS'=?::jsonb")
+        json {
+          array(
+              "\"$status\""
+          )
+        }
+      } else {
+        null
+      }
+
+      val rs = if (params != null) {
+        connection.querySingleWithParamsAwait(statement.toString(), params)
+      } else {
+        connection.querySingleAwait(statement.toString())
+      }
       rs?.getLong(0) ?: 0L
     }
   }

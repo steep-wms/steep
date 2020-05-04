@@ -710,8 +710,19 @@ class HttpEndpoint : CoroutineVerticle() {
       val offset = max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
       val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
 
-      val total = submissionRegistry.countSubmissions()
-      val submissions = submissionRegistry.findSubmissions(size, offset, -1)
+      val status = ctx.request().getParam("status")?.let {
+        try {
+          Submission.Status.valueOf(it)
+        } catch (e: IllegalArgumentException) {
+          ctx.response()
+              .setStatusCode(400)
+              .end("Invalid status: $it")
+          return@launch
+        }
+      }
+
+      val total = submissionRegistry.countSubmissions(status)
+      val submissions = submissionRegistry.findSubmissions(status, size, offset, -1)
 
       val list = submissions.map { submission ->
         val reqCaps = submission.collectRequiredCapabilities(

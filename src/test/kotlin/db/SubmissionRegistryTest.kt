@@ -115,6 +115,61 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun findSubmissionsByStatusPage(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
+    val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
+    val s3 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
+    val s4 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addSubmission(s3)
+      submissionRegistry.addSubmission(s4)
+
+      // check if we can query by status
+      val r1 = submissionRegistry.findSubmissions()
+      val r2 = submissionRegistry.findSubmissions(Submission.Status.RUNNING)
+      val r3 = submissionRegistry.findSubmissions(Submission.Status.SUCCESS)
+      val r4 = submissionRegistry.findSubmissions(Submission.Status.ERROR)
+      ctx.verify {
+        assertThat(r1).isEqualTo(listOf(s1, s2, s3, s4))
+        assertThat(r2).isEqualTo(listOf(s1, s3, s4))
+        assertThat(r3).isEqualTo(listOf(s2))
+        assertThat(r4).isEmpty()
+      }
+
+      // check if order can be reversed
+      val r5 = submissionRegistry.findSubmissions(Submission.Status.RUNNING, order = -1)
+      ctx.verify {
+        assertThat(r5).isEqualTo(listOf(s4, s3, s1))
+      }
+
+      // check if we can query pages
+      val r6 = submissionRegistry.findSubmissions(Submission.Status.RUNNING,
+          size = 1, offset = 0)
+      val r7 = submissionRegistry.findSubmissions(Submission.Status.RUNNING,
+          size = 2, offset = 1)
+      ctx.verify {
+        assertThat(r6).isEqualTo(listOf(s1))
+        assertThat(r7).isEqualTo(listOf(s3, s4))
+      }
+
+      // check if we can query pages with reversed order
+      val r8 = submissionRegistry.findSubmissions(Submission.Status.RUNNING,
+          size = 1, offset = 0, order = -1)
+      val r9 = submissionRegistry.findSubmissions(Submission.Status.RUNNING,
+          size = 2, offset = 1, order = -1)
+      ctx.verify {
+        assertThat(r8).isEqualTo(listOf(s4))
+        assertThat(r9).isEqualTo(listOf(s3, s1))
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun findSubmissionIdsByStatus(vertx: Vertx, ctx: VertxTestContext) {
     val s1 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
     val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
@@ -159,6 +214,33 @@ abstract class SubmissionRegistryTest {
       val c3 = submissionRegistry.countSubmissions()
       ctx.verify {
         assertThat(c3).isEqualTo(3)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun countSubmissionsByStatus(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
+    val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
+    val s3 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addSubmission(s3)
+
+      val c1 = submissionRegistry.countSubmissions()
+      val c2 = submissionRegistry.countSubmissions(Submission.Status.RUNNING)
+      val c3 = submissionRegistry.countSubmissions(Submission.Status.SUCCESS)
+      val c4 = submissionRegistry.countSubmissions(Submission.Status.ERROR)
+
+      ctx.verify {
+        assertThat(c1).isEqualTo(3)
+        assertThat(c2).isEqualTo(2)
+        assertThat(c3).isEqualTo(1)
+        assertThat(c4).isEqualTo(0)
       }
 
       ctx.completeNow()

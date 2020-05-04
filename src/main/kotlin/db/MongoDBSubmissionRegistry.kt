@@ -157,9 +157,13 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     return JsonUtils.fromJson(document)
   }
 
-  override suspend fun findSubmissions(size: Int, offset: Int, order: Int):
-      Collection<Submission> {
-    val docs = collSubmissions.findAwait(JsonObject(), size, offset, json {
+  override suspend fun findSubmissions(status: Submission.Status?, size: Int,
+      offset: Int, order: Int): Collection<Submission> {
+    val docs = collSubmissions.findAwait(JsonObject().also {
+      if (status != null) {
+        it.put(STATUS, status.toString())
+      }
+    }, size, offset, json {
       obj(
           SEQUENCE to order
       )
@@ -187,8 +191,12 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         )
       }).map { it.getString(INTERNAL_ID) }
 
-  override suspend fun countSubmissions() =
-      collSubmissions.countDocumentsAwait(JsonObject())
+  override suspend fun countSubmissions(status: Submission.Status?) =
+      collSubmissions.countDocumentsAwait(JsonObject().also {
+        if (status != null) {
+          it.put(STATUS, status.toString())
+        }
+      })
 
   /**
    * Get the value of a [field] of a document with the given [id] and [type]
