@@ -11,7 +11,9 @@
     font-size: .6rem;
   }
 
-  & + & {
-    margin-left: $spacer / 4;
+  margin-right: $spacer / 4;
+
+  &:last-child {
+    margin-right: 0;
   }
 }
