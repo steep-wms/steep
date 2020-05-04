@@ -4,6 +4,20 @@ import WorkflowContext from "../../components/workflows/WorkflowContext"
 import { useMemo } from "react"
 import workflowToProgress from "../../components/workflows/workflow-to-progress"
 
+const FILTERS = [{
+  name: "status",
+  title: "Failed workflows only",
+  enabledValue: "ERROR"
+}, {
+  name: "status",
+  title: "Partially succeeded workflows only",
+  enabledValue: "PARTIAL_SUCCESS"
+}, {
+  name: "status",
+  title: "Running workflows only",
+  enabledValue: "RUNNING"
+}]
+
 function WorkflowListItem({ item: workflow }) {
   return useMemo(() => {
     let href = "/workflows/[id]"
@@ -20,5 +34,6 @@ function WorkflowListItem({ item: workflow }) {
 
 export default () => (
   <ListPage title="Workflows" Context={WorkflowContext}
-      ListItem={WorkflowListItem} subjects="workflows" path="workflows" />
+      ListItem={WorkflowListItem} subjects="workflows" path="workflows"
+      filters={FILTERS} />
 )

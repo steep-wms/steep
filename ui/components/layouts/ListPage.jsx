@@ -10,6 +10,7 @@ import "./ListPage.scss"
 import fetcher from "../lib/json-fetcher"
 import { useRouter } from "next/router"
 import { Check } from "react-feather"
+import debounce from "lodash/debounce"
 
 function List({ Context, ListItem, subjects, path, pagination, pageSize,
     pageOffset, enabledFilterValues, forceUpdate }) {
@@ -97,8 +98,12 @@ export default (props) => {
   }
 
   const router = useRouter()
-  const [updatesAvailable, setUpdatesAvailable] = useState(false)
+  const [updatesAvailable, setUpdatesAvailableNow] = useState(false)
   const [forceUpdate, setForceUpdate] = useState(0)
+
+  const setUpdatesAvailable = useCallback(debounce((updatesAvailable) => {
+    setUpdatesAvailableNow(updatesAvailable)
+  }, 100), [setUpdatesAvailableNow])
 
   let pageOffset
   let pageSize
@@ -130,11 +135,11 @@ export default (props) => {
   let serializedEnabledFilterValues = JSON.stringify(enabledFilterValues)
 
   useEffect(() => {
-    setUpdatesAvailable(false)
+    setUpdatesAvailableNow(false)
   }, [serializedEnabledFilterValues])
 
   useEffect(() => {
-    setUpdatesAvailable(false)
+    setUpdatesAvailableNow(false)
   }, [pageOffset, pageSize, forceUpdate])
 
   function shouldAddItem(item) {
@@ -146,13 +151,17 @@ export default (props) => {
       })
     }
     if (result && pageOffset > 0) {
-      setTimeout(() => setUpdatesAvailable(true), 0)
+      setUpdatesAvailable(true)
       return false
     }
     return result
   }
 
   function reducer(state, { action, items }, next) {
+    if (action === "set") {
+      setUpdatesAvailable(false)
+    }
+
     if (!updatesAvailable && action === "update" && state.items !== undefined &&
         enabledFilterValues !== undefined) {
       // Check if any of the items would match the current filter (if there
@@ -167,10 +176,18 @@ export default (props) => {
           keys.forEach(k => {
             let v = enabledFilterValues[k]
             didMatch = didMatch && oldItem[k] === v
-            willMatch = willMatch && item[k] === v
+            if (k in item) {
+              willMatch = willMatch && item[k] === v
+            } else {
+              if (oldItem !== undefined) {
+                willMatch = willMatch && oldItem[k] === v
+              } else {
+                willMatch = false
+              }
+            }
           })
           if (didMatch !== willMatch) {
-            setTimeout(() => setUpdatesAvailable(true), 0)
+            setUpdatesAvailable(true)
             break
           }
         }
