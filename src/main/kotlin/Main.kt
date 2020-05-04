@@ -27,6 +27,7 @@ import java.net.NetworkInterface
 import java.net.SocketException
 import java.util.Enumeration
 import java.util.concurrent.CountDownLatch
+import kotlin.system.exitProcess
 
 const val ATTR_AGENT_ID = "Agent-ID"
 var globalAgentId: String = "localhost"
@@ -126,8 +127,7 @@ suspend fun main() {
     vertx.deployVerticleAwait(Main::class.qualifiedName!!, deploymentOptions)
   } catch (e: Exception) {
     e.printStackTrace()
-    System.exit(1)
-    return
+    exitProcess(1)
   }
 
   // enable graceful shutdown

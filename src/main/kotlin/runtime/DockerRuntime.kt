@@ -1,7 +1,6 @@
 package runtime
 
 import helper.UniqueID
-import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import model.processchain.Argument
