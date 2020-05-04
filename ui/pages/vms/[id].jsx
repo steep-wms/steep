@@ -79,6 +79,15 @@ function VM({ id }) {
           <ListItemProgressBox progress={progress} />
         </div>
       </div>
+      {vm.reason && vm.status === "ERROR" && (<>
+        <h2>Error message</h2>
+        <Alert error>{vm.reason}</Alert>
+      </>)}
+      {vm.reason && vm.status !== "ERROR" && (<>
+        <h2>Status</h2>
+        <Alert info>{vm.reason}</Alert>
+      </>)}
+      <h2>Details</h2>
       <div className="vm-details-two-column">
         <div className="vm-details-left">
           <DefinitionList>
@@ -95,17 +104,47 @@ function VM({ id }) {
         </div>
         <div className="vm-details-right">
           <DefinitionList>
+            <DefinitionListItem title="Flavor">
+              {vm.setup.flavor || <>&ndash;</>}
+            </DefinitionListItem>
+            <DefinitionListItem title="Image">
+              {vm.setup.imageName || <>&ndash;</>}
+            </DefinitionListItem>
+            <DefinitionListItem title="Availability zone">
+              {vm.setup.availabilityZone || <>&ndash;</>}
+            </DefinitionListItem>
           </DefinitionList>
         </div>
       </div>
-      {vm.reason && vm.status === "ERROR" && (<>
-        <h2>Error message</h2>
-        <Alert error>{vm.reason}</Alert>
-      </>)}
-      {vm.reason && vm.status !== "ERROR" && (<>
-        <h2>Status</h2>
-        <Alert info>{vm.reason}</Alert>
-      </>)}
+      <h2>Setup</h2>
+      <div className="vm-details-two-column">
+        <div className="vm-details-left">
+          <DefinitionList>
+            <DefinitionListItem title="ID">
+              {vm.setup.id}
+            </DefinitionListItem>
+            <DefinitionListItem title="Block device size">
+              {(vm.setup.blockDeviceSizeGb && `${vm.setup.blockDeviceSizeGb} GB`) || <>&ndash;</>}
+            </DefinitionListItem>
+            <DefinitionListItem title="Block device volume type">
+              {vm.setup.blockDeviceVolumeType || "(auto)"}
+            </DefinitionListItem>
+          </DefinitionList>
+        </div>
+        <div className="vm-details-right">
+          <DefinitionList>
+            <DefinitionListItem title="Minimum">
+              {(vm.setup.minVMs && `${vm.setup.minVMs} instances`) || <>&ndash;</>}
+            </DefinitionListItem>
+            <DefinitionListItem title="Maximum">
+              {(vm.setup.maxVMs && `${vm.setup.maxVMs} instances`) || <>&ndash;</>}
+            </DefinitionListItem>
+            <DefinitionListItem title="Create concurrently">
+              {(vm.setup.maxCreateConcurrent && `max. ${vm.setup.maxCreateConcurrent} instances`) || <>&ndash;</>}
+            </DefinitionListItem>
+          </DefinitionList>
+        </div>
+      </div>
     </>)
   }
 
