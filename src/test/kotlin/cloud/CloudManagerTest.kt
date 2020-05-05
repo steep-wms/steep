@@ -114,6 +114,51 @@ class CloudManagerTest {
     }
   }
 
+  private suspend fun doCreateOnDemand(setup: Setup, vertx: Vertx,
+      ctx: VertxTestContext, mockCreateResources: Boolean = true,
+      requiredCapabilities: List<String> = setup.providedCapabilities) {
+    val metadata = mapOf(
+        "Created-By" to CREATED_BY_TAG,
+        "Setup-Id" to setup.id
+    )
+
+    coEvery { client.getImageID(setup.imageName) } returns setup.imageName
+    if (mockCreateResources) {
+      coEvery { client.createBlockDevice(setup.imageName, setup.blockDeviceSizeGb,
+          setup.blockDeviceVolumeType, setup.availabilityZone,
+          metadata) } answers { UniqueID.next() }
+      coEvery { client.createVM(any(), setup.flavor, any(), setup.availabilityZone,
+          metadata) } answers { UniqueID.next() }
+    }
+    coEvery { client.getIPAddress(any()) } answers { UniqueID.next() }
+    coEvery { client.waitForVM(any()) } just Runs
+
+    var agentId = ""
+    val testShSrcSlot = slot<String>()
+    val testShDstSlot = slot<String>()
+    val executeSlot = slot<String>()
+    coEvery { anyConstructed<SSHClient>().uploadFile(capture(testShSrcSlot),
+        capture(testShDstSlot)) } answers {
+      agentId = File(testShSrcSlot.captured).readText()
+    }
+
+    coEvery { anyConstructed<SSHClient>().execute(capture(executeSlot)) } coAnswers {
+      if (executeSlot.captured != "sudo ${testShDstSlot.captured}") {
+        ctx.verify {
+          assertThat(executeSlot.captured).isEqualTo("sudo chmod +x ${testShDstSlot.captured}")
+        }
+      } else {
+        ctx.verify {
+          assertThat(agentId).isNotEmpty()
+        }
+        vertx.eventBus().publish(REMOTE_AGENT_ADDED,
+            REMOTE_AGENT_ADDRESS_PREFIX + agentId)
+      }
+    }
+
+    cloudManager.createRemoteAgent(requiredCapabilities.toSet())
+  }
+
   /**
    * Test that VMs are created
    */
@@ -151,51 +196,6 @@ class CloudManagerTest {
 
       deployCloudManager(tempDir, listOf(testSetup, testSetupLarge,
           testSetupAlternative, testSetupTwo), vertx, ctx)
-    }
-
-    private suspend fun doCreateOnDemand(setup: Setup, vertx: Vertx,
-        ctx: VertxTestContext, mockCreateResources: Boolean = true,
-        requiredCapabilities: List<String> = setup.providedCapabilities) {
-      val metadata = mapOf(
-          "Created-By" to CREATED_BY_TAG,
-          "Setup-Id" to setup.id
-      )
-
-      coEvery { client.getImageID(setup.imageName) } returns setup.imageName
-      if (mockCreateResources) {
-        coEvery { client.createBlockDevice(setup.imageName, setup.blockDeviceSizeGb,
-            setup.blockDeviceVolumeType, setup.availabilityZone,
-            metadata) } answers { UniqueID.next() }
-        coEvery { client.createVM(any(), setup.flavor, any(), setup.availabilityZone,
-            metadata) } answers { UniqueID.next() }
-      }
-      coEvery { client.getIPAddress(any()) } answers { UniqueID.next() }
-      coEvery { client.waitForVM(any()) } just Runs
-
-      var agentId = ""
-      val testShSrcSlot = slot<String>()
-      val testShDstSlot = slot<String>()
-      val executeSlot = slot<String>()
-      coEvery { anyConstructed<SSHClient>().uploadFile(capture(testShSrcSlot),
-          capture(testShDstSlot)) } answers {
-        agentId = File(testShSrcSlot.captured).readText()
-      }
-
-      coEvery { anyConstructed<SSHClient>().execute(capture(executeSlot)) } coAnswers {
-        if (executeSlot.captured != "sudo ${testShDstSlot.captured}") {
-          ctx.verify {
-            assertThat(executeSlot.captured).isEqualTo("sudo chmod +x ${testShDstSlot.captured}")
-          }
-        } else {
-          ctx.verify {
-            assertThat(agentId).isNotEmpty()
-          }
-          vertx.eventBus().publish(REMOTE_AGENT_ADDED,
-              REMOTE_AGENT_ADDRESS_PREFIX + agentId)
-        }
-      }
-
-      cloudManager.createRemoteAgent(requiredCapabilities.toSet())
     }
 
     /**
@@ -387,7 +387,7 @@ class CloudManagerTest {
     }
 
     /**
-     * Make sure we can exyctly create three VMs with [testSetupTwo]
+     * Make sure we can exactly create three VMs with [testSetupTwo]
      */
     @Test
     fun tryCreateThreeOfTwoSync(vertx: Vertx, ctx: VertxTestContext) {
@@ -598,13 +598,16 @@ class CloudManagerTest {
       testSh.writeText("{{ agentId }}")
 
       testSetup = Setup("test", "myflavor", "myImage", AZ01, 500000,
-          null, 0, 1, provisioningScripts = listOf(testSh.absolutePath),
+          null, 0, 100, maxCreateConcurrent = 100,
+          provisioningScripts = listOf(testSh.absolutePath),
           providedCapabilities = listOf("foo"))
       testSetup2 = Setup("test2", "myflavor2", "myImage2", AZ02, 500000,
-          null, 0, 1, provisioningScripts = listOf(testSh.absolutePath),
+          null, 0, 100, maxCreateConcurrent = 100,
+          provisioningScripts = listOf(testSh.absolutePath),
           providedCapabilities = listOf("foo", "bar"))
       testSetup3 = Setup("test3", "myflavor3", "myImage3", AZ02, 500000,
-          null, 0, 1, provisioningScripts = listOf(testSh.absolutePath),
+          null, 0, 100, maxCreateConcurrent = 100,
+          provisioningScripts = listOf(testSh.absolutePath),
           providedCapabilities = listOf("test"))
 
       // mock client
@@ -667,15 +670,18 @@ class CloudManagerTest {
         array(
             obj(
                 "capabilities" to array("foo"),
-                "min" to 2
+                "min" to 2,
+                "max" to 3
             ),
             obj(
                 "capabilities" to array("bar"),
-                "min" to 1
+                "min" to 1,
+                "max" to 2
             ),
             obj(
                 "capabilities" to array("test"),
-                "min" to 1
+                "min" to 1,
+                "max" to 4
             )
         )
       })
@@ -744,6 +750,97 @@ class CloudManagerTest {
 
           // check that keep-alive messages have been sent to all remote agents
           assertThat(keepAliveCounts).hasSize(3)
+        }
+
+        ctx.completeNow()
+      }
+    }
+
+    private fun tryCreateMax(setup: Setup, max: Int, vertx: Vertx, ctx: VertxTestContext) {
+      GlobalScope.launch(vertx.dispatcher()) {
+        val ds = (1..(max + 1)).map {
+          async { doCreateOnDemand(setup, vertx, ctx) }
+        }
+        ds.forEach { it.await() }
+
+        ctx.coVerify {
+          coVerify(exactly = max) {
+            client.getImageID(setup.imageName)
+            client.createBlockDevice(setup.imageName,
+                setup.blockDeviceSizeGb, null,
+                setup.availabilityZone, any())
+            client.createVM(any(), setup.flavor, any(),
+                setup.availabilityZone, any())
+            client.getIPAddress(any())
+          }
+        }
+
+        ctx.completeNow()
+      }
+    }
+
+    /**
+     * Check if we can only create 4 VMs having the capabilities ["test"]
+     */
+    @Test
+    fun tryCreateMaxFour(vertx: Vertx, ctx: VertxTestContext) {
+      tryCreateMax(testSetup3, 4, vertx, ctx)
+    }
+
+    /**
+     * Check if we can only create three VMs having the capabilities ["foo"]
+     */
+    @Test
+    fun tryCreateMaxThree(vertx: Vertx, ctx: VertxTestContext) {
+      tryCreateMax(testSetup, 3, vertx, ctx)
+    }
+
+    /**
+     * Check if we can only create two VMs having the capabilities ["foo", "bar"]
+     */
+    @Test
+    fun tryCreateMaxTwo(vertx: Vertx, ctx: VertxTestContext) {
+      tryCreateMax(testSetup2, 2, vertx, ctx)
+    }
+
+    /**
+     * Check if we can create two VMs with capabilities ["foo"] and then only
+     * one more with ["foo", "bar"] because the maximum number of foo's is
+     * three.
+     */
+    @Test
+    fun tryCreateMaxFooBar(vertx: Vertx, ctx: VertxTestContext) {
+      GlobalScope.launch(vertx.dispatcher()) {
+        val d1 = async { doCreateOnDemand(testSetup, vertx, ctx) }
+        val d2 = async { doCreateOnDemand(testSetup, vertx, ctx) }
+        val d3 = async { doCreateOnDemand(testSetup2, vertx, ctx) }
+        val d4 = async { doCreateOnDemand(testSetup2, vertx, ctx) }
+
+        d1.await()
+        d2.await()
+        d3.await()
+        d4.await()
+
+        ctx.coVerify {
+          coVerify(exactly = 2) {
+            client.getImageID(testSetup.imageName)
+            client.createBlockDevice(testSetup.imageName,
+                testSetup.blockDeviceSizeGb, null,
+                testSetup.availabilityZone, any())
+            client.createVM(any(), testSetup.flavor, any(),
+                testSetup.availabilityZone, any())
+          }
+          coVerify(exactly = 1) {
+            client.getImageID(testSetup2.imageName)
+            client.createBlockDevice(testSetup2.imageName,
+                testSetup2.blockDeviceSizeGb, null,
+                testSetup2.availabilityZone, any())
+            client.createVM(any(), testSetup2.flavor, any(),
+                testSetup2.availabilityZone, any())
+          }
+          coVerify(exactly = 3) {
+            client.getIPAddress(any())
+          }
         }
 
         ctx.completeNow()

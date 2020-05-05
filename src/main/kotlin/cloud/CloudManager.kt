@@ -88,9 +88,11 @@ class CloudManager : CoroutineVerticle() {
    * @param capabilities the capabilities the agent instances should provide
    * @param min the minimum number of remote agents to create with the given
    * [capabilities]
+   * @param max an optional maximum number of remote agents providing the given
+   * [capabilities]
    */
-  private data class PoolAgentParams(
-      val capabilities: List<String> = emptyList(), val min: Int = 0)
+  private data class PoolAgentParams(val capabilities: List<String> = emptyList(),
+      val min: Int = 0, val max: Int? = null)
 
   /**
    * The client to connect to the Cloud
@@ -333,20 +335,15 @@ class CloudManager : CoroutineVerticle() {
 
       // check agent pool parameters and ensure there's a minimum number of
       // agents with certain capabilities
+      var vmsPerSetup: Map<String, TreeSet<VM>>? = null
       for (params in poolAgentParams) {
         if (params.min > 0) {
-          val vmsPerSetup = getNonTerminatedVMsPerSetup()
-          val setupsById = setups.map { it.id to it }.toMap()
+          if (vmsPerSetup == null) {
+            vmsPerSetup = getNonTerminatedVMsPerSetup()
+          }
 
-          // count number of created VMs that provide the required capabilities
-          val n = vmsPerSetup.map { (setupId, vms) ->
-            val setup = setupsById[setupId]
-            if (setup?.providedCapabilities?.containsAll(params.capabilities) == true) {
-              vms.size
-            } else {
-              0
-            }
-          }.sum()
+          // count created VMs that provide the required capabilities
+          val n = countVMsWithCapabilities(vmsPerSetup, params.capabilities)
 
           if (n < params.min) {
             // There are not enough VMs that provide the required capabilities.
@@ -388,6 +385,24 @@ class CloudManager : CoroutineVerticle() {
       // add all remaining VMs to this set
       s.also { it.add(vm) }
     })
+  }
+
+  /**
+   * Iterate through a map of [nonTerminatedVMs] (as returned by
+   * [getNonTerminatedVMsPerSetup]) and count how many of them provide the
+   * given [capabilities]
+   */
+  private fun countVMsWithCapabilities(nonTerminatedVMs: Map<String, TreeSet<VM>>,
+      capabilities: List<String>): Int {
+    val setupsById = setups.map { it.id to it }.toMap()
+    return nonTerminatedVMs.map { (setupId, vms) ->
+      val setup = setupsById[setupId]
+      if (setup?.providedCapabilities?.containsAll(capabilities) == true) {
+        vms.size
+      } else {
+        0
+      }
+    }.sum()
   }
 
   /**
@@ -493,7 +508,7 @@ class CloudManager : CoroutineVerticle() {
         break
       }
 
-      log.warn("Could not create remote agent with setup `${setup.id}' and" +
+      log.warn("Could not create remote agent with setup `${setup.id}' and " +
           "capabilities $requiredCapabilities. Trying next setup ...", t)
       setup = setupQueue.poll()
     }
@@ -512,14 +527,42 @@ class CloudManager : CoroutineVerticle() {
     val sharedData = vertx.sharedData()
     val lock = sharedData.getLockAwait(LOCK_VMS)
     val vm = try {
-      if (vmRegistry.countNonTerminatedVMsBySetup(setup.id) >= setup.maxVMs.toLong()) {
+      val existingVMs = vmRegistry.countNonTerminatedVMsBySetup(setup.id)
+      if (existingVMs >= setup.maxVMs.toLong()) {
         // we already created more than enough virtual machines with this setup
+        log.debug("There already are $existingVMs virtual machines with " +
+            "setup `${setup.id}'. The maximum number is ${setup.maxVMs}.")
         return false
       }
 
-      if (vmRegistry.countStartingVMsBySetup(setup.id) >= setup.maxCreateConcurrent) {
+      val startingVMs = vmRegistry.countStartingVMsBySetup(setup.id)
+      if (startingVMs >= setup.maxCreateConcurrent) {
         // we are currently already creating enough virtual machines with this setup
+        log.debug("$startingVMs VMs are currently being created with setup " +
+            "`${setup.id}'. The maximum number is ${setup.maxCreateConcurrent}.")
         return false
+      }
+
+      // check if we already have enough VMs that provide similar capabilities
+      var vmsPerSetup: Map<String, TreeSet<VM>>? = null
+      for (params in poolAgentParams) {
+        if (params.max != null && setup.providedCapabilities.containsAll(params.capabilities)) {
+          // Creating a new VM with [setup] would add an agent with the given
+          // provided capabilities. Check if this would exceed the maximum
+          // number of agents.
+          if (vmsPerSetup == null) {
+            vmsPerSetup = getNonTerminatedVMsPerSetup()
+          }
+
+          // count created VMs that provide the capabilities
+          val n = countVMsWithCapabilities(vmsPerSetup, params.capabilities)
+          if (n >= params.max) {
+            // there already are enough VMs with these capabilities
+            log.debug("There already are $n VMs with capabilities " +
+                "${params.capabilities}. The maximum number is ${params.max}.")
+            return false
+          }
+        }
       }
 
       VM(setup = setup).also {

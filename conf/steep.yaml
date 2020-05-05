@@ -82,6 +82,7 @@ steep:
     #   - capabilities:
     #       - docker
     #     min: 2
+    #     max: 4
 
     openstack:
       endpoint: https://example.com:5000/v3
