@@ -18,6 +18,7 @@ import io.vertx.kotlin.ext.shell.ShellServiceOptions
 import io.vertx.kotlin.ext.shell.term.TelnetTermOptions
 import io.vertx.spi.cluster.hazelcast.ConfigUtil
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager
+import model.plugins.call
 import org.yaml.snakeyaml.Yaml
 import shell.AsyncMapEntries
 import shell.AsyncMapGet
@@ -222,6 +223,11 @@ class Main : CoroutineVerticle() {
     createShell()
 
     PluginRegistryFactory.initialize(vertx)
+
+    val pluginRegistry = PluginRegistryFactory.create()
+    for (initializer in pluginRegistry.getInitializers()) {
+      initializer.call(vertx)
+    }
 
     val options = DeploymentOptions(config)
     if (config.getBoolean(ConfigConstants.CLOUD_ENABLED, false)) {

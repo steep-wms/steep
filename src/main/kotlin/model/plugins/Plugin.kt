@@ -14,6 +14,7 @@ import kotlin.reflect.KFunction
     include = JsonTypeInfo.As.PROPERTY,
     property = "type")
 @JsonSubTypes(
+    JsonSubTypes.Type(value = InitializerPlugin::class, name = "initializer"),
     JsonSubTypes.Type(value = OutputAdapterPlugin::class, name = "outputAdapter"),
     JsonSubTypes.Type(value = ProcessChainAdapterPlugin::class, name = "processChainAdapter"),
     JsonSubTypes.Type(value = RuntimePlugin::class, name = "runtime")

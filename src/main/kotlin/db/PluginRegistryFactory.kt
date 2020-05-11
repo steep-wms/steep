@@ -7,6 +7,7 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.executeBlockingAwait
 import io.vertx.kotlin.core.file.readFileAwait
+import model.plugins.InitializerPlugin
 import model.plugins.OutputAdapterPlugin
 import model.plugins.Plugin
 import model.plugins.ProcessChainAdapterPlugin
@@ -70,6 +71,7 @@ object PluginRegistryFactory {
 
     @Suppress("UNCHECKED_CAST")
     return when (plugin) {
+      is InitializerPlugin -> plugin.copy(compiledFunction = f as KFunction<Unit>)
       is OutputAdapterPlugin -> plugin.copy(compiledFunction = f as KFunction<List<String>>)
       is ProcessChainAdapterPlugin -> plugin.copy(compiledFunction = f as KFunction<List<ProcessChain>>)
       is RuntimePlugin -> plugin.copy(compiledFunction = f as KFunction<String>)

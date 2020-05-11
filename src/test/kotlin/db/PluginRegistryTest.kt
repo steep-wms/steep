@@ -13,6 +13,7 @@ import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import model.plugins.InitializerPlugin
 import model.plugins.OutputAdapterPlugin
 import model.plugins.ProcessChainAdapterPlugin
 import model.plugins.RuntimePlugin
@@ -48,6 +49,51 @@ class PluginRegistryTest {
 
       ctx.completeNow()
     }
+  }
+
+  /**
+   * Test if a simple initializer can be compiled and executed
+   */
+  @Test
+  fun compileDummyInitializer(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      val config = json {
+        obj(
+            ConfigConstants.PLUGINS to "src/**/db/dummyInitializer.yaml"
+        )
+      }
+      PluginRegistryFactory.initialize(vertx, config)
+
+      val pr = PluginRegistryFactory.create()
+      val initializers = pr.getInitializers()
+      ctx.coVerify {
+        assertThat(initializers).hasSize(1)
+        val initializer = initializers[0]
+        var called = 0
+        vertx.eventBus().consumer<Unit>("DUMMY_INITIALIZER") { msg ->
+          called++
+          msg.reply(null)
+        }
+        initializer.call(vertx)
+        assertThat(called).isEqualTo(1)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if [PluginRegistry.getInitializers] works correctly
+   */
+  @Test
+  fun getInitializers() {
+    val init1 = InitializerPlugin("a", "file.kts")
+    val init2 = InitializerPlugin("b", "file2.kts")
+    val init3 = InitializerPlugin("c", "file3.kts")
+    val expected = listOf(init1, init2, init3)
+    val pr = PluginRegistry(expected)
+    assertThat(pr.getInitializers()).isEqualTo(expected)
+    assertThat(pr.getInitializers()).isNotSameAs(expected)
   }
 
   /**

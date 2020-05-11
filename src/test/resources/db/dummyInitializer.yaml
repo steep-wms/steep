@@ -1,0 +1,4 @@
+# An initializer that sends a message
+- name: dummyInitializer
+  type: initializer
+  scriptFile: db/dummyInitializer.kts
