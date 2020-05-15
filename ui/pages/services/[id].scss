@@ -56,8 +56,12 @@
 
   .service-parameter-right {
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto minmax(0, 1fr);
     grid-column-gap: $spacer * 2;
+
+    .service-parameter-value {
+      overflow-x: auto;
+    }
   }
 
   @media (max-width: $md) {

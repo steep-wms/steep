@@ -69,16 +69,16 @@ export default () => {
             </div>
             <div className="service-parameter-right">
               <h5>ID:</h5>
-              {r.id}
+              <span className="service-parameter-value">{r.id}</span>
 
               <h5>Data type:</h5>
-              {r.data_type}
+              <span className="service-parameter-value">{r.data_type}</span>
 
               <h5>Label:</h5>
-              {r.label || none}
+              <span className="service-parameter-value">{r.label || none}</span>
 
               <h5>Value:</h5>
-              {r.value || none}
+              <span className="service-parameter-value">{r.value || none}</span>
             </div>
           </div>
         ))}
@@ -94,25 +94,25 @@ export default () => {
             </div>
             <div className="service-parameter-right">
               <h5>ID:</h5>
-              {p.id}
+              <span className="service-parameter-value">{p.id}</span>
 
               <h5>Type:</h5>
-              {p.type}
+              <span className="service-parameter-value">{p.type}</span>
 
               <h5>Cardinality:</h5>
-              {p.cardinality}
+              <span className="service-parameter-value">{p.cardinality}</span>
 
               <h5>Data type:</h5>
-              {p.data_type}
+              <span className="service-parameter-value">{p.data_type}</span>
 
               <h5>Default value:</h5>
-              {p.default || none}
+              <span className="service-parameter-value">{p.default === undefined ? none : "" + p.default}</span>
 
               <h5>File suffix:</h5>
-              {p.file_suffix || none}
+              <span className="service-parameter-value">{p.file_suffix || none}</span>
 
               <h5>Label:</h5>
-              {p.label || none}
+              <span className="service-parameter-value">{p.label || none}</span>
             </div>
           </div>
         ))}
