@@ -1,5 +1,7 @@
 package model.setup
 
+import ConfigConstants
+
 /**
  * A setup describes how a virtual machine should be created
  * @param id the setup's unique ID
@@ -9,6 +11,7 @@ package model.setup
  * @param blockDeviceSizeGb the size of the VM's block device in gigabytes
  * @param blockDeviceVolumeType the type of the VM's block device (may be
  * `null` if the type should be selected automatically)
+ * @param minVMs the minimum number of VMs to create with this setup
  * @param maxVMs the maximum number of VMs to create with this setup
  * @param maxCreateConcurrent the maximum number of VMs to create and provision
  * concurrently
@@ -16,6 +19,8 @@ package model.setup
  * the VM has been created to deploy software on it
  * @param providedCapabilities a list of capabilities that VMs with this setup
  * will have
+ * @param sshUsername an optional username for the SSH connection to the
+ * created VM (overrides [ConfigConstants.CLOUD_SSH_USERNAME])
  * @author Michel Kraemer
  */
 data class Setup(
@@ -29,5 +34,6 @@ data class Setup(
     val maxVMs: Int,
     val maxCreateConcurrent: Int = 1,
     val provisioningScripts: List<String> = emptyList(),
-    val providedCapabilities: List<String> = emptyList()
+    val providedCapabilities: List<String> = emptyList(),
+    val sshUsername: String? = null
 )

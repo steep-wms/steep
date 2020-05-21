@@ -109,7 +109,7 @@ class CloudManager : CoroutineVerticle() {
   /**
    * The username for SSH access to created virtual machines
    */
-  private lateinit var sshUsername: String
+  private var sshUsername: String? = null
 
   /**
    * A SSH private key used for authentication when logging in to the new
@@ -150,8 +150,7 @@ class CloudManager : CoroutineVerticle() {
     createdByTag = config.getString(CLOUD_CREATED_BY_TAG) ?: throw IllegalStateException(
         "Missing configuration item `$CLOUD_CREATED_BY_TAG'")
 
-    sshUsername = config.getString(CLOUD_SSH_USERNAME) ?: throw IllegalStateException(
-        "Missing configuration item `$CLOUD_SSH_USERNAME'")
+    sshUsername = config.getString(CLOUD_SSH_USERNAME)
     sshPrivateKeyLocation = config.getString(CLOUD_SSH_PRIVATE_KEY_LOCATION) ?: throw IllegalStateException(
         "Missing configuration item `$CLOUD_SSH_PRIVATE_KEY_LOCATION'")
     poolAgentParams = JsonUtils.mapper.convertValue(
@@ -161,6 +160,17 @@ class CloudManager : CoroutineVerticle() {
     val setupsFile = config.getString(CLOUD_SETUPS_FILE) ?: throw IllegalStateException(
         "Missing configuration item `$CLOUD_SETUPS_FILE'")
     setups = YamlUtils.mapper.readValue(File(setupsFile))
+
+    // if sshUsername is null, check if all setups have an sshUsername
+    if (sshUsername == null) {
+      for (setup in setups) {
+        if (setup.sshUsername == null) {
+          throw IllegalArgumentException("The configuration item " +
+              "`$CLOUD_SSH_USERNAME' has not been set and setup " +
+              "`${setup.id}' also does not have an SSH username.")
+        }
+      }
+    }
 
     // check setups for duplicate IDs
     val setupIds = mutableSetOf<String>()
@@ -658,7 +668,8 @@ class CloudManager : CoroutineVerticle() {
    */
   private suspend fun provisionVM(ipAddress: String, vmId: String,
       externalId: String, setup: Setup) {
-    val ssh = SSHClient(ipAddress, sshUsername, sshPrivateKeyLocation, vertx)
+    val ssh = SSHClient(ipAddress, setup.sshUsername ?: sshUsername!!,
+        sshPrivateKeyLocation, vertx)
     waitForSSH(ipAddress, externalId, ssh)
 
     // register a handler that waits for the agent on the new virtual machine

@@ -101,7 +101,7 @@ class CloudManagerTest {
    */
   private fun deployCloudManager(tempDir: Path, setups: List<Setup>,
       vertx: Vertx, completionHandler: Handler<AsyncResult<String>>,
-      agentPool: JsonArray = JsonArray()) {
+      agentPool: JsonArray = JsonArray(), sshUsername: String? = "user") {
     // create setups file
     val tempDirFile = tempDir.toRealPath().toFile()
     val setupFile = File(tempDirFile, "test_setups.yaml")
@@ -112,7 +112,7 @@ class CloudManagerTest {
       val config = json {
         obj(
             ConfigConstants.CLOUD_CREATED_BY_TAG to CREATED_BY_TAG,
-            ConfigConstants.CLOUD_SSH_USERNAME to "user",
+            ConfigConstants.CLOUD_SSH_USERNAME to sshUsername,
             ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION to "myprivatekey.pem",
             ConfigConstants.CLOUD_SETUPS_FILE to setupFile.toString(),
             ConfigConstants.CLOUD_SYNC_INTERVAL to SYNC_INTERVAL,
@@ -190,6 +190,46 @@ class CloudManagerTest {
         }
         ctx.completeNow()
       })
+    }
+  }
+
+  /**
+   * Test that the SSH username can be overridden
+   */
+  @Nested
+  inner class SSHUsername {
+    /**
+     * Test that the cloud manager accepts an SSH username per setup even if
+     * there is no global one
+     */
+    @Test
+    fun perSetup(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
+      val testSetup = Setup("test", "myflavor", "myImage", AZ01, 500000,
+          maxVMs = 1, sshUsername = "user1")
+      val testSetup2 = Setup("test2", "myflavor", "myImage", AZ01, 500000,
+          maxVMs = 1, sshUsername = "user2")
+
+      deployCloudManager(tempDir, listOf(testSetup, testSetup2), vertx,
+          ctx.completing(), sshUsername = null)
+    }
+
+    /**
+     * Test that the cloud manager fails if there is no global SSH username
+     * and at least one of the setups also does not have one
+     */
+    @Test
+    fun missing(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
+      val testSetup = Setup("test", "myflavor", "myImage", AZ01, 500000,
+          maxVMs = 1, sshUsername = "user1")
+      val testSetup2 = Setup("test2", "myflavor", "myImage", AZ01, 500000,
+          maxVMs = 1)
+
+      deployCloudManager(tempDir, listOf(testSetup, testSetup2), vertx, ctx.failing { t ->
+        ctx.verify {
+          assertThat(t).isInstanceOf(IllegalArgumentException::class.java)
+        }
+        ctx.completeNow()
+      }, sshUsername = null)
     }
   }
 
