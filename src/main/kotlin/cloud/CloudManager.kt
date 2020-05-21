@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.IOException
 import java.io.StringWriter
+import java.lang.IllegalArgumentException
 import java.time.Instant
 import java.util.ArrayDeque
 import java.util.TreeSet
@@ -160,6 +161,15 @@ class CloudManager : CoroutineVerticle() {
     val setupsFile = config.getString(CLOUD_SETUPS_FILE) ?: throw IllegalStateException(
         "Missing configuration item `$CLOUD_SETUPS_FILE'")
     setups = YamlUtils.mapper.readValue(File(setupsFile))
+
+    // check setups for duplicate IDs
+    val setupIds = mutableSetOf<String>()
+    for (setup in setups) {
+      if (setupIds.contains(setup.id)) {
+        throw IllegalArgumentException("Found duplicate setup ID: `${setup.id}'")
+      }
+      setupIds.add(setup.id)
+    }
 
     // initialize registries
     vmRegistry = VMRegistryFactory.create(vertx)

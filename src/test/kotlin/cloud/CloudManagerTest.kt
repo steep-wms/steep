@@ -21,6 +21,8 @@ import io.mockk.mockkConstructor
 import io.mockk.mockkObject
 import io.mockk.slot
 import io.mockk.unmockkAll
+import io.vertx.core.AsyncResult
+import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -45,6 +47,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
+import java.lang.IllegalArgumentException
 import java.nio.file.Path
 
 /**
@@ -90,6 +93,15 @@ class CloudManagerTest {
    */
   private fun deployCloudManager(tempDir: Path, setups: List<Setup>,
       vertx: Vertx, ctx: VertxTestContext, agentPool: JsonArray = JsonArray()) {
+    deployCloudManager(tempDir, setups, vertx, ctx.completing(), agentPool)
+  }
+
+  /**
+   * Deploy the [CloudManager] verticle and call the given [completionHandler]
+   */
+  private fun deployCloudManager(tempDir: Path, setups: List<Setup>,
+      vertx: Vertx, completionHandler: Handler<AsyncResult<String>>,
+      agentPool: JsonArray = JsonArray()) {
     // create setups file
     val tempDirFile = tempDir.toRealPath().toFile()
     val setupFile = File(tempDirFile, "test_setups.yaml")
@@ -110,7 +122,7 @@ class CloudManagerTest {
       }
       val options = DeploymentOptions(config)
       cloudManager = CloudManager()
-      vertx.deployVerticle(cloudManager, options, ctx.completing())
+      vertx.deployVerticle(cloudManager, options, completionHandler)
     }
   }
 
@@ -157,6 +169,28 @@ class CloudManagerTest {
     }
 
     cloudManager.createRemoteAgent(requiredCapabilities.toSet())
+  }
+
+  /**
+   * Test that the cloud manager does not allow duplicate setup IDs
+   */
+  @Nested
+  inner class DuplicateSetupIDs {
+    /**
+     * Test that the cloud manager does not allow duplicate setup IDs
+     */
+    @Test
+    fun duplicateSetupIDs(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
+      val testSetup = Setup("test", "myflavor", "myImage", AZ01, 500000, maxVMs = 1)
+      val testSetup2 = Setup("test", "myflavor", "myImage", AZ01, 500000, maxVMs = 1)
+
+      deployCloudManager(tempDir, listOf(testSetup, testSetup2), vertx, ctx.failing { t ->
+        ctx.verify {
+          assertThat(t).isInstanceOf(IllegalArgumentException::class.java)
+        }
+        ctx.completeNow()
+      })
+    }
   }
 
   /**
