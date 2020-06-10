@@ -55,7 +55,12 @@ class NotifyingVMRegistry(private val delegate: VMRegistry, private val vertx: V
 
   override suspend fun setVMStatus(id: String, currentStatus: VM.Status, newStatus: VM.Status) {
     delegate.setVMStatus(id, currentStatus, newStatus)
-    val actualStatus = delegate.getVMStatus(id)
+    val actualStatus = try {
+      delegate.getVMStatus(id)
+    } catch (e: NoSuchElementException) {
+      // setVMStatus is a noop if the VM does not exist
+      return
+    }
     if (actualStatus == newStatus) {
       vertx.eventBus().publish(AddressConstants.VM_STATUS_CHANGED, json {
         obj(
