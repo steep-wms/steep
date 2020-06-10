@@ -155,12 +155,12 @@ object ConfigConstants {
   const val CONTROLLER_ENABLED = "steep.controller.enabled"
 
   /**
-   * The interval in which the controller looks for accepted submissions
+   * The interval at which the controller looks for accepted submissions
    */
   const val CONTROLLER_LOOKUP_INTERVAL = "steep.controller.lookupIntervalMilliseconds"
 
   /**
-   * The interval in which the controller looks for orphaned running
+   * The interval at which the controller looks for orphaned running
    * submissions (i.e. submissions that are in the status `RUNNING' but that
    * are currently not being processed by any [Controller])
    */
@@ -273,7 +273,7 @@ object ConfigConstants {
   const val CLOUD_KEEP_ALIVE_INTERVAL = "steep.cloud.keepAliveIntervalSeconds"
 
   /**
-   * Describes parameters of remote agents the CloudManager maintain in its pool
+   * Describes parameters of remote agents the CloudManager maintains in its pool
    */
   const val CLOUD_AGENTPOOL = "steep.cloud.agentPool"
 
