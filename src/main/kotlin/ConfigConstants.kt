@@ -213,6 +213,11 @@ object ConfigConstants {
   const val AGENT_OUTPUT_LINES_TO_COLLECT = "steep.agent.outputLinesToCollect"
 
   /**
+   * Additional environment variables to be passed to the Docker runtime
+   */
+  const val RUNTIMES_DOCKER_ENV = "steep.runtimes.docker.env"
+
+  /**
    * Additional volume mounts to be passed to the Docker runtime
    */
   const val RUNTIMES_DOCKER_VOLUMES= "steep.runtimes.docker.volumes"

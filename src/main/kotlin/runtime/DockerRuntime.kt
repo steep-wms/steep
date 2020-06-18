@@ -13,12 +13,19 @@ import model.processchain.Executable
  * @author Michel Kraemer
  */
 class DockerRuntime(config: JsonObject) : OtherRuntime() {
+  private val additionalDockerEnvironment: List<String> = config.getJsonArray(
+      ConfigConstants.RUNTIMES_DOCKER_ENV, JsonArray()).map { it.toString() }
   private val additionalDockerVolumes: List<String> = config.getJsonArray(
       ConfigConstants.RUNTIMES_DOCKER_VOLUMES, JsonArray()).map { it.toString() }
   private val tmpPath: String = config.getString(ConfigConstants.TMP_PATH) ?:
       throw IllegalStateException("Missing configuration item `${ConfigConstants.TMP_PATH}'")
 
   override fun execute(executable: Executable, outputLinesToCollect: Int): String {
+    val additionalEnvironment = additionalDockerEnvironment.map {
+      Argument(id = UniqueID.next(),
+          label = "-e", variable = ArgumentVariable(UniqueID.next(), it),
+          type = Argument.Type.ARGUMENT)
+    }
     val additionalVolumes = additionalDockerVolumes.map {
       Argument(id = UniqueID.next(),
           label = "-v", variable = ArgumentVariable(UniqueID.next(), it),
@@ -29,7 +36,7 @@ class DockerRuntime(config: JsonObject) : OtherRuntime() {
         Argument(id = UniqueID.next(),
             variable = ArgumentVariable("dockerRun", "run"),
             type = Argument.Type.ARGUMENT)
-    ) + executable.runtimeArgs + additionalVolumes + listOf(
+    ) + executable.runtimeArgs + additionalEnvironment + additionalVolumes + listOf(
         Argument(id = UniqueID.next(),
             label = "-v", variable = ArgumentVariable("dockerMount", "$tmpPath:$tmpPath"),
             type = Argument.Type.ARGUMENT),
