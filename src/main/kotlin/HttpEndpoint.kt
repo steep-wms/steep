@@ -41,6 +41,7 @@ import db.SubmissionRegistryFactory
 import db.VMRegistry
 import db.VMRegistryFactory
 import helper.JsonUtils
+import helper.WorkflowValidator
 import helper.YamlUtils
 import io.prometheus.client.hotspot.DefaultExports
 import io.prometheus.client.vertx.MetricsHandler
@@ -78,6 +79,7 @@ import model.cloud.VM
 import model.workflow.Workflow
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FilenameUtils
+import org.apache.commons.text.WordUtils
 import org.slf4j.LoggerFactory
 import java.io.StringWriter
 import kotlin.math.max
@@ -964,6 +966,18 @@ class HttpEndpoint : CoroutineVerticle() {
       ctx.response()
           .setStatusCode(400)
           .end("Invalid workflow: " + e.message)
+      return
+    }
+
+    // check workflow for common mistakes
+    val validationResults = WorkflowValidator.validate(workflow)
+    if (validationResults.isNotEmpty()) {
+      ctx.response()
+          .setStatusCode(400)
+          .end("Invalid workflow:\n\n" + validationResults.joinToString("\n\n") {
+            "- ${WordUtils.wrap(it.message, 80, "\n  ", true)}\n\n  " +
+                WordUtils.wrap(it.details, 80, "\n  ", true)
+          })
       return
     }
 

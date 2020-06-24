@@ -67,6 +67,7 @@ dependencies {
     implementation("io.prometheus:simpleclient_vertx:$prometheusClientVersion")
     implementation("org.apache.ant:ant:1.10.7")
     implementation("org.apache.commons:commons-lang3:3.8.1")
+    implementation("org.apache.commons:commons-text:1.8")
     implementation("org.flywaydb:flyway-core:5.2.4")
     implementation("org.jetbrains.kotlin:kotlin-scripting-jvm-host-embeddable:1.3.30")
     implementation("org.mongodb:mongodb-driver-reactivestreams:1.11.0")
