@@ -16,11 +16,16 @@
     color: $gray-700;
     border: 1px solid $gray-300;
     border-radius: $border-radius;
-    padding: .5em .75em .5em 1em;
+    padding: .6em .75em .4em 1em;
     cursor: pointer;
     margin-left: $spacer;
     white-space: nowrap;
     margin-top: 2rem;
+
+    .feather {
+      margin-top: -1px;
+      margin-bottom: 1px;
+    }
 
     &.primary {
       background-color: $primary;

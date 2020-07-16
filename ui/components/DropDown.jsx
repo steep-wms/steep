@@ -36,7 +36,7 @@ export default ({ title, right, primary, children }) => {
     <div className="dropdown" ref={ref}>
       <button className={classNames("dropdown-btn", { primary })} ref={btnRef}
           onClick={onDropDownClick}>
-        <span className="dropdown-text">{title} </span><ChevronDown />
+        <span className="dropdown-text">{title} </span><ChevronDown className="feather" />
        </button>
       <div className={classNames("dropdown-menu", { visible, right })}>{children}</div>
     </div>
