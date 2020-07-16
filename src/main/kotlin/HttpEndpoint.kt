@@ -503,8 +503,8 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onGet(ctx: RoutingContext) {
     if (ctx.acceptableContentType == "text/html") {
-      val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
-      if (beta) {
+      val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
+      if (!legacy) {
         renderAsset("ui/index.html", ctx.response())
       } else {
         renderHtml("html/index.html", mapOf(
@@ -537,8 +537,8 @@ class HttpEndpoint : CoroutineVerticle() {
       val result = JsonArray(agents).encode()
 
       if (ctx.acceptableContentType == "text/html") {
-        val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
-        if (beta) {
+        val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
+        if (!legacy) {
           renderAsset("ui/agents/index.html", ctx.response())
         } else {
           renderHtml("html/agents/index.html", mapOf(
@@ -571,8 +571,8 @@ class HttpEndpoint : CoroutineVerticle() {
             REMOTE_AGENT_ADDRESS_PREFIX + id, msg).body()
 
         if (ctx.acceptableContentType == "text/html") {
-          val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
-          if (beta) {
+          val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
+          if (!legacy) {
             renderAsset("ui/agents/[id].html", ctx.response())
           } else {
             renderHtml("html/agents/single.html", mapOf(
@@ -610,8 +610,8 @@ class HttpEndpoint : CoroutineVerticle() {
       val result = JsonArray(services).encode()
 
       if (ctx.acceptableContentType == "text/html") {
-        val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
-        if (beta) {
+        val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
+        if (!legacy) {
           renderAsset("ui/services/index.html", ctx.response())
         } else {
           renderHtml("html/services/index.html", mapOf(
@@ -643,8 +643,8 @@ class HttpEndpoint : CoroutineVerticle() {
       } else {
         val serviceObj = JsonUtils.toJson(service)
         if (ctx.acceptableContentType == "text/html") {
-          val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
-          if (beta) {
+          val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
+          if (!legacy) {
             renderAsset("ui/services/[id].html", ctx.response())
           } else {
             renderHtml("html/services/single.html", mapOf(
@@ -744,8 +744,8 @@ class HttpEndpoint : CoroutineVerticle() {
       val encodedJson = JsonArray(list).encode()
 
       if (isHtml) {
-        val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
-        if (beta) {
+        val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
+        if (!legacy) {
           renderAsset("ui/workflows/index.html", ctx.response())
         } else {
           renderHtml("html/workflows/index.html", mapOf(
@@ -787,8 +787,8 @@ class HttpEndpoint : CoroutineVerticle() {
         amendSubmission(json, true)
         json.put("requiredCapabilities", JsonArray(*(reqCaps.toTypedArray())))
         if (ctx.acceptableContentType == "text/html") {
-          val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
-          if (beta) {
+          val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
+          if (!legacy) {
             renderAsset("ui/workflows/[id].html", ctx.response())
           } else {
             renderHtml("html/workflows/single.html", mapOf(
@@ -1039,8 +1039,8 @@ class HttpEndpoint : CoroutineVerticle() {
       val encodedJson = JsonArray(list).encode()
 
       if (isHtml) {
-        val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
-        if (beta) {
+        val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
+        if (!legacy) {
           renderAsset("ui/vms/index.html", ctx.response())
         } else {
           renderHtml("html/vms/index.html", emptyMap(), ctx.response())
@@ -1071,8 +1071,8 @@ class HttpEndpoint : CoroutineVerticle() {
       } else {
         val json = JsonUtils.toJson(vm)
         if (ctx.acceptableContentType == "text/html") {
-          val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
-          if (beta) {
+          val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
+          if (!legacy) {
             renderAsset("ui/vms/[id].html", ctx.response())
           } else {
             renderHtml("html/vms/index.html", emptyMap(), ctx.response())
@@ -1164,8 +1164,8 @@ class HttpEndpoint : CoroutineVerticle() {
       val encodedJson = JsonArray(list).encode()
 
       if (isHtml) {
-        val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
-        if (beta) {
+        val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
+        if (!legacy) {
           renderAsset("ui/processchains/index.html", ctx.response())
         } else {
           renderHtml("html/processchains/index.html", mapOf(
@@ -1206,8 +1206,8 @@ class HttpEndpoint : CoroutineVerticle() {
         val submissionId = submissionRegistry.getProcessChainSubmissionId(id)
         amendProcessChain(json, submissionId, true)
         if (ctx.acceptableContentType == "text/html") {
-          val beta = ctx.request().getParam("beta")?.toBoolean() ?: false
-          if (beta) {
+          val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
+          if (!legacy) {
             renderAsset("ui/processchains/[id].html", ctx.response())
           } else {
             renderHtml("html/processchains/single.html", mapOf(
