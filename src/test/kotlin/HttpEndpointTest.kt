@@ -816,7 +816,7 @@ class HttpEndpointTest {
   fun postWorkflowWithStore(vertx: Vertx, ctx: VertxTestContext) {
     val body = json {
       obj(
-          "api" to "4.0.0",
+          "api" to "4.1.0",
           "vars" to array(
               obj(
                   "id" to "input_file1",
@@ -889,6 +889,145 @@ class HttpEndpointTest {
             ForEachAction(
                 input = inputFile1,
                 enumerator = enumerator1
+            )
+        )
+    )
+
+    val buf = Buffer.buffer(JsonUtils.mapper.writeValueAsString(body))
+    doPostWorkflow(vertx, ctx, buf, expected)
+  }
+
+  /**
+   * Test if the endpoint still accepts workflows with a action parameters
+   */
+  @Test
+  fun postWorkflowWithActionParameters(vertx: Vertx, ctx: VertxTestContext) {
+    val body = json {
+      obj(
+          "api" to "4.1.0",
+          "vars" to array(
+              obj(
+                  "id" to "input_file1",
+                  "value" to "input_file.txt"
+              ),
+              obj(
+                  "id" to "output_file1"
+              ),
+              obj(
+                  "id" to "i"
+              ),
+              obj(
+                  "id" to "param1",
+                  "value" to true
+              ),
+              obj(
+                  "id" to "param2",
+                  "value" to false
+              )
+          ),
+          "actions" to array(
+              obj(
+                  "type" to "execute",
+                  "service" to "cp",
+                  "inputs" to array(
+                      obj(
+                          "id" to "input_file",
+                          "var" to "input_file1"
+                      )
+                  ),
+                  "outputs" to array(
+                      obj(
+                          "id" to "output_file",
+                          "var" to "output_file1"
+                      )
+                  ),
+                  "parameters" to array(
+                      obj(
+                          "id" to "no_overwrite",
+                          "var" to "param1"
+                      )
+                  )
+              ),
+              obj(
+                  "type" to "for",
+                  "input" to "input_file1",
+                  "enumerator" to "i",
+                  "actions" to array(
+                      obj(
+                          "type" to "execute",
+                          "service" to "cp",
+                          "inputs" to array(
+                              obj(
+                                  "id" to "input_file",
+                                  "var" to "input_file1"
+                              )
+                          ),
+                          "outputs" to array(
+                              obj(
+                                  "id" to "output_file",
+                                  "var" to "output_file1"
+                              )
+                          ),
+                          "parameters" to array(
+                              obj(
+                                  "id" to "no_overwrite",
+                                  "var" to "param2"
+                              )
+                          )
+                      )
+                  )
+              )
+          )
+      )
+    }
+
+    val inputFile1 = Variable(id = "input_file1", value = "input_file.txt")
+    val outputFile1 = Variable(id = "output_file1")
+    val enumerator1 = Variable(id = "i")
+    val param1 = Variable(id = "param1", value = true)
+    val param2 = Variable(id = "param2", value = false)
+    val expected = Workflow(
+        vars = listOf(
+            inputFile1,
+            outputFile1,
+            enumerator1,
+            param1,
+            param2
+        ),
+        actions = listOf(
+            ExecuteAction(
+                service = "cp",
+                inputs = listOf(GenericParameter(
+                    id = "input_file",
+                    variable = inputFile1
+                ), GenericParameter(
+                    id = "no_overwrite",
+                    variable = param1
+                )),
+                outputs = listOf(OutputParameter(
+                    id = "output_file",
+                    variable = outputFile1
+                ))
+            ),
+            ForEachAction(
+                input = inputFile1,
+                enumerator = enumerator1,
+                actions = listOf(
+                    ExecuteAction(
+                        service = "cp",
+                        inputs = listOf(GenericParameter(
+                            id = "input_file",
+                            variable = inputFile1
+                        ), GenericParameter(
+                            id = "no_overwrite",
+                            variable = param2
+                        )),
+                        outputs = listOf(OutputParameter(
+                            id = "output_file",
+                            variable = outputFile1
+                        ))
+                    )
+                )
             )
         )
     )

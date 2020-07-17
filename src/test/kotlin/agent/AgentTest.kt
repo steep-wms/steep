@@ -109,7 +109,7 @@ abstract class AgentTest {
     val processChain = ProcessChain(executables = listOf(
         Executable(path = "mkdir", arguments = listOf(
             Argument(label = "-p", variable = ArgumentVariable(UniqueID.next(), "true"),
-                type = Argument.Type.ARGUMENT, dataType = Argument.DATA_TYPE_BOOLEAN),
+                type = Argument.Type.INPUT, dataType = Argument.DATA_TYPE_BOOLEAN),
             outputNewDirArg
         )),
         Executable(path = "touch", arguments = listOf(outputNewFileArg)),

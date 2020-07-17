@@ -896,7 +896,7 @@ class HttpEndpoint : CoroutineVerticle() {
   }
 
   /**
-   * Recursively searches the given JSON object for store actions and removes
+   * Recursively search the given JSON object for store actions and remove
    * them with a warning. Support for store actions was dropped in workflow
    * API version 4.0.0.
    */
@@ -916,6 +916,41 @@ class HttpEndpoint : CoroutineVerticle() {
                 "action will be removed from the workflow. Use the `store' " +
                 "flag on `output' parameters instead.")
             iterator.remove()
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Recursively search the given JSON object for action parameters and merge
+   * them into the action's inputs with a warning. Support for action
+   * parameters will be dropped in workflow API version 5.0.0.
+   */
+  private fun removeParameters(json: Map<*, *>) {
+    val actions = json["actions"]
+    if (actions is MutableList<*>) {
+      val iterator = actions.iterator()
+      while (iterator.hasNext()) {
+        val a = iterator.next()
+        if (a is MutableMap<*, *>) {
+          val type = a["type"]
+          if ("for" == type) {
+            removeParameters(a)
+          } else if ("execute" == type) {
+            val parameters = a["parameters"]
+            if (parameters != null) {
+              log.warn("Found `parameters' in an execute action. Parameters " +
+                  "are unnecessary and will be removed in workflow API " +
+                  "version 5.0.0. Use `inputs' instead. The posted workflow " +
+                  "will now be modified automatically and the parameters will " +
+                  "be merged into the action's inputs.")
+              val newInputs = (a["inputs"] as MutableList<*>? ?: mutableListOf<Any>()) +
+                  (parameters as MutableList<*>? ?: mutableListOf<Any>())
+              @Suppress("UNCHECKED_CAST")
+              (a as MutableMap<String, Any>)["inputs"] = newInputs
+              a.remove("parameters")
+            }
           }
         }
       }
@@ -950,15 +985,18 @@ class HttpEndpoint : CoroutineVerticle() {
           .end("Invalid workflow api version: " + e.message)
       return
     }
-    if (!api.satisfies(gte("3.0.0").and(lte("4.0.0")))) {
+    if (!api.satisfies(gte("3.0.0").and(lte("4.1.0")))) {
       ctx.response()
           .setStatusCode(400)
-          .end("Invalid workflow api version: $api. Supported version range is [3.0.0, 4.0.0].")
+          .end("Invalid workflow api version: $api. Supported version range is [3.0.0, 4.1.0].")
       return
     }
 
     // remove incompatible store action
     removeStoreAction(workflowJson)
+
+    // remove deprecated action parameters
+    removeParameters(workflowJson)
 
     val workflow = try {
       JsonUtils.mapper.convertValue<Workflow>(workflowJson)

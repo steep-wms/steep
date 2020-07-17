@@ -8,7 +8,7 @@
         "id": "arg1",
         "name": "The first argument",
         "description": "A dummy argument",
-        "type": "argument",
+        "type": "input",
         "cardinality": "0..1",
         "data_type": "string",
         "default": "foo",

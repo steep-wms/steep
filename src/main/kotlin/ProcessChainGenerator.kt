@@ -7,7 +7,6 @@ import model.metadata.RuntimeArgument
 import model.metadata.Service
 import model.metadata.ServiceParameter
 import model.processchain.Argument
-import model.processchain.Argument.Type.ARGUMENT
 import model.processchain.Argument.Type.INPUT
 import model.processchain.Argument.Type.OUTPUT
 import model.processchain.ArgumentVariable
@@ -359,7 +358,6 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       val params = (when (serviceParam.type) {
         INPUT -> action.inputs
         OUTPUT -> action.outputs
-        ARGUMENT -> action.parameters
       }).filter { it.id == serviceParam.id }
 
       // convert parameters to arguments
@@ -390,7 +388,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       // if there are no arguments but the serviceParam is required and has a
       // default value, add a new argument (does not apply to inputs or outputs!)
       if (args.isEmpty() && serviceParam.cardinality.min == 1 &&
-          serviceParam.cardinality.max == 1 && serviceParam.type == ARGUMENT &&
+          serviceParam.cardinality.max == 1 && serviceParam.type == INPUT &&
           serviceParam.default != null) {
         return@flatMap listOf(Argument(serviceParam.id, serviceParam.label,
             ArgumentVariable(idGenerator.next(), serviceParam.default.toString()),
@@ -510,7 +508,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
         Argument(id = idGenerator.next(),
             label = it.label,
             variable = ArgumentVariable(it.id, it.value ?: ""),
-            type = ARGUMENT,
+            type = INPUT,
             dataType = it.dataType)
       }
 

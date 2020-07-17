@@ -28,7 +28,7 @@ object TestMetadata {
   private val serviceCpDefaultParam = Service("cpDefaultParam", "cp", "Copy", "cp",
       Service.RUNTIME_OTHER, listOf(
       ServiceParameter("no_overwrite", "No overwrite", "Do not overwrite existing file",
-          Argument.Type.ARGUMENT, Cardinality(1, 1), Argument.DATA_TYPE_BOOLEAN,
+          Argument.Type.INPUT, Cardinality(1, 1), Argument.DATA_TYPE_BOOLEAN,
           true, label = "-n"),
       ServiceParameter("input_file", "input file", "input file",
           Argument.Type.INPUT, Cardinality(1, 1)),

@@ -24,8 +24,7 @@ data class Argument(
 ) {
   enum class Type(@JsonValue val type: String) {
     INPUT("input"),
-    OUTPUT("output"),
-    ARGUMENT("argument")
+    OUTPUT("output")
   }
 
   companion object {

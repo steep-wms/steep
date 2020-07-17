@@ -38,7 +38,7 @@ class LocalAgentTest : AgentTest() {
     val processChain = ProcessChain(executables = listOf(
         Executable(path = "sleep", arguments = listOf(
             Argument(variable = ArgumentVariable(UniqueID.next(), "20"),
-                type = Argument.Type.ARGUMENT)
+                type = Argument.Type.INPUT)
         ))
     ))
 
@@ -67,7 +67,7 @@ class LocalAgentTest : AgentTest() {
     val processChain = ProcessChain(executables = listOf(
         Executable(path = "sleep", arguments = listOf(
             Argument(variable = ArgumentVariable(UniqueID.next(), "20"),
-                type = Argument.Type.ARGUMENT)
+                type = Argument.Type.INPUT)
         ))
     ))
 

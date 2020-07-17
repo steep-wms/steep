@@ -24,25 +24,25 @@ class DockerRuntime(config: JsonObject) : OtherRuntime() {
     val additionalEnvironment = additionalDockerEnvironment.map {
       Argument(id = UniqueID.next(),
           label = "-e", variable = ArgumentVariable(UniqueID.next(), it),
-          type = Argument.Type.ARGUMENT)
+          type = Argument.Type.INPUT)
     }
     val additionalVolumes = additionalDockerVolumes.map {
       Argument(id = UniqueID.next(),
           label = "-v", variable = ArgumentVariable(UniqueID.next(), it),
-          type = Argument.Type.ARGUMENT)
+          type = Argument.Type.INPUT)
     }
 
     val dockerArgs = listOf(
         Argument(id = UniqueID.next(),
             variable = ArgumentVariable("dockerRun", "run"),
-            type = Argument.Type.ARGUMENT)
+            type = Argument.Type.INPUT)
     ) + executable.runtimeArgs + additionalEnvironment + additionalVolumes + listOf(
         Argument(id = UniqueID.next(),
             label = "-v", variable = ArgumentVariable("dockerMount", "$tmpPath:$tmpPath"),
-            type = Argument.Type.ARGUMENT),
+            type = Argument.Type.INPUT),
         Argument(id = UniqueID.next(),
             variable = ArgumentVariable("dockerImage", executable.path),
-            type = Argument.Type.ARGUMENT)
+            type = Argument.Type.INPUT)
     )
 
     val dockerExec = Executable(id = executable.id, path = "docker",

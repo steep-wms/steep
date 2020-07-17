@@ -33,7 +33,7 @@ class ServiceTest {
     assertThat(p0.id).isEqualTo("arg1")
     assertThat(p0.name).isEqualTo("The first argument")
     assertThat(p0.description).isEqualTo("A dummy argument")
-    assertThat(p0.type).isEqualTo(Argument.Type.ARGUMENT)
+    assertThat(p0.type).isEqualTo(Argument.Type.INPUT)
     assertThat(p0.cardinality).isEqualTo(Cardinality(0, 1))
     assertThat(p0.dataType).isEqualTo(Argument.DATA_TYPE_STRING)
     assertThat(p0.default).isEqualTo("foo")

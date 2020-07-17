@@ -50,21 +50,26 @@
     "type": "execute",
     "service": "ResamplingOfPointCloud",
     "inputs": [{
+      "id": "resampling_resolution",
+      "var": "resolution"
+    }, {
       "id": "input_file_name",
       "var": "PointCloudParent0"
     }],
     "outputs": [{
       "id": "output_file_name",
       "var": "Resampling0"
-    }],
-    "parameters": [{
-      "id": "resampling_resolution",
-      "var": "resolution"
     }]
   }, {
     "type": "execute",
     "service": "OutlierClassificationInPointCloud",
     "inputs": [{
+      "id": "outlier_filtering_K",
+      "var": "K"
+    }, {
+      "id": "outlier_filtering_stddev",
+      "var": "standardDeviation"
+    }, {
       "id": "input_file_name",
       "var": "Resampling0"
     }],
@@ -72,13 +77,6 @@
       "id": "output_file_name",
       "var": "OutlierFiltering0",
       "store": true
-    }],
-    "parameters": [{
-      "id": "outlier_filtering_K",
-      "var": "K"
-    }, {
-      "id": "outlier_filtering_stddev",
-      "var": "standardDeviation"
     }]
   }, {
     "type": "execute",
@@ -118,21 +116,26 @@
     "type": "execute",
     "service": "ResamplingOfPointCloud",
     "inputs": [{
+      "id": "resampling_resolution",
+      "var": "resolution"
+    }, {
       "id": "input_file_name",
       "var": "PointCloudParent1"
     }],
     "outputs": [{
       "id": "output_file_name",
       "var": "Resampling1"
-    }],
-    "parameters": [{
-      "id": "resampling_resolution",
-      "var": "resolution"
     }]
   }, {
     "type": "execute",
     "service": "OutlierClassificationInPointCloud",
     "inputs": [{
+      "id": "outlier_filtering_K",
+      "var": "K"
+    }, {
+      "id": "outlier_filtering_stddev",
+      "var": "standardDeviation"
+    }, {
       "id": "input_file_name",
       "var": "Resampling1"
     }],
@@ -140,13 +143,6 @@
       "id": "output_file_name",
       "var": "OutlierFiltering1",
       "store": true
-    }],
-    "parameters": [{
-      "id": "outlier_filtering_K",
-      "var": "K"
-    }, {
-      "id": "outlier_filtering_stddev",
-      "var": "standardDeviation"
     }]
   }, {
     "type": "execute",

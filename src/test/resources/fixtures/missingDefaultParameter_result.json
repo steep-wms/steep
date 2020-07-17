@@ -11,7 +11,7 @@
           "id": "0",
           "value": "true"
         },
-        "type": "argument",
+        "type": "input",
         "dataType": "boolean"
       }, {
         "id": "input_file",

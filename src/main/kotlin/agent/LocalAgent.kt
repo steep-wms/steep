@@ -178,13 +178,13 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
             Argument(
                 label = "-p",
                 variable = ArgumentVariable(UniqueID.next(), "true"),
-                type = Argument.Type.ARGUMENT,
+                type = Argument.Type.INPUT,
                 dataType = Argument.DATA_TYPE_BOOLEAN
             )
         ) + w.map { o ->
           Argument(
               variable = ArgumentVariable(UniqueID.next(), o),
-              type = Argument.Type.ARGUMENT
+              type = Argument.Type.INPUT
           )
         }
       )

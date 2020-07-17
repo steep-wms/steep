@@ -29,7 +29,7 @@
           "id": "removeContainer",
           "value": "true"
         },
-        "type": "argument",
+        "type": "input",
         "dataType": "boolean"
       }, {
         "id": "2",
@@ -38,7 +38,7 @@
           "id": "dataMount",
           "value": "/data:/data"
         },
-        "type": "argument",
+        "type": "input",
         "dataType": "string"
       }]
     }]

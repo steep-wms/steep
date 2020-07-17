@@ -30,6 +30,10 @@ class WorkflowTest {
     val execAction0 = action0 as ExecuteAction
     assertThat(execAction0.service).isEqualTo("ResamplingOfPointCloud")
     assertThat(execAction0.inputs).isEqualTo(listOf(
+        GenericParameter(id = "resampling_resolution", variable = Variable(
+            id = "resolution",
+            value = 10
+        )),
         GenericParameter(id = "input_file_name", variable = Variable(
             id = "PointCloudParent0",
             value = "/CNR_IMATI/Liguria-LAS/LiDAR-145/20100902_E_3/S1C1_strip003.las"
@@ -38,12 +42,6 @@ class WorkflowTest {
     assertThat(execAction0.outputs).isEqualTo(listOf(
         OutputParameter(id = "output_file_name", variable = Variable(
             id = "Resampling0"
-        ))
-    ))
-    assertThat(execAction0.parameters).isEqualTo(listOf(
-        GenericParameter(id = "resampling_resolution", variable = Variable(
-            id = "resolution",
-            value = 10
         ))
     ))
 
@@ -77,7 +75,6 @@ class WorkflowTest {
             id = "MultiResolutionTriangulation0"
         ), store = true)
     ))
-    assertThat(execAction3x0.parameters).isEmpty()
 
     assertThat(execAction3x0.inputs[0].variable).isSameAs(forAction3.enumerator)
     assertThat(execAction3x0.inputs[0].variable).isSameAs(workflow.vars[10])
