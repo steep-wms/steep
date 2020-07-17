@@ -1,10 +1,10 @@
-api: 3.0.0
+api: 4.1.0
 vars:
   - id: sleep_seconds
     value: 30
 actions:
   - type: execute
     service: sleep
-    parameters:
+    inputs:
       - id: seconds
         var: sleep_seconds

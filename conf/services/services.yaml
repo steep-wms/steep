@@ -8,7 +8,7 @@
     - id: no_overwrite
       name: No overwrite
       description: Do not overwrite existing file
-      type: argument
+      type: input
       cardinality: 1..1
       label: -n
       data_type: boolean
@@ -38,7 +38,7 @@
     - id: seconds
       name: seconds to sleep
       description: The number of seconds to sleep
-      type: argument
+      type: input
       cardinality: 1..1
       data_type: integer
 
@@ -59,7 +59,7 @@
     - id: sleep
       name: sleep command
       description: The sleep command
-      type: argument
+      type: input
       cardinality: 1..1
       data_type: string
       default: sleep
@@ -67,6 +67,6 @@
     - id: seconds
       name: seconds to sleep
       description: The number of seconds to sleep
-      type: argument
+      type: input
       cardinality: 1..1
       data_type: integer
