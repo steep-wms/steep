@@ -24,7 +24,13 @@ data class Argument(
 ) {
   enum class Type(@JsonValue val type: String) {
     INPUT("input"),
-    OUTPUT("output")
+    OUTPUT("output"),
+
+    @Deprecated(message = "Service parameter type `argument' is deprecated. " +
+        "Use `input' instead. This value is only kept for backward " +
+        "compatibility. It will be removed in Steep 6.0.0 with a " +
+        "corresponding database migration.", replaceWith = ReplaceWith("INPUT"))
+    ARGUMENT("argument")
   }
 
   companion object {
