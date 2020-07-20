@@ -24,7 +24,7 @@
     "highlight.js": "^10.0.1",
     "imagemin-svgo": "^7.1.0",
     "json2yaml": "^1.1.0",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "next": "^9.3.6",
     "next-compose-plugins": "^2.2.0",
     "next-optimized-images": "^2.6.0",
