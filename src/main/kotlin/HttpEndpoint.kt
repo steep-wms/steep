@@ -40,6 +40,8 @@ import db.SubmissionRegistry
 import db.SubmissionRegistryFactory
 import db.VMRegistry
 import db.VMRegistryFactory
+import db.migration.removeExecuteActionParameters
+import db.migration.removeStoreActions
 import helper.JsonUtils
 import helper.WorkflowValidator
 import helper.YamlUtils
@@ -896,68 +898,6 @@ class HttpEndpoint : CoroutineVerticle() {
   }
 
   /**
-   * Recursively search the given JSON object for store actions and remove
-   * them with a warning. Support for store actions was dropped in workflow
-   * API version 4.0.0.
-   */
-  private fun removeStoreAction(json: Map<*, *>) {
-    val actions = json["actions"]
-    if (actions is MutableList<*>) {
-      val iterator = actions.iterator()
-      while (iterator.hasNext()) {
-        val a = iterator.next()
-        if (a is Map<*, *>) {
-          val type = a["type"]
-          if ("for" == type) {
-            removeStoreAction(a)
-          } else if ("store" == type) {
-            log.warn("Found a store action in the posted workflow. Such " +
-                "actions were removed in workflow API version 4.0.0. The " +
-                "action will be removed from the workflow. Use the `store' " +
-                "flag on `output' parameters instead.")
-            iterator.remove()
-          }
-        }
-      }
-    }
-  }
-
-  /**
-   * Recursively search the given JSON object for action parameters and merge
-   * them into the action's inputs with a warning. Support for action
-   * parameters will be dropped in workflow API version 5.0.0.
-   */
-  private fun removeParameters(json: Map<*, *>) {
-    val actions = json["actions"]
-    if (actions is MutableList<*>) {
-      val iterator = actions.iterator()
-      while (iterator.hasNext()) {
-        val a = iterator.next()
-        if (a is MutableMap<*, *>) {
-          val type = a["type"]
-          if ("for" == type) {
-            removeParameters(a)
-          } else if ("execute" == type) {
-            val parameters = a["parameters"]
-            if (parameters != null) {
-              log.warn("Found `parameters' in an execute action. Parameters " +
-                  "are unnecessary and will be removed in workflow API " +
-                  "version 5.0.0. Use `inputs' instead. The posted workflow " +
-                  "will now be modified automatically and the parameters will " +
-                  "be merged into the action's inputs.")
-              val newInputs = (a["inputs"] as MutableList<*>? ?: mutableListOf<Any>()) +
-                  (parameters as MutableList<*>? ?: mutableListOf<Any>())
-              @Suppress("UNCHECKED_CAST")
-              (a as MutableMap<String, Any>)["inputs"] = newInputs
-              a.remove("parameters")
-            }
-          }
-        }
-      }
-    }
-  }
-
-  /**
    * Execute a workflow
    * @param ctx the routing context
    */
@@ -993,10 +933,21 @@ class HttpEndpoint : CoroutineVerticle() {
     }
 
     // remove incompatible store action
-    removeStoreAction(workflowJson)
+    if (removeStoreActions(workflowJson)) {
+      log.warn("Found a store action in the posted workflow. Such " +
+          "actions were removed in workflow API version 4.0.0. The " +
+          "action will be removed from the workflow. Use the `store' " +
+          "flag on `output' parameters instead.")
+    }
 
     // remove deprecated action parameters
-    removeParameters(workflowJson)
+    if (removeExecuteActionParameters(workflowJson)) {
+      log.warn("Found `parameters' in an execute action. Parameters " +
+          "are unnecessary and will be removed in workflow API " +
+          "version 5.0.0. Use `inputs' instead. The posted workflow " +
+          "will now be modified automatically and the parameters will " +
+          "be merged into the action's inputs.")
+    }
 
     val workflow = try {
       JsonUtils.mapper.convertValue<Workflow>(workflowJson)
