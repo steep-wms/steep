@@ -7,7 +7,6 @@ import model.metadata.RuntimeArgument
 import model.metadata.Service
 import model.metadata.ServiceParameter
 import model.processchain.Argument
-import model.processchain.Argument.Type.ARGUMENT
 import model.processchain.Argument.Type.INPUT
 import model.processchain.Argument.Type.OUTPUT
 import model.processchain.ArgumentVariable
@@ -359,7 +358,6 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       val params = (when (serviceParam.type) {
         INPUT -> action.inputs
         OUTPUT -> action.outputs
-        ARGUMENT -> action.parameters // should never happen
       }).filter { it.id == serviceParam.id }
 
       // convert parameters to arguments

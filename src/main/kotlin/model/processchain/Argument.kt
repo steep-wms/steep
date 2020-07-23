@@ -8,8 +8,7 @@ import helper.UniqueID
  * @param id a unique identifier for this argument
  * @param label an optional label (e.g. `--input` or `-i`)
  * @param variable a variable holding the argument's value
- * @param type the argument's type (describes if this is an input, an output,
- * or a normal argument)
+ * @param type the argument's type (describes if this is an input or an output)
  * @param dataType the argument's data type. Describes the type of the argument
  * value and, in particular (given that the argument is an input or output
  * argument) whether the value points to a file or a directory.
@@ -24,13 +23,7 @@ data class Argument(
 ) {
   enum class Type(@JsonValue val type: String) {
     INPUT("input"),
-    OUTPUT("output"),
-
-    @Deprecated(message = "Service parameter type `argument' is deprecated. " +
-        "Use `input' instead. This value is only kept for backward " +
-        "compatibility. It will be removed in Steep 6.0.0 with a " +
-        "corresponding database migration.", replaceWith = ReplaceWith("INPUT"))
-    ARGUMENT("argument")
+    OUTPUT("output")
   }
 
   companion object {
