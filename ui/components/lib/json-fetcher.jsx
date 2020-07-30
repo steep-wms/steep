@@ -4,7 +4,7 @@ import "./json-fetcher.scss"
 
 NProgress.configure({ showSpinner: false })
 
-export default async (url, withHeaders = false, options = {}) => {
+async function fetcher(url, withHeaders = false, options = {}) {
   let timer = setTimeout(NProgress.start, 100)
   try {
     let r = await fetch(url, {
@@ -26,3 +26,5 @@ export default async (url, withHeaders = false, options = {}) => {
     NProgress.done()
   }
 }
+
+export default fetcher

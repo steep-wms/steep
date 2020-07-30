@@ -24,7 +24,7 @@ function NavItem({ href, icon, text }) {
   )
 }
 
-export default () => {
+const Sidebar = () => {
   function switchToClassicUI() {
     let params = new URLSearchParams(window.location.search)
     params.set("legacy", "true")
@@ -56,3 +56,5 @@ export default () => {
     </aside>
   )
 }
+
+export default Sidebar

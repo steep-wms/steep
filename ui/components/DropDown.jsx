@@ -3,7 +3,7 @@ import { ChevronDown } from "react-feather"
 import { useEffect, useRef, useState } from "react"
 import "./DropDown.scss"
 
-export default ({ title, right, primary, children }) => {
+const DropDown = ({ title, right, primary, children }) => {
   const [visible, setVisible] = useState(false)
   const ref = useRef()
   const btnRef = useRef()
@@ -42,3 +42,5 @@ export default ({ title, right, primary, children }) => {
     </div>
   )
 }
+
+export default DropDown

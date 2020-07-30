@@ -1,8 +1,10 @@
 import TimeAgo from "react-timeago"
 import Tooltip from "./Tooltip"
 
-export default (props) => (
+const Ago = (props) => (
   <Tooltip title={props.title}>
     <TimeAgo {...props} title="" />
   </Tooltip>
 )
+
+export default Ago

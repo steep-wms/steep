@@ -14,7 +14,7 @@ import { formatDate, formatDurationTitle } from "../../components/lib/date-time-
 import fetcher from "../../components/lib/json-fetcher"
 import "./[id].scss"
 
-function VM({ id }) {
+function VMDetails({ id }) {
   const vms = useContext(VMContext.Items)
   const updateVMs = useContext(VMContext.UpdateItems)
   const [error, setError] = useState()
@@ -156,13 +156,15 @@ function VM({ id }) {
   )
 }
 
-export default () => {
+const VM = () => {
   const router = useRouter()
   const { id } = router.query
 
   return (
     <VMContext.Provider pageSize={1} allowAdd={false}>
-      <VM id={id} />
+      <VMDetails id={id} />
     </VMContext.Provider>
   )
 }
+
+export default VM

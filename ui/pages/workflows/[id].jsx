@@ -16,7 +16,7 @@ import workflowToProgress from "../../components/workflows/workflow-to-progress"
 import fetcher from "../../components/lib/json-fetcher"
 import { disableBodyScroll, enableBodyScroll } from "body-scroll-lock"
 
-function Workflow({ id }) {
+function WorkflowDetails({ id }) {
   const workflows = useContext(WorkflowContext.Items)
   const updateWorkflows = useContext(WorkflowContext.UpdateItems)
   const [error, setError] = useState()
@@ -157,13 +157,15 @@ function Workflow({ id }) {
   )
 }
 
-export default () => {
+const Workflow = () => {
   const router = useRouter()
   const { id } = router.query
 
   return (
     <WorkflowContext.Provider pageSize={1} allowAdd={false}>
-      <Workflow id={id} />
+      <WorkflowDetails id={id} />
     </WorkflowContext.Provider>
   )
 }
+
+export default Workflow

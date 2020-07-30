@@ -14,7 +14,7 @@ import { formatDate } from "../../components/lib/date-time-utils"
 import agentToProgress from "../../components/agents/agent-to-progress"
 import fetcher from "../../components/lib/json-fetcher"
 
-function Agent({ id }) {
+function AgentDetails({ id }) {
   const agents = useContext(AgentContext.Items)
   const updateAgents = useContext(AgentContext.UpdateItems)
   const [error, setError] = useState()
@@ -86,13 +86,15 @@ function Agent({ id }) {
   )
 }
 
-export default () => {
+const Agent = () => {
   const router = useRouter()
   const { id } = router.query
 
   return (
     <AgentContext.Provider pageSize={1} allowAdd={false}>
-      <Agent id={id} />
+      <AgentDetails id={id} />
     </AgentContext.Provider>
   )
 }
+
+export default Agent

@@ -15,7 +15,7 @@ import { formatDate, formatDurationTitle } from "../../components/lib/date-time-
 import fetcher from "../../components/lib/json-fetcher"
 import { disableBodyScroll, enableBodyScroll } from "body-scroll-lock"
 
-function ProcessChain({ id }) {
+function ProcessChainDetails({ id }) {
   const processChains = useContext(ProcessChainContext.Items)
   const updateProcessChains = useContext(ProcessChainContext.UpdateItems)
   const [error, setError] = useState()
@@ -148,13 +148,15 @@ function ProcessChain({ id }) {
   )
 }
 
-export default () => {
+const ProcessChain = () => {
   const router = useRouter()
   const { id } = router.query
 
   return (
     <ProcessChainContext.Provider pageSize={1} allowAdd={false}>
-      <ProcessChain id={id} />
+      <ProcessChainDetails id={id} />
     </ProcessChainContext.Provider>
   )
 }
+
+export default ProcessChain

@@ -1,8 +1,8 @@
 import Head from "next/head"
 import { useRouter } from "next/router"
 
-export default ({ title }) => {
-  let router = useRouter()
+const Header = ({ title }) => {
+  const router = useRouter()
 
   return (
     <header>
@@ -70,3 +70,5 @@ export default ({ title }) => {
     </header>
   )
 }
+
+export default Header

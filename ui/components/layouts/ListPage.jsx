@@ -91,7 +91,7 @@ function List({ Context, ListItem, subjects, path, pagination, pageSize,
   </>)
 }
 
-export default (props) => {
+const ListPage = (props) => {
   let pagination = props.pagination
   if (pagination === undefined) {
     pagination = true
@@ -259,3 +259,5 @@ export default (props) => {
     </Page>
   )
 }
+
+export default ListPage

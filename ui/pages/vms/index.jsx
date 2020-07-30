@@ -53,7 +53,9 @@ function VMListItem({ item: vm }) {
   }, [vm])
 }
 
-export default () => (
+const VMs = () => (
   <ListPage title="VMs" Context={VMContext}
       ListItem={VMListItem} subjects="VMs" path="vms" filters={FILTERS} />
 )
+
+export default VMs

@@ -3,7 +3,7 @@ import Footer from "../Footer"
 import Sidebar from "../Sidebar"
 import "./Page.scss"
 
-export default ({ title, children }) => (
+const Page = ({ title, children }) => (
   <div className="page">
     <Header title={title}/>
     <Sidebar />
@@ -15,3 +15,5 @@ export default ({ title, children }) => (
     </main>
   </div>
 )
+
+export default Page

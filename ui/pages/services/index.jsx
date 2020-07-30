@@ -4,7 +4,7 @@ import ListItem from "../../components/ListItem"
 import { useEffect, useState } from "react"
 import fetcher from "../../components/lib/json-fetcher"
 
-export default () => {
+const Services = () => {
   const [services, setServices] = useState()
   const [error, setError] = useState()
 
@@ -41,3 +41,5 @@ export default () => {
     </Page>
   )
 }
+
+export default Services

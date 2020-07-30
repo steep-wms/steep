@@ -27,7 +27,9 @@ function AgentListItem({ item: agent }) {
   }, [agent])
 }
 
-export default () => (
+const Agents = () => (
   <ListPage title="Agents" Context={AgentContext}
       ListItem={AgentListItem} subjects="agents" path="agents" pagination={false} />
 )
+
+export default Agents

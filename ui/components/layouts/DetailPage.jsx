@@ -3,7 +3,7 @@ import Breadcrumbs from "../Breadcrumbs"
 import "./DetailPage.scss"
 import DropDown from "../DropDown"
 
-export default ({ breadcrumbs, title, subtitle, menu, children }) => (
+const DetailPage = ({ breadcrumbs, title, subtitle, menu, children }) => (
   <Page title={title}>
     {title && <div className="detail-page-title">
       <h1 className="no-margin-bottom">{title}</h1>{menu && <DropDown title="Actions">{menu}</DropDown>}
@@ -16,3 +16,5 @@ export default ({ breadcrumbs, title, subtitle, menu, children }) => (
     </div>
   </Page>
 )
+
+export default DetailPage

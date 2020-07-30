@@ -1,7 +1,9 @@
 import "./Notification.scss"
 
-export default ({ children }) => (
+const Notification = ({ children }) => (
   <div className="notification">
     {children}
   </div>
 )
+
+export default Notification

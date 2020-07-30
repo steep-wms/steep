@@ -1,6 +1,8 @@
 import classNames from "classnames"
 import "./Label.scss"
 
-export default ({ children, small }) => (
+const Label = ({ children, small }) => (
   <span className={classNames("label", { "label-small": small })}>{children}</span>
 )
+
+export default Label

@@ -1,6 +1,6 @@
 import "./Breadcrumbs.scss"
 
-export default ({ breadcrumbs }) => {
+const Breadcrumbs = ({ breadcrumbs }) => {
   let first = breadcrumbs.slice(0, breadcrumbs.length - 1)
   let elements = [
     ...(first.map((b, i) => <span key={i}>{b} &raquo; </span>)),
@@ -8,3 +8,5 @@ export default ({ breadcrumbs }) => {
   ]
   return <div className="breadcrumbs">{elements}</div>
 }
+
+export default Breadcrumbs

@@ -5,7 +5,7 @@ import DefinitionListItem from "./DefinitionListItem"
 import { useEffect, useState } from "react"
 import fetcher from "./lib/json-fetcher"
 
-export default () => {
+const VersionInfo = () => {
   const [data, setData] = useState()
   const [error, setError] = useState()
 
@@ -47,3 +47,5 @@ export default () => {
     )
   }
 }
+
+export default VersionInfo

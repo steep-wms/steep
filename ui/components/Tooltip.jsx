@@ -3,7 +3,7 @@ import { createPopper } from "@popperjs/core"
 import { useEffect, useRef, useState } from "react"
 import "./Tooltip.scss"
 
-export default ({ title, delay = 300, forceVisible = undefined, className,
+const Tooltip = ({ title, delay = 300, forceVisible = undefined, className,
     onShow, onHide, children }) => {
   const targetRef = useRef()
   const tooltipRef = useRef()
@@ -89,3 +89,5 @@ export default ({ title, delay = 300, forceVisible = undefined, className,
     </>
   )
 }
+
+export default Tooltip

@@ -8,7 +8,7 @@ import Label from "../../components/Label"
 import "./[id].scss"
 import fetcher from "../../components/lib/json-fetcher"
 
-export default () => {
+const Service = () => {
   const router = useRouter()
   const { id } = router.query
 
@@ -127,3 +127,5 @@ export default () => {
     </DetailPage>
   )
 }
+
+export default Service

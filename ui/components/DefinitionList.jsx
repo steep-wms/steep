@@ -1,7 +1,9 @@
 import "./DefinitionList.scss"
 
-export default ({ children }) => (
+const DefinitionList = ({ children }) => (
   <dl className="definition-list">
     {children}
   </dl>
 )
+
+export default DefinitionList

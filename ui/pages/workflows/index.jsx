@@ -32,8 +32,10 @@ function WorkflowListItem({ item: workflow }) {
   }, [workflow])
 }
 
-export default () => (
+const Workflows = () => (
   <ListPage title="Workflows" Context={WorkflowContext}
       ListItem={WorkflowListItem} subjects="workflows" path="workflows"
       filters={FILTERS} />
 )
+
+export default Workflows

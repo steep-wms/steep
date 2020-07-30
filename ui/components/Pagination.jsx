@@ -46,7 +46,10 @@ function makeQueryWithOffset(query, page, pageSize) {
   return query
 }
 
-export default ({ pageSize = 10, pageOffset = 0, pageTotal = 0, onChangeOffset }) => {
+const Pagination = ({ pageSize = 10, pageOffset = 0, pageTotal = 0, onChangeOffset }) => {
+  const router = useRouter()
+  let pathname = router.pathname
+
   if (pageSize <= 0) {
     return <></>
   }
@@ -56,9 +59,6 @@ export default ({ pageSize = 10, pageOffset = 0, pageTotal = 0, onChangeOffset }
   if (numPages <= 1) {
     return <></>
   }
-
-  const router = useRouter()
-  let pathname = router.pathname
 
   let pages = makePages(curPage, numPages)
   pages = pages.map(p => {
@@ -121,3 +121,5 @@ export default ({ pageSize = 10, pageOffset = 0, pageTotal = 0, onChangeOffset }
     </div>
   )
 }
+
+export default Pagination

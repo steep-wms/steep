@@ -3,7 +3,7 @@ import "./CancelModal.scss"
 
 Modal.setAppElement("#__next")
 
-export default (props) => (
+const CancelModal = (props) => (
   <Modal {...props} className="cancel-modal" overlayClassName="cancel-modal-overlay">
     <div className="cancel-modal-title">{props.title}</div>
     {props.children}
@@ -13,3 +13,5 @@ export default (props) => (
     </div>
   </Modal>
 )
+
+export default CancelModal

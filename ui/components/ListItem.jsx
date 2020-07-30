@@ -12,7 +12,7 @@ function formatterToNow(value, unit, suffix, epochSeconds) {
   return formatDistanceToNow(epochSeconds, { addSuffix: true, includeSeconds: true })
 }
 
-export default ({ title, linkHref, linkAs, subtitle, justAdded, justLeft,
+const ListItem = ({ title, linkHref, linkAs, subtitle, justAdded, justLeft,
     startTime, endTime, labels = [], progress }) => {
   let defaultSubtitle
   if (progress !== undefined) {
@@ -65,3 +65,5 @@ export default ({ title, linkHref, linkAs, subtitle, justAdded, justLeft,
     </div>
   )
 }
+
+export default ListItem

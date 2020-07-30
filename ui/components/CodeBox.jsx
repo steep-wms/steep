@@ -15,7 +15,7 @@ hljs.registerLanguage("yaml", yaml)
 const COPY = "Copy to clipboard"
 const COPIED = "Copied!"
 
-export default ({ json }) => {
+const CodeBox = ({ json }) => {
   const jsonRef = useRef()
   const yamlRef = useRef()
   const copyBtnRef = useRef()
@@ -87,3 +87,5 @@ export default ({ json }) => {
     </div>
   )
 }
+
+export default CodeBox

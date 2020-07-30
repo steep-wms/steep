@@ -1,7 +1,7 @@
 import { formatDurationTitle } from "./lib/date-time-utils"
 import { useEffect, useState } from "react"
 
-export default ({ startTime }) => {
+const LiveDuration = ({ startTime }) => {
   const [now, setNow] = useState(new Date())
 
   useEffect(() => {
@@ -13,3 +13,5 @@ export default ({ startTime }) => {
 
   return formatDurationTitle(startTime, now)
 }
+
+export default LiveDuration

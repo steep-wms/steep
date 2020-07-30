@@ -3,7 +3,7 @@ import EventBusContext from "../components/lib/EventBusContext"
 import EventBus from "vertx3-eventbus-client"
 import { useEffect, useState } from "react"
 
-export default ({ Component, pageProps }) => {
+const App = ({ Component, pageProps }) => {
   const [eventBus, setEventBus] = useState()
 
   useEffect(() => {
@@ -24,3 +24,5 @@ export default ({ Component, pageProps }) => {
     </EventBusContext.Provider>
   )
 }
+
+export default App

@@ -2,7 +2,7 @@ import "./ListItemProgressBox.scss"
 import { Activity, AlertCircle, CheckCircle, Coffee, Delete, Download, Loader,
   Moon, PauseCircle, Power, RotateCw, XCircle } from "react-feather"
 
-export default ({ progress }) => {
+const ListItemProgressBox = ({ progress }) => {
   let icon
   let defaultTitle
   switch (progress.status) {
@@ -98,3 +98,5 @@ export default ({ progress }) => {
     </div>
   )
 }
+
+export default ListItemProgressBox

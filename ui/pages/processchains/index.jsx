@@ -33,7 +33,7 @@ function ProcessChainListItem({ item: processChain }) {
   }, [processChain])
 }
 
-export default () => {
+const ProcessChains = () => {
   const router = useRouter()
 
   let breadcrumbs
@@ -54,3 +54,5 @@ export default () => {
       filters={FILTERS} breadcrumbs={breadcrumbs} />
   )
 }
+
+export default ProcessChains

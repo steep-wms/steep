@@ -1,7 +1,7 @@
 import "./Footer.scss"
 import { Book, Home, GitHub } from "react-feather"
 
-export default () => (
+const Footer = () => (
   <footer>
     <div className="footer-content">
       <div className="container">
@@ -25,3 +25,5 @@ export default () => (
     </div>
   </footer>
 )
+
+export default Footer
