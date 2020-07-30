@@ -13,7 +13,8 @@ function formatterToNow(value, unit, suffix, epochSeconds) {
 
 function AgentListItem({ item: agent }) {
   return useMemo(() => {
-    let href = `/agents/${agent.id}`
+    let href = "/agents/[id]"
+    let as = `/agents/${agent.id}`
 
     let progress = agentToProgress(agent)
 
@@ -22,7 +23,7 @@ function AgentListItem({ item: agent }) {
       formatter={formatterToNow} title={upSinceTitle} /></>
 
     return <ListItem key={agent.id} justAdded={agent.justAdded}
-        justLeft={agent.left} linkHref={href} title={agent.id}
+        justLeft={agent.left} linkHref={href} linkAs={as} title={agent.id}
         subtitle={subtitle} progress={progress} labels={agent.capabilities} />
   }, [agent])
 }
