@@ -5,7 +5,7 @@ import DropDown from "../DropDown"
 import Notification from "../Notification"
 import Page from "./Page"
 import Pagination from "../Pagination"
-import { useCallback, useContext, useEffect, useState } from "react"
+import { useCallback, useContext, useEffect, useMemo, useState } from "react"
 import "./ListPage.scss"
 import fetcher from "../lib/json-fetcher"
 import { useRouter } from "next/router"
@@ -101,7 +101,7 @@ export default (props) => {
   const [updatesAvailable, setUpdatesAvailableNow] = useState(false)
   const [forceUpdate, setForceUpdate] = useState(0)
 
-  const setUpdatesAvailable = useCallback(debounce((updatesAvailable) => {
+  const setUpdatesAvailable = useMemo(() => debounce((updatesAvailable) => {
     setUpdatesAvailableNow(updatesAvailable)
   }, 100), [setUpdatesAvailableNow])
 
