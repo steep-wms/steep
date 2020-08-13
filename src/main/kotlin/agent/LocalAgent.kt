@@ -69,20 +69,34 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
     val outputs = processChain.executables
         .flatMap { it.arguments }
         .filter { it.type == Argument.Type.OUTPUT }
-    val executables = mkdirsForOutputs(outputs) + processChain.executables
+    val mkdirs = mkdirsForOutputs(outputs)
+    var progress: Double? = null
 
     // temporarily register a consumer that can cancel the process chain
     val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
     val consumer = vertx.eventBus().consumer<JsonObject>(address).handler { msg ->
-      if (msg.body().getString("action") == "cancel") {
+      val action = msg.body().getString("action")
+      if (action == "cancel") {
         cancel()
+      } else if (action == "getProgress") {
+        msg.reply(progress)
       }
     }
 
     // execute the process chain
     try {
-      for (exec in executables) {
+      // create all required output directories
+      for (exec in mkdirs) {
         execute(exec)
+      }
+
+      // run executables and track progress
+      for ((index, exec) in processChain.executables.withIndex()) {
+        execute(exec)
+
+        if ((index + 1) < processChain.executables.size || progress != null) {
+          progress = (index + 1).toDouble() / processChain.executables.size
+        }
       }
     } finally {
       // make sure the consumer is unregistered

@@ -1,3 +1,4 @@
+import AddressConstants.LOCAL_AGENT_ADDRESS_PREFIX
 import com.fasterxml.jackson.module.kotlin.convertValue
 import db.MetadataRegistry
 import db.MetadataRegistryFactory
@@ -20,13 +21,13 @@ import io.mockk.slot
 import io.mockk.unmockkAll
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
+import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClient
 import io.vertx.ext.web.client.predicate.ResponsePredicate
 import io.vertx.ext.web.codec.BodyCodec
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.DeploymentOptions
-import io.vertx.kotlin.core.json.JsonObject
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
@@ -1320,6 +1321,67 @@ class HttpEndpointTest {
               "results" to obj(
                   "output_file1" to array("output.txt")
               )
+          )
+        })
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that the endpoint returns a single process chain with information
+   * about estimated progress
+   */
+  @Test
+  fun getProcessChainByIdProgress(vertx: Vertx, ctx: VertxTestContext) {
+    val expectedProgress = 0.55
+    val eid = UniqueID.next()
+    val sid = UniqueID.next()
+    val pc1 = ProcessChain(executables = listOf(Executable(id = eid,
+        path = "path", arguments = emptyList())))
+
+    coEvery { submissionRegistry.findProcessChainById(pc1.id) } returns pc1
+    coEvery { submissionRegistry.findProcessChainById(neq(pc1.id)) } returns null
+    coEvery { submissionRegistry.getProcessChainSubmissionId(pc1.id) } returns sid
+    coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns
+        ProcessChainStatus.RUNNING
+    val startTime = Instant.now()
+    coEvery { submissionRegistry.getProcessChainStartTime(pc1.id) } returns startTime
+
+    val address = LOCAL_AGENT_ADDRESS_PREFIX + pc1.id
+    vertx.eventBus().consumer<JsonObject>(address).handler { msg ->
+      if (msg.body().getString("action") == "getProgress") {
+        msg.reply(expectedProgress)
+      }
+    }
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/processchains/${pc1.id}")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.JSON)
+            .sendAwait()
+
+        assertThat(response.body()).isEqualTo(json {
+          obj(
+              "id" to pc1.id,
+              "executables" to array(
+                  obj(
+                      "id" to eid,
+                      "path" to "path",
+                      "arguments" to array(),
+                      "runtime" to "other",
+                      "runtimeArgs" to array()
+                  )
+              ),
+              "requiredCapabilities" to array(),
+              "submissionId" to sid,
+              "status" to ProcessChainStatus.RUNNING.toString(),
+              "startTime" to startTime,
+              "estimatedProgress" to expectedProgress
           )
         })
       }

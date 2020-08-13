@@ -6,6 +6,7 @@ import coVerify
 import helper.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxTestContext
+import io.vertx.kotlin.core.eventbus.sendAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
@@ -16,6 +17,7 @@ import model.processchain.Argument
 import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import model.processchain.ProcessChain
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CancellationException
 import java.util.concurrent.Executors
@@ -87,6 +89,62 @@ class LocalAgentTest : AgentTest() {
             .isInstanceOf(CancellationException::class.java)
       }
 
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if we can get the current estimated progress
+   */
+  @Test
+  fun getProgress(vertx: Vertx, ctx: VertxTestContext) {
+    val processChain = ProcessChain(executables = listOf(
+        Executable(path = "sleep", arguments = listOf(
+            Argument(variable = ArgumentVariable(UniqueID.next(), "1"),
+                type = Argument.Type.INPUT)
+        )),
+        Executable(path = "sleep", arguments = listOf(
+            Argument(variable = ArgumentVariable(UniqueID.next(), "1"),
+                type = Argument.Type.INPUT)
+        )),
+        Executable(path = "sleep", arguments = listOf(
+            Argument(variable = ArgumentVariable(UniqueID.next(), "1"),
+                type = Argument.Type.INPUT)
+        ))
+    ))
+
+    val agent = LocalAgent(vertx, localAgentDispatcher)
+
+    vertx.setTimer(200) {
+      val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
+      GlobalScope.launch(vertx.dispatcher()) {
+        ctx.coVerify {
+          val msg = vertx.eventBus().sendAwait<Double?>(address, json {
+            obj(
+                "action" to "getProgress"
+            )
+          })
+          assertThat(msg.body()).isNull()
+        }
+      }
+    }
+
+    vertx.setTimer(1400) {
+      val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
+      GlobalScope.launch(vertx.dispatcher()) {
+        ctx.coVerify {
+          val msg = vertx.eventBus().sendAwait<Double?>(address, json {
+            obj(
+                "action" to "getProgress"
+            )
+          })
+          assertThat(msg.body()).isGreaterThan(0.0)
+        }
+      }
+    }
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      agent.execute(processChain)
       ctx.completeNow()
     }
   }
