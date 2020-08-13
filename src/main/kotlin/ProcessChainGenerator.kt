@@ -406,8 +406,8 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       return@flatMap args
     }
 
-    return Executable(service.name, service.path, arguments,
-        service.runtime, runtimeArgsToArguments(service.runtimeArgs))
+    return Executable(service.name, service.path, arguments, service.runtime,
+        runtimeArgsToArguments(service.runtimeArgs), service.id)
   }
 
   /**

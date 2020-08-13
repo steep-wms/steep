@@ -3,6 +3,7 @@
     "id": "1",
     "executables": [{
       "id": "Service With Docker",
+      "serviceId": "serviceWithDocker",
       "path": "service:latest",
       "arguments": [{
         "id": "input",

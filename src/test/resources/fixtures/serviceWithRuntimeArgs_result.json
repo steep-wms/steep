@@ -3,6 +3,7 @@
     "id": "3",
     "executables": [{
       "id": "Service With Runtime Arguments",
+      "serviceId": "serviceWithRuntimeArgs",
       "path": "service:latest",
       "arguments": [{
         "id": "input",

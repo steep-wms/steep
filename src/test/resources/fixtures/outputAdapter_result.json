@@ -3,6 +3,7 @@
     "id": "1",
     "executables": [{
       "id": "cp_custom",
+      "serviceId": "cp_custom",
       "path": "cp",
       "arguments": [{
         "id": "input_file",
@@ -31,6 +32,7 @@
     "id": "3",
     "executables": [{
       "id": "cp",
+      "serviceId": "cp",
       "path": "cp",
       "arguments": [{
         "id": "input_file",

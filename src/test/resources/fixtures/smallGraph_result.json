@@ -3,6 +3,7 @@
     "id": "1",
     "executables": [{
       "id": "cp",
+      "serviceId": "cp",
       "path": "cp",
       "arguments": [{
         "id": "input_file",
@@ -31,6 +32,7 @@
     "id": "4",
     "executables": [{
       "id": "cp",
+      "serviceId": "cp",
       "path": "cp",
       "arguments": [{
         "id": "input_file",
@@ -51,6 +53,7 @@
       }]
     }, {
       "id": "cp",
+      "serviceId": "cp",
       "path": "cp",
       "arguments": [{
         "id": "input_file",
@@ -74,6 +77,7 @@
     "id": "6",
     "executables": [{
       "id": "cp",
+      "serviceId": "cp",
       "path": "cp",
       "arguments": [{
         "id": "input_file",
@@ -104,6 +108,7 @@
     "id": "8",
     "executables": [{
       "id": "join",
+      "serviceId": "join",
       "path": "join.sh",
       "arguments": [{
         "id": "i",

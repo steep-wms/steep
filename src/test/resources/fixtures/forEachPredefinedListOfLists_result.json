@@ -3,6 +3,7 @@
     "id": "1",
     "executables": [{
       "id": "join",
+      "serviceId": "join",
       "path": "join.sh",
       "arguments": [{
         "id": "i",
@@ -34,6 +35,7 @@
     "id": "3",
     "executables": [{
       "id": "join",
+      "serviceId": "join",
       "path": "join.sh",
       "arguments": [{
         "id": "i",

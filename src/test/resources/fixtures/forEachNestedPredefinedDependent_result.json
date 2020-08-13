@@ -3,6 +3,7 @@
     "id": "1",
     "executables": [{
       "id": "cp",
+      "serviceId": "cp",
       "path": "cp",
       "arguments": [{
         "id": "input_file",
@@ -26,6 +27,7 @@
     "id": "3",
     "executables": [{
       "id": "cp",
+      "serviceId": "cp",
       "path": "cp",
       "arguments": [{
         "id": "input_file",
@@ -49,6 +51,7 @@
     "id": "5",
     "executables": [{
       "id": "join",
+      "serviceId": "join",
       "path": "join.sh",
       "arguments": [{
         "id": "i",
@@ -80,6 +83,7 @@
     "id": "7",
     "executables": [{
       "id": "join",
+      "serviceId": "join",
       "path": "join.sh",
       "arguments": [{
         "id": "i",
@@ -111,6 +115,7 @@
     "id": "9",
     "executables": [{
       "id": "join",
+      "serviceId": "join",
       "path": "join.sh",
       "arguments": [{
         "id": "i",
@@ -142,6 +147,7 @@
     "id": "11",
     "executables": [{
       "id": "join",
+      "serviceId": "join",
       "path": "join.sh",
       "arguments": [{
         "id": "i",

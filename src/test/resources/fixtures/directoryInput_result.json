@@ -3,6 +3,7 @@
     "id": "2",
     "executables": [{
       "id": "splitToDir",
+      "serviceId": "splitToDir",
       "path": "splitToDir.sh",
       "arguments": [{
         "id": "i",
@@ -23,6 +24,7 @@
       }]
     }, {
       "id": "joinFromDir",
+      "serviceId": "joinFromDir",
       "path": "joinFromDir.sh",
       "arguments": [{
         "id": "i",

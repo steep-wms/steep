@@ -3,6 +3,7 @@
     "id": "3",
     "executables": [{
       "id": "split",
+      "serviceId": "split",
       "path": "split.sh",
       "arguments": [{
         "id": "input",
@@ -31,6 +32,7 @@
       }]
     }, {
       "id": "join",
+      "serviceId": "join",
       "path": "join.sh",
       "arguments": [{
         "id": "i",

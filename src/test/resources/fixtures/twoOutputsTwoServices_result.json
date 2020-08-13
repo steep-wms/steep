@@ -3,6 +3,7 @@
     "id": "2",
     "executables": [{
       "id": "split",
+      "serviceId": "split",
       "path": "split.sh",
       "arguments": [{
         "id": "input",
@@ -40,6 +41,7 @@
     "id": "4",
     "executables": [{
       "id": "cp",
+      "serviceId": "cp",
       "path": "cp",
       "arguments": [{
         "id": "input_file",
@@ -63,6 +65,7 @@
     "id": "6",
     "executables": [{
       "id": "cp",
+      "serviceId": "cp",
       "path": "cp",
       "arguments": [{
         "id": "input_file",
