@@ -8,14 +8,14 @@ import java.util.LinkedList
  * @param maxLines the maximum number of lines to collect
  * @author Michel Kraemer
  */
-class OutputCollector(private val maxLines: Int = 100) {
+open class OutputCollector(private val maxLines: Int = 100) {
   private val lines = LinkedList<String>()
 
   /**
    * Collects a new [line]. Discards the oldest one if the maximum number of
    * lines has been reached.
    */
-  fun collect(line: String) {
+  open fun collect(line: String) {
     lines.add(line)
     if (lines.size > maxLines) {
       lines.removeFirst()

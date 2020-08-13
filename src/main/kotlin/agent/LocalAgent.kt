@@ -13,9 +13,11 @@ import io.vertx.kotlin.core.eventbus.unregisterAwait
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import model.metadata.Service
 import model.plugins.call
@@ -92,7 +94,10 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
 
       // run executables and track progress
       for ((index, exec) in processChain.executables.withIndex()) {
-        execute(exec)
+        execute(exec) { p ->
+          val step = 1.0 / processChain.executables.size
+          progress = step * index + step * p
+        }
 
         if ((index + 1) < processChain.executables.size || progress != null) {
           progress = (index + 1).toDouble() / processChain.executables.size
@@ -120,15 +125,19 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
     coroutineContext.cancel()
   }
 
-  private suspend fun execute(exec: Executable) {
+  private suspend fun execute(exec: Executable, progressUpdater: ((Double) -> Unit)? = null) {
+    val collector = if (progressUpdater != null) {
+      ProgressReportingOutputCollector(outputLinesToCollect, exec, progressUpdater)
+    } else {
+      OutputCollector(outputLinesToCollect)
+    }
+
     if (exec.runtime == Service.RUNTIME_DOCKER) {
       interruptableAsync {
-        val collector = OutputCollector(outputLinesToCollect)
         dockerRuntime.execute(exec, collector)
       }.await()
     } else if (exec.runtime == Service.RUNTIME_OTHER) {
       interruptableAsync {
-        val collector = OutputCollector(outputLinesToCollect)
         otherRuntime.execute(exec, collector)
       }.await()
     } else {
@@ -205,6 +214,23 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
           )
         }
       )
+    }
+  }
+
+  private inner class ProgressReportingOutputCollector(maxLines: Int,
+      private val exec: Executable, private val progressUpdater: (Double) -> Unit) :
+      OutputCollector(maxLines) {
+    private val progressEstimator = exec.serviceId?.let {
+      pluginRegistry.getProgressEstimator(it) }
+
+    override fun collect(line: String) {
+      super.collect(line)
+      progressEstimator?.let { pe ->
+        GlobalScope.launch(coroutineContext) {
+          val progress = pe.call(exec, lines(), vertx)
+          progress?.let { progressUpdater(progress) }
+        }
+      }
     }
   }
 }

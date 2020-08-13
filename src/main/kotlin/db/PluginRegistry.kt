@@ -4,6 +4,7 @@ import model.plugins.InitializerPlugin
 import model.plugins.OutputAdapterPlugin
 import model.plugins.Plugin
 import model.plugins.ProcessChainAdapterPlugin
+import model.plugins.ProgressEstimatorPlugin
 import model.plugins.RuntimePlugin
 
 /**
@@ -16,6 +17,8 @@ class PluginRegistry(compiledPlugins: List<Plugin>) {
       .associateBy { it.supportedDataType }
   private val processChainAdapters = compiledPlugins
       .filterIsInstance<ProcessChainAdapterPlugin>()
+  private val progressEstimators = compiledPlugins.filterIsInstance<ProgressEstimatorPlugin>()
+      .associateBy { it.supportedServiceId }
   private val runtimes = compiledPlugins.filterIsInstance<RuntimePlugin>()
       .associateBy { it.supportedRuntime }
 
@@ -33,6 +36,11 @@ class PluginRegistry(compiledPlugins: List<Plugin>) {
    * Get a runtime with the given [name]
    */
   fun findRuntime(name: String) = runtimes[name]
+
+  /**
+   * Get a progress estimator for a service with the given [serviceId]
+   */
+  fun getProgressEstimator(serviceId: String) = progressEstimators[serviceId]
 
   /**
    * Get all process chain adapters

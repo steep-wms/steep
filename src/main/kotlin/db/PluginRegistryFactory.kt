@@ -11,6 +11,7 @@ import model.plugins.InitializerPlugin
 import model.plugins.OutputAdapterPlugin
 import model.plugins.Plugin
 import model.plugins.ProcessChainAdapterPlugin
+import model.plugins.ProgressEstimatorPlugin
 import model.plugins.RuntimePlugin
 import model.processchain.ProcessChain
 import org.slf4j.LoggerFactory
@@ -74,6 +75,7 @@ object PluginRegistryFactory {
       is InitializerPlugin -> plugin.copy(compiledFunction = f as KFunction<Unit>)
       is OutputAdapterPlugin -> plugin.copy(compiledFunction = f as KFunction<List<String>>)
       is ProcessChainAdapterPlugin -> plugin.copy(compiledFunction = f as KFunction<List<ProcessChain>>)
+      is ProgressEstimatorPlugin -> plugin.copy(compiledFunction = f as KFunction<Double?>)
       is RuntimePlugin -> plugin.copy(compiledFunction = f as KFunction<String>)
       else -> throw RuntimeException("Unknown plugin type: ${plugin::class.java}")
     }
