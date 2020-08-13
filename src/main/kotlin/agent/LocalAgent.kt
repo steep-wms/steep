@@ -5,6 +5,7 @@ import ConfigConstants
 import com.google.common.cache.CacheBuilder
 import db.PluginRegistryFactory
 import helper.FileSystemUtils.readRecursive
+import helper.OutputCollector
 import helper.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
@@ -108,11 +109,13 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
   private suspend fun execute(exec: Executable) {
     if (exec.runtime == Service.RUNTIME_DOCKER) {
       interruptableAsync {
-        dockerRuntime.execute(exec, outputLinesToCollect)
+        val collector = OutputCollector(outputLinesToCollect)
+        dockerRuntime.execute(exec, collector)
       }.await()
     } else if (exec.runtime == Service.RUNTIME_OTHER) {
       interruptableAsync {
-        otherRuntime.execute(exec, outputLinesToCollect)
+        val collector = OutputCollector(outputLinesToCollect)
+        otherRuntime.execute(exec, collector)
       }.await()
     } else {
       val r = pluginRegistry.findRuntime(exec.runtime) ?:
@@ -131,8 +134,8 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
    * Executes the given [block] in the [coroutineContext]. Handles cancellation
    * requests and interrupts the thread that executes the [block].
    */
-  private fun interruptableAsync(block: () -> String): Deferred<String> = async {
-    suspendCancellableCoroutine<String> { cont ->
+  private fun <R> interruptableAsync(block: () -> R): Deferred<R> = async {
+    suspendCancellableCoroutine<R> { cont ->
       val t = Thread.currentThread()
 
       cont.invokeOnCancellation {

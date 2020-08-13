@@ -1,5 +1,6 @@
 package runtime
 
+import helper.OutputCollector
 import helper.UniqueID
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -20,7 +21,7 @@ class DockerRuntime(config: JsonObject) : OtherRuntime() {
   private val tmpPath: String = config.getString(ConfigConstants.TMP_PATH) ?:
       throw IllegalStateException("Missing configuration item `${ConfigConstants.TMP_PATH}'")
 
-  override fun execute(executable: Executable, outputLinesToCollect: Int): String {
+  override fun execute(executable: Executable, outputCollector: OutputCollector) {
     val additionalEnvironment = additionalDockerEnvironment.map {
       Argument(id = UniqueID.next(),
           label = "-e", variable = ArgumentVariable(UniqueID.next(), it),
@@ -47,6 +48,6 @@ class DockerRuntime(config: JsonObject) : OtherRuntime() {
 
     val dockerExec = Executable(id = executable.id, path = "docker",
         arguments = dockerArgs + executable.arguments)
-    return super.execute(dockerExec, outputLinesToCollect)
+    super.execute(dockerExec, outputCollector)
   }
 }

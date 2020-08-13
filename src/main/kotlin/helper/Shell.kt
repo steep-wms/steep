@@ -4,7 +4,6 @@ import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
-import java.util.LinkedList
 import java.util.concurrent.TimeUnit
 
 /**
@@ -17,30 +16,28 @@ object Shell {
   /**
    * Executes the given command
    * @param command the command
-   * @param outputLinesToCollect the number of output lines to collect at most
+   * @param outputCollector collects the command's output (stdout and stderr)
    * @param logFailedExitCode `true` if a failed process with a non-zero exit
    * code should be logged
-   * @return the command's output (stdout and stderr)
-   * @throws ExecutionException if the command failed
    */
-  fun execute(command: List<String>, outputLinesToCollect: Int = 100,
-      logFailedExitCode: Boolean = true): String {
+  fun execute(command: List<String>, outputCollector: OutputCollector = OutputCollector(),
+      logFailedExitCode: Boolean = true) {
     return execute(command, File(System.getProperty("user.dir")),
-        outputLinesToCollect, logFailedExitCode)
+        outputCollector, logFailedExitCode)
   }
 
   /**
    * Executes the given command in the given working directory
    * @param command the command
    * @param workingDir the working directory
-   * @param outputLinesToCollect the number of output lines to collect at most
+   * @param outputCollector collects the command's output (stdout and stderr)
    * @param logFailedExitCode `true` if a failed process with a non-zero exit
    * code should be logged
-   * @return the command's output (stdout and stderr)
    * @throws ExecutionException if the command failed
    */
   private fun execute(command: List<String>, workingDir: File,
-      outputLinesToCollect: Int = 100, logFailedExitCode: Boolean = true): String {
+      outputCollector: OutputCollector = OutputCollector(),
+      logFailedExitCode: Boolean = true) {
     val joinedCommand = command.joinToString(" ")
     log.info(joinedCommand)
 
@@ -50,7 +47,7 @@ object Shell {
         .start()
 
     val streamGobbler = StreamGobbler(process.pid(), process.inputStream,
-        outputLinesToCollect)
+        outputCollector)
     val readerThread = Thread(streamGobbler)
     readerThread.start()
 
@@ -76,15 +73,13 @@ object Shell {
     }
 
     val code = process.exitValue()
-    val result = streamGobbler.lines().joinToString("\n")
     if (code != 0) {
       if (logFailedExitCode) {
         log.error("Command failed with exit code: $code")
       }
-      throw ExecutionException("Failed to run `$joinedCommand'", result, code)
+      throw ExecutionException("Failed to run `$joinedCommand'",
+          outputCollector.output(), code)
     }
-
-    return result
   }
 
   /**
@@ -101,32 +96,16 @@ object Shell {
   ) : IOException(message)
 
   /**
-   * A background thread that reads all data from the [inputStream] of a process
-   * with the given [pid] and collects as many lines as [outputLinesToCollect]
+   * A background thread that reads all lines from the [inputStream] of a process
+   * with the given [pid] and collects them in an [outputCollector]
    */
   private class StreamGobbler(private val pid: Long,
       private val inputStream: InputStream,
-      private val outputLinesToCollect: Int) : Runnable {
-    private val lines = LinkedList<String>()
-
+      private val outputCollector: OutputCollector) : Runnable {
     override fun run() {
       inputStream.bufferedReader().forEachLine { line ->
         log.info("[$pid] $line")
-        synchronized(this) {
-          lines.add(line)
-          if (lines.size > outputLinesToCollect) {
-            lines.removeFirst()
-          }
-        }
-      }
-    }
-
-    /**
-     * Return the collected lines
-     */
-    fun lines(): List<String> {
-      synchronized(this) {
-        return lines
+        outputCollector.collect(line)
       }
     }
   }

@@ -1,5 +1,6 @@
 package cloud
 
+import helper.OutputCollector
 import helper.Shell.execute
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.awaitResult
@@ -33,7 +34,7 @@ class SSHClient(private val ip: String, private val username: String,
           "-o", "StrictHostKeyChecking=no",
           "-o", "UserKnownHostsFile=/dev/null",
           "$username@$ip",
-          "echo ok"), 1, false).trim()
+          "echo ok"), OutputCollector(1), false)
     }
   }
 

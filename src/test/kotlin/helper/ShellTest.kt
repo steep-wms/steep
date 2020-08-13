@@ -18,7 +18,9 @@ class ShellTest {
    */
   @Test
   fun echoOk() {
-    assertThat(Shell.execute(listOf("echo", "ok"))).isEqualTo("ok")
+    val collector = OutputCollector()
+    Shell.execute(listOf("echo", "ok"), collector)
+    assertThat(collector.output()).isEqualTo("ok")
   }
 
   /**
