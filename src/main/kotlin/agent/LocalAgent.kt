@@ -249,8 +249,12 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
     override fun collect(line: String) {
       super.collect(line)
       progressEstimator?.let { pe ->
+        // make copy of lines because we are about to launch an asynchronous
+        // task and need to avoid concurrent modification
+        val linesCopy = ArrayList(lines())
+
         GlobalScope.launch(coroutineContext) {
-          val progress = pe.call(exec, lines(), vertx)
+          val progress = pe.call(exec, linesCopy, vertx)
           progress?.let { progressUpdater(progress) }
         }
       }
