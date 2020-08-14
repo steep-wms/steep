@@ -686,6 +686,7 @@ class CloudManager : CoroutineVerticle() {
     val engine = PebbleEngine.Builder()
         .strictVariables(true)
         .newLineTrimming(false)
+        .extension(ProvisionTemplateExtension())
         .build()
     val context = mapOf<String, Any>(
         "config" to config.map,

@@ -63,6 +63,7 @@ class CloudManagerTest {
     private const val KEEP_ALIVE_INTERVAL = 1
     private const val AZ01 = "az-01"
     private const val AZ02 = "az-02"
+    private const val DUMMY_TEXT = "THIS IS A DUMMY TEXT"
   }
 
   private lateinit var client: CloudClient
@@ -151,7 +152,15 @@ class CloudManagerTest {
     val executeSlot = slot<String>()
     coEvery { anyConstructed<SSHClient>().uploadFile(capture(testShSrcSlot),
         capture(testShDstSlot)) } answers {
-      agentId = File(testShSrcSlot.captured).readText()
+      val contents = File(testShSrcSlot.captured).readText()
+      val s = contents.split(",")
+      agentId = s[0]
+
+      ctx.verify {
+        if (s.size > 1) {
+          assertThat(s[1]).isEqualTo(DUMMY_TEXT)
+        }
+      }
     }
 
     coEvery { anyConstructed<SSHClient>().execute(capture(executeSlot)) } coAnswers {
@@ -248,10 +257,14 @@ class CloudManagerTest {
       // mock client
       coEvery { client.listVMs(any()) } returns emptyList()
 
-      // create test setups
+      // create dummy file
       val tempDirFile = tempDir.toRealPath().toFile()
+      val tempReadFile = File(tempDirFile, "dummy.txt")
+      tempReadFile.writeText(DUMMY_TEXT)
+
+      // create test setups
       val testSh = File(tempDirFile, "test.sh")
-      testSh.writeText("{{ agentId }}")
+      testSh.writeText("{{ agentId }},{{ readFile(\"${tempReadFile.absolutePath}\") }}")
 
       testSetup = Setup("test", "myflavor", "myImage", AZ01, 500000,
           null, 0, 1, provisioningScripts = listOf(testSh.absolutePath),
