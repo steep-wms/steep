@@ -12,6 +12,7 @@ module.exports = {
   PROCESS_CHAIN_STATUS_CHANGED: "steep.submissionRegistry.processChainStatusChanged",
   PROCESS_CHAIN_ALL_STATUS_CHANGED: "steep.submissionRegistry.processChainAllStatusChanged",
   PROCESS_CHAIN_ERROR_MESSAGE_CHANGED: "steep.submissionRegistry.processChainErrorMessageChanged",
+  PROCESS_CHAIN_PROGRESS_CHANGED: "steep.submissionRegistry.processChainProgressChanged",
 
   AGENT_ADDRESS_PREFIX: "steep.remoteAgentRegistry.agent.",
   AGENT_ADDED: "steep.remoteAgentRegistry.agentAdded",

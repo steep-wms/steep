@@ -135,6 +135,12 @@ object AddressConstants {
   const val PROCESSCHAIN_ERRORMESSAGE_CHANGED = "steep.submissionRegistry.processChainErrorMessageChanged"
 
   /**
+   * Will be published when a process chain is currently running and its
+   * estimated progress has changed
+   */
+  const val PROCESSCHAIN_PROGRESS_CHANGED = "steep.submissionRegistry.processChainProgressChanged"
+
+  /**
    * Will be published when a VM has been added to the registry
    */
   const val VM_ADDED = "steep.vmRegistry.vmAdded"

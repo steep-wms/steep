@@ -6,7 +6,8 @@ import {
   PROCESS_CHAIN_END_TIME_CHANGED,
   PROCESS_CHAIN_STATUS_CHANGED,
   PROCESS_CHAIN_ALL_STATUS_CHANGED,
-  PROCESS_CHAIN_ERROR_MESSAGE_CHANGED
+  PROCESS_CHAIN_ERROR_MESSAGE_CHANGED,
+  PROCESS_CHAIN_PROGRESS_CHANGED
 } from "../../components/lib/EventBusMessages"
 
 const ADD_MESSAGES = {
@@ -31,6 +32,10 @@ const UPDATE_MESSAGES = {
   [PROCESS_CHAIN_ERROR_MESSAGE_CHANGED]: (body) => ({
     id: body.processChainId,
     errorMessage: body.errorMessage
+  }),
+  [PROCESS_CHAIN_PROGRESS_CHANGED]: (body) => ({
+    id: body.processChainId,
+    estimatedProgress: body.estimatedProgress
   }),
   [PROCESS_CHAIN_STATUS_CHANGED]: (body) => ({
     id: body.processChainId,

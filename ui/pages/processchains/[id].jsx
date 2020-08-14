@@ -11,6 +11,7 @@ import Label from "../../components/Label"
 import ListItemProgressBox from "../../components/ListItemProgressBox"
 import LiveDuration from "../../components/LiveDuration"
 import ProcessChainContext from "../../components/processchains/ProcessChainContext"
+import Tooltip from "../../components/Tooltip"
 import { formatDate, formatDurationTitle } from "../../components/lib/date-time-utils"
 import fetcher from "../../components/lib/json-fetcher"
 import { disableBodyScroll, enableBodyScroll } from "body-scroll-lock"
@@ -95,8 +96,18 @@ function ProcessChainDetails({ id }) {
       reqcap = pc.requiredCapabilities.map((r, i) => <Label key={i}>{r}</Label>)
     }
 
+    let estimatedProgress
+    if (pc.status === "RUNNING" && pc.estimatedProgress !== undefined && pc.estimatedProgress !== null) {
+      estimatedProgress = (
+        <Tooltip title="Estimated progress">
+          {(pc.estimatedProgress * 100).toFixed()}&thinsp;%
+        </Tooltip>
+      )
+    }
+
     let progress = {
-      status: pc.status
+      status: pc.status,
+      subtitle: estimatedProgress
     }
 
     processchain = (<>

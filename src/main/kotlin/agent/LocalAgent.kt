@@ -1,6 +1,7 @@
 package agent
 
 import AddressConstants.LOCAL_AGENT_ADDRESS_PREFIX
+import AddressConstants.PROCESSCHAIN_PROGRESS_CHANGED
 import ConfigConstants
 import com.google.common.cache.CacheBuilder
 import db.PluginRegistryFactory
@@ -10,6 +11,8 @@ import helper.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.eventbus.unregisterAwait
+import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.obj
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -33,6 +36,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlin.math.round
 import kotlin.reflect.full.callSuspend
 
 /**
@@ -85,6 +89,25 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
       }
     }
 
+    // keep track of current progress and notify listeners
+    fun setProgress(newProgress: Double) {
+      val roundedNew = round(newProgress * 100) / 100.0
+      val oldProgress = progress
+      if (oldProgress == null) {
+        progress = roundedNew
+      } else if (roundedNew - oldProgress > 0) {
+        progress = roundedNew
+      }
+      if (progress != oldProgress) {
+        vertx.eventBus().send(PROCESSCHAIN_PROGRESS_CHANGED, json {
+          obj(
+              "processChainId" to processChain.id,
+              "estimatedProgress" to progress
+          )
+        })
+      }
+    }
+
     // execute the process chain
     try {
       // create all required output directories
@@ -96,11 +119,11 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
       for ((index, exec) in processChain.executables.withIndex()) {
         execute(exec) { p ->
           val step = 1.0 / processChain.executables.size
-          progress = step * index + step * p
+          setProgress(step * index + step * p)
         }
 
         if ((index + 1) < processChain.executables.size || progress != null) {
-          progress = (index + 1).toDouble() / processChain.executables.size
+          setProgress((index + 1).toDouble() / processChain.executables.size)
         }
       }
     } finally {
