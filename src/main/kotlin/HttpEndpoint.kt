@@ -1109,23 +1109,23 @@ class HttpEndpoint : CoroutineVerticle() {
         if (results != null) {
           processChain.put("results", results)
         }
-      } else if (status == SubmissionRegistry.ProcessChainStatus.RUNNING) {
-        val response = try {
-          vertx.eventBus().sendAwait<Double?>(LOCAL_AGENT_ADDRESS_PREFIX + id, json {
-            obj(
-                "action" to "getProgress"
-            )
-          })
-        } catch (_: ReplyException) {
-            null
-        }
-        if (response?.body() != null) {
-          processChain.put("estimatedProgress", response.body())
-        }
       }
     }
 
-    if (status == SubmissionRegistry.ProcessChainStatus.ERROR) {
+    if (status == SubmissionRegistry.ProcessChainStatus.RUNNING) {
+      val response = try {
+        vertx.eventBus().sendAwait<Double?>(LOCAL_AGENT_ADDRESS_PREFIX + id, json {
+          obj(
+              "action" to "getProgress"
+          )
+        })
+      } catch (_: ReplyException) {
+        null
+      }
+      if (response?.body() != null) {
+        processChain.put("estimatedProgress", response.body())
+      }
+    } else if (status == SubmissionRegistry.ProcessChainStatus.ERROR) {
       val errorMessage = submissionRegistry.getProcessChainErrorMessage(id)
       if (errorMessage != null) {
         processChain.put("errorMessage", errorMessage)

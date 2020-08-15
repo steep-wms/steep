@@ -1,6 +1,7 @@
 import Link from "next/link"
 import ListPage from "../../components/layouts/ListPage"
 import ListItem from "../../components/ListItem"
+import Tooltip from "../../components/Tooltip"
 import ProcessChainContext from "../../components/processchains/ProcessChainContext"
 import { useMemo } from "react"
 import { useRouter } from "next/router"
@@ -22,8 +23,19 @@ function ProcessChainListItem({ item: processChain }) {
     let href = "/processchains/[id]"
     let as = `/processchains/${processChain.id}`
 
+    let estimatedProgress
+    if (processChain.status === "RUNNING" && processChain.estimatedProgress !== undefined &&
+        processChain.estimatedProgress !== null) {
+      estimatedProgress = (
+        <Tooltip title="Estimated progress">
+          {(processChain.estimatedProgress * 100).toFixed()}&thinsp;%
+        </Tooltip>
+      )
+    }
+
     let progress = {
-      status: processChain.status
+      status: processChain.status,
+      subtitle: estimatedProgress
     }
 
     return <ListItem justAdded={processChain.justAdded} linkHref={href}
