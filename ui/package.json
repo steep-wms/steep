@@ -37,9 +37,9 @@
     "react-modal": "^3.11.2",
     "react-timeago": "^4.4.0",
     "serve": "^11.3.2",
+    "styled-jsx-plugin-sass": "^1.0.0",
     "unfetch": "^4.1.0",
-    "vertx3-eventbus-client": "^3.9.2",
-    "webpack-filter-warnings-plugin": "^1.2.1"
+    "vertx3-eventbus-client": "^3.9.2"
   },
   "devDependencies": {
     "eslint": "^7.5.0",

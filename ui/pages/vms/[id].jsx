@@ -12,7 +12,7 @@ import VMContext from "../../components/vms/VMContext"
 import vmToProgress from "../../components/vms/vm-to-progress"
 import { formatDate, formatDurationTitle } from "../../components/lib/date-time-utils"
 import fetcher from "../../components/lib/json-fetcher"
-import "./[id].scss"
+import styles from "./[id].scss"
 
 function VMDetails({ id }) {
   const vms = useContext(VMContext.Items)
@@ -145,6 +145,7 @@ function VMDetails({ id }) {
           </DefinitionList>
         </div>
       </div>
+      <style jsx>{styles}</style>
     </>)
   }
 
@@ -163,6 +164,7 @@ const VM = () => {
   return (
     <VMContext.Provider pageSize={1} allowAdd={false}>
       <VMDetails id={id} />
+      <style jsx>{styles}</style>
     </VMContext.Provider>
   )
 }

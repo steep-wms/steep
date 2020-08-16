@@ -9,7 +9,7 @@ import Label from "../../components/Label"
 import ListItemProgressBox from "../../components/ListItemProgressBox"
 import LiveDuration from "../../components/LiveDuration"
 import AgentContext from "../../components/agents/AgentContext"
-import "./[id].scss"
+import styles from "./[id].scss"
 import { formatDate } from "../../components/lib/date-time-utils"
 import agentToProgress from "../../components/agents/agent-to-progress"
 import fetcher from "../../components/lib/json-fetcher"
@@ -75,6 +75,7 @@ function AgentDetails({ id }) {
           <Alert error>Agent has left the cluster</Alert>
         </div>
       </>)}
+      <style jsx>{styles}</style>
     </>)
   }
 
@@ -93,6 +94,7 @@ const Agent = () => {
   return (
     <AgentContext.Provider pageSize={1} allowAdd={false}>
       <AgentDetails id={id} />
+      <style jsx>{styles}</style>
     </AgentContext.Provider>
   )
 }

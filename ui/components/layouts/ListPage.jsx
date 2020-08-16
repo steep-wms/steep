@@ -6,7 +6,7 @@ import Notification from "../Notification"
 import Page from "./Page"
 import Pagination from "../Pagination"
 import { useCallback, useContext, useEffect, useMemo, useState } from "react"
-import "./ListPage.scss"
+import styles from "./ListPage.scss"
 import fetcher from "../lib/json-fetcher"
 import { useRouter } from "next/router"
 import { Check } from "react-feather"
@@ -85,8 +85,11 @@ function List({ Context, ListItem, subjects, path, pagination, pageSize,
     {listItems && listItems.length === 0 && <>There are no {subjects}.</>}
     {error}
     {pagination && pageTotal + workflows.added > 0 && (
-      <Pagination pageSize={pageSize} pageOffset={pageOffset}
-        pageTotal={pageTotal + workflows.added} onChangeOffset={reset} />
+      <div className="pagination">
+        <Pagination pageSize={pageSize} pageOffset={pageOffset}
+          pageTotal={pageTotal + workflows.added} onChangeOffset={reset} />
+        <style jsx>{styles}</style>
+      </div>
     )}
   </>)
 }
@@ -223,7 +226,7 @@ const ListPage = (props) => {
         filterDropDownElements.push(
           <li onClick={() => toggleFilter(f, enabled)} key={i}
               className={classNames({ enabled: enabled })}>
-            {enabled && <><Check className="feather" /> </>}
+            {enabled && <><Check /> </>}
             {f.title}
           </li>
         )
@@ -244,7 +247,7 @@ const ListPage = (props) => {
             </DropDown>
           )}
         </div>
-        {props.breadcrumbs && <Breadcrumbs breadcrumbs={props.breadcrumbs} />}
+        {props.breadcrumbs && <div className="breadcrumbs"><Breadcrumbs breadcrumbs={props.breadcrumbs} /></div>}
         <props.Context.Provider pageSize={pageSize} shouldAddItem={shouldAddItem} reducers={[reducer]}>
           <List Context={props.Context} ListItem={props.ListItem} subjects={props.subjects}
               path={props.path} pagination={pagination} pageSize={pageSize}
@@ -256,6 +259,7 @@ const ListPage = (props) => {
             setForceUpdate(forceUpdate + 1)}>Refresh</a>.
         </Notification>)}
       </div>
+      <style jsx>{styles}</style>
     </Page>
   )
 }

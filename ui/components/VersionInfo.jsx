@@ -1,4 +1,3 @@
-import "./VersionInfo.scss"
 import Alert from "./Alert"
 import DefinitionList from "./DefinitionList"
 import DefinitionListItem from "./DefinitionListItem"

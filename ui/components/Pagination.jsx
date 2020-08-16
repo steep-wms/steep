@@ -1,5 +1,5 @@
 import classNames from "classnames"
-import "./Pagination.scss"
+import styles from "./Pagination.scss"
 import { useRouter } from "next/router"
 import Link from "next/link"
 
@@ -70,13 +70,17 @@ const Pagination = ({ pageSize = 10, pageOffset = 0, pageTotal = 0, onChangeOffs
       return (
         <div className={classNames("pagination-page", { active })} key={key}>
           <Link href={{ pathname, query }}>
-            <a onClick={() => onChangeOffset(query.offset || 0)}>{text}</a>
+            <a className="page-link" onClick={() => onChangeOffset(query.offset || 0)}>{text}</a>
           </Link>
+          <style jsx>{styles}</style>
         </div>
       )
     } else {
       return (
-        <div className="pagination-page disabled" key={key}>{text}</div>
+        <div className="pagination-page disabled" key={key}>
+          {text}
+          <style jsx>{styles}</style>
+        </div>
       )
     }
   })
@@ -86,14 +90,16 @@ const Pagination = ({ pageSize = 10, pageOffset = 0, pageTotal = 0, onChangeOffs
     pages.unshift(
       <div className="pagination-page" key="prev-page">
         <Link href={{ pathname, query }}>
-          <a onClick={() => onChangeOffset(query.offset || 0)}>&laquo;</a>
+          <a className="page-link" onClick={() => onChangeOffset(query.offset || 0)}>&laquo;</a>
         </Link>
+        <style jsx>{styles}</style>
       </div>
     )
   } else {
     pages.unshift(
       <div className="pagination-page disabled" key="prev-page">
         &laquo;
+        <style jsx>{styles}</style>
       </div>
     )
   }
@@ -103,14 +109,16 @@ const Pagination = ({ pageSize = 10, pageOffset = 0, pageTotal = 0, onChangeOffs
     pages.push(
       <div className="pagination-page" key="next-page">
         <Link href={{ pathname, query }}>
-          <a onClick={() => onChangeOffset(query.offset || 0)}>&raquo;</a>
+          <a className="page-link" onClick={() => onChangeOffset(query.offset || 0)}>&raquo;</a>
         </Link>
+        <style jsx>{styles}</style>
       </div>
     )
   } else {
     pages.push(
       <div className="pagination-page disabled" key="next-page">
         &raquo;
+        <style jsx>{styles}</style>
       </div>
     )
   }
@@ -118,6 +126,7 @@ const Pagination = ({ pageSize = 10, pageOffset = 0, pageTotal = 0, onChangeOffs
   return (
     <div className="pagination">
       {pages}
+      <style jsx>{styles}</style>
     </div>
   )
 }

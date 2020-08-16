@@ -1,7 +1,7 @@
 import Header from "../Header"
 import Footer from "../Footer"
 import Sidebar from "../Sidebar"
-import "./Page.scss"
+import styles from "./Page.scss"
 
 const Page = ({ title, children }) => (
   <div className="page">
@@ -13,6 +13,7 @@ const Page = ({ title, children }) => (
       </div>
       <Footer />
     </main>
+    <style jsx>{styles}</style>
   </div>
 )
 

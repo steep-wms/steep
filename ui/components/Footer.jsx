@@ -1,4 +1,4 @@
-import "./Footer.scss"
+import styles from "./Footer.scss"
 import { Book, Home, GitHub } from "react-feather"
 
 const Footer = () => (
@@ -11,18 +11,19 @@ const Footer = () => (
           </div>
           <div className="social-icons">
             <a className="nav-item" href="https://steep-wms.github.io/" target="_blank" rel="noopener noreferrer">
-              <Home className="feather" />
+              <Home />
             </a>
             <a className="nav-item" href="https://steep-wms.github.io/#documentation" target="_blank" rel="noopener noreferrer">
-              <Book className="feather" />
+              <Book />
             </a>
             <a className="nav-item" href="https://github.com/steep-wms/steep" target="_blank" rel="noopener noreferrer">
-              <GitHub className="feather" />
+              <GitHub />
             </a>
           </div>
         </div>
       </div>
     </div>
+    <style jsx>{styles}</style>
   </footer>
 )
 

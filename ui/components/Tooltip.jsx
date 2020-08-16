@@ -1,7 +1,7 @@
 import classNames from "classnames"
 import { createPopper } from "@popperjs/core"
 import { useEffect, useRef, useState } from "react"
-import "./Tooltip.scss"
+import styles from "./Tooltip.scss"
 
 const Tooltip = ({ title, delay = 300, forceVisible = undefined, className,
     onShow, onHide, children }) => {
@@ -86,6 +86,7 @@ const Tooltip = ({ title, delay = 300, forceVisible = undefined, className,
         {title}
         <div className="tooltip-arrow" data-popper-arrow></div>
       </div>
+      <style jsx>{styles}</style>
     </>
   )
 }

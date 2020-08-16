@@ -69,7 +69,7 @@
     flex-wrap: wrap;
   }
 
-  .list-item-title > .label:first-of-type {
+  .list-item-title > :global(.label):first-of-type {
     margin-left: .5rem;
   }
 

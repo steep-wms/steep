@@ -5,7 +5,7 @@ import Alert from "../../components/Alert"
 import DefinitionList from "../../components/DefinitionList"
 import DefinitionListItem from "../../components/DefinitionListItem"
 import Label from "../../components/Label"
-import "./[id].scss"
+import styles from "./[id].scss"
 import fetcher from "../../components/lib/json-fetcher"
 
 const Service = () => {
@@ -117,6 +117,7 @@ const Service = () => {
           </div>
         ))}
       </>)}
+      <style jsx>{styles}</style>
     </>)
   }
 
@@ -124,6 +125,7 @@ const Service = () => {
     <DetailPage title={title} subtitle={subtitle}>
       {service}
       {error}
+      <style jsx>{styles}</style>
     </DetailPage>
   )
 }

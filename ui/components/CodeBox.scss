@@ -1,5 +1,4 @@
-@import "../css/variables";
-@import "~highlight.js/styles/zenburn";
+@import "css/variables";
 
 .code-box {
   display: flex;
@@ -60,18 +59,18 @@
     position: relative;
   }
 
-  .hljs, pre {
+  :global(.hljs), :global(pre) {
     background: $gray-700;
     color: #fff;
   }
 
-  pre {
+  :global(pre) {
     border-radius: $border-radius;
     border-top-left-radius: 0;
     padding: $spacer / 2 0;
     margin-top: 0;
 
-    code {
+    :global(code) {
       margin: $spacer / 2 $spacer;
       display: block;
       overflow: auto;

@@ -1,7 +1,8 @@
-@import "../../css/variables";
+@import "css/variables";
 
 .list-page {
   .pagination {
+    display: flex;
     justify-content: center;
     margin: $spacer 0;
   }
@@ -19,9 +20,9 @@
 
   .filter-list {
     &.has-enabled-filters {
-      li:not(.enabled) {
+      :global(li):not(.enabled) {
         &:before {
-          content: "\00a0";
+          content: ${'"\00a0"'};
           padding-left: 24px;
         }
       }

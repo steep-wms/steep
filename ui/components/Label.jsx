@@ -1,8 +1,11 @@
 import classNames from "classnames"
-import "./Label.scss"
+import styles from "./Label.scss"
 
 const Label = ({ children, small }) => (
-  <span className={classNames("label", { "label-small": small })}>{children}</span>
+  <span className={classNames("label", { "label-small": small })}>
+    {children}
+    <style jsx>{styles}</style>
+  </span>
 )
 
 export default Label

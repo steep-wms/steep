@@ -1,5 +1,7 @@
-@import "~normalize.css/normalize";
-@import "./mixins";
+@import "normalize.css/normalize";
+@import "nprogress/nprogress";
+@import "highlight.js/scss/zenburn.scss";
+@import "css/mixins";
 
 html {
   box-sizing: border-box;
@@ -179,4 +181,24 @@ code {
 
 code, pre {
   font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+#nprogress {
+  // progress bar should also be in front of the sidebar, so position should
+  // be fixed and z-index should be high enough
+  position: fixed;
+  z-index: 9999;
+}
+
+#nprogress .bar {
+  background: $primary;
+}
+
+#nprogress .peg {
+  box-shadow: 0 0 10px $primary, 0 0 5px $primary;
+}
+
+#nprogress .spinner-icon {
+  border-top-color: $primary;
+  border-left-color: $primary;
 }

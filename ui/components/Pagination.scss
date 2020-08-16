@@ -10,7 +10,7 @@
     min-width: 1em;
     justify-content: center;
 
-    a {
+    .page-link {
       border-radius: $border-radius;
       margin: 0 1px;
       padding: .5rem .75rem;
@@ -26,7 +26,7 @@
       padding: .5rem .75rem;
     }
 
-    &.active a {
+    &.active .page-link {
       background-color: $primary;
       color: #fff;
     }

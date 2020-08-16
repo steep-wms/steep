@@ -6,7 +6,7 @@ import Tooltip from "./Tooltip"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
 import { formatDate, formatDuration, formatDurationTitle } from "./lib/date-time-utils"
-import "./ListItem.scss"
+import styles from "./ListItem.scss"
 
 function formatterToNow(value, unit, suffix, epochSeconds) {
   return formatDistanceToNow(epochSeconds, { addSuffix: true, includeSeconds: true })
@@ -62,6 +62,7 @@ const ListItem = ({ title, linkHref, linkAs, subtitle, justAdded, justLeft,
       <div className="list-item-right">
         {progress && <ListItemProgressBox progress={progress} />}
       </div>
+      <style jsx>{styles}</style>
     </div>
   )
 }

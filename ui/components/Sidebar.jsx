@@ -1,6 +1,6 @@
 import classNames from "classnames"
 import Link from "next/link"
-import "./Sidebar.scss"
+import styles from "./Sidebar.scss"
 import { Grid, Link as LinkIcon, Pocket, Send, Server } from "react-feather"
 import { useState } from "react"
 
@@ -14,12 +14,13 @@ function NavItem({ href, icon, text }) {
   return (
     <div className="nav-item">
       <Link href={href}>
-        <a className={classNames("nav-item", { hover })}
+        <a className={classNames("nav-item", "nav-item-link", { hover })}
             onMouseEnter={() => setHover(true)}
             onMouseLeave={() => setHover(false)}>
           {icon} <span className="nav-item-text">{text}</span>
         </a>
       </Link>
+      <style jsx>{styles}</style>
     </div>
   )
 }
@@ -41,11 +42,11 @@ const Sidebar = () => {
           </a>
         </Link>
         <nav>
-          <NavItem href="/workflows/" icon={<Send className="feather" />} text="Workflows" />
-          <NavItem href="/processchains/" icon={<LinkIcon className="feather" />} text="Process Chains" />
-          <NavItem href="/agents/" icon={<Pocket className="feather" />} text="Agents" />
-          <NavItem href="/vms/" icon={<Server className="feather" />} text="VMs" />
-          <NavItem href="/services/" icon={<Grid className="feather" />} text="Services" />
+          <NavItem href="/workflows/" icon={<Send />} text="Workflows" />
+          <NavItem href="/processchains/" icon={<LinkIcon />} text="Process Chains" />
+          <NavItem href="/agents/" icon={<Pocket />} text="Agents" />
+          <NavItem href="/vms/" icon={<Server />} text="VMs" />
+          <NavItem href="/services/" icon={<Grid />} text="Services" />
         </nav>
         <div className="sidebar-rest">
           <div className="sidebar-switch-to-classic" onClick={switchToClassicUI}>
@@ -53,6 +54,7 @@ const Sidebar = () => {
           </div>
         </div>
       </div>
+      <style jsx>{styles}</style>
     </aside>
   )
 }

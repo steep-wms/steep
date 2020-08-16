@@ -1,6 +1,5 @@
 import NProgress from "nprogress"
 import fetch from "unfetch"
-import "./json-fetcher.scss"
 
 NProgress.configure({ showSpinner: false })
 

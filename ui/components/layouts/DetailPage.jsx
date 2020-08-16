@@ -1,6 +1,6 @@
 import Page from "./Page"
 import Breadcrumbs from "../Breadcrumbs"
-import "./DetailPage.scss"
+import styles from "./DetailPage.scss"
 import DropDown from "../DropDown"
 
 const DetailPage = ({ breadcrumbs, title, subtitle, menu, children }) => (
@@ -14,6 +14,7 @@ const DetailPage = ({ breadcrumbs, title, subtitle, menu, children }) => (
     <div className="detail-page-main">
       {children}
     </div>
+    <style jsx>{styles}</style>
   </Page>
 )
 

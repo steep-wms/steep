@@ -52,7 +52,7 @@ footer {
         justify-content: center;
       }
 
-      .feather {
+      :global(svg) {
         height: 1rem;
       }
 

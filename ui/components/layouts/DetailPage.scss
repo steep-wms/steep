@@ -1,4 +1,4 @@
-@import "../../css/variables";
+@import "css/variables";
 
 .detail-page-title {
   display: flex;
@@ -20,11 +20,11 @@
 }
 
 .detail-page-main {
-  .alert.error:first-child {
-    margin-top: 3rem;
+  :global(.alert.error) {
+    margin-top: 1rem;
   }
 
-  .detail-header {
+  :global(.detail-header) {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
@@ -34,25 +34,21 @@
     }
   }
 
-  h2 {
+  :global(h2) {
     font-size: 1.5rem;
     margin-bottom: $spacer;
   }
 
-  h3 {
+  :global(h3) {
     font-size: 1rem;
     margin: 0;
     padding-top: $spacer * 2;
   }
 
-  .alert {
+  :global(.alert) {
     white-space: pre;
     overflow-x: auto;
     margin-top: $spacer / 2;
     margin-bottom: $spacer / 2;
-  }
-
-  .code-box {
-    margin-top: $spacer / 2;
   }
 }

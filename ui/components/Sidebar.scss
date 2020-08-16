@@ -70,9 +70,9 @@ aside, .sidebar {
       }
     }
 
-    a {
+    .nav-item-link {
       color: $gray-800;
-      display: block;
+      display: flex;
       width: 100%;
       align-items: center;
 
@@ -81,7 +81,7 @@ aside, .sidebar {
         color: $gray-600;
       }
 
-      &.hover {
+      &:hover {
         @media (max-width: $lg) {
           color: $gray-800;
           background-color: $gray-300;
@@ -101,7 +101,7 @@ aside, .sidebar {
         }
       }
 
-      .feather {
+      :global(svg) {
         height: 1.1em;
         width: auto;
         margin-right: .5em;

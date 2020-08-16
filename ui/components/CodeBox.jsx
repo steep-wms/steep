@@ -1,5 +1,5 @@
 import classNames from "classnames"
-import "./CodeBox.scss"
+import styles from "./CodeBox.scss"
 import Tooltip from "./Tooltip"
 import { useEffect, useRef, useState } from "react"
 import { stringify } from "json2yaml"
@@ -76,14 +76,17 @@ const CodeBox = ({ json }) => {
         <div className={classNames("code-box-tab", { active: activeLang === "json" })}>
           <pre><code lang="json" ref={jsonRef}>{str}</code></pre>
         </div>
-        <Tooltip title={copyTooltipTitle} forceVisible={copyTooltipVisible}
-            className="code-box-copy-btn" onShow={() => setCopyTooltipVisible(true)}
-            onHide={onCopyBtnMouseLeave}>
-          <span ref={copyBtnRef}>
-            <ClipboardIcon className="feather" />
-          </span>
-        </Tooltip>
+        <span className="code-box-copy-btn">
+          <Tooltip title={copyTooltipTitle} forceVisible={copyTooltipVisible}
+              onShow={() => setCopyTooltipVisible(true)}
+              onHide={onCopyBtnMouseLeave}>
+            <span ref={copyBtnRef}>
+              <ClipboardIcon className="feather" />
+            </span>
+          </Tooltip>
+        </span>
       </div>
+      <style jsx>{styles}</style>
     </div>
   )
 }
