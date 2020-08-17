@@ -69,10 +69,6 @@
     flex-wrap: wrap;
   }
 
-  .list-item-title > :global(.label):first-of-type {
-    margin-left: .5rem;
-  }
-
   .list-item-subtitle {
     font-size: $font-size-sm;
   }

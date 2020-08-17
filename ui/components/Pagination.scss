@@ -3,6 +3,7 @@
 .pagination {
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap;
 
   .pagination-page {
     display: flex;
@@ -19,11 +20,21 @@
         background-color: $gray-200;
         text-decoration: none;
       }
+
+      @media (max-width: $sm) {
+        padding-left: .5rem;
+        padding-right: .5rem;
+      }
     }
 
     &.disabled {
       color: $gray-600;
       padding: .5rem .75rem;
+
+      @media (max-width: $sm) {
+        padding-left: .5rem;
+        padding-right: .5rem;
+      }
     }
 
     &.active .page-link {

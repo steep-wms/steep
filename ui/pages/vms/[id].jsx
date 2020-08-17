@@ -105,13 +105,13 @@ function VMDetails({ id }) {
         <div className="vm-details-right">
           <DefinitionList>
             <DefinitionListItem title="Flavor">
-              {vm.setup.flavor || <>&ndash;</>}
+              <span className="vm-details-value">{vm.setup.flavor || <>&ndash;</>}</span>
             </DefinitionListItem>
             <DefinitionListItem title="Image">
-              {vm.setup.imageName || <>&ndash;</>}
+              <span className="vm-details-value">{vm.setup.imageName || <>&ndash;</>}</span>
             </DefinitionListItem>
             <DefinitionListItem title="Availability zone">
-              {vm.setup.availabilityZone || <>&ndash;</>}
+              <span className="vm-details-value">{vm.setup.availabilityZone || <>&ndash;</>}</span>
             </DefinitionListItem>
           </DefinitionList>
         </div>

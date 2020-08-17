@@ -1,7 +1,7 @@
 @import "css/variables";
 
 .service-details {
-  dl {
+  .service-details-dl {
     display: flex;
     flex-wrap: wrap;
   }
@@ -18,8 +18,14 @@
     margin-bottom: $spacer;
   }
 
+  .service-details-value {
+    overflow-x: auto;
+    display: inline-block;
+    max-width: 100%;
+  }
+
   @media (max-width: $md) {
-    dl {
+    .service-details-dl {
       flex-direction: column;
     }
 

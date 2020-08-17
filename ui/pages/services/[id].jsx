@@ -43,18 +43,24 @@ const Service = () => {
     service = (<>
       <div className="service-details">
         <DefinitionList>
-          <div className="service-details-left">
-            <DefinitionListItem title="ID">{data.id}</DefinitionListItem>
-            <DefinitionListItem title="Required capabilities">{reqcap}</DefinitionListItem>
-          </div>
-          <div className="service-details-right">
-            <DefinitionListItem title="Runtime"><Label>{data.runtime}</Label></DefinitionListItem>
-            {data.runtime !== "docker" ? (
-              <DefinitionListItem title="Path to executable">{data.path}</DefinitionListItem>
-            ) : (
-              <DefinitionListItem title="Docker image">{data.path}</DefinitionListItem>
-            )}
+          <div className="service-details-dl">
+            <div className="service-details-left">
+              <DefinitionListItem title="ID">{data.id}</DefinitionListItem>
+              <DefinitionListItem title="Required capabilities">{reqcap}</DefinitionListItem>
+            </div>
+            <div className="service-details-right">
+              <DefinitionListItem title="Runtime"><Label>{data.runtime}</Label></DefinitionListItem>
+              {data.runtime !== "docker" ? (
+                <DefinitionListItem title="Path to executable">
+                  <span className="service-details-value">{data.path}</span>
+                </DefinitionListItem>
+              ) : (
+                <DefinitionListItem title="Docker image">
+                  <span className="service-details-value">{data.path}</span>
+                </DefinitionListItem>
+              )}
 
+            </div>
           </div>
         </DefinitionList>
       </div>

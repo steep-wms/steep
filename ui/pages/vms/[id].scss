@@ -13,6 +13,12 @@
     flex: 1;
   }
 
+  .vm-details-value {
+    overflow-x: auto;
+    display: inline-block;
+    max-width: 100%;
+  }
+
   @media (max-width: $md) {
     flex-direction: column;
 

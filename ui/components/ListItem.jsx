@@ -54,7 +54,7 @@ const ListItem = ({ title, linkHref, linkAs, subtitle, justAdded, justLeft,
     <div className={classNames("list-item", { "just-added": justAdded && !justLeft, "just-left": justLeft })}>
       <div className="list-item-left">
         <div className="list-item-title">
-          <Link href={linkHref} as={linkAs}><a>{title}</a></Link>
+          <Link href={linkHref} as={linkAs}><a>{title}</a></Link>{labels.length > 0 && <>&ensp;</>}
           {labels.map((l, i) => <Label key={i} small>{l}</Label>)}
         </div>
         <div className="list-item-subtitle">{subtitle || defaultSubtitle}</div>
