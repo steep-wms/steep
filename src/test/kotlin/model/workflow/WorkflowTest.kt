@@ -1,7 +1,7 @@
 package model.workflow
 
 import com.fasterxml.jackson.databind.deser.UnresolvedForwardReference
-import com.fasterxml.jackson.databind.exc.InvalidDefinitionException
+import com.fasterxml.jackson.databind.exc.ValueInstantiationException
 import com.fasterxml.jackson.module.kotlin.readValue
 import helper.JsonUtils
 import org.assertj.core.api.Assertions.assertThat
@@ -98,7 +98,7 @@ class WorkflowTest {
   fun redeclareDeclaredVar() {
     val fixture = javaClass.getResource("redeclareDeclaredVar.json").readText()
     assertThatThrownBy { JsonUtils.mapper.readValue<Workflow>(fixture) }
-        .isInstanceOf(InvalidDefinitionException::class.java)
+        .isInstanceOf(ValueInstantiationException::class.java)
         .hasMessageContaining("key=input_file1")
   }
 
@@ -109,7 +109,7 @@ class WorkflowTest {
   fun duplicateDeclaredVar() {
     val fixture = javaClass.getResource("duplicateDeclaredVar.json").readText()
     assertThatThrownBy { JsonUtils.mapper.readValue<Workflow>(fixture) }
-        .isInstanceOf(InvalidDefinitionException::class.java)
+        .isInstanceOf(ValueInstantiationException::class.java)
         .hasMessageContaining("key=input_file1")
   }
 
@@ -120,7 +120,7 @@ class WorkflowTest {
   fun redeclareVar() {
     val fixture = javaClass.getResource("redeclareVar.json").readText()
     assertThatThrownBy { JsonUtils.mapper.readValue<Workflow>(fixture) }
-        .isInstanceOf(InvalidDefinitionException::class.java)
+        .isInstanceOf(ValueInstantiationException::class.java)
         .hasMessageContaining("key=input_file1")
   }
 

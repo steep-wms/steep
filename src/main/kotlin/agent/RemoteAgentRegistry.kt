@@ -6,13 +6,14 @@ import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import AddressConstants.REMOTE_AGENT_LEFT
 import io.prometheus.client.Gauge
 import io.vertx.core.Future
+import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.AsyncMap
 import io.vertx.core.shareddata.LocalMap
-import io.vertx.kotlin.core.eventbus.sendAwait
+import io.vertx.kotlin.core.eventbus.requestAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.core.shareddata.putAwait
@@ -75,8 +76,9 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     // create shared maps
     val sharedData = vertx.sharedData()
     localMap = sharedData.getLocalMap(LOCAL_MAP_NAME)
-    agents = Future.future()
-    sharedData.getAsyncMap(ASYNC_MAP_NAME, agents)
+    val agentsPromise = Promise.promise<AsyncMap<String, Boolean>>()
+    sharedData.getAsyncMap(ASYNC_MAP_NAME, agentsPromise)
+    agents = agentsPromise.future()
 
     // do not register consumers multiple times
     if (localMap.compute(KEY_INITIALIZED) { _, v -> v != null } == false) {
@@ -159,7 +161,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     for (agent in keys) {
       val address = REMOTE_AGENT_ADDRESS_PREFIX + agent
       try {
-        val replyInquire = vertx.eventBus().sendAwait<JsonObject>(address, msgInquire)
+        val replyInquire = vertx.eventBus().requestAwait<JsonObject>(address, msgInquire)
         if (replyInquire.body().getBoolean("available")) {
           val lastSequence = replyInquire.body().getLong("lastSequence", -1L)
           val bestRequiredCapabilities = replyInquire.body().getInteger("bestRequiredCapabilities")
@@ -189,7 +191,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     }
 
     try {
-      val replyAllocate = vertx.eventBus().sendAwait<String>(address, msgAllocate)
+      val replyAllocate = vertx.eventBus().requestAwait<String>(address, msgAllocate)
       if (replyAllocate.body() == "ACK") {
         return RemoteAgent(address, vertx)
       }
@@ -208,7 +210,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     }
 
     try {
-      val reply = vertx.eventBus().sendAwait<String>(agent.id, msg)
+      val reply = vertx.eventBus().requestAwait<String>(agent.id, msg)
       if (reply.body() != "ACK") {
         throw NoStackTraceThrowable("Unknown answer: ${reply.body()}")
       }

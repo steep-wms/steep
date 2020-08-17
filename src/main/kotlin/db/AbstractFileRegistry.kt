@@ -3,8 +3,6 @@ package db
 import com.fasterxml.jackson.module.kotlin.jacksonTypeRef
 import helper.JsonUtils
 import helper.YamlUtils
-import io.vertx.core.Future
-import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import io.vertx.kotlin.core.executeBlockingAwait
 import io.vertx.kotlin.core.file.readFileAwait
@@ -30,7 +28,7 @@ abstract class AbstractFileRegistry {
       return emptyList()
     }
 
-    val files = vertx.executeBlockingAwait(Handler<Future<List<String>>> { future ->
+    val files = vertx.executeBlockingAwait<List<String>> { promise ->
       val cwd = Path.of("").toAbsolutePath().toString().let {
         if (it.endsWith("/")) it else "$it/"
       }
@@ -40,8 +38,8 @@ abstract class AbstractFileRegistry {
       ds.setIncludes(paths.toTypedArray())
       ds.scan()
 
-      future.complete(ds.includedFiles.map { "$cwd$it" })
-    }) ?: emptyList()
+      promise.complete(ds.includedFiles.map { "$cwd$it" })
+    } ?: emptyList()
 
     // We need this here to get access to T.
     // com.fasterxml.jackson.module.kotlin.readValue does not work inside

@@ -4,15 +4,15 @@ import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import io.vertx.core.json.Json
 import io.vertx.core.json.JsonObject
+import io.vertx.core.json.jackson.DatabindCodec
 
 /**
  * Utility functions to manipulate JSON objects and arrays
  * @author Michel Kraemer
  */
 object JsonUtils {
-  val mapper: ObjectMapper = Json.mapper.copy()
+  val mapper: ObjectMapper = DatabindCodec.mapper().copy()
       .registerKotlinModule()
       .setSerializationInclusion(JsonInclude.Include.NON_NULL)
 

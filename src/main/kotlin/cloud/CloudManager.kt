@@ -19,7 +19,7 @@ import db.VMRegistry
 import db.VMRegistryFactory
 import helper.JsonUtils
 import helper.YamlUtils
-import io.vertx.core.Future
+import io.vertx.core.Promise
 import io.vertx.core.json.JsonArray
 import io.vertx.core.shareddata.Lock
 import io.vertx.kotlin.core.json.json
@@ -37,7 +37,6 @@ import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.IOException
 import java.io.StringWriter
-import java.lang.IllegalArgumentException
 import java.time.Instant
 import java.util.ArrayDeque
 import java.util.TreeSet
@@ -674,10 +673,10 @@ class CloudManager : CoroutineVerticle() {
 
     // register a handler that waits for the agent on the new virtual machine
     // to become available
-    val future = Future.future<Unit>()
+    val promise = Promise.promise<Unit>()
     val consumer = vertx.eventBus().consumer<String>(REMOTE_AGENT_ADDED) { msg ->
       if (msg.body() == REMOTE_AGENT_ADDRESS_PREFIX + vmId) {
-        future.complete()
+        promise.complete()
       }
     }
 
@@ -723,12 +722,12 @@ class CloudManager : CoroutineVerticle() {
     // TODO make time configurable
     val timeout = 1000 * 60 * 5L
     val timerId = vertx.setTimer(timeout) {
-      future.fail("Remote agent `$vmId' with IP address `$ipAddress' did " +
+      promise.fail("Remote agent `$vmId' with IP address `$ipAddress' did " +
           "not become available after $timeout ms")
     }
 
     try {
-      future.await()
+      promise.future().await()
       log.info("Successfully created remote agent `$vmId' with IP " +
           "address `$ipAddress'.")
     } finally {

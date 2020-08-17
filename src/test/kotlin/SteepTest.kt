@@ -12,7 +12,7 @@ import io.mockk.unmockkAll
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.core.DeploymentOptions
+import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
@@ -51,7 +51,7 @@ class SteepTest {
           ConfigConstants.AGENT_BUSY_TIMEOUT to 1L
       )
     }
-    val options = DeploymentOptions(config)
+    val options = deploymentOptionsOf(config)
     vertx.deployVerticle(Steep::class.qualifiedName, options, ctx.completing())
   }
 

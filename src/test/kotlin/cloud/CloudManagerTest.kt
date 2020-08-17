@@ -28,7 +28,7 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.core.DeploymentOptions
+import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
@@ -47,7 +47,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
-import java.lang.IllegalArgumentException
 import java.nio.file.Path
 
 /**
@@ -121,7 +120,7 @@ class CloudManagerTest {
             ConfigConstants.CLOUD_AGENTPOOL to agentPool
         )
       }
-      val options = DeploymentOptions(config)
+      val options = deploymentOptionsOf(config)
       cloudManager = CloudManager()
       vertx.deployVerticle(cloudManager, options, completionHandler)
     }

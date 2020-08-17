@@ -6,7 +6,7 @@ import coVerify
 import helper.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.core.eventbus.sendAwait
+import io.vertx.kotlin.core.eventbus.requestAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
@@ -119,7 +119,7 @@ class LocalAgentTest : AgentTest() {
       val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
       GlobalScope.launch(vertx.dispatcher()) {
         ctx.coVerify {
-          val msg = vertx.eventBus().sendAwait<Double?>(address, json {
+          val msg = vertx.eventBus().requestAwait<Double?>(address, json {
             obj(
                 "action" to "getProgress"
             )
@@ -133,7 +133,7 @@ class LocalAgentTest : AgentTest() {
       val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
       GlobalScope.launch(vertx.dispatcher()) {
         ctx.coVerify {
-          val msg = vertx.eventBus().sendAwait<Double?>(address, json {
+          val msg = vertx.eventBus().requestAwait<Double?>(address, json {
             obj(
                 "action" to "getProgress"
             )

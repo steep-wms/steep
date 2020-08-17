@@ -10,12 +10,12 @@ import io.vertx.core.json.JsonObject
 import io.vertx.ext.shell.ShellService
 import io.vertx.ext.shell.command.Command
 import io.vertx.ext.shell.command.CommandRegistry
-import io.vertx.kotlin.core.DeploymentOptions
 import io.vertx.kotlin.core.Vertx
 import io.vertx.kotlin.core.deployVerticleAwait
+import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.kotlin.ext.shell.ShellServiceOptions
-import io.vertx.kotlin.ext.shell.term.TelnetTermOptions
+import io.vertx.kotlin.ext.shell.shellServiceOptionsOf
+import io.vertx.kotlin.ext.shell.term.telnetTermOptionsOf
 import io.vertx.spi.cluster.hazelcast.ConfigUtil
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager
 import model.plugins.call
@@ -92,13 +92,13 @@ suspend fun main() {
   val mgr = HazelcastClusterManager(hazelcastConfig)
   val options = VertxOptions().setClusterManager(mgr)
   val eventBusHost = conf.getString(ConfigConstants.CLUSTER_EVENTBUS_HOST) ?: getDefaultAddress()
-  eventBusHost?.let { options.setClusterHost(it) }
+  eventBusHost?.let { options.eventBusOptions.setHost(it) }
   val eventBusPort = conf.getInteger(ConfigConstants.CLUSTER_EVENTBUS_PORT)
-  eventBusPort?.let { options.setClusterPort(it) }
+  eventBusPort?.let { options.eventBusOptions.setPort(it) }
   val eventPublicHost = conf.getString(ConfigConstants.CLUSTER_EVENTBUS_PUBLIC_HOST)
-  eventPublicHost?.let { options.setClusterPublicHost(it) }
+  eventPublicHost?.let { options.eventBusOptions.setClusterPublicHost(it) }
   val eventBusPublicPort = conf.getInteger(ConfigConstants.CLUSTER_EVENTBUS_PUBLIC_PORT)
-  eventBusPublicPort?.let { options.setClusterPublicPort(it) }
+  eventBusPublicPort?.let { options.eventBusOptions.setClusterPublicPort(it) }
 
   // start Vert.x
   val vertx = Vertx.clusteredVertxAwait(options)
@@ -123,7 +123,7 @@ suspend fun main() {
   })
 
   // start Steep's main verticle
-  val deploymentOptions = DeploymentOptions(conf)
+  val deploymentOptions = deploymentOptionsOf(conf)
   try {
     vertx.deployVerticleAwait(Main::class.qualifiedName!!, deploymentOptions)
   } catch (e: Exception) {
@@ -206,7 +206,7 @@ class Main : CoroutineVerticle() {
    * Start the Vert.x Shell service
    */
   private fun createShell() {
-    val options = ShellServiceOptions(telnetOptions = TelnetTermOptions(
+    val options = shellServiceOptionsOf(telnetOptions = telnetTermOptionsOf(
         host = "localhost",
         port = 5000
     ))
@@ -229,7 +229,7 @@ class Main : CoroutineVerticle() {
       initializer.call(vertx)
     }
 
-    val options = DeploymentOptions(config)
+    val options = deploymentOptionsOf(config)
     if (config.getBoolean(ConfigConstants.CLOUD_ENABLED, false)) {
       vertx.deployVerticleAwait(CloudManager::class.qualifiedName!!, options)
     }

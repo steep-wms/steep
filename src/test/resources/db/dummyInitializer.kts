@@ -1,6 +1,6 @@
 import io.vertx.core.Vertx
-import io.vertx.kotlin.core.eventbus.sendAwait
+import io.vertx.kotlin.core.eventbus.requestAwait
 
 suspend fun dummyInitializer(vertx: Vertx) {
-  vertx.eventBus().sendAwait<Unit>("DUMMY_INITIALIZER", "")
+  vertx.eventBus().requestAwait<Unit>("DUMMY_INITIALIZER", "")
 }

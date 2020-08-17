@@ -1,7 +1,6 @@
 package db
 
-import io.vertx.core.Future
-import io.vertx.core.Handler
+import ConfigConstants
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -58,7 +57,7 @@ object PluginRegistryFactory {
     log.info("Compiling plugin `${plugin.name}' (${plugin.scriptFile})")
 
     val script = vertx.fileSystem().readFileAwait(plugin.scriptFile).toString()
-    val f = vertx.executeBlockingAwait(Handler<Future<KFunction<*>>> { future ->
+    val f = vertx.executeBlockingAwait<KFunction<*>> { promise ->
       val bindings = engine.createBindings()
 
       engine.eval(script + """
@@ -66,9 +65,9 @@ object PluginRegistryFactory {
         jsr223Bindings["export"] = ::${plugin.name}
       """.trimIndent(), bindings)
 
-      future.complete(bindings["export"] as KFunction<*>? ?: throw RuntimeException(
+      promise.complete(bindings["export"] as KFunction<*>? ?: throw RuntimeException(
           "Plugin does not export a function with name `${plugin.name}'"))
-    })
+    }
 
     @Suppress("UNCHECKED_CAST")
     return when (plugin) {

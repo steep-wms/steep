@@ -5,11 +5,12 @@ import db.SubmissionRegistry.ProcessChainStatus
 import helper.JsonUtils
 import helper.UniqueID
 import io.vertx.core.Future
+import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.Counter
-import io.vertx.kotlin.core.eventbus.sendAwait
+import io.vertx.kotlin.core.eventbus.requestAwait
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
@@ -45,8 +46,9 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
 
   init {
     val sharedData = vertx.sharedData()
-    counter = Future.future()
-    sharedData.getCounter(COUNTER_NAME, counter)
+    val counterPromise = Promise.promise<Counter>()
+    sharedData.getCounter(COUNTER_NAME, counterPromise)
+    counter = counterPromise.future()
   }
 
   override suspend fun execute(processChain: ProcessChain): Map<String, List<Any>> {
@@ -65,7 +67,7 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
       val agentLeftConsumer = vertx.eventBus().consumer<String>(
           AddressConstants.REMOTE_AGENT_LEFT) { agentLeftMsg ->
         if (id == agentLeftMsg.body()) {
-          adapter.cancel()
+          adapter.cancel(null)
         }
       }
 
@@ -79,7 +81,7 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
             "sequence" to counter.await().getAndIncrementAwait()
           )
         }
-        vertx.eventBus().sendAwait<Any>(id, msg)
+        vertx.eventBus().requestAwait<Any>(id, msg)
 
         // wait for reply
         val result = adapter.receive()

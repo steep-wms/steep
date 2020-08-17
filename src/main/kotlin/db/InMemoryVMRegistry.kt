@@ -3,6 +3,7 @@ package db
 import com.fasterxml.jackson.module.kotlin.readValue
 import helper.JsonUtils
 import io.vertx.core.Future
+import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.core.shareddata.AsyncMap
 import io.vertx.kotlin.core.shareddata.getAwait
@@ -45,8 +46,9 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
 
   init {
     val sharedData = vertx.sharedData()
-    vms = Future.future()
-    sharedData.getAsyncMap(ASYNC_MAP_VMS, vms)
+    val vmsPromise = Promise.promise<AsyncMap<String, String>>()
+    sharedData.getAsyncMap(ASYNC_MAP_VMS, vmsPromise)
+    vms = vmsPromise.future()
   }
 
   override suspend fun close() {

@@ -66,12 +66,12 @@ import io.vertx.ext.web.handler.BodyHandler
 import io.vertx.ext.web.handler.CorsHandler
 import io.vertx.ext.web.handler.ResponseContentTypeHandler
 import io.vertx.ext.web.handler.StaticHandler
-import io.vertx.ext.web.handler.sockjs.BridgeOptions
+import io.vertx.ext.web.handler.sockjs.SockJSBridgeOptions
 import io.vertx.ext.web.handler.sockjs.SockJSHandler
-import io.vertx.kotlin.core.eventbus.sendAwait
+import io.vertx.kotlin.core.eventbus.requestAwait
 import io.vertx.kotlin.core.http.listenAwait
-import io.vertx.kotlin.core.json.JsonArray
 import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import kotlinx.coroutines.delay
@@ -303,7 +303,7 @@ class HttpEndpoint : CoroutineVerticle() {
     router.get("/favicons/*").handler(placeholderHandler(true))
 
     val sockJSHandler = SockJSHandler.create(vertx)
-    sockJSHandler.bridge(BridgeOptions()
+    sockJSHandler.bridge(SockJSBridgeOptions()
         .addOutboundPermitted(PermittedOptions()
             .setAddress(SUBMISSION_ADDED))
         .addOutboundPermitted(PermittedOptions()
@@ -536,7 +536,7 @@ class HttpEndpoint : CoroutineVerticle() {
             "action" to "info"
         )
       }
-      val agents = agentIds.map { vertx.eventBus().sendAwait<JsonObject>(
+      val agents = agentIds.map { vertx.eventBus().requestAwait<JsonObject>(
           REMOTE_AGENT_ADDRESS_PREFIX + it, msg) }.map { it.body() }
 
       val result = JsonArray(agents).encode()
@@ -572,7 +572,7 @@ class HttpEndpoint : CoroutineVerticle() {
       }
 
       try {
-        val agent = vertx.eventBus().sendAwait<JsonObject>(
+        val agent = vertx.eventBus().requestAwait<JsonObject>(
             REMOTE_AGENT_ADDRESS_PREFIX + id, msg).body()
 
         if (ctx.acceptableContentType == "text/html") {
@@ -582,7 +582,7 @@ class HttpEndpoint : CoroutineVerticle() {
           } else {
             renderHtml("html/agents/single.html", mapOf(
                 "id" to id,
-                "agents" to JsonArray(agent).encode()
+                "agents" to jsonArrayOf(agent).encode()
             ), ctx.response())
           }
         } else {
@@ -655,7 +655,7 @@ class HttpEndpoint : CoroutineVerticle() {
             renderHtml("html/services/single.html", mapOf(
                 "id" to id,
                 "name" to service.name,
-                "services" to JsonArray(serviceObj).encode()
+                "services" to jsonArrayOf(serviceObj).encode()
             ), ctx.response())
           }
         } else {
@@ -742,7 +742,7 @@ class HttpEndpoint : CoroutineVerticle() {
         JsonUtils.toJson(c).also {
           it.remove("workflow")
           amendSubmission(it)
-          it.put("requiredCapabilities", JsonArray(*(reqCaps.toTypedArray())))
+          it.put("requiredCapabilities", jsonArrayOf(*(reqCaps.toTypedArray())))
         }
       }
 
@@ -790,7 +790,7 @@ class HttpEndpoint : CoroutineVerticle() {
         val reqCaps = submission.collectRequiredCapabilities(
             metadataRegistry.findServices())
         amendSubmission(json, true)
-        json.put("requiredCapabilities", JsonArray(*(reqCaps.toTypedArray())))
+        json.put("requiredCapabilities", jsonArrayOf(*(reqCaps.toTypedArray())))
         if (ctx.acceptableContentType == "text/html") {
           val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
           if (!legacy) {
@@ -798,7 +798,7 @@ class HttpEndpoint : CoroutineVerticle() {
           } else {
             renderHtml("html/workflows/single.html", mapOf(
                 "id" to submission.id,
-                "workflows" to JsonArray(json).encode()
+                "workflows" to jsonArrayOf(json).encode()
             ), ctx.response())
           }
         } else {
@@ -822,6 +822,13 @@ class HttpEndpoint : CoroutineVerticle() {
       ctx.response()
           .setStatusCode(400)
           .end("Invalid request body: " + e.message)
+      return
+    }
+
+    if (update == null) {
+      ctx.response()
+          .setStatusCode(400)
+          .end("Missing request body")
       return
     }
 
@@ -1114,7 +1121,7 @@ class HttpEndpoint : CoroutineVerticle() {
 
     if (status == SubmissionRegistry.ProcessChainStatus.RUNNING) {
       val response = try {
-        vertx.eventBus().sendAwait<Double?>(LOCAL_AGENT_ADDRESS_PREFIX + id, json {
+        vertx.eventBus().requestAwait<Double?>(LOCAL_AGENT_ADDRESS_PREFIX + id, json {
           obj(
               "action" to "getProgress"
           )
@@ -1217,7 +1224,7 @@ class HttpEndpoint : CoroutineVerticle() {
           } else {
             renderHtml("html/processchains/single.html", mapOf(
                 "id" to id,
-                "processChains" to JsonArray(json).encode()
+                "processChains" to jsonArrayOf(json).encode()
             ), ctx.response())
           }
         } else {
@@ -1241,6 +1248,13 @@ class HttpEndpoint : CoroutineVerticle() {
       ctx.response()
           .setStatusCode(400)
           .end("Invalid request body: " + e.message)
+      return
+    }
+
+    if (update == null) {
+      ctx.response()
+          .setStatusCode(400)
+          .end("Missing request body")
       return
     }
 

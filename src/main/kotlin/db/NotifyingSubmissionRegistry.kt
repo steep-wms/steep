@@ -4,9 +4,9 @@ import AddressConstants
 import db.SubmissionRegistry.ProcessChainStatus
 import helper.JsonUtils
 import io.vertx.core.Vertx
-import io.vertx.kotlin.core.eventbus.DeliveryOptions
-import io.vertx.kotlin.core.json.JsonArray
+import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
 import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.obj
 import model.Submission
 import model.processchain.ProcessChain
@@ -34,9 +34,9 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
 
         // add required capabilities
         val reqCaps = submission.collectRequiredCapabilities(services)
-        it.put("requiredCapabilities", JsonArray(*(reqCaps.toTypedArray())))
+        it.put("requiredCapabilities", jsonArrayOf(*(reqCaps.toTypedArray())))
       }
-    }, DeliveryOptions(codecName = "lazyjsonobject"))
+    }, deliveryOptionsOf(codecName = "lazyjsonobject"))
   }
 
   override suspend fun fetchNextSubmission(currentStatus: Submission.Status,
@@ -97,7 +97,7 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
       submissionId: String, status: ProcessChainStatus) {
     delegate.addProcessChains(processChains, submissionId, status)
 
-    val options = DeliveryOptions(codecName = "lazyjsonobject")
+    val options = deliveryOptionsOf(codecName = "lazyjsonobject")
     vertx.eventBus().publish(AddressConstants.PROCESSCHAINS_ADDED, {
       json {
         obj(

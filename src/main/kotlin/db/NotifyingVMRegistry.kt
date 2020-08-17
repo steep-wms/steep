@@ -3,7 +3,7 @@ package db
 import AddressConstants
 import helper.JsonUtils
 import io.vertx.core.Vertx
-import io.vertx.kotlin.core.eventbus.DeliveryOptions
+import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import model.cloud.VM
@@ -20,7 +20,7 @@ class NotifyingVMRegistry(private val delegate: VMRegistry, private val vertx: V
     delegate.addVM(vm)
     vertx.eventBus().publish(AddressConstants.VM_ADDED, {
       JsonUtils.toJson(vm)
-    }, DeliveryOptions(codecName = "lazyjsonobject"))
+    }, deliveryOptionsOf(codecName = "lazyjsonobject"))
   }
 
   override suspend fun setVMCreationTime(id: String, creationTime: Instant) {

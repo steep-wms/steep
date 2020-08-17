@@ -4,6 +4,7 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import db.SubmissionRegistry.ProcessChainStatus
 import helper.JsonUtils
 import io.vertx.core.Future
+import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.AsyncMap
@@ -81,12 +82,15 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
 
   init {
     val sharedData = vertx.sharedData()
-    submissions = Future.future()
-    processChains = Future.future()
-    executionStates = Future.future()
-    sharedData.getAsyncMap(ASYNC_MAP_SUBMISSIONS, submissions)
-    sharedData.getAsyncMap(ASYNC_MAP_PROCESS_CHAINS, processChains)
-    sharedData.getAsyncMap(ASYNC_MAP_EXECUTION_STATE, executionStates)
+    val submissionsPromise = Promise.promise<AsyncMap<String, String>>()
+    val processChainsPromise = Promise.promise<AsyncMap<String, String>>()
+    val executionStatesPromise = Promise.promise<AsyncMap<String, String>>()
+    sharedData.getAsyncMap(ASYNC_MAP_SUBMISSIONS, submissionsPromise)
+    sharedData.getAsyncMap(ASYNC_MAP_PROCESS_CHAINS, processChainsPromise)
+    sharedData.getAsyncMap(ASYNC_MAP_EXECUTION_STATE, executionStatesPromise)
+    submissions = submissionsPromise.future()
+    processChains = processChainsPromise.future()
+    executionStates = executionStatesPromise.future()
   }
 
   override suspend fun close() {
