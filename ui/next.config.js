@@ -19,7 +19,6 @@ const config = {
   basePath: isProd ? "/$$MYBASEPATH$$" : "",
 
   // create a folder for each page
-  exportTrailingSlash: true,
   trailingSlash: true,
 
   // do not display static optimization indicator
