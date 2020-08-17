@@ -24,6 +24,7 @@ import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClient
 import io.vertx.ext.web.client.predicate.ResponsePredicate
+import io.vertx.ext.web.client.predicate.ResponsePredicate.contentType
 import io.vertx.ext.web.codec.BodyCodec
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
@@ -58,6 +59,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.net.ServerSocket
+import java.nio.charset.StandardCharsets
 import java.time.Instant
 
 /**
@@ -127,6 +129,78 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.JSON)
             .sendAwait()
         assertThat(response.body().map).containsKey("version")
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if content negotiation works correctly
+   */
+  @Test
+  fun contentNegotiation(vertx: Vertx, ctx: VertxTestContext) {
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        // with "Accept: application/json"
+        val response1 = client.get(port, "localhost", "/")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.JSON)
+            .putHeader("Accept", "application/json")
+            .sendAwait()
+        assertThat(response1.body().map).containsKey("version")
+
+        // with "Accept: text/html"
+        val response2 = client.get(port, "localhost", "/")
+            .`as`(BodyCodec.string())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(contentType("text/html"))
+            .putHeader("Accept", "text/html")
+            .sendAwait()
+        assertThat(response2.body()).contains("html")
+
+        // with "Accept: */*"
+        val response3 = client.get(port, "localhost", "/")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.JSON)
+            .putHeader("Accept", "*/*")
+            .sendAwait()
+        assertThat(response3.body().map).containsKey("version")
+
+        // with complex "Accept" header
+        val response4 = client.get(port, "localhost", "/")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.JSON)
+            .putHeader("Accept", "application/json,text/html")
+            .sendAwait()
+        assertThat(response4.body().map).containsKey("version")
+
+        // with complex "Accept" header
+        val response5 = client.get(port, "localhost", "/")
+            .`as`(BodyCodec.string())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(contentType("text/html"))
+            .putHeader("Accept", "text/html,application/json")
+            .sendAwait()
+        assertThat(response5.body()).contains("html")
+
+        // with complex "Accept" header
+        val response6 = client.get(port, "localhost", "/")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.JSON)
+            .putHeader("Accept", "text/html;q=0.5,application/json;q=1.0")
+            .sendAwait()
+        assertThat(response6.body().map).containsKey("version")
+
+        // without "Accept" header
+        val response7 = client.get(port, "localhost", "/")
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .sendAwait()
+        assertThat(JsonObject(response7.body().toString(StandardCharsets.UTF_8)).map).containsKey("version")
       }
       ctx.completeNow()
     }

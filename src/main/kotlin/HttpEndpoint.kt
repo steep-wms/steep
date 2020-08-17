@@ -68,6 +68,7 @@ import io.vertx.ext.web.handler.ResponseContentTypeHandler
 import io.vertx.ext.web.handler.StaticHandler
 import io.vertx.ext.web.handler.sockjs.SockJSBridgeOptions
 import io.vertx.ext.web.handler.sockjs.SockJSHandler
+import io.vertx.ext.web.impl.ParsableMIMEValue
 import io.vertx.kotlin.core.eventbus.requestAwait
 import io.vertx.kotlin.core.http.listenAwait
 import io.vertx.kotlin.core.json.json
@@ -127,6 +128,9 @@ class HttpEndpoint : CoroutineVerticle() {
 
     private val VERSION: Version = JsonUtils.mapper.readValue(
         HttpEndpoint::class.java.getResource("/version.json"))
+
+    private val JSON = ParsableMIMEValue("application/json")
+    private val HTML = ParsableMIMEValue("text/html")
   }
 
   private lateinit var metadataRegistry: MetadataRegistry
@@ -503,11 +507,28 @@ class HttpEndpoint : CoroutineVerticle() {
   }
 
   /**
+   * Check if the client prefers an HTML response
+   */
+  private fun prefersHtml(ctx: RoutingContext): Boolean {
+    // ctx.parsedHeaders() contains the accepted mime types in
+    // their preferred order
+    for (header in ctx.parsedHeaders().accept()) {
+      if (JSON.isMatchedBy(header)) {
+        return false
+      }
+      if (HTML.isMatchedBy(header)) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /**
    * Get information about Steep
    * @param ctx the routing context
    */
   private fun onGet(ctx: RoutingContext) {
-    if (ctx.acceptableContentType == "text/html") {
+    if (prefersHtml(ctx)) {
       val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
       if (!legacy) {
         renderAsset("ui/index.html", ctx.response())
@@ -541,7 +562,7 @@ class HttpEndpoint : CoroutineVerticle() {
 
       val result = JsonArray(agents).encode()
 
-      if (ctx.acceptableContentType == "text/html") {
+      if (prefersHtml(ctx)) {
         val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
         if (!legacy) {
           renderAsset("ui/agents/index.html", ctx.response())
@@ -575,7 +596,7 @@ class HttpEndpoint : CoroutineVerticle() {
         val agent = vertx.eventBus().requestAwait<JsonObject>(
             REMOTE_AGENT_ADDRESS_PREFIX + id, msg).body()
 
-        if (ctx.acceptableContentType == "text/html") {
+        if (prefersHtml(ctx)) {
           val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
           if (!legacy) {
             renderAsset("ui/agents/[id].html", ctx.response())
@@ -614,7 +635,7 @@ class HttpEndpoint : CoroutineVerticle() {
       val services = metadataRegistry.findServices().map { JsonUtils.toJson(it) }
       val result = JsonArray(services).encode()
 
-      if (ctx.acceptableContentType == "text/html") {
+      if (prefersHtml(ctx)) {
         val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
         if (!legacy) {
           renderAsset("ui/services/index.html", ctx.response())
@@ -647,7 +668,7 @@ class HttpEndpoint : CoroutineVerticle() {
             .end("There is no service with ID `$id'")
       } else {
         val serviceObj = JsonUtils.toJson(service)
-        if (ctx.acceptableContentType == "text/html") {
+        if (prefersHtml(ctx)) {
           val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
           if (!legacy) {
             renderAsset("ui/services/[id].html", ctx.response())
@@ -714,7 +735,7 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onGetWorkflows(ctx: RoutingContext) {
     launch {
-      val isHtml = ctx.acceptableContentType == "text/html"
+      val isHtml = prefersHtml(ctx)
       val offset = max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
       val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
 
@@ -791,7 +812,7 @@ class HttpEndpoint : CoroutineVerticle() {
             metadataRegistry.findServices())
         amendSubmission(json, true)
         json.put("requiredCapabilities", jsonArrayOf(*(reqCaps.toTypedArray())))
-        if (ctx.acceptableContentType == "text/html") {
+        if (prefersHtml(ctx)) {
           val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
           if (!legacy) {
             renderAsset("ui/workflows/[id].html", ctx.response())
@@ -1018,7 +1039,7 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onGetVMs(ctx: RoutingContext) {
     launch {
-      val isHtml = ctx.acceptableContentType == "text/html"
+      val isHtml = prefersHtml(ctx)
       val offset = max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
       val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
 
@@ -1069,7 +1090,7 @@ class HttpEndpoint : CoroutineVerticle() {
             .end("There is no VM with ID `$id'")
       } else {
         val json = JsonUtils.toJson(vm)
-        if (ctx.acceptableContentType == "text/html") {
+        if (prefersHtml(ctx)) {
           val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
           if (!legacy) {
             renderAsset("ui/vms/[id].html", ctx.response())
@@ -1146,7 +1167,7 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onGetProcessChains(ctx: RoutingContext) {
     launch {
-      val isHtml = ctx.acceptableContentType == "text/html"
+      val isHtml = prefersHtml(ctx)
       val offset = max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
       val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
 
@@ -1217,7 +1238,7 @@ class HttpEndpoint : CoroutineVerticle() {
         val json = JsonUtils.toJson(processChain)
         val submissionId = submissionRegistry.getProcessChainSubmissionId(id)
         amendProcessChain(json, submissionId, true)
-        if (ctx.acceptableContentType == "text/html") {
+        if (prefersHtml(ctx)) {
           val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
           if (!legacy) {
             renderAsset("ui/processchains/[id].html", ctx.response())
