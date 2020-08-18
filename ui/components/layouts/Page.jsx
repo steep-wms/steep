@@ -3,7 +3,7 @@ import Footer from "../Footer"
 import Sidebar from "../Sidebar"
 import styles from "./Page.scss"
 
-const Page = ({ title, children }) => (
+const Page = ({ title, children, footerNoTopMargin = false }) => (
   <div className="page">
     <Header title={title}/>
     <Sidebar />
@@ -11,7 +11,7 @@ const Page = ({ title, children }) => (
       <div className="container">
         {children}
       </div>
-      <Footer />
+      <Footer noTopMargin={footerNoTopMargin} />
     </main>
     <style jsx>{styles}</style>
   </div>

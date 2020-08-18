@@ -4,6 +4,10 @@ footer {
   z-index: 1;
   margin-top: 4em;
 
+  &.no-top-margin {
+    margin-top: 0;
+  }
+
   .footer-content {
     border-top: 1px solid $gray-300;
     margin: 0 $spacer;

@@ -141,6 +141,24 @@ a {
     width: 24px;
     margin-bottom: 4px;
   }
+
+  &.primary {
+    background-color: $primary;
+
+    &:hover {
+      background-color: darken($primary, 10%);
+    }
+  }
+
+  &:disabled {
+    cursor: default;
+    background-color: $gray-600;
+    color: $gray-300;
+
+    &:hover {
+      background-color: $gray-600;
+    }
+  }
 }
 
 img {

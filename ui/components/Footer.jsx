@@ -1,8 +1,9 @@
+import classNames from "classnames"
 import styles from "./Footer.scss"
 import { Book, Home, GitHub } from "react-feather"
 
-const Footer = () => (
-  <footer>
+const Footer = ({ noTopMargin = false }) => (
+  <footer className={classNames({ "no-top-margin": noTopMargin })}>
     <div className="footer-content">
       <div className="container">
         <div className="footer-row">

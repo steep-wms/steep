@@ -1,0 +1,63 @@
+@import "css/variables";
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.loading {
+  color: #fff;
+  transform: scale(1);
+  animation: pulse 1s infinite;
+}
+
+.editor-container {
+  display: flex;
+  height: calc(100vh - 14rem);
+  flex-direction: column;
+  margin-bottom: $spacer;
+
+  &.with-error {
+    height: calc(100vh - 9rem);
+  }
+}
+
+.editor-main {
+  display: flex;
+  align-items: flex-start;
+  flex: 1;
+  width: 100%;
+
+  @media (max-width: $sm) {
+    flex-direction: column;
+    width: 100%;
+  }
+}
+
+.editor-wrapper {
+  background-color: $gray-700;
+  border-radius: $border-radius;
+  padding: $spacer 0;
+  align-self: stretch;
+  flex: 1;
+
+  @media (max-width: $sm) {
+    width: 100%;
+  }
+}
+
+.submit-button {
+  margin-left: $spacer;
+
+  @media (max-width: $sm) {
+    margin-top: $spacer;
+    margin-bottom: $spacer;
+    margin-left: 0;
+  }
+}

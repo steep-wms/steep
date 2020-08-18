@@ -3,8 +3,8 @@ import Breadcrumbs from "../Breadcrumbs"
 import styles from "./DetailPage.scss"
 import DropDown from "../DropDown"
 
-const DetailPage = ({ breadcrumbs, title, subtitle, menu, children }) => (
-  <Page title={title}>
+const DetailPage = ({ breadcrumbs, title, subtitle, menu, footerNoTopMargin = false, children }) => (
+  <Page title={title} footerNoTopMargin={footerNoTopMargin}>
     {title && <div className="detail-page-title">
       <h1 className="no-margin-bottom">{title}</h1>{menu && <DropDown title="Actions">{menu}</DropDown>}
     </div>}

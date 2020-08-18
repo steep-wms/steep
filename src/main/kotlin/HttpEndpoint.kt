@@ -192,6 +192,14 @@ class HttpEndpoint : CoroutineVerticle() {
         .produces("text/html")
         .handler(this::onGetAgentById)
 
+    router.get("/new")
+        .produces("text/html")
+        .handler(this::onNew)
+
+    router.get("/new/workflow")
+        .produces("text/html")
+        .handler(this::onNewWorkflow)
+
     router.get("/services")
         .produces("application/json")
         .produces("text/html")
@@ -624,6 +632,27 @@ class HttpEndpoint : CoroutineVerticle() {
         }
       }
     }
+  }
+
+  /**
+   * Redirect to the "new workflow page
+   * @param ctx the routing context
+   */
+  private fun onNew(ctx: RoutingContext) {
+    var uri = ctx.request().absoluteURI()
+    if (!uri.endsWith("/")) {
+      uri += "/"
+    }
+    uri += "workflow"
+    ctx.response().setStatusCode(301).putHeader("Location", uri).end()
+  }
+
+  /**
+   * Get the "new workflow" page
+   * @param ctx the routing context
+   */
+  private fun onNewWorkflow(ctx: RoutingContext) {
+    renderAsset("ui/new/workflow/index.html", ctx.response())
   }
 
   /**

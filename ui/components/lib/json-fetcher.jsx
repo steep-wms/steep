@@ -3,6 +3,13 @@ import fetch from "unfetch"
 
 NProgress.configure({ showSpinner: false })
 
+async function handleResponse(r) {
+  if (r.headers.get("content-type") === "application/json") {
+    return await r.json()
+  }
+  return await r.text()
+}
+
 async function fetcher(url, withHeaders = false, options = {}) {
   let timer = setTimeout(NProgress.start, 100)
   try {
@@ -15,10 +22,11 @@ async function fetcher(url, withHeaders = false, options = {}) {
     if (withHeaders) {
       return {
         headers: r.headers,
-        body: await r.json()
+        status: r.status,
+        body: await handleResponse(r)
       }
     } else {
-      return await r.json()
+      return await handleResponse(r)
     }
   } finally {
     clearTimeout(timer)

@@ -11,6 +11,7 @@
   "author": "Michel Kraemer",
   "license": "Apache-2.0",
   "dependencies": {
+    "@monaco-editor/react": "^3.6.1",
     "@next/bundle-analyzer": "^v9.5.2",
     "@popperjs/core": "^2.4.4",
     "@zeit/next-sass": "^1.0.1",
