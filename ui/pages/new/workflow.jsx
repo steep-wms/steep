@@ -76,17 +76,17 @@ const Submit = () => {
       return
     }
 
+    setReady(false)
+
     fetcher(`${process.env.baseUrl}/workflows/`, false, {
       method: "POST",
-      body: value,
-      headers: {
-        "accept": "text/plain"
-      }
-    }).then(() => {
-      router.push("/workflows")
+      body: value
+    }).then(response => {
+      router.push("/workflows/[id]", `/workflows/${response.id}`)
     }).catch(error => {
       setError(error.message)
       console.log(error)
+      setReady(true)
     })
   }
 
