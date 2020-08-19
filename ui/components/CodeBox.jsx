@@ -2,7 +2,7 @@ import classNames from "classnames"
 import styles from "./CodeBox.scss"
 import Tooltip from "./Tooltip"
 import { useEffect, useRef, useState } from "react"
-import { stringify } from "json2yaml"
+import stringify from "./lib/yaml-stringify"
 import Clipboard from "clipboard"
 import { Clipboard as ClipboardIcon } from "react-feather"
 
@@ -27,10 +27,6 @@ const CodeBox = ({ json }) => {
   str = str.replace()
 
   let yamlStr = stringify(json)
-  yamlStr = yamlStr.replace(/^---$/m, "")
-  yamlStr = yamlStr.replace(/^\s\s/mg, "")
-  yamlStr = yamlStr.replace(/^(\s*)-\s+/mg, "$1- ")
-  yamlStr = yamlStr.trim()
 
   useEffect(() => {
     hljs.highlightBlock(jsonRef.current)

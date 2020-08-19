@@ -2,8 +2,9 @@ import Alert from "../../components/Alert"
 import DetailPage from "../../components/layouts/DetailPage"
 import classNames from "classnames"
 import fetcher from "../../components/lib/json-fetcher"
+import stringify from "../../components/lib/yaml-stringify"
 import { monaco, ControlledEditor } from "@monaco-editor/react"
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Circle } from "react-feather"
 import { useRouter } from "next/router"
 import styles from "./workflow.scss"
@@ -15,11 +16,29 @@ const Submit = () => {
   const router = useRouter()
 
   const editorRef = useRef()
+  const monacoRef = useRef()
+
+  useEffect(() => {
+    if (router.query.from !== undefined) {
+      fetcher(`${process.env.baseUrl}/workflows/${router.query.from}`).then(response => {
+        setValue(stringify(response.workflow))
+        setReady(true)
+        if (editorRef.current && monacoRef.current) {
+          editorRef.current.setSelection(new monacoRef.current.Selection(0, 0, 0, 0))
+        }
+      }).catch(error => {
+        setError(error.message)
+        console.log(error)
+      })
+    }
+  }, [router.query.from])
 
   function handleEditorDidMount(_, editor) {
     editorRef.current = editor
 
     monaco.init().then((monacoInstance) => {
+      monacoRef.current = monacoInstance
+
       editor.focus()
 
       monacoInstance.editor.defineTheme("steep", {
@@ -57,7 +76,7 @@ const Submit = () => {
       return
     }
 
-    fetcher(`${process.env.baseUrl}/workflows/`, true, {
+    fetcher(`${process.env.baseUrl}/workflows/`, false, {
       method: "POST",
       body: value,
       headers: {
