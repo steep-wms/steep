@@ -21,6 +21,7 @@ function WorkflowDetails({ id }) {
   const updateWorkflows = useContext(WorkflowContext.UpdateItems)
   const [error, setError] = useState()
   const [cancelModalOpen, setCancelModalOpen] = useState()
+  const router = useRouter()
 
   useEffect(() => {
     if (id) {
@@ -55,6 +56,15 @@ function WorkflowDetails({ id }) {
 
   function onCancelModalClose() {
     enableBodyScroll()
+  }
+
+  function onResubmit() {
+    router.push({
+      pathname: "/new/workflow",
+      query: {
+        from: id
+      }
+    })
   }
 
   let workflowSource
@@ -121,6 +131,12 @@ function WorkflowDetails({ id }) {
       menu = (
         <ul>
           <li onClick={onCancel}>Cancel</li>
+        </ul>
+      )
+    } else {
+      menu = (
+        <ul>
+          <li onClick={onResubmit}>Resubmit</li>
         </ul>
       )
     }
