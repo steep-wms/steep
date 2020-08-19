@@ -57,18 +57,13 @@ const Submit = () => {
       return
     }
 
-    console.log(value)
-
     fetcher(`${process.env.baseUrl}/workflows/`, true, {
       method: "POST",
       body: value,
       headers: {
         "accept": "text/plain"
       }
-    }).then(response => {
-      if (response.status !== 202) {
-        throw new Error(response.body)
-      }
+    }).then(() => {
       router.push("/workflows")
     }).catch(error => {
       setError(error.message)

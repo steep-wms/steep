@@ -19,13 +19,9 @@
 
 .editor-container {
   display: flex;
-  height: calc(100vh - 14rem);
   flex-direction: column;
   margin-bottom: $spacer;
-
-  &.with-error {
-    height: calc(100vh - 9rem);
-  }
+  min-height: calc(100vh - 14rem);
 }
 
 .editor-main {
@@ -33,6 +29,7 @@
   align-items: flex-start;
   flex: 1;
   width: 100%;
+  height: calc(100vh - 14rem);
 
   @media (max-width: $sm) {
     flex-direction: column;

@@ -19,14 +19,22 @@ async function fetcher(url, withHeaders = false, options = {}) {
       },
       ...options
     })
+
+    let body = await handleResponse(r)
+    if (r.status < 200 || r.status >= 300) {
+      if (typeof body === "object") {
+        throw new Error(JSON.stringify(body))
+      }
+      throw new Error(body)
+    }
+
     if (withHeaders) {
       return {
         headers: r.headers,
-        status: r.status,
-        body: await handleResponse(r)
+        body
       }
     } else {
-      return await handleResponse(r)
+      return body
     }
   } finally {
     clearTimeout(timer)
