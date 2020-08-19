@@ -446,6 +446,21 @@ class HttpEndpoint : CoroutineVerticle() {
   }
 
   /**
+   * Renders an error to the client. Automatically sets correct content type.
+   */
+  private fun renderError(ctx: RoutingContext, statusCode: Int,
+      message: String? = null) {
+    val response = ctx.response()
+    response.statusCode = statusCode
+    if (message != null) {
+      response.putHeader("content-type", "text/plain")
+      response.end(message)
+    } else {
+      response.end()
+    }
+  }
+
+  /**
    * Renders an HTML template to the given HTTP response
    */
   private fun renderHtml(templateName: String, context: Map<String, Any?>,
@@ -621,14 +636,10 @@ class HttpEndpoint : CoroutineVerticle() {
         }
       } catch (e: ReplyException) {
         if (e.failureType() === ReplyFailure.NO_HANDLERS) {
-          ctx.response()
-              .setStatusCode(404)
-              .end("There is no agent with ID `$id'")
+          renderError(ctx, 404, "There is no agent with ID `$id'")
         } else {
           log.error("Could not get info about agent `$id'", e)
-          ctx.response()
-              .setStatusCode(500)
-              .end()
+          renderError(ctx, 500)
         }
       }
     }
@@ -692,9 +703,7 @@ class HttpEndpoint : CoroutineVerticle() {
       val service = services.find { it.id == id }
 
       if (service == null) {
-        ctx.response()
-            .setStatusCode(404)
-            .end("There is no service with ID `$id'")
+        renderError(ctx, 404, "There is no service with ID `$id'")
       } else {
         val serviceObj = JsonUtils.toJson(service)
         if (prefersHtml(ctx)) {
@@ -772,9 +781,7 @@ class HttpEndpoint : CoroutineVerticle() {
         try {
           Submission.Status.valueOf(it)
         } catch (e: IllegalArgumentException) {
-          ctx.response()
-              .setStatusCode(400)
-              .end("Invalid status: $it")
+          renderError(ctx, 400, "Invalid status: $it")
           return@launch
         }
       }
@@ -832,9 +839,7 @@ class HttpEndpoint : CoroutineVerticle() {
       val id = ctx.pathParam("id")
       val submission = submissionRegistry.findSubmissionById(id)
       if (submission == null) {
-        ctx.response()
-            .setStatusCode(404)
-            .end("There is no workflow with ID `$id'")
+        renderError(ctx, 404, "There is no workflow with ID `$id'")
       } else {
         val json = JsonUtils.toJson(submission)
         val reqCaps = submission.collectRequiredCapabilities(
@@ -869,50 +874,38 @@ class HttpEndpoint : CoroutineVerticle() {
     val update = try {
       ctx.bodyAsJson
     } catch (e: Exception) {
-      ctx.response()
-          .setStatusCode(400)
-          .end("Invalid request body: " + e.message)
+      renderError(ctx, 400, "Invalid request body: " + e.message)
       return
     }
 
     if (update == null) {
-      ctx.response()
-          .setStatusCode(400)
-          .end("Missing request body")
+      renderError(ctx, 400, "Missing request body")
       return
     }
 
     val strStatus = try {
       update.getString("status")
     } catch (e: ClassCastException) {
-      ctx.response()
-          .setStatusCode(400)
-          .end("`status' property must be a string")
+      renderError(ctx, 400, "`status' property must be a string")
       return
     }
 
     if (strStatus == null) {
-      ctx.response()
-          .setStatusCode(400)
-          .end("Missing `status' property")
+      renderError(ctx, 400, "Missing `status' property")
       return
     }
 
     val status = try {
       Submission.Status.valueOf(strStatus)
     } catch (e: IllegalArgumentException) {
-      ctx.response()
-          .setStatusCode(400)
-          .end("Invalid `status' property")
+      renderError(ctx, 400, "Invalid `status' property")
       return
     }
 
     launch {
       val submission = submissionRegistry.findSubmissionById(id)
       if (submission == null) {
-        ctx.response()
-            .setStatusCode(404)
-            .end("There is no workflow with ID `$id'")
+        renderError(ctx, 404, "There is no workflow with ID `$id'")
       } else {
         if (submission.status != status && status == Submission.Status.CANCELLED) {
           // first, atomically cancel all process chains that are currently
@@ -971,24 +964,19 @@ class HttpEndpoint : CoroutineVerticle() {
         YamlUtils.mapper.readValue(str)
       }
     } catch (e: Exception) {
-      ctx.response()
-          .setStatusCode(400)
-          .end("Invalid workflow JSON: " + e.message)
+      renderError(ctx, 400, "Invalid workflow JSON: " + e.message)
       return
     }
 
     val api = try {
       SemVersion.valueOf(workflowJson["api"].toString())
     } catch (e: Exception) {
-      ctx.response()
-          .setStatusCode(400)
-          .end("Invalid workflow api version: " + e.message)
+      renderError(ctx, 400, "Invalid workflow api version: " + e.message)
       return
     }
     if (!api.satisfies(gte("3.0.0").and(lte("4.1.0")))) {
-      ctx.response()
-          .setStatusCode(400)
-          .end("Invalid workflow api version: $api. Supported version range is [3.0.0, 4.1.0].")
+      renderError(ctx, 400, "Invalid workflow api version: $api. " +
+          "Supported version range is [3.0.0, 4.1.0].")
       return
     }
 
@@ -1012,18 +1000,14 @@ class HttpEndpoint : CoroutineVerticle() {
     val workflow = try {
       JsonUtils.mapper.convertValue<Workflow>(workflowJson)
     } catch (e: Exception) {
-      ctx.response()
-          .setStatusCode(400)
-          .end("Invalid workflow: " + e.message)
+      renderError(ctx, 400, "Invalid workflow: " + e.message)
       return
     }
 
     // check workflow for common mistakes
     val validationResults = WorkflowValidator.validate(workflow)
     if (validationResults.isNotEmpty()) {
-      ctx.response()
-          .setStatusCode(400)
-          .end("Invalid workflow:\n\n" + validationResults.joinToString("\n\n") {
+      renderError(ctx, 400, "Invalid workflow:\n\n" + validationResults.joinToString("\n\n") {
             "- ${WordUtils.wrap(it.message, 80, "\n  ", true)}\n\n  " +
                 WordUtils.wrap(it.details, 80, "\n  ", true)
           })
@@ -1055,9 +1039,7 @@ class HttpEndpoint : CoroutineVerticle() {
         // notify controller to speed up lookup process
         vertx.eventBus().send(CONTROLLER_LOOKUP_NOW, null)
       } catch (e: Exception) {
-        ctx.response()
-            .setStatusCode(500)
-            .end(e.message)
+        renderError(ctx, 500, e.message)
       }
     }
   }
@@ -1076,9 +1058,7 @@ class HttpEndpoint : CoroutineVerticle() {
         try {
           VM.Status.valueOf(it)
         } catch (e: IllegalArgumentException) {
-          ctx.response()
-              .setStatusCode(400)
-              .end("Invalid status: $it")
+          renderError(ctx, 400, "Invalid status: $it")
           return@launch
         }
       }
@@ -1114,9 +1094,7 @@ class HttpEndpoint : CoroutineVerticle() {
       val id = ctx.pathParam("id")
       val vm = vmRegistry.findVMById(id)
       if (vm == null) {
-        ctx.response()
-            .setStatusCode(404)
-            .end("There is no VM with ID `$id'")
+        renderError(ctx, 404, "There is no VM with ID `$id'")
       } else {
         val json = JsonUtils.toJson(vm)
         if (prefersHtml(ctx)) {
@@ -1206,9 +1184,7 @@ class HttpEndpoint : CoroutineVerticle() {
         try {
           SubmissionRegistry.ProcessChainStatus.valueOf(it)
         } catch (e: IllegalArgumentException) {
-          ctx.response()
-              .setStatusCode(400)
-              .end("Invalid status: $it")
+          renderError(ctx, 400, "Invalid status: $it")
           return@launch
         }
       }
@@ -1260,9 +1236,7 @@ class HttpEndpoint : CoroutineVerticle() {
       val id = ctx.pathParam("id")
       val processChain = submissionRegistry.findProcessChainById(id)
       if (processChain == null) {
-        ctx.response()
-            .setStatusCode(404)
-            .end("There is no process chain with ID `$id'")
+        renderError(ctx, 404, "There is no process chain with ID `$id'")
       } else {
         val json = JsonUtils.toJson(processChain)
         val submissionId = submissionRegistry.getProcessChainSubmissionId(id)
@@ -1295,50 +1269,38 @@ class HttpEndpoint : CoroutineVerticle() {
     val update = try {
       ctx.bodyAsJson
     } catch (e: Exception) {
-      ctx.response()
-          .setStatusCode(400)
-          .end("Invalid request body: " + e.message)
+      renderError(ctx, 400, "Invalid request body: " + e.message)
       return
     }
 
     if (update == null) {
-      ctx.response()
-          .setStatusCode(400)
-          .end("Missing request body")
+      renderError(ctx, 400, "Missing request body")
       return
     }
 
     val strStatus = try {
       update.getString("status")
     } catch (e: ClassCastException) {
-      ctx.response()
-          .setStatusCode(400)
-          .end("`status' property must be a string")
+      renderError(ctx, 400, "`status' property must be a string")
       return
     }
 
     if (strStatus == null) {
-      ctx.response()
-          .setStatusCode(400)
-          .end("Missing `status' property")
+      renderError(ctx, 400, "Missing `status' property")
       return
     }
 
     val status = try {
       SubmissionRegistry.ProcessChainStatus.valueOf(strStatus)
     } catch (e: IllegalArgumentException) {
-      ctx.response()
-          .setStatusCode(400)
-          .end("Invalid `status' property")
+      renderError(ctx, 400, "Invalid `status' property")
       return
     }
 
     launch {
       val processChain = submissionRegistry.findProcessChainById(id)
       if (processChain == null) {
-        ctx.response()
-            .setStatusCode(404)
-            .end("There is no process chain with ID `$id'")
+        renderError(ctx, 404, "There is no process chain with ID `$id'")
       } else {
         if (status == SubmissionRegistry.ProcessChainStatus.CANCELLED) {
           val currentStatus = submissionRegistry.getProcessChainStatus(id)
