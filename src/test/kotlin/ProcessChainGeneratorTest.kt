@@ -268,7 +268,7 @@ class ProcessChainGeneratorTest {
     var json = JsonObject()
     val idgen = ConsecutiveID()
     var generator = ProcessChainGenerator(workflow, "/tmp/", "/out/", services, idgen)
-    assertThat(generator.isFinished()).isFalse()
+    assertThat(generator.isFinished()).isFalse
 
     if (persistState) {
       json = generator.persistState()
@@ -297,7 +297,7 @@ class ProcessChainGeneratorTest {
 
     val processChains = generator.generate(results)
     assertThat(processChains).isEmpty()
-    assertThat(generator.isFinished()).isTrue()
+    assertThat(generator.isFinished()).isTrue
   }
 
   /**

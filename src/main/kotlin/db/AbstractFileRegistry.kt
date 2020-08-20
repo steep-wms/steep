@@ -49,9 +49,9 @@ abstract class AbstractFileRegistry {
     return files.flatMap { file ->
       val content = vertx.fileSystem().readFileAwait(file).toString()
       if (file.toLowerCase().endsWith(".json")) {
-        JsonUtils.mapper.readValue<T>(content, tr)
+        JsonUtils.mapper.readValue(content, tr)
       } else {
-        YamlUtils.mapper.readValue<T>(content, tr)
+        YamlUtils.mapper.readValue(content, tr)
       }
     }
   }

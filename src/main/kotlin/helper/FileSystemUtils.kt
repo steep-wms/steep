@@ -3,7 +3,6 @@ package helper
 import io.vertx.core.file.FileSystem
 import io.vertx.kotlin.core.file.propsAwait
 import io.vertx.kotlin.core.file.readDirAwait
-import java.util.ArrayDeque
 
 /**
  * Utility functions for the Vert.x [FileSystem]
@@ -24,7 +23,7 @@ object FileSystemUtils {
     val q = ArrayDeque<String>()
     q.add(dirOrFile)
     while (!q.isEmpty()) {
-      val f = q.poll()
+      val f = q.removeFirst()
       if (fs.propsAwait(f).isDirectory) {
         q.addAll(fs.readDirAwait(f))
       } else {

@@ -181,7 +181,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
    * requests and interrupts the thread that executes the [block].
    */
   private fun <R> interruptableAsync(block: () -> R): Deferred<R> = async {
-    suspendCancellableCoroutine<R> { cont ->
+    suspendCancellableCoroutine { cont ->
       val t = Thread.currentThread()
 
       cont.invokeOnCancellation {

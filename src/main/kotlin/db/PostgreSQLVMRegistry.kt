@@ -80,7 +80,7 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
       } else {
         connection.queryWithParamsAwait(statement.toString(), params)
       }
-      rs.results.map { JsonUtils.mapper.readValue<VM>(it.getString(0)) }
+      rs.results.map { JsonUtils.mapper.readValue(it.getString(0)) }
     }
   }
 
@@ -121,7 +121,7 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
         )
       }
       val rs = connection.queryWithParamsAwait(statement, params)
-      rs.results.map { JsonUtils.mapper.readValue<VM>(it.getString(0)) }
+      rs.results.map { JsonUtils.mapper.readValue(it.getString(0)) }
     }
   }
 

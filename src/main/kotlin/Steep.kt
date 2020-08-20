@@ -65,7 +65,7 @@ class Steep : CoroutineVerticle() {
 
     // consume process chains and run a local agent for each of them
     val address = REMOTE_AGENT_ADDRESS_PREFIX + Main.agentId
-    vertx.eventBus().consumer<JsonObject>(address, this::onAgentMessage)
+    vertx.eventBus().consumer(address, this::onAgentMessage)
 
     // register remote agent
     capabilities = config.getJsonArray(ConfigConstants.AGENT_CAPABILTIIES,

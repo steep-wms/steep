@@ -329,7 +329,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
           .filter { it.status == currentStatus && (requiredCapabilities == null ||
               (it.processChain.requiredCapabilities.size == requiredCapabilities.size &&
                   it.processChain.requiredCapabilities.containsAll(requiredCapabilities))) }
-          .minBy { it.serial }
+          .minByOrNull { it.serial }
       return entry?.let {
         val newEntry = it.copy(status = newStatus)
         map.putAwait(it.processChain.id, JsonUtils.mapper.writeValueAsString(newEntry))

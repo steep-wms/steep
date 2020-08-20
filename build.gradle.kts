@@ -5,7 +5,7 @@ import java.util.Date
 plugins {
     application
     jacoco
-    kotlin("jvm") version "1.3.72"
+    kotlin("jvm") version "1.4.0"
 }
 
 buildscript {
@@ -69,7 +69,6 @@ dependencies {
     implementation("org.apache.commons:commons-lang3:3.8.1")
     implementation("org.apache.commons:commons-text:1.8")
     implementation("org.flywaydb:flyway-core:5.2.4")
-    implementation("org.jetbrains.kotlin:kotlin-scripting-jvm-host-embeddable:1.3.30")
     implementation("org.mongodb:mongodb-driver-reactivestreams:1.11.0")
     implementation("org.pacesys:openstack4j:3.2.0")
     implementation("org.postgresql:postgresql:42.2.5")
@@ -110,6 +109,7 @@ dependencies {
     closureCompiler("com.google.javascript:closure-compiler:v20190215")
 
     implementation(kotlin("reflect"))
+    implementation(kotlin("scripting-jsr223"))
     implementation(kotlin("stdlib-jdk8"))
 
     testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:2.2.0")

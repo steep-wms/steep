@@ -25,7 +25,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import java.rmi.RemoteException
-import java.util.ArrayDeque
 import java.util.concurrent.CancellationException
 import java.util.concurrent.Executors
 
@@ -125,7 +124,8 @@ class RemoteAgentTest : AgentTest() {
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.coVerify {
         assertThatThrownBy { agent.execute(ProcessChain()) }
-            .isInstanceOf(ClosedReceiveChannelException::class.java)
+            .isInstanceOf(CancellationException::class.java)
+            .hasMessage("Agent left the cluster")
       }
       ctx.completeNow()
     }
@@ -198,12 +198,12 @@ class RemoteAgentTest : AgentTest() {
    */
   @Test
   fun sequence(vertx: Vertx, ctx: VertxTestContext) {
-    val q = ArrayDeque<Long>((0L..2L).toList())
+    val q = ArrayDeque((0L..2L).toList())
 
     vertx.eventBus().consumer<JsonObject>(ADDRESS) consumer@ { msg ->
       val jsonObj: JsonObject = msg.body()
       val sequence: Long = jsonObj["sequence"]
-      if (sequence != q.pop()) {
+      if (sequence != q.removeFirst()) {
         msg.fail(400, "Wrong sequence number: $sequence")
         return@consumer
       }

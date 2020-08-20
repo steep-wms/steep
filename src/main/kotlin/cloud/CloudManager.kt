@@ -38,7 +38,6 @@ import java.io.File
 import java.io.IOException
 import java.io.StringWriter
 import java.time.Instant
-import java.util.ArrayDeque
 import java.util.TreeSet
 import kotlin.math.max
 import kotlin.math.min
@@ -507,7 +506,7 @@ class CloudManager : CoroutineVerticle() {
     }
 
     val setupQueue = ArrayDeque(setups)
-    var setup = setupQueue.poll()
+    var setup = setupQueue.removeFirst()
     while (true) {
       val t = try {
         log.info("Creating remote agent with setup `${setup.id}' for " +
@@ -529,7 +528,7 @@ class CloudManager : CoroutineVerticle() {
 
       log.warn("Could not create remote agent with setup `${setup.id}' and " +
           "capabilities $requiredCapabilities. Trying next setup ...", t)
-      setup = setupQueue.poll()
+      setup = setupQueue.removeFirst()
     }
   }
 

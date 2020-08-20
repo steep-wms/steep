@@ -21,7 +21,6 @@ import model.workflow.Workflow
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
-import java.util.ArrayDeque
 import java.util.Collections
 import java.util.IdentityHashMap
 
@@ -101,7 +100,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
     val foreachActions = ArrayDeque(actions.filterIsInstance<ForEachAction>())
 
     while (foreachActions.isNotEmpty()) {
-      val action = foreachActions.poll()
+      val action = foreachActions.removeFirst()
       val enumId = action.enumerator.id
 
       // get inputs of for-each actions if they are available, otherwise continue

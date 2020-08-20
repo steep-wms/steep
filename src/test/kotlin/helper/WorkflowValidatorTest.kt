@@ -15,7 +15,7 @@ class WorkflowValidatorTest {
    */
   private fun readWorkflow(name: String): Workflow {
     val text = javaClass.getResource("/fixtures/$name.json").readText()
-    return JsonUtils.mapper.readValue<Workflow>(text)
+    return JsonUtils.mapper.readValue(text)
   }
 
   /**

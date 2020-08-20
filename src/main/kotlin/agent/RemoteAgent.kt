@@ -67,7 +67,7 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
       val agentLeftConsumer = vertx.eventBus().consumer<String>(
           AddressConstants.REMOTE_AGENT_LEFT) { agentLeftMsg ->
         if (id == agentLeftMsg.body()) {
-          adapter.cancel(null)
+          adapter.cancel(CancellationException("Agent left the cluster"))
         }
       }
 

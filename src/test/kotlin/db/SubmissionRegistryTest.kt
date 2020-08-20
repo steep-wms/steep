@@ -1024,9 +1024,9 @@ abstract class SubmissionRegistryTest {
           SubmissionRegistry.ProcessChainStatus.SUCCESS)
 
       ctx.verify {
-        assertThat(eA).isFalse()
-        assertThat(eB).isTrue()
-        assertThat(eC).isFalse()
+        assertThat(eA).isFalse
+        assertThat(eB).isTrue
+        assertThat(eC).isFalse
         assertThat(eD).isTrue()
       }
 
@@ -1079,17 +1079,17 @@ abstract class SubmissionRegistryTest {
           SubmissionRegistry.ProcessChainStatus.SUCCESS, rc)
 
       ctx.verify {
-        assertThat(eA1).isFalse()
-        assertThat(eA2).isFalse()
-        assertThat(eB1).isTrue()
-        assertThat(eB2).isTrue()
-        assertThat(eC1).isTrue()
-        assertThat(eC2).isFalse()
-        assertThat(eD1).isTrue()
-        assertThat(eD2).isTrue()
-        assertThat(eE1).isFalse()
-        assertThat(eE2).isFalse()
-        assertThat(eF1).isTrue()
+        assertThat(eA1).isFalse
+        assertThat(eA2).isFalse
+        assertThat(eB1).isTrue
+        assertThat(eB2).isTrue
+        assertThat(eC1).isTrue
+        assertThat(eC2).isFalse
+        assertThat(eD1).isTrue
+        assertThat(eD2).isTrue
+        assertThat(eE1).isFalse
+        assertThat(eE2).isFalse
+        assertThat(eF1).isTrue
         assertThat(eF2).isTrue()
       }
 

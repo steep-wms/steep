@@ -836,7 +836,7 @@ class HttpEndpointTest {
     val submissionSlot = slot<Submission>()
     coEvery { submissionRegistry.addSubmission(capture(submissionSlot)) } answers {
       ctx.verify {
-        assertThat(submissionSlot.captured.id).isNotNull()
+        assertThat(submissionSlot.captured.id).isNotNull
         assertThat(submissionSlot.captured.status).isEqualTo(Submission.Status.ACCEPTED)
         assertThat(submissionSlot.captured.workflow).isEqualTo(expectedWorkflow)
       }

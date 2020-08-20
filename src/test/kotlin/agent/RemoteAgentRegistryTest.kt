@@ -20,7 +20,6 @@ import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import java.util.ArrayDeque
 
 /**
  * Tests for the [RemoteAgentRegistry]
@@ -75,7 +74,7 @@ class RemoteAgentRegistryTest {
       }
     }
 
-    vertx.eventBus().consumer<JsonObject>(address, handler)
+    vertx.eventBus().consumer(address, handler)
     registry.register(agentId)
 
     return result
@@ -325,14 +324,14 @@ class RemoteAgentRegistryTest {
   fun sequenceBasedSelection(vertx: Vertx, ctx: VertxTestContext) {
     val registry = RemoteAgentRegistry(vertx)
 
-    val q1 = ArrayDeque<Long>(listOf(0L, 1L, 4L))
-    val q2 = ArrayDeque<Long>(listOf(2L, 2L, 3L))
+    val q1 = ArrayDeque(listOf(0L, 1L, 4L))
+    val q2 = ArrayDeque(listOf(2L, 2L, 3L))
 
     GlobalScope.launch(vertx.dispatcher()) {
       val agent1 = registerAgentWithCapabilities(emptyList(), registry, vertx, ctx,
-          sequenceProvider = q1::pop, bestSelector = { _,_ -> 0 })
+          sequenceProvider = q1::removeFirst, bestSelector = { _,_ -> 0 })
       val agent2 = registerAgentWithCapabilities(emptyList(), registry, vertx, ctx,
-          sequenceProvider = q2::pop, bestSelector = { _,_ -> 0 })
+          sequenceProvider = q2::removeFirst, bestSelector = { _,_ -> 0 })
 
       val candidates1 = registry.selectCandidates(listOf(emptyList()))
       ctx.verify {

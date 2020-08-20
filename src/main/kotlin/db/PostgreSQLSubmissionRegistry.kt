@@ -146,7 +146,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       } else {
         connection.queryAwait(statement.toString())
       }
-      rs.results.map { JsonUtils.mapper.readValue<Submission>(it.getString(0)) }
+      rs.results.map { JsonUtils.mapper.readValue(it.getString(0)) }
     }
   }
 
@@ -380,7 +380,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         connection.queryAwait(statement.toString())
       }
 
-      rs.results.map { Pair(JsonUtils.mapper.readValue<ProcessChain>(
+      rs.results.map { Pair(JsonUtils.mapper.readValue(
           it.getString(0)), it.getString(1)) }
     }
   }
