@@ -49,12 +49,26 @@
   }
 }
 
-.submit-button {
+.buttons {
   margin-left: $spacer;
+  display: flex;
+  flex-direction: column;
+
+  .cancel-button {
+    margin-top: $spacer / 2;
+  }
 
   @media (max-width: $sm) {
     margin-top: $spacer;
     margin-bottom: $spacer;
     margin-left: 0;
+    flex-direction: row;
+    width: 100%;
+    justify-content: flex-end;
+
+    .cancel-button {
+      margin-top: 0;
+      margin-left: $spacer / 2;
+    }
   }
 }

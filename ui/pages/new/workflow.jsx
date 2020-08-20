@@ -90,6 +90,10 @@ const Submit = () => {
     })
   }
 
+  function onCancel() {
+    window.history.back()
+  }
+
   const loading = (<>
     <div className="loading"><Circle /></div>
     <style jsx>{styles}</style>
@@ -121,8 +125,11 @@ const Submit = () => {
               editorDidMount={handleEditorDidMount} onChange={handleEditorChange}
               theme="steep" loading={loading} options={options} />
           </div>
-          <button className="btn primary submit-button" disabled={!ready}
-            onClick={onSubmit}>Submit</button>
+          <div className="buttons">
+            <button className="btn primary submit-button" disabled={!ready}
+              onClick={onSubmit}>Submit</button>
+            <button className="btn cancel-button" onClick={onCancel}>Cancel</button>
+          </div>
         </div>
       </div>
       <style jsx>{styles}</style>
