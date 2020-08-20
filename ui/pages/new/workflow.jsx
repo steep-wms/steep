@@ -91,7 +91,7 @@ const Submit = () => {
   }
 
   function onCancel() {
-    window.history.back()
+    router.back()
   }
 
   const loading = (<>
