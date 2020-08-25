@@ -44,6 +44,17 @@
   align-self: stretch;
   flex: 1;
 
+  // This will make it so that we can use the 'automaticLayout' feature of the
+  // monaco editor. It works like this: the width of the editor is automatically
+  // being calculated based on the width of 'editor-wrapper' (at a regular
+  // interval or with a ResizeObserver). At the same time, since we do not
+  // specify a fixed width for 'editor-wrapper' (but only 'flex: 1'), the width
+  // of 'editor-wrapper' depends on the width of the embedded editor!! This
+  // line allows the 'editor-wrapper' to resize independently from the embedded
+  // editor, which will in turn make the editor resize itself correctly.
+  overflow: hidden;
+  max-height: 100%;
+
   @media (max-width: $sm) {
     width: 100%;
   }

@@ -105,6 +105,7 @@ const Submit = () => {
     fontSize: "16.74px",
     lineHeight: "28.458px",
 
+    automaticLayout: true,
     lineNumbers: "on",
     minimap: {
       enabled: false
