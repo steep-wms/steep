@@ -244,7 +244,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
       private val exec: Executable, private val progressUpdater: (Double) -> Unit) :
       OutputCollector(maxLines) {
     private val progressEstimator = exec.serviceId?.let {
-      pluginRegistry.getProgressEstimator(it) }
+      pluginRegistry.findProgressEstimator(it) }
 
     override fun collect(line: String) {
       super.collect(line)

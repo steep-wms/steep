@@ -40,7 +40,7 @@ class PluginRegistry(compiledPlugins: List<Plugin>) {
   /**
    * Get a progress estimator for a service with the given [serviceId]
    */
-  fun getProgressEstimator(serviceId: String) = progressEstimators[serviceId]
+  fun findProgressEstimator(serviceId: String) = progressEstimators[serviceId]
 
   /**
    * Get all process chain adapters

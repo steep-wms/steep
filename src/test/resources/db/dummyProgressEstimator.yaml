@@ -1,0 +1,5 @@
+# A dummy progress estimator
+- name: dummyProgressEstimator
+  type: progressEstimator
+  scriptFile: db/dummyProgressEstimator.kts
+  supportedServiceId: dummy

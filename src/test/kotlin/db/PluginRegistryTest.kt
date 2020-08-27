@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 import model.plugins.InitializerPlugin
 import model.plugins.OutputAdapterPlugin
 import model.plugins.ProcessChainAdapterPlugin
+import model.plugins.ProgressEstimatorPlugin
 import model.plugins.RuntimePlugin
 import model.plugins.call
 import model.processchain.Argument
@@ -178,6 +179,50 @@ class PluginRegistryTest {
     val pr = PluginRegistry(expected)
     assertThat(pr.getProcessChainAdapters()).isEqualTo(expected)
     assertThat(pr.getProcessChainAdapters()).isNotSameAs(expected)
+  }
+
+  /**
+   * Test if a simple progress estimator can be compiled and executed
+   */
+  @Test
+  fun compileDummyProgressEstimator(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      val config = json {
+        obj(
+            ConfigConstants.PLUGINS to "src/**/db/dummyProgressEstimator.yaml"
+        )
+      }
+      PluginRegistryFactory.initialize(vertx, config)
+
+      val pr = PluginRegistryFactory.create()
+      val estimator = pr.findProgressEstimator("dummy")
+      ctx.coVerify {
+        assertThat(estimator).isNotNull
+        val e = Executable(
+            path = "path",
+            arguments = emptyList()
+        )
+        assertThat(estimator!!.compiledFunction.call(e, listOf("0"), vertx)).isEqualTo(0.0)
+        assertThat(estimator.compiledFunction.call(e, listOf("10"), vertx)).isEqualTo(0.1)
+        assertThat(estimator.compiledFunction.call(e, listOf("100"), vertx)).isEqualTo(1.0)
+        assertThat(estimator.compiledFunction.call(e, listOf("aa"), vertx)).isEqualTo(null)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if [PluginRegistry.findProgressEstimator] works correctly
+   */
+  @Test
+  fun findProgressEstimator() {
+    val estimator1 = ProgressEstimatorPlugin("a", "file.kts", "copy")
+    val estimator2 = ProgressEstimatorPlugin("b", "file2.kts", "sleep")
+    val estimator3 = ProgressEstimatorPlugin("c", "file3.kts", "hello-world")
+    val pr = PluginRegistry(listOf(estimator1, estimator2, estimator3))
+    assertThat(pr.findProgressEstimator("copy")).isSameAs(estimator1)
+    assertThat(pr.findProgressEstimator("wrongEstimator")).isNull()
   }
 
   /**
