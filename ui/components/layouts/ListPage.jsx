@@ -116,9 +116,7 @@ const ListPage = (props) => {
       pageOffset = Math.max(0, parseInt(pageOffset))
     }
     pageSize = router.query.size || 10
-    if (pageSize !== undefined) {
-      pageSize = Math.max(0, parseInt(pageSize))
-    }
+    pageSize = Math.max(0, parseInt(pageSize))
   }
 
   let hasEnabledFilters = false
