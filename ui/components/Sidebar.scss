@@ -114,32 +114,4 @@ aside, .sidebar {
       }
     }
   }
-
-  .sidebar-rest {
-    flex: 1;
-    display: flex;
-    align-items: flex-end;
-
-    .sidebar-switch-to-classic {
-      font-size: $font-size-sm;
-      margin-left: $spacer * 2.5;
-      margin-bottom: $spacer * 2;
-      border: 1px solid $gray-400;
-      border-radius: $border-radius;
-      padding: .25em .5em;
-      cursor: pointer;
-      font-family: "Roboto Condensed", sans-serif;
-      font-weight: 400;
-
-      &:hover {
-        background-color: $gray-700;
-        border-color: $gray-700;
-        color: #fff;
-      }
-    }
-
-    @media (max-width: $lg) {
-      display: none;
-    }
-  }
 }

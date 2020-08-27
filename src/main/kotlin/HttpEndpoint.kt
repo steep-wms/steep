@@ -33,8 +33,6 @@ import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.github.zafarkhaja.semver.expr.CompositeExpression.Helper.gte
 import com.github.zafarkhaja.semver.expr.CompositeExpression.Helper.lte
-import com.mitchellbosecke.pebble.PebbleEngine
-import com.mitchellbosecke.pebble.lexer.Syntax
 import db.MetadataRegistry
 import db.MetadataRegistryFactory
 import db.SubmissionRegistry
@@ -65,7 +63,6 @@ import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.BodyHandler
 import io.vertx.ext.web.handler.CorsHandler
 import io.vertx.ext.web.handler.ResponseContentTypeHandler
-import io.vertx.ext.web.handler.StaticHandler
 import io.vertx.ext.web.handler.sockjs.SockJSBridgeOptions
 import io.vertx.ext.web.handler.sockjs.SockJSHandler
 import io.vertx.ext.web.impl.ParsableMIMEValue
@@ -81,11 +78,8 @@ import model.Submission
 import model.Version
 import model.cloud.VM
 import model.workflow.Workflow
-import org.apache.commons.codec.digest.DigestUtils
-import org.apache.commons.io.FilenameUtils
 import org.apache.commons.text.WordUtils
 import org.slf4j.LoggerFactory
-import java.io.StringWriter
 import kotlin.math.max
 import com.github.zafarkhaja.semver.Version as SemVersion
 
@@ -96,35 +90,6 @@ import com.github.zafarkhaja.semver.Version as SemVersion
 class HttpEndpoint : CoroutineVerticle() {
   companion object {
     private val log = LoggerFactory.getLogger(HttpEndpoint::class.java)
-
-    /**
-     * A list of asset files that should have their SHA256 checksum encoded in
-     * their filename so we can cache them for a very long time in the browser
-     */
-    private val TRANSIENT_ASSETS: Map<String, String> = mapOf(
-        "indexcss" to "/assets/index.css",
-        "agentsjs" to "/assets/agents.js",
-        "servicesjs" to "/assets/services.js",
-        "paginationjs" to "/assets/pagination.js",
-        "processchainsjs" to "/assets/processchains.js",
-        "workflowsjs" to "/assets/workflows.js"
-    )
-
-    /**
-     * Calculate SHA256 checksum for all [TRANSIENT_ASSETS]
-     */
-    private val ASSET_SHAS = TRANSIENT_ASSETS.mapValues { (_, v) ->
-      val sha = Steep::class.java.getResourceAsStream(v)
-          .use { DigestUtils.sha256Hex(it) }
-      val ext = FilenameUtils.getExtension(v)
-      val basename = FilenameUtils.removeExtension(v)
-      "$basename.$sha.$ext"
-    }
-
-    /**
-     * Reverse [ASSET_SHAS] so we can quickly get the asset ID
-     */
-    private val ASSET_IDS = ASSET_SHAS.map { (k, v) -> Pair(v, k) }.toMap()
 
     private val VERSION: Version = JsonUtils.mapper.readValue(
         HttpEndpoint::class.java.getResource("/version.json"))
@@ -257,38 +222,6 @@ class HttpEndpoint : CoroutineVerticle() {
     router.route("/metrics")
         .handler(MetricsHandler())
     DefaultExports.initialize()
-
-    // add a handler for assets that removes SHA256 checksums from filenames
-    // and then forwards to a static handler
-    router.get("/assets/*").handler { context ->
-      val request = context.request()
-      if (request.method() != HttpMethod.GET && request.method() != HttpMethod.HEAD) {
-        context.next()
-      } else {
-        val path = HttpUtils.removeDots(URIDecoder.decodeURIComponent(context.normalisedPath(), false))?.let {
-          if (it.startsWith(basePath)) {
-            it.substring(basePath.length)
-          } else {
-            it
-          }
-        }
-        if (path == null) {
-          log.warn("Invalid path: " + context.request().path())
-          context.next()
-        } else {
-          val assetId = ASSET_IDS[path]
-          if (assetId != null) {
-            context.reroute(basePath + TRANSIENT_ASSETS[assetId])
-          } else {
-            context.next()
-          }
-        }
-      }
-    }
-
-    // a static handler for assets
-    router.get("/assets/*").handler(StaticHandler.create("assets")
-        .setMaxAgeSeconds(60 * 60 * 24 * 365) /* one year */)
 
     // a static handler that replaces placeholders in assets
     val placeholderHandler = { replaceFavicons: Boolean -> { context: RoutingContext ->
@@ -461,28 +394,6 @@ class HttpEndpoint : CoroutineVerticle() {
   }
 
   /**
-   * Renders an HTML template to the given HTTP response
-   */
-  private fun renderHtml(templateName: String, context: Map<String, Any?>,
-      response: HttpServerResponse) {
-    val engine = PebbleEngine.Builder()
-        .strictVariables(true)
-        .syntax(Syntax("$#", "#$", "$%", "%$", "$$", "$$", "#$", "$", "-", false))
-        .build()
-    val compiledTemplate = engine.getTemplate(templateName)
-    val writer = StringWriter()
-    compiledTemplate.evaluate(writer, context + mapOf(
-        "assets" to ASSET_SHAS,
-        "basePath" to basePath
-    ))
-    response
-        .putHeader("content-type", "text/html")
-        .putHeader("cache-control", "no-cache, no-store, must-revalidate")
-        .putHeader("expires", "0")
-        .end(writer.toString())
-  }
-
-  /**
    * Renders an asset to the given HTTP response. Replaces placeholders.
    */
   private fun renderAsset(name: String, response: HttpServerResponse,
@@ -552,14 +463,7 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onGet(ctx: RoutingContext) {
     if (prefersHtml(ctx)) {
-      val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
-      if (!legacy) {
-        renderAsset("ui/index.html", ctx.response())
-      } else {
-        renderHtml("html/index.html", mapOf(
-            "version" to VERSION
-        ), ctx.response())
-      }
+      renderAsset("ui/index.html", ctx.response())
     } else {
       ctx.response()
           .putHeader("content-type", "application/json")
@@ -572,29 +476,22 @@ class HttpEndpoint : CoroutineVerticle() {
    * @param ctx the routing context
    */
   private fun onGetAgents(ctx: RoutingContext) {
-    launch {
-      val agentIds = agentRegistry.getAgentIds()
+    if (prefersHtml(ctx)) {
+      renderAsset("ui/agents/index.html", ctx.response())
+    } else {
+      launch {
+        val agentIds = agentRegistry.getAgentIds()
 
-      val msg = json {
-        obj(
-            "action" to "info"
-        )
-      }
-      val agents = agentIds.map { vertx.eventBus().requestAwait<JsonObject>(
-          REMOTE_AGENT_ADDRESS_PREFIX + it, msg) }.map { it.body() }
-
-      val result = JsonArray(agents).encode()
-
-      if (prefersHtml(ctx)) {
-        val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
-        if (!legacy) {
-          renderAsset("ui/agents/index.html", ctx.response())
-        } else {
-          renderHtml("html/agents/index.html", mapOf(
-              "agents" to result
-          ), ctx.response())
+        val msg = json {
+          obj(
+              "action" to "info"
+          )
         }
-      } else {
+        val agents = agentIds.map { vertx.eventBus().requestAwait<JsonObject>(
+            REMOTE_AGENT_ADDRESS_PREFIX + it, msg) }.map { it.body() }
+
+        val result = JsonArray(agents).encode()
+
         ctx.response()
             .putHeader("content-type", "application/json")
             .end(result)
@@ -607,39 +504,30 @@ class HttpEndpoint : CoroutineVerticle() {
    * @param ctx the routing context
    */
   private fun onGetAgentById(ctx: RoutingContext) {
-    launch {
-      val id = ctx.pathParam("id")
-      val msg = json {
-        obj(
-            "action" to "info"
-        )
-      }
+    if (prefersHtml(ctx)) {
+      renderAsset("ui/agents/[id].html", ctx.response())
+    } else {
+      launch {
+        val id = ctx.pathParam("id")
+        val msg = json {
+          obj(
+              "action" to "info"
+          )
+        }
 
-      try {
-        val agent = vertx.eventBus().requestAwait<JsonObject>(
-            REMOTE_AGENT_ADDRESS_PREFIX + id, msg).body()
-
-        if (prefersHtml(ctx)) {
-          val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
-          if (!legacy) {
-            renderAsset("ui/agents/[id].html", ctx.response())
-          } else {
-            renderHtml("html/agents/single.html", mapOf(
-                "id" to id,
-                "agents" to jsonArrayOf(agent).encode()
-            ), ctx.response())
-          }
-        } else {
+        try {
+          val agent = vertx.eventBus().requestAwait<JsonObject>(
+              REMOTE_AGENT_ADDRESS_PREFIX + id, msg).body()
           ctx.response()
               .putHeader("content-type", "application/json")
               .end(agent.encode())
-        }
-      } catch (e: ReplyException) {
-        if (e.failureType() === ReplyFailure.NO_HANDLERS) {
-          renderError(ctx, 404, "There is no agent with ID `$id'")
-        } else {
-          log.error("Could not get info about agent `$id'", e)
-          renderError(ctx, 500)
+        } catch (e: ReplyException) {
+          if (e.failureType() === ReplyFailure.NO_HANDLERS) {
+            renderError(ctx, 404, "There is no agent with ID `$id'")
+          } else {
+            log.error("Could not get info about agent `$id'", e)
+            renderError(ctx, 500)
+          }
         }
       }
     }
@@ -671,20 +559,12 @@ class HttpEndpoint : CoroutineVerticle() {
    * @param ctx the routing context
    */
   private fun onGetServices(ctx: RoutingContext) {
-    launch {
-      val services = metadataRegistry.findServices().map { JsonUtils.toJson(it) }
-      val result = JsonArray(services).encode()
-
-      if (prefersHtml(ctx)) {
-        val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
-        if (!legacy) {
-          renderAsset("ui/services/index.html", ctx.response())
-        } else {
-          renderHtml("html/services/index.html", mapOf(
-              "services" to result
-          ), ctx.response())
-        }
-      } else {
+    if (prefersHtml(ctx)) {
+      renderAsset("ui/services/index.html", ctx.response())
+    } else {
+      launch {
+        val services = metadataRegistry.findServices().map { JsonUtils.toJson(it) }
+        val result = JsonArray(services).encode()
         ctx.response()
             .putHeader("content-type", "application/json")
             .end(result)
@@ -697,27 +577,18 @@ class HttpEndpoint : CoroutineVerticle() {
    * @param ctx the routing context
    */
   private fun onGetServiceById(ctx: RoutingContext) {
-    launch {
-      val id = ctx.pathParam("id")
-      val services = metadataRegistry.findServices()
-      val service = services.find { it.id == id }
+    if (prefersHtml(ctx)) {
+      renderAsset("ui/services/[id].html", ctx.response())
+    } else {
+      launch {
+        val id = ctx.pathParam("id")
+        val services = metadataRegistry.findServices()
+        val service = services.find { it.id == id }
 
-      if (service == null) {
-        renderError(ctx, 404, "There is no service with ID `$id'")
-      } else {
-        val serviceObj = JsonUtils.toJson(service)
-        if (prefersHtml(ctx)) {
-          val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
-          if (!legacy) {
-            renderAsset("ui/services/[id].html", ctx.response())
-          } else {
-            renderHtml("html/services/single.html", mapOf(
-                "id" to id,
-                "name" to service.name,
-                "services" to jsonArrayOf(serviceObj).encode()
-            ), ctx.response())
-          }
+        if (service == null) {
+          renderError(ctx, 404, "There is no service with ID `$id'")
         } else {
+          val serviceObj = JsonUtils.toJson(service)
           ctx.response()
               .putHeader("content-type", "application/json")
               .end(serviceObj.encode())
@@ -772,54 +643,40 @@ class HttpEndpoint : CoroutineVerticle() {
    * @param ctx the routing context
    */
   private fun onGetWorkflows(ctx: RoutingContext) {
-    launch {
-      val isHtml = prefersHtml(ctx)
-      val offset = max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
-      val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
+    if (prefersHtml(ctx)) {
+      renderAsset("ui/workflows/index.html", ctx.response())
+    } else {
+      launch {
+        val offset = max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
+        val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
 
-      val status = ctx.request().getParam("status")?.let {
-        try {
-          Submission.Status.valueOf(it)
-        } catch (e: IllegalArgumentException) {
-          renderError(ctx, 400, "Invalid status: $it")
-          return@launch
+        val status = ctx.request().getParam("status")?.let {
+          try {
+            Submission.Status.valueOf(it)
+          } catch (e: IllegalArgumentException) {
+            renderError(ctx, 400, "Invalid status: $it")
+            return@launch
+          }
         }
-      }
 
-      val total = submissionRegistry.countSubmissions(status)
-      val submissions = submissionRegistry.findSubmissions(status, size, offset, -1)
+        val total = submissionRegistry.countSubmissions(status)
+        val submissions = submissionRegistry.findSubmissions(status, size, offset, -1)
 
-      val list = submissions.map { submission ->
-        val reqCaps = submission.collectRequiredCapabilities(
-            metadataRegistry.findServices())
+        val list = submissions.map { submission ->
+          val reqCaps = submission.collectRequiredCapabilities(
+              metadataRegistry.findServices())
 
-        // do not unnecessarily encode workflow to save time for large workflows
-        val c = submission.copy(workflow = Workflow())
+          // do not unnecessarily encode workflow to save time for large workflows
+          val c = submission.copy(workflow = Workflow())
 
-        JsonUtils.toJson(c).also {
-          it.remove("workflow")
-          amendSubmission(it)
-          it.put("requiredCapabilities", jsonArrayOf(*(reqCaps.toTypedArray())))
+          JsonUtils.toJson(c).also {
+            it.remove("workflow")
+            amendSubmission(it)
+            it.put("requiredCapabilities", jsonArrayOf(*(reqCaps.toTypedArray())))
+          }
         }
-      }
 
-      val encodedJson = JsonArray(list).encode()
-
-      if (isHtml) {
-        val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
-        if (!legacy) {
-          renderAsset("ui/workflows/index.html", ctx.response())
-        } else {
-          renderHtml("html/workflows/index.html", mapOf(
-              "workflows" to encodedJson,
-              "page" to mapOf(
-                  "size" to if (size < 0) total else size,
-                  "offset" to offset,
-                  "total" to total
-              )
-          ), ctx.response())
-        }
-      } else {
+        val encodedJson = JsonArray(list).encode()
         ctx.response()
             .putHeader("content-type", "application/json")
             .putHeader("x-page-size", size.toString())
@@ -835,28 +692,22 @@ class HttpEndpoint : CoroutineVerticle() {
    * @param ctx the routing context
    */
   private fun onGetWorkflowById(ctx: RoutingContext) {
-    launch {
-      val id = ctx.pathParam("id")
-      val submission = submissionRegistry.findSubmissionById(id)
-      if (submission == null) {
-        renderError(ctx, 404, "There is no workflow with ID `$id'")
-      } else {
-        val json = JsonUtils.toJson(submission)
-        val reqCaps = submission.collectRequiredCapabilities(
-            metadataRegistry.findServices())
-        amendSubmission(json, true)
-        json.put("requiredCapabilities", jsonArrayOf(*(reqCaps.toTypedArray())))
-        if (prefersHtml(ctx)) {
-          val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
-          if (!legacy) {
-            renderAsset("ui/workflows/[id].html", ctx.response())
-          } else {
-            renderHtml("html/workflows/single.html", mapOf(
-                "id" to submission.id,
-                "workflows" to jsonArrayOf(json).encode()
-            ), ctx.response())
-          }
+    if (prefersHtml(ctx)) {
+      renderAsset("ui/workflows/[id].html", ctx.response())
+    } else {
+      launch {
+        val id = ctx.pathParam("id")
+        val submission = submissionRegistry.findSubmissionById(id)
+        if (submission == null) {
+          renderError(ctx, 404, "There is no workflow with ID `$id'")
         } else {
+          val json = JsonUtils.toJson(submission)
+          val reqCaps = submission.collectRequiredCapabilities(
+              metadataRegistry.findServices())
+
+          amendSubmission(json, true)
+          json.put("requiredCapabilities", jsonArrayOf(*(reqCaps.toTypedArray())))
+
           ctx.response()
               .putHeader("content-type", "application/json")
               .end(json.encode())
@@ -1049,32 +900,26 @@ class HttpEndpoint : CoroutineVerticle() {
    * @param ctx the routing context
    */
   private fun onGetVMs(ctx: RoutingContext) {
-    launch {
-      val isHtml = prefersHtml(ctx)
-      val offset = max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
-      val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
+    if (prefersHtml(ctx)) {
+      renderAsset("ui/vms/index.html", ctx.response())
+    } else {
+      launch {
+        val offset = max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
+        val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
 
-      val status = ctx.request().getParam("status")?.let {
-        try {
-          VM.Status.valueOf(it)
-        } catch (e: IllegalArgumentException) {
-          renderError(ctx, 400, "Invalid status: $it")
-          return@launch
+        val status = ctx.request().getParam("status")?.let {
+          try {
+            VM.Status.valueOf(it)
+          } catch (e: IllegalArgumentException) {
+            renderError(ctx, 400, "Invalid status: $it")
+            return@launch
+          }
         }
-      }
 
-      val list = vmRegistry.findVMs(status, size, offset, -1).map { JsonUtils.toJson(it) }
-      val total = vmRegistry.countVMs(status)
-      val encodedJson = JsonArray(list).encode()
+        val list = vmRegistry.findVMs(status, size, offset, -1).map { JsonUtils.toJson(it) }
+        val total = vmRegistry.countVMs(status)
+        val encodedJson = JsonArray(list).encode()
 
-      if (isHtml) {
-        val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
-        if (!legacy) {
-          renderAsset("ui/vms/index.html", ctx.response())
-        } else {
-          renderHtml("html/vms/index.html", emptyMap(), ctx.response())
-        }
-      } else {
         ctx.response()
             .putHeader("content-type", "application/json")
             .putHeader("x-page-size", size.toString())
@@ -1090,21 +935,16 @@ class HttpEndpoint : CoroutineVerticle() {
    * @param ctx the routing context
    */
   private fun onGetVMById(ctx: RoutingContext) {
-    launch {
-      val id = ctx.pathParam("id")
-      val vm = vmRegistry.findVMById(id)
-      if (vm == null) {
-        renderError(ctx, 404, "There is no VM with ID `$id'")
-      } else {
-        val json = JsonUtils.toJson(vm)
-        if (prefersHtml(ctx)) {
-          val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
-          if (!legacy) {
-            renderAsset("ui/vms/[id].html", ctx.response())
-          } else {
-            renderHtml("html/vms/index.html", emptyMap(), ctx.response())
-          }
+    if (prefersHtml(ctx)) {
+      renderAsset("ui/vms/[id].html", ctx.response())
+    } else {
+      launch {
+        val id = ctx.pathParam("id")
+        val vm = vmRegistry.findVMById(id)
+        if (vm == null) {
+          renderError(ctx, 404, "There is no VM with ID `$id'")
         } else {
+          val json = JsonUtils.toJson(vm)
           ctx.response()
               .putHeader("content-type", "application/json")
               .end(json.encode())
@@ -1173,50 +1013,35 @@ class HttpEndpoint : CoroutineVerticle() {
    * @param ctx the routing context
    */
   private fun onGetProcessChains(ctx: RoutingContext) {
-    launch {
-      val isHtml = prefersHtml(ctx)
-      val offset = max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
-      val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
+    if (prefersHtml(ctx)) {
+      renderAsset("ui/processchains/index.html", ctx.response())
+    } else {
+      launch {
+        val offset = max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
+        val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
 
-      val submissionId: String? = ctx.request().getParam("submissionId")
+        val submissionId: String? = ctx.request().getParam("submissionId")
 
-      val status = ctx.request().getParam("status")?.let {
-        try {
-          SubmissionRegistry.ProcessChainStatus.valueOf(it)
-        } catch (e: IllegalArgumentException) {
-          renderError(ctx, 400, "Invalid status: $it")
-          return@launch
+        val status = ctx.request().getParam("status")?.let {
+          try {
+            SubmissionRegistry.ProcessChainStatus.valueOf(it)
+          } catch (e: IllegalArgumentException) {
+            renderError(ctx, 400, "Invalid status: $it")
+            return@launch
+          }
         }
-      }
 
-      val list = submissionRegistry.findProcessChains(submissionId = submissionId,
-          status = status, size = size, offset = offset, order = -1).map { p ->
-        JsonUtils.toJson(p.first).also {
-          it.remove("executables")
-          amendProcessChain(it, p.second)
+        val list = submissionRegistry.findProcessChains(submissionId = submissionId,
+            status = status, size = size, offset = offset, order = -1).map { p ->
+          JsonUtils.toJson(p.first).also {
+            it.remove("executables")
+            amendProcessChain(it, p.second)
+          }
         }
-      }
 
-      val total = submissionRegistry.countProcessChains(submissionId, status)
+        val total = submissionRegistry.countProcessChains(submissionId, status)
+        val encodedJson = JsonArray(list).encode()
 
-      val encodedJson = JsonArray(list).encode()
-
-      if (isHtml) {
-        val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
-        if (!legacy) {
-          renderAsset("ui/processchains/index.html", ctx.response())
-        } else {
-          renderHtml("html/processchains/index.html", mapOf(
-              "submissionId" to submissionId,
-              "processChains" to encodedJson,
-              "page" to mapOf(
-                  "size" to if (size < 0) total else size,
-                  "offset" to offset,
-                  "total" to total
-              )
-          ), ctx.response())
-        }
-      } else {
         ctx.response()
             .putHeader("content-type", "application/json")
             .putHeader("x-page-size", size.toString())
@@ -1232,26 +1057,18 @@ class HttpEndpoint : CoroutineVerticle() {
    * @param ctx the routing context
    */
   private fun onGetProcessChainById(ctx: RoutingContext) {
-    launch {
-      val id = ctx.pathParam("id")
-      val processChain = submissionRegistry.findProcessChainById(id)
-      if (processChain == null) {
-        renderError(ctx, 404, "There is no process chain with ID `$id'")
-      } else {
-        val json = JsonUtils.toJson(processChain)
-        val submissionId = submissionRegistry.getProcessChainSubmissionId(id)
-        amendProcessChain(json, submissionId, true)
-        if (prefersHtml(ctx)) {
-          val legacy = ctx.request().getParam("legacy")?.toBoolean() ?: false
-          if (!legacy) {
-            renderAsset("ui/processchains/[id].html", ctx.response())
-          } else {
-            renderHtml("html/processchains/single.html", mapOf(
-                "id" to id,
-                "processChains" to jsonArrayOf(json).encode()
-            ), ctx.response())
-          }
+    if (prefersHtml(ctx)) {
+      renderAsset("ui/processchains/[id].html", ctx.response())
+    } else {
+      launch {
+        val id = ctx.pathParam("id")
+        val processChain = submissionRegistry.findProcessChainById(id)
+        if (processChain == null) {
+          renderError(ctx, 404, "There is no process chain with ID `$id'")
         } else {
+          val json = JsonUtils.toJson(processChain)
+          val submissionId = submissionRegistry.getProcessChainSubmissionId(id)
+          amendProcessChain(json, submissionId, true)
           ctx.response()
               .putHeader("content-type", "application/json")
               .end(json.encode())

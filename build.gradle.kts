@@ -1,4 +1,3 @@
-import com.inet.lib.less.Less
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -12,10 +11,6 @@ buildscript {
     repositories {
         jcenter()
     }
-
-    dependencies {
-        classpath("de.inetsoftware:jlessc:1.7")
-    }
 }
 
 group = "de.fhg.igd"
@@ -28,9 +23,6 @@ val prometheusClientVersion by extra("0.6.0")
 repositories {
     jcenter()
 }
-
-val assets by configurations.creating
-val closureCompiler by configurations.creating
 
 dependencies {
     implementation("org.slf4j:jul-to-slf4j:1.7.21")
@@ -74,40 +66,6 @@ dependencies {
     implementation("org.postgresql:postgresql:42.2.5")
     implementation("org.yaml:snakeyaml:1.23")
 
-    assets("org.webjars:highlightjs:9.8.0")
-    assets("org.webjars.npm:d3:5.9.2") {
-        isTransitive = false
-    }
-    assets("org.webjars.npm:dagre:0.8.4") {
-        isTransitive = false
-    }
-    assets("org.webjars.npm:dagre-d3:0.6.3") {
-        isTransitive = false
-    }
-    assets("org.webjars.npm:graphlib:2.1.7") {
-        isTransitive = false
-    }
-    assets("org.webjars.npm:jquery:3.3.1")
-    assets("org.webjars.npm:lodash:4.17.11") {
-        isTransitive = false
-    }
-    assets("org.webjars.npm:semantic-ui:2.4.2") {
-        isTransitive = false
-    }
-    assets("org.webjars.npm:sockjs-client:1.3.0") {
-        isTransitive = false
-    }
-    assets("org.webjars.npm:vue:2.6.6")
-    assets("org.webjars.npm:vue-moment:4.0.0") {
-        isTransitive = false
-    }
-    assets("org.webjars.npm:vue-timeago:5.0.0") {
-        isTransitive = false
-    }
-    assets("io.vertx:vertx-web:$vertxVersion:client@js")
-
-    closureCompiler("com.google.javascript:closure-compiler:v20190215")
-
     implementation(kotlin("reflect"))
     implementation(kotlin("scripting-jsr223"))
     implementation(kotlin("stdlib-jdk8"))
@@ -143,7 +101,6 @@ tasks {
         sourceSets {
             main {
                 resources {
-                    srcDirs("$buildDir/assets")
                     srcDirs("$buildDir/generated-src/main/resources")
                     srcDirs("$projectDir/ui/out")
                 }
@@ -174,73 +131,8 @@ tasks {
         }
     }
 
-    val minifyJs by creating
-    val jsFiles = mapOf(
-        "$projectDir/src/main/resources/js/agents.js" to "$buildDir/assets/assets/agents.js",
-        "$projectDir/src/main/resources/js/services.js" to "$buildDir/assets/assets/services.js",
-        "$projectDir/src/main/resources/js/pagination.js" to "$buildDir/assets/assets/pagination.js",
-        "$projectDir/src/main/resources/js/processchains.js" to "$buildDir/assets/assets/processchains.js",
-        "$projectDir/src/main/resources/js/workflows.js" to "$buildDir/assets/assets/workflows.js"
-    )
-    for ((i, s) in jsFiles.keys.withIndex()) {
-        val t = jsFiles[s]
-        val task = register<JavaExec>("minifyJs$i") {
-            inputs.files(files(s))
-            outputs.files(files(t))
-            classpath = closureCompiler
-            main = "com.google.javascript.jscomp.CommandLineRunner"
-            args = listOf("--js_output_file=$t", s)
-        }
-        minifyJs.dependsOn(task)
-    }
-
-    val less by creating {
-        val cssFiles = mapOf(
-            "$projectDir/src/main/resources/css/index.less" to "$buildDir/assets/assets/index.css"
-        )
-        inputs.files(files(*cssFiles.keys.toTypedArray()))
-        outputs.files(files(*cssFiles.values.toTypedArray()))
-        doLast {
-            for ((s, t) in cssFiles) {
-                val r = Less.compile(file(s), true)
-                file(t).writeText(r)
-            }
-        }
-    }
-
-    val extractAssets by creating(Sync::class) {
-        dependsOn(assets)
-        from(assets.map { if (it.extension == "js") it else zipTree(it) })
-        include(listOf(
-            "META-INF/resources/webjars/d3/5.9.2/dist/d3.min.js",
-            "META-INF/resources/webjars/dagre/0.8.4/dist/dagre.core.min.js",
-            "META-INF/resources/webjars/dagre-d3/0.6.3/dist/dagre-d3.core.min.js",
-            "META-INF/resources/webjars/graphlib/2.1.7/dist/graphlib.core.min.js",
-            "META-INF/resources/webjars/highlightjs/9.8.0/styles/zenburn.css",
-            "META-INF/resources/webjars/highlightjs/9.8.0/highlight.min.js",
-            "META-INF/resources/webjars/jquery/3.3.1/dist/jquery.min.js",
-            "META-INF/resources/webjars/lodash/4.17.11/lodash.min.js",
-            "META-INF/resources/webjars/semantic-ui/2.4.2/dist/semantic.min.css",
-            "META-INF/resources/webjars/semantic-ui/2.4.2/dist/semantic.min.js",
-            "META-INF/resources/webjars/semantic-ui/2.4.2/dist/themes/default/**/*",
-            "META-INF/resources/webjars/sockjs-client/1.3.0/dist/sockjs.min.js",
-            "META-INF/resources/webjars/vue/2.6.6/dist/vue.min.js",
-            "META-INF/resources/webjars/vue-moment/4.0.0/dist/vue-moment.min.js",
-            "META-INF/resources/webjars/vue-timeago/5.0.0/dist/vue-timeago.min.js",
-            "vertx-web-$vertxVersion-client.js"
-        ))
-        into("$buildDir/assets/assets")
-        includeEmptyDirs = false
-        eachFile {
-            path = path.replace("META-INF/resources/webjars", "")
-        }
-    }
-
     processResources {
         dependsOn(generateVersionFile)
-        dependsOn(extractAssets)
-        dependsOn(minifyJs)
-        dependsOn(less)
         dependsOn(":ui:processResources")
     }
 

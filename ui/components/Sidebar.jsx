@@ -26,12 +26,6 @@ function NavItem({ href, icon, text }) {
 }
 
 const Sidebar = () => {
-  function switchToClassicUI() {
-    let params = new URLSearchParams(window.location.search)
-    params.set("legacy", "true")
-    window.location.search = params.toString()
-  }
-
   return (
     <aside>
       <div className="sidebar">
@@ -48,11 +42,6 @@ const Sidebar = () => {
           <NavItem href="/vms/" icon={<Server />} text="VMs" />
           <NavItem href="/services/" icon={<Grid />} text="Services" />
         </nav>
-        <div className="sidebar-rest">
-          <div className="sidebar-switch-to-classic" onClick={switchToClassicUI}>
-            Back to classic UI ...
-          </div>
-        </div>
       </div>
       <style jsx>{styles}</style>
     </aside>
