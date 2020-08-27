@@ -20,7 +20,7 @@ jobs:
       - name: Create test reports
         run: ./gradlew jacocoTestReport
       - name: Upload code coverage report
-        run: bash <(curl -s https://codecov.io/bash)
+        run: bash <(curl -s https://codecov.io/bash) -s build/reports/jacoco
 
       - name: Build Docker image
         run: |
