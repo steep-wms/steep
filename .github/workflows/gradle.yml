@@ -17,6 +17,11 @@ jobs:
       - name: Run tests and install
         run: ./gradlew check installDist
 
+      - name: Create test reports
+        run: ./gradlew jacocoTestReport
+      - name: Upload code coverage report
+        run: bash <(curl -s https://codecov.io/bash)
+
       - name: Build Docker image
         run: |
           docker build -t steep/steep .
