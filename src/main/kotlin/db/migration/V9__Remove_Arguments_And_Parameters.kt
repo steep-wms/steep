@@ -11,7 +11,7 @@ import java.sql.Connection
  * Removes deprecated properties from workflows and process chains
  * @author Michel Kraemer
  */
-class V9__Remove_Arguments_And_Parameters : BaseJavaMigration() {
+open class V9__Remove_Arguments_And_Parameters : BaseJavaMigration() {
   companion object {
     private val log = LoggerFactory.getLogger(V9__Remove_Arguments_And_Parameters::class.java)
   }
@@ -19,7 +19,7 @@ class V9__Remove_Arguments_And_Parameters : BaseJavaMigration() {
   /**
    * Migrate process chains - replace argument type 'argument' with 'input'
    */
-  private fun migrateProcessChains(connection: Connection) {
+  protected fun migrateProcessChains(connection: Connection) {
     var updated = 0
 
     val updateStatement = connection.prepareStatement(

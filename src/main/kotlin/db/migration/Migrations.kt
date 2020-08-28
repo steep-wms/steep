@@ -67,6 +67,20 @@ fun removeExecuteActionParameters(json: Map<*, *>): Boolean {
   return changed
 }
 
+private fun argumentsToInput(arguments: MutableList<*>): Boolean {
+  var changed = false
+  for (argument in arguments) {
+    if (argument is MutableMap<*, *>) {
+      if (argument["type"] == "argument") {
+        @Suppress("UNCHECKED_CAST")
+        (argument as MutableMap<String, Any>)["type"] = "input"
+        changed = true
+      }
+    }
+  }
+  return changed
+}
+
 /**
  * Renames the argument type `argument` in process chains to `input`. Support
  * for this type will be dropped in workflow API version 5.0.0.
@@ -82,14 +96,14 @@ fun processChainArgumentsToInputs(json: Map<*, *>): Boolean {
       if (executable is MutableMap<*, *>) {
         val arguments = executable["arguments"]
         if (arguments is MutableList<*>) {
-          for (argument in arguments) {
-            if (argument is MutableMap<*, *>) {
-              if (argument["type"] == "argument") {
-                @Suppress("UNCHECKED_CAST")
-                (argument as MutableMap<String, Any>)["type"] = "input"
-                changed = true
-              }
-            }
+          if (argumentsToInput(arguments)) {
+            changed = true
+          }
+        }
+        val runtimeArgs = executable["runtimeArgs"]
+        if (runtimeArgs is MutableList<*>) {
+          if (argumentsToInput(runtimeArgs)) {
+            changed = true
           }
         }
       }
