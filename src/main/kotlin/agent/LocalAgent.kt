@@ -49,7 +49,8 @@ import kotlin.reflect.full.callSuspend
  * converted to a [CoroutineDispatcher] through [kotlinx.coroutines.asCoroutineDispatcher].
  * @author Michel Kraemer
  */
-class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) : Agent, CoroutineScope {
+class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
+    private val config: JsonObject = vertx.orCreateContext.config()) : Agent, CoroutineScope {
   companion object {
     /**
      * A cache that tracks which directories we already created
@@ -63,8 +64,6 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
   override val id: String = UniqueID.next()
 
   override val coroutineContext: CoroutineContext by lazy { dispatcher + Job() }
-
-  private val config = vertx.orCreateContext.config()
 
   private val pluginRegistry = PluginRegistryFactory.create()
   private val outputLinesToCollect = config
@@ -83,11 +82,10 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
     // temporarily register a consumer that can cancel the process chain
     val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
     val consumer = vertx.eventBus().consumer<JsonObject>(address).handler { msg ->
-      val action = msg.body().getString("action")
-      if (action == "cancel") {
-        cancel()
-      } else if (action == "getProgress") {
-        msg.reply(progress)
+      when (msg.body().getString("action")) {
+        "cancel" -> cancel()
+        "getProgress" -> msg.reply(progress)
+        else -> msg.fail(400, "Invalid action")
       }
     }
 
