@@ -7,21 +7,14 @@ import helper.LazyJsonObjectMessageCodec
 import helper.UniqueID
 import io.vertx.core.VertxOptions
 import io.vertx.core.json.JsonObject
-import io.vertx.ext.shell.ShellService
-import io.vertx.ext.shell.command.Command
-import io.vertx.ext.shell.command.CommandRegistry
 import io.vertx.kotlin.core.Vertx
 import io.vertx.kotlin.core.deployVerticleAwait
 import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.kotlin.ext.shell.shellServiceOptionsOf
-import io.vertx.kotlin.ext.shell.term.telnetTermOptionsOf
 import io.vertx.spi.cluster.hazelcast.ConfigUtil
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager
 import model.plugins.call
 import org.yaml.snakeyaml.Yaml
-import shell.AsyncMapEntries
-import shell.AsyncMapGet
 import java.io.File
 import java.net.Inet6Address
 import java.net.NetworkInterface
@@ -202,25 +195,8 @@ class Main : CoroutineVerticle() {
     val agentId: String get() = globalAgentId
   }
 
-  /**
-   * Start the Vert.x Shell service
-   */
-  private fun createShell() {
-    val options = shellServiceOptionsOf(telnetOptions = telnetTermOptionsOf(
-        host = "localhost",
-        port = 5000
-    ))
-    ShellService.create(vertx, options).start()
-
-    val registry = CommandRegistry.getShared(vertx)
-    registry.registerCommand(Command.create(vertx, AsyncMapGet::class.java))
-    registry.registerCommand(Command.create(vertx, AsyncMapEntries::class.java))
-  }
-
   override suspend fun start() {
     vertx.eventBus().registerCodec(LazyJsonObjectMessageCodec())
-
-    createShell()
 
     PluginRegistryFactory.initialize(vertx)
 
