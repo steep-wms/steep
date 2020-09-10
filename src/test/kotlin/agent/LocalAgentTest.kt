@@ -39,7 +39,8 @@ class LocalAgentTest : AgentTest() {
   fun cancel(vertx: Vertx, ctx: VertxTestContext) {
     val processChain = ProcessChain(executables = listOf(
         Executable(path = "sleep", arguments = listOf(
-            Argument(variable = ArgumentVariable(UniqueID.next(), "20"),
+            // sleep for a long time so we run into a timeout if cancelling does not work
+            Argument(variable = ArgumentVariable(UniqueID.next(), "2000"),
                 type = Argument.Type.INPUT)
         ))
     ))
@@ -68,7 +69,8 @@ class LocalAgentTest : AgentTest() {
   fun cancelByMessage(vertx: Vertx, ctx: VertxTestContext) {
     val processChain = ProcessChain(executables = listOf(
         Executable(path = "sleep", arguments = listOf(
-            Argument(variable = ArgumentVariable(UniqueID.next(), "20"),
+            // sleep for a long time so we run into a timeout if cancelling does not work
+            Argument(variable = ArgumentVariable(UniqueID.next(), "2000"),
                 type = Argument.Type.INPUT)
         ))
     ))

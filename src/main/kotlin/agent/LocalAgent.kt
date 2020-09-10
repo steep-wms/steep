@@ -32,6 +32,8 @@ import runtime.DockerRuntime
 import runtime.OtherRuntime
 import java.io.File
 import java.util.concurrent.CancellationException
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.resume
@@ -108,16 +110,18 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
       }
     }
 
+
     // execute the process chain
+    val executor = Executors.newSingleThreadExecutor()
     try {
       // create all required output directories
       for (exec in mkdirs) {
-        execute(exec)
+        execute(exec, executor)
       }
 
       // run executables and track progress
       for ((index, exec) in processChain.executables.withIndex()) {
-        execute(exec) { p ->
+        execute(exec, executor) { p ->
           val step = 1.0 / processChain.executables.size
           setProgress(step * index + step * p)
         }
@@ -129,6 +133,9 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
     } finally {
       // make sure the consumer is unregistered
       consumer.unregisterAwait()
+
+      // close executor
+      executor.shutdown()
     }
 
     // create list of results
@@ -148,7 +155,8 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
     coroutineContext.cancel()
   }
 
-  private suspend fun execute(exec: Executable, progressUpdater: ((Double) -> Unit)? = null) {
+  private suspend fun execute(exec: Executable, executor: ExecutorService,
+      progressUpdater: ((Double) -> Unit)? = null) {
     val collector = if (progressUpdater != null) {
       ProgressReportingOutputCollector(outputLinesToCollect, exec, progressUpdater)
     } else {
@@ -156,11 +164,11 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
     }
 
     if (exec.runtime == Service.RUNTIME_DOCKER) {
-      interruptableAsync {
+      interruptableAsync(executor) {
         dockerRuntime.execute(exec, collector)
       }.await()
     } else if (exec.runtime == Service.RUNTIME_OTHER) {
-      interruptableAsync {
+      interruptableAsync(executor) {
         otherRuntime.execute(exec, collector)
       }.await()
     } else {
@@ -169,7 +177,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
       if (r.compiledFunction.isSuspend) {
         r.compiledFunction.callSuspend(exec, outputLinesToCollect, vertx)
       } else {
-        interruptableAsync {
+        interruptableAsync(executor) {
           r.compiledFunction.call(exec, outputLinesToCollect, vertx)
         }.await()
       }
@@ -177,24 +185,26 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher) 
   }
 
   /**
-   * Executes the given [block] in the [coroutineContext]. Handles cancellation
-   * requests and interrupts the thread that executes the [block].
+   * Executes the given [block] with the given [executor] in the
+   * [coroutineContext]. Handles cancellation requests and interrupts the
+   * thread that executes the [block].
    */
-  private fun <R> interruptableAsync(block: () -> R): Deferred<R> = async {
+  private fun <R> interruptableAsync(executor: ExecutorService, block: () -> R): Deferred<R> = async {
     suspendCancellableCoroutine { cont ->
-      val t = Thread.currentThread()
-
-      cont.invokeOnCancellation {
-        t.interrupt()
+      @Suppress("ThrowableNotThrown")
+      val f = executor.submit {
+        try {
+          cont.resume(block())
+        } catch (ie: InterruptedException) {
+          cont.resumeWithException(CancellationException(ie.message ?:
+              "Process chain execution was interrupted"))
+        } catch (t: Throwable) {
+          cont.resumeWithException(t)
+        }
       }
 
-      try {
-        cont.resume(block())
-      } catch (ie: InterruptedException) {
-        cont.resumeWithException(CancellationException(ie.message ?:
-            "Process chain execution was interrupted"))
-      } catch (t: Throwable) {
-        cont.resumeWithException(t)
+      cont.invokeOnCancellation {
+        f.cancel(true)
       }
     }
   }
