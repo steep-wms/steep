@@ -46,13 +46,6 @@ const config = {
   },
 
   webpack: (config, { dev, defaultLoaders }) => {
-    // temporary workaround until https://github.com/vercel/next.js/issues/16259 is fixed
-    delete config.resolve.alias.crypto
-    delete config.resolve.alias.stream
-    delete config.resolve.alias.path
-    delete config.resolve.alias.buffer
-    delete config.resolve.alias.vm
-
     config.module.rules.push({
       test: /\.scss$/,
       use: [
