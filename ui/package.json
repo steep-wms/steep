@@ -43,8 +43,8 @@
     "vertx3-eventbus-client": "^3.9.2"
   },
   "devDependencies": {
-    "eslint": "^7.5.0",
+    "eslint": "^7.9.0",
     "eslint-plugin-react": "^7.20.5",
-    "eslint-plugin-react-hooks": "^4.0.8"
+    "eslint-plugin-react-hooks": "^4.1.2"
   }
 }
