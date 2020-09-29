@@ -11,15 +11,15 @@
   "author": "Michel Kraemer",
   "license": "Apache-2.0",
   "dependencies": {
-    "@monaco-editor/react": "^3.6.1",
+    "@monaco-editor/react": "^3.6.3",
     "@next/bundle-analyzer": "^v9.5.2",
-    "@popperjs/core": "^2.4.4",
+    "@popperjs/core": "^2.5.2",
     "@zeit/next-sass": "^1.0.1",
-    "body-scroll-lock": "^3.0.3",
+    "body-scroll-lock": "^3.1.5",
     "classnames": "^2.2.6",
     "clipboard": "^2.0.6",
     "date-fns": "^2.15.0",
-    "dayjs": "^1.8.31",
+    "dayjs": "^1.9.1",
     "eslint-loader": "^4.0.2",
     "favicons": "^6.2.0",
     "highlight.js": "^10.1.2",
@@ -40,11 +40,11 @@
     "serve": "^11.3.2",
     "styled-jsx-plugin-sass": "^1.0.0",
     "unfetch": "^4.1.0",
-    "vertx3-eventbus-client": "^3.9.2"
+    "vertx3-eventbus-client": "^3.9.3"
   },
   "devDependencies": {
-    "eslint": "^7.9.0",
-    "eslint-plugin-react": "^7.20.5",
+    "eslint": "^7.10.0",
+    "eslint-plugin-react": "^7.21.2",
     "eslint-plugin-react-hooks": "^4.1.2"
   }
 }
