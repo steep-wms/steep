@@ -9,7 +9,7 @@
 
 > A Scientific Workflow Management System made for the Cloud. https://steep-wms.github.io/
 
-[![Apache License, Version 2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0) [![Actions Status](https://github.com/steep-wms/steep/workflows/Java%20CI/badge.svg)](https://github.com/steep-wms/steep/actions)
+[![Apache License, Version 2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0) [![Actions Status](https://github.com/steep-wms/steep/workflows/Java%20CI/badge.svg)](https://github.com/steep-wms/steep/actions) [![Code Coverage](https://img.shields.io/codecov/c/github/steep-wms/steep)](https://codecov.io/gh/steep-wms/steep)
 
 Getting started
 ---------------
