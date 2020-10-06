@@ -43,6 +43,7 @@ class Steep : CoroutineVerticle() {
   private lateinit var busyTimeout: Duration
   private var lastProcessChainSequence = -1L
   private lateinit var autoShutdownTimeout: Duration
+  private lateinit var agentId: String
 
   /**
    * An executor service that can be passed to a [LocalAgent] to run process
@@ -62,15 +63,18 @@ class Steep : CoroutineVerticle() {
         ConfigConstants.AGENT_BUSY_TIMEOUT, 60L))
     autoShutdownTimeout = Duration.ofMinutes(config.getLong(
         ConfigConstants.AGENT_AUTO_SHUTDOWN_TIMEOUT, 0))
+    agentId = config.getString(ConfigConstants.AGENT_ID) ?:
+        throw IllegalStateException("Missing configuration item " +
+            "`${ConfigConstants.AGENT_AUTO_SHUTDOWN_TIMEOUT}'")
 
     // consume process chains and run a local agent for each of them
-    val address = REMOTE_AGENT_ADDRESS_PREFIX + Main.agentId
+    val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId
     vertx.eventBus().consumer(address, this::onAgentMessage)
 
     // register remote agent
     capabilities = config.getJsonArray(ConfigConstants.AGENT_CAPABILTIIES,
         JsonArray()).map { it as String }.toSet()
-    RemoteAgentRegistry(vertx).register(Main.agentId)
+    RemoteAgentRegistry(vertx).register(agentId)
 
     // setup automatic shutdown
     if (autoShutdownTimeout.toMinutes() > 0) {
@@ -78,9 +82,9 @@ class Steep : CoroutineVerticle() {
     }
 
     if (capabilities.isEmpty()) {
-      log.info("Remote agent `${Main.agentId}' successfully deployed")
+      log.info("Remote agent `${agentId}' successfully deployed")
     } else {
-      log.info("Remote agent `${Main.agentId}' with capabilities " +
+      log.info("Remote agent `${agentId}' with capabilities " +
           "`$capabilities' successfully deployed")
     }
   }
@@ -124,7 +128,7 @@ class Steep : CoroutineVerticle() {
     val timedOut = busy?.isBefore(Instant.now().minus(busyTimeout)) ?: return false
     if (timedOut) {
       markBusy(false)
-      log.error("Idle agent `${Main.agentId}' was automatically marked as available again")
+      log.error("Idle agent `${agentId}' was automatically marked as available again")
       return false
     }
     return true
@@ -137,14 +141,14 @@ class Steep : CoroutineVerticle() {
     if (busy) {
       if (this.busy == null) {
         vertx.eventBus().publish(REMOTE_AGENT_BUSY,
-            REMOTE_AGENT_ADDRESS_PREFIX + Main.agentId)
+            REMOTE_AGENT_ADDRESS_PREFIX + agentId)
         stateChangedTime = Instant.now()
       }
       this.busy = Instant.now()
     } else {
       if (this.busy != null) {
         vertx.eventBus().publish(REMOTE_AGENT_IDLE,
-            REMOTE_AGENT_ADDRESS_PREFIX + Main.agentId)
+            REMOTE_AGENT_ADDRESS_PREFIX + agentId)
         stateChangedTime = Instant.now()
       }
       this.busy = null
@@ -157,7 +161,7 @@ class Steep : CoroutineVerticle() {
   private fun onAgentInfo(msg: Message<JsonObject>) {
     val reply = json {
       obj(
-          "id" to Main.agentId,
+          "id" to agentId,
           "available" to !isBusy(),
           "capabilities" to array(*capabilities.toTypedArray()),
           "startTime" to startTime,

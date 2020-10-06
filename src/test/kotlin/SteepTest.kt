@@ -3,6 +3,7 @@ import agent.RemoteAgentRegistry
 import db.SubmissionRegistry
 import db.SubmissionRegistryFactory
 import helper.Shell
+import helper.UniqueID
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -36,9 +37,12 @@ import java.rmi.RemoteException
 @ExtendWith(VertxExtension::class)
 class SteepTest {
   private lateinit var submissionRegistry: SubmissionRegistry
+  private lateinit var agentId: String
 
   @BeforeEach
   fun setUp(vertx: Vertx, ctx: VertxTestContext) {
+    agentId = UniqueID.next()
+
     // mock submission registry
     submissionRegistry = mockk()
     mockkObject(SubmissionRegistryFactory)
@@ -48,7 +52,8 @@ class SteepTest {
     val config = json {
       obj(
           ConfigConstants.AGENT_CAPABILTIIES to array("docker"),
-          ConfigConstants.AGENT_BUSY_TIMEOUT to 1L
+          ConfigConstants.AGENT_BUSY_TIMEOUT to 1L,
+          ConfigConstants.AGENT_ID to agentId
       )
     }
     val options = deploymentOptionsOf(config)
@@ -194,7 +199,7 @@ class SteepTest {
           listOf(processChain.requiredCapabilities))
       ctx.verify {
         assertThat(candidates).containsExactly(Pair(processChain.requiredCapabilities,
-            AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX + Main.agentId))
+            AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX + agentId))
       }
       ctx.completeNow()
     }

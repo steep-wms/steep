@@ -103,12 +103,20 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
       }
 
       // unregister agents whose nodes have left
-      vertx.eventBus().localConsumer<String>(CLUSTER_NODE_LEFT) { msg ->
+      vertx.eventBus().localConsumer<JsonObject>(CLUSTER_NODE_LEFT) { msg ->
         launch {
-          log.info("Node `${msg.body()}' has left the cluster. Removing remote agent.")
-          agents.await().removeAwait(msg.body())
-          val address = REMOTE_AGENT_ADDRESS_PREFIX + msg.body()
-          vertx.eventBus().publish(REMOTE_AGENT_LEFT, address)
+          val agentId = msg.body().getString("agentId")
+          val instances = msg.body().getInteger("instances", 1)
+
+          log.info("Node `${agentId}' has left the cluster. Removing remote " +
+              "agent${if (instances == 1) "" else "s"}.")
+
+          for (i in 1..instances) {
+            val id = if (i == 1) agentId else "$agentId[$i]"
+            agents.await().removeAwait(id)
+            val address = REMOTE_AGENT_ADDRESS_PREFIX + id
+            vertx.eventBus().publish(REMOTE_AGENT_LEFT, address)
+          }
         }
       }
     }

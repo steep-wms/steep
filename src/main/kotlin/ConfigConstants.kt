@@ -194,6 +194,12 @@ object ConfigConstants {
   const val AGENT_CAPABILTIIES = "steep.agent.capabilities"
 
   /**
+   * The number of instances to create of this agent (i.e. how many times it
+   * should be deployed in the same JVM). Defaults to `1`.
+   */
+  const val AGENT_INSTANCES = "steep.agent.instances"
+
+  /**
    * The number of minutes an agent should remain idle until it shuts itself
    * down gracefully. By default, this value is `0`, which means the agent
    * never shuts itself down.
