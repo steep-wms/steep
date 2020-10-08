@@ -51,7 +51,7 @@ class SteepTest {
     // deploy verticle under test
     val config = json {
       obj(
-          ConfigConstants.AGENT_CAPABILTIIES to array("docker"),
+          ConfigConstants.AGENT_CAPABILTIIES to array("docker", "gpu"),
           ConfigConstants.AGENT_BUSY_TIMEOUT to 1L,
           ConfigConstants.AGENT_ID to agentId
       )
@@ -75,7 +75,7 @@ class SteepTest {
 
     GlobalScope.launch(vertx.dispatcher()) {
       val candidates = remoteAgentRegistry.selectCandidates(
-          listOf(processChain.requiredCapabilities))
+          listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
         val agent = remoteAgentRegistry.tryAllocate(candidates[0].second)
         assertThat(agent).isNotNull
@@ -101,7 +101,7 @@ class SteepTest {
 
     GlobalScope.launch(vertx.dispatcher()) {
       val candidates = remoteAgentRegistry.selectCandidates(
-          listOf(processChain.requiredCapabilities))
+          listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
         val agent = remoteAgentRegistry.tryAllocate(candidates[0].second)
         assertThat(agent).isNotNull
@@ -128,7 +128,7 @@ class SteepTest {
 
     GlobalScope.launch(vertx.dispatcher()) {
       val candidates = remoteAgentRegistry.selectCandidates(
-          listOf(processChain.requiredCapabilities))
+          listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
         val agent = remoteAgentRegistry.tryAllocate(candidates[0].second)
         assertThatThrownBy { agent!!.execute(processChain) }
@@ -156,7 +156,7 @@ class SteepTest {
 
     GlobalScope.launch(vertx.dispatcher()) {
       val candidates = remoteAgentRegistry.selectCandidates(
-          listOf(processChain.requiredCapabilities))
+          listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
         val agent = remoteAgentRegistry.tryAllocate(candidates[0].second)
         assertThat(agent).isNotNull
@@ -173,12 +173,12 @@ class SteepTest {
    */
   @Test
   fun wrongCapabilities(vertx: Vertx, ctx: VertxTestContext) {
-    val processChain = ProcessChain(requiredCapabilities = setOf("docker", "gpu"))
+    val processChain = ProcessChain(requiredCapabilities = setOf("docker", "foobar"))
     val remoteAgentRegistry = RemoteAgentRegistry(vertx)
 
     GlobalScope.launch(vertx.dispatcher()) {
       val candidates = remoteAgentRegistry.selectCandidates(
-          listOf(processChain.requiredCapabilities))
+          listOf(processChain.requiredCapabilities to 1))
       ctx.verify {
         assertThat(candidates).isEmpty()
       }
@@ -196,9 +196,38 @@ class SteepTest {
 
     GlobalScope.launch(vertx.dispatcher()) {
       val candidates = remoteAgentRegistry.selectCandidates(
-          listOf(processChain.requiredCapabilities))
+          listOf(processChain.requiredCapabilities to 1))
       ctx.verify {
         assertThat(candidates).containsExactly(Pair(processChain.requiredCapabilities,
+            AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX + agentId))
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if the agent selects the best required capabilities by maximum count
+   * of corresponding process chains
+   */
+  @Test
+  fun bestCapabilitiesByCount(vertx: Vertx, ctx: VertxTestContext) {
+    val requiredCapabilities1 = setOf("docker")
+    val requiredCapabilities2 = setOf("gpu")
+    val remoteAgentRegistry = RemoteAgentRegistry(vertx)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      val candidates1 = remoteAgentRegistry.selectCandidates(
+          listOf(requiredCapabilities1 to 1, requiredCapabilities2 to 2))
+      val candidates2 = remoteAgentRegistry.selectCandidates(
+          listOf(requiredCapabilities1 to 2, requiredCapabilities2 to 1))
+      val candidates3 = remoteAgentRegistry.selectCandidates(
+          listOf(requiredCapabilities1 to 1, requiredCapabilities2 to 1))
+      ctx.verify {
+        assertThat(candidates1).containsExactly(Pair(requiredCapabilities2,
+            AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX + agentId))
+        assertThat(candidates2).containsExactly(Pair(requiredCapabilities1,
+            AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX + agentId))
+        assertThat(candidates3).containsExactly(Pair(requiredCapabilities1,
             AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX + agentId))
       }
       ctx.completeNow()
@@ -215,7 +244,7 @@ class SteepTest {
 
     GlobalScope.launch(vertx.dispatcher()) {
       val candidates = remoteAgentRegistry.selectCandidates(
-          listOf(processChain.requiredCapabilities))
+          listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
         val agent1 = remoteAgentRegistry.tryAllocate(candidates[0].second)
         assertThat(agent1).isNotNull
@@ -242,7 +271,7 @@ class SteepTest {
 
     GlobalScope.launch(vertx.dispatcher()) {
       val candidates = remoteAgentRegistry.selectCandidates(
-          listOf(processChain.requiredCapabilities))
+          listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
         val agent1 = remoteAgentRegistry.tryAllocate(candidates[0].second)
         assertThat(agent1).isNotNull
@@ -272,7 +301,7 @@ class SteepTest {
 
     GlobalScope.launch(vertx.dispatcher()) {
       val candidates = remoteAgentRegistry.selectCandidates(
-          listOf(processChain.requiredCapabilities))
+          listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
         val agent = remoteAgentRegistry.tryAllocate(candidates[0].second)
         assertThat(agent).isNotNull

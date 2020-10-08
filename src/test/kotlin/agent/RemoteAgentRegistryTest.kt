@@ -51,7 +51,11 @@ class RemoteAgentRegistryTest {
       when (val action = json.getString("action")) {
         "inquire" -> {
           result.inquiryCount++
-          val allRcs = json.getJsonArray("requiredCapabilities")
+          val allRcs = JsonArray()
+          json.getJsonArray("requiredCapabilities").forEach {
+            val obj = it as JsonObject
+            allRcs.add(obj.getJsonArray("capabilities"))
+          }
           val best = bestSelector(allRcs, capabilities)
           val available = best >= 0
           val reply = json {
@@ -87,7 +91,7 @@ class RemoteAgentRegistryTest {
   fun selectNoCandidate(vertx: Vertx, ctx: VertxTestContext) {
     val registry = RemoteAgentRegistry(vertx)
     GlobalScope.launch(vertx.dispatcher()) {
-      val candidates = registry.selectCandidates(listOf(emptySet()))
+      val candidates = registry.selectCandidates(listOf(emptySet<String>() to 1))
       ctx.verify {
         assertThat(candidates).isEmpty()
       }
@@ -155,7 +159,7 @@ class RemoteAgentRegistryTest {
         0
       }
 
-      val candidates = registry.selectCandidates(listOf(emptySet()))
+      val candidates = registry.selectCandidates(listOf(emptySet<String>() to 1))
       ctx.verify {
         assertThat(candidates).hasSize(1)
         assertThat(candidates[0]).isEqualTo(Pair(emptySet<String>(), agent.address))
@@ -232,7 +236,7 @@ class RemoteAgentRegistryTest {
         -1
       }
 
-      val candidates = registry.selectCandidates(listOf(reqCap))
+      val candidates = registry.selectCandidates(listOf(reqCap to 1))
       ctx.verify {
         assertThat(candidates).isEmpty()
         assertThat(agent.inquiryCount).isEqualTo(1)
@@ -262,7 +266,7 @@ class RemoteAgentRegistryTest {
       val agent2 = registerAgentWithCapabilities(reqCap2, registry, vertx,
           ctx, bestSelector = bestSelector)
 
-      val candidates1 = registry.selectCandidates(listOf(reqCap1))
+      val candidates1 = registry.selectCandidates(listOf(reqCap1 to 1))
       ctx.verify {
         assertThat(candidates1).hasSize(1)
         assertThat(candidates1[0]).isEqualTo(Pair(reqCap1, agent1.address))
@@ -270,7 +274,7 @@ class RemoteAgentRegistryTest {
         assertThat(agent2.inquiryCount).isEqualTo(1)
       }
 
-      val candidates2 = registry.selectCandidates(listOf(reqCap2))
+      val candidates2 = registry.selectCandidates(listOf(reqCap2 to 1))
       ctx.verify {
         assertThat(candidates2).hasSize(1)
         assertThat(candidates2[0]).isEqualTo(Pair(reqCap2, agent2.address))
@@ -304,7 +308,8 @@ class RemoteAgentRegistryTest {
       val agent3 = registerAgentWithCapabilities(reqCap3, registry, vertx,
           ctx, bestSelector = bestSelector)
 
-      val candidates = registry.selectCandidates(listOf(reqCap1, reqCap2, reqCap3))
+      val candidates = registry.selectCandidates(listOf(reqCap1 to 1,
+          reqCap2 to 1, reqCap3 to 1))
       ctx.verify {
         assertThat(candidates).containsExactlyInAnyOrder(Pair(reqCap1, agent1.address),
             Pair(reqCap2, agent2.address), Pair(reqCap3, agent3.address))
@@ -333,21 +338,21 @@ class RemoteAgentRegistryTest {
       val agent2 = registerAgentWithCapabilities(emptyList(), registry, vertx, ctx,
           sequenceProvider = q2::removeFirst, bestSelector = { _,_ -> 0 })
 
-      val candidates1 = registry.selectCandidates(listOf(emptyList()))
+      val candidates1 = registry.selectCandidates(listOf(emptyList<String>() to 1))
       ctx.verify {
         assertThat(candidates1).hasSize(1)
         assertThat(candidates1[0]).isEqualTo(Pair(emptyList<String>(), agent1.address))
         assertThat(agent1.inquiryCount).isEqualTo(1)
         assertThat(agent2.inquiryCount).isEqualTo(1)
       }
-      val candidates2 = registry.selectCandidates(listOf(emptyList()))
+      val candidates2 = registry.selectCandidates(listOf(emptyList<String>() to 1))
       ctx.verify {
         assertThat(candidates2).hasSize(1)
         assertThat(candidates2[0]).isEqualTo(Pair(emptyList<String>(), agent1.address))
         assertThat(agent1.inquiryCount).isEqualTo(2)
         assertThat(agent2.inquiryCount).isEqualTo(2)
       }
-      val candidates3 = registry.selectCandidates(listOf(emptyList()))
+      val candidates3 = registry.selectCandidates(listOf(emptyList<String>() to 1))
       ctx.verify {
         assertThat(candidates3).hasSize(1)
         assertThat(candidates3[0]).isEqualTo(Pair(emptyList<String>(), agent2.address))
@@ -430,7 +435,7 @@ class RemoteAgentRegistryTest {
       registry.register(agentId1)
       registry.register(agentId2)
 
-      val candidates1 = registry.selectCandidates(listOf(emptyList()))
+      val candidates1 = registry.selectCandidates(listOf(emptyList<String>() to 1))
       ctx.coVerify {
         assertThat(inquiryCount1).isEqualTo(1)
         assertThat(allocateCount1).isEqualTo(0)
@@ -446,7 +451,7 @@ class RemoteAgentRegistryTest {
         assertThat(inquiryCount2).isEqualTo(1)
         assertThat(allocateCount2).isEqualTo(0)
 
-        val candidates2 = registry.selectCandidates(listOf(emptyList()))
+        val candidates2 = registry.selectCandidates(listOf(emptyList<String>() to 1))
         assertThat(candidates2).containsExactly(Pair(emptyList(), address2))
         val agent2 = registry.tryAllocate(address2)
         assertThat(agent2).isNotNull

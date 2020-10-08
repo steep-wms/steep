@@ -890,6 +890,45 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun countProcessChainsBySubmissionIdAndRequiredCapabilitySet(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc1 = ProcessChain(requiredCapabilities = setOf("docker", "gpu"))
+    val pc2 = ProcessChain(requiredCapabilities = setOf("docker", "gpu"))
+    val pc3 = ProcessChain(requiredCapabilities = setOf("docker"))
+    val pc4 = ProcessChain(requiredCapabilities = setOf("foobar"))
+    val pc5 = ProcessChain()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s)
+      val count0 = submissionRegistry.countProcessChains(s.id,
+          requiredCapabilities = setOf("docker", "gpu"))
+      submissionRegistry.addProcessChains(listOf(pc1), s.id)
+      val count1 = submissionRegistry.countProcessChains(s.id,
+          requiredCapabilities = setOf("docker", "gpu"))
+      submissionRegistry.addProcessChains(listOf(pc2, pc3, pc4, pc5), s.id)
+      val count2 = submissionRegistry.countProcessChains(s.id,
+          requiredCapabilities = setOf("docker", "gpu"))
+      val count3 = submissionRegistry.countProcessChains(s.id,
+          requiredCapabilities = setOf("docker"))
+      val count4 = submissionRegistry.countProcessChains(s.id,
+          requiredCapabilities = setOf("foobar"))
+      val count5 = submissionRegistry.countProcessChains(s.id,
+          requiredCapabilities = setOf("missing"))
+
+      ctx.verify {
+        assertThat(count0).isEqualTo(0)
+        assertThat(count1).isEqualTo(1)
+        assertThat(count2).isEqualTo(2)
+        assertThat(count3).isEqualTo(1)
+        assertThat(count4).isEqualTo(1)
+        assertThat(count5).isEqualTo(0)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun findProcessChainRequiredCapabilities(vertx: Vertx, ctx: VertxTestContext) {
     val rcs1 = setOf("rc1")
     val rcs2 = setOf("rc1", "rc2")

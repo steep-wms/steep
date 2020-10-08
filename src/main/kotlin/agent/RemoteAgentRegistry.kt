@@ -143,15 +143,21 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     return awaitResult { agents.keys(it) }
   }
 
-  override suspend fun selectCandidates(requiredCapabilities: List<Collection<String>>):
+  override suspend fun selectCandidates(requiredCapabilities: List<Pair<Collection<String>, Long>>):
       List<Pair<Collection<String>, String>> {
     if (requiredCapabilities.isEmpty()) {
       return emptyList()
     }
 
     // prepare message
-    val requiredCapabilitiesArr = JsonArray(requiredCapabilities
-        .map { JsonArray(it.toList()) })
+    val requiredCapabilitiesArr = JsonArray(requiredCapabilities.map {
+      json {
+        obj(
+            "capabilities" to JsonArray(it.first.toList()),
+            "processChainCount" to it.second
+        )
+      }
+    })
     val msgInquire = json {
       obj(
           "action" to "inquire",
@@ -187,7 +193,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
       // LRU: Select agent with the lowest `lastSequence` because it's the one
       // that has not processed a process chain for the longest time.
       candidates.sortBy { it.second }
-      Pair(requiredCapabilities[i], candidates.first().first)
+      Pair(requiredCapabilities[i].first, candidates.first().first)
     }
   }
 

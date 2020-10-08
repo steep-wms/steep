@@ -236,10 +236,13 @@ interface SubmissionRegistry : Registry {
    * @param submissionId an optional submission ID the process chains should
    * belong to
    * @param status an optional status the process chains should have
+   * @param requiredCapabilities an optional set of required capabilities. Only
+   * process chains with these required capabilities will be counted.
    * @return the number of process chains in the registry
    */
   suspend fun countProcessChains(submissionId: String? = null,
-      status: ProcessChainStatus? = null): Long
+      status: ProcessChainStatus? = null,
+      requiredCapabilities: Collection<String>? = null): Long
 
   /**
    * Atomically fetch a process chain that has the given [currentStatus] and

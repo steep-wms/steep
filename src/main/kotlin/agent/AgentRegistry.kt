@@ -6,10 +6,11 @@ package agent
  */
 interface AgentRegistry {
   /**
-   * For each given set of [requiredCapabilities], try to find an address of
-   * an agent that is able to handle them
+   * For each given set of [requiredCapabilities] (and respective number of
+   * process chains requiring them), try to find an address of an agent that
+   * is able to handle them
    */
-  suspend fun selectCandidates(requiredCapabilities: List<Collection<String>>):
+  suspend fun selectCandidates(requiredCapabilities: List<Pair<Collection<String>, Long>>):
       List<Pair<Collection<String>, String>>
 
   /**

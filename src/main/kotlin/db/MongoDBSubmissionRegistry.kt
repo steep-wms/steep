@@ -440,13 +440,16 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   }
 
   override suspend fun countProcessChains(submissionId: String?,
-      status: ProcessChainStatus?) =
+      status: ProcessChainStatus?, requiredCapabilities: Collection<String>?) =
       collProcessChains.countDocumentsAwait(JsonObject().also {
         if (submissionId != null) {
           it.put(SUBMISSION_ID, submissionId)
         }
         if (status != null) {
           it.put(STATUS, status.toString())
+        }
+        if (requiredCapabilities != null) {
+          it.put(REQUIRED_CAPABILITIES, JsonUtils.mapper.writeValueAsString(requiredCapabilities))
         }
       })
 

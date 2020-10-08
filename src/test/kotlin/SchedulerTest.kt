@@ -26,6 +26,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import java.lang.IllegalStateException
 
 /**
  * Tests for the [Scheduler]
@@ -36,14 +37,26 @@ class SchedulerTest {
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var agentRegistry: AgentRegistry
 
+  private var expectedRequiredCapabilities = listOf<Pair<Collection<String>, Long>>()
+
   @BeforeEach
   fun setUp(vertx: Vertx, ctx: VertxTestContext) {
+    expectedRequiredCapabilities = listOf(emptyList<String>() to 13L)
+
     // mock submission registry
     submissionRegistry = mockk()
     mockkObject(SubmissionRegistryFactory)
     every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
-    coEvery { submissionRegistry.findProcessChainRequiredCapabilities(any()) } returns
-        listOf(emptyList())
+    coEvery { submissionRegistry.findProcessChainRequiredCapabilities(any()) } answers {
+      expectedRequiredCapabilities.map { it.first }
+    }
+    val rcsSlot = slot<Collection<String>>()
+    coEvery { submissionRegistry.countProcessChains(null, REGISTERED, capture(rcsSlot)) } answers {
+      expectedRequiredCapabilities.find {
+        it.first == rcsSlot.captured
+      }?.second ?: throw IllegalStateException(
+          "Invalid required capabilities set `${rcsSlot.captured}'")
+    }
     coEvery { submissionRegistry.close() } just Runs
 
     // mock agent registry
@@ -87,13 +100,18 @@ class SchedulerTest {
       }
     }
 
-    val slotRequiredCapabilities = slot<List<Collection<String>>>()
+    val slotRequiredCapabilities = slot<List<Pair<Collection<String>, Long>>>()
     coEvery { agentRegistry.selectCandidates(capture(slotRequiredCapabilities)) } answers {
+      ctx.verify {
+        if (slotRequiredCapabilities.captured.isNotEmpty()) {
+          assertThat(slotRequiredCapabilities.captured).isEqualTo(expectedRequiredCapabilities)
+        }
+      }
       slotRequiredCapabilities.captured.mapIndexedNotNull { i, rc ->
         if (i >= availableAgents.size) {
           null
         } else {
-          Pair(rc, availableAgents[i].id)
+          Pair(rc.first, availableAgents[i].id)
         }
       }
     }
@@ -195,8 +213,7 @@ class SchedulerTest {
 
   @Test
   fun twoChainsTwoAgentsDifferentRequiredCapabilities(vertx: Vertx, ctx: VertxTestContext) {
-    coEvery { submissionRegistry.findProcessChainRequiredCapabilities(any()) } returns
-        listOf(listOf("docker"), emptyList())
+    expectedRequiredCapabilities = listOf(listOf("docker") to 1, emptyList<String>() to 2)
     testSimple(2, 2, vertx, ctx)
   }
 

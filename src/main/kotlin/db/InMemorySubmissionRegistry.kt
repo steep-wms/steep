@@ -310,11 +310,14 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   }
 
   override suspend fun countProcessChains(submissionId: String?,
-      status: ProcessChainStatus?): Long =
+      status: ProcessChainStatus?, requiredCapabilities: Collection<String>?): Long =
       findProcessChainEntries()
           .filter {
             (submissionId == null || it.submissionId == submissionId) &&
-                (status == null || it.status == status)
+                (status == null || it.status == status) &&
+                (requiredCapabilities == null ||
+                    (it.processChain.requiredCapabilities.size == requiredCapabilities.size &&
+                        it.processChain.requiredCapabilities.containsAll(requiredCapabilities)))
           }
           .count().toLong()
 

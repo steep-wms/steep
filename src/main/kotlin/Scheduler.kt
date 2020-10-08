@@ -48,9 +48,9 @@ class Scheduler : CoroutineVerticle() {
 
   /**
    * A list of sets of capabilities required by process chains with the status
-   * [REGISTERED]
+   * [REGISTERED] and the respective number of process chains
    */
-  private var allRequiredCapabilities: MutableList<Collection<String>> = mutableListOf()
+  private var allRequiredCapabilities: MutableList<Pair<Collection<String>, Long>> = mutableListOf()
   private var allRequiredCapabilitiesInitialized = false
 
   override suspend fun start() {
@@ -105,8 +105,13 @@ class Scheduler : CoroutineVerticle() {
   private suspend fun lookup(maxLookups: Int = Int.MAX_VALUE,
       updateRequiredCapabilities: Boolean) {
     if (updateRequiredCapabilities || !allRequiredCapabilitiesInitialized) {
-      allRequiredCapabilities = submissionRegistry
-          .findProcessChainRequiredCapabilities(REGISTERED).toMutableList()
+      val arcs = submissionRegistry.findProcessChainRequiredCapabilities(REGISTERED)
+
+      // count process chains for each required capability set
+      allRequiredCapabilities = arcs.map { rc ->
+        rc to submissionRegistry.countProcessChains(status = REGISTERED,
+            requiredCapabilities = rc)
+      }.toMutableList()
       allRequiredCapabilitiesInitialized = true
     }
 
@@ -119,7 +124,7 @@ class Scheduler : CoroutineVerticle() {
         // Check if we need to request a new agent.
         val rcsi = allRequiredCapabilities.iterator()
         while (rcsi.hasNext()) {
-          val rcs = rcsi.next()
+          val rcs = rcsi.next().first
           if (!submissionRegistry.existsProcessChain(REGISTERED, rcs)) {
             // if there is no such process chain, the capabilities are not
             // required anymore
@@ -142,7 +147,7 @@ class Scheduler : CoroutineVerticle() {
         if (processChain == null) {
           // We didn't find a process chain for these required capabilities.
           // Remove them from the list of known ones.
-          allRequiredCapabilities.remove(requiredCapabilities)
+          allRequiredCapabilities.removeIf { it.first == requiredCapabilities }
           continue
         }
 

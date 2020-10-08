@@ -179,19 +179,22 @@ class Steep : CoroutineVerticle() {
     val bestRequiredCapabilities = if (isBusy()) {
       -1
     } else {
-      // select requiredCapabilities that best match our own capabilities
+      // Select requiredCapabilities that best match our own capabilities.
+      // Prefer capability sets with a high number of process chains.
       val arr = msg.body().getJsonArray("requiredCapabilities")
-      var max = -1
+      var max = -1L
       var best = -1
 
       for ((i, rcs) in arr.withIndex()) {
-        val rcsArr = rcs as JsonArray
+        val rcsObj = rcs as JsonObject
+        val rcsArr = rcsObj.getJsonArray("capabilities")
+        val rcsCount = rcsObj.getLong("processChainCount")
         var ok = true
-        var count = 0
+        var count = 0L
 
         for (rc in rcsArr) {
           if (capabilities.contains(rc)) {
-            count++
+            count += rcsCount
           } else {
             ok = false
             break

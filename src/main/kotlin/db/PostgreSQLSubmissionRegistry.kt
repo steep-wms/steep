@@ -445,42 +445,35 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun countProcessChains(submissionId: String?,
-      status: ProcessChainStatus?): Long {
+      status: ProcessChainStatus?, requiredCapabilities: Collection<String>?): Long {
     return withConnection { connection ->
       val statement = StringBuilder()
       statement.append("SELECT COUNT(*) FROM $PROCESS_CHAINS")
 
-      val params = if (submissionId != null && status != null) {
-        statement.append(" WHERE $SUBMISSION_ID=? AND $STATUS=?")
-        json {
-          array(
-              submissionId,
-              status.toString()
-          )
-        }
-      } else if (submissionId != null) {
-        statement.append(" WHERE $SUBMISSION_ID=?")
-        json {
-          array(
-              submissionId
-          )
-        }
-      } else if (status != null) {
-        statement.append(" WHERE $STATUS=?")
-        json {
-          array(
-              status.toString()
-          )
-        }
-      } else {
-        null
+      val conditions = mutableListOf<String>()
+      val params = JsonArray()
+
+      if (submissionId != null) {
+        conditions.add("$SUBMISSION_ID=?")
+        params.add(submissionId)
+      }
+      if (status != null) {
+        conditions.add("$STATUS=?")
+        params.add(status.toString())
+      }
+      if (requiredCapabilities != null) {
+        conditions.add("$DATA->'$REQUIRED_CAPABILITIES'=?::jsonb")
+        params.add(JsonUtils.mapper.writeValueAsString(requiredCapabilities))
       }
 
-      val rs = if (params != null) {
+      val rs = if (conditions.isNotEmpty()) {
+        statement.append(" WHERE ")
+        statement.append(conditions.joinToString(" AND "))
         connection.querySingleWithParamsAwait(statement.toString(), params)
       } else {
         connection.querySingleAwait(statement.toString())
       }
+
       rs?.getLong(0) ?: 0L
     }
   }
