@@ -26,7 +26,7 @@
     "imagemin-svgo": "^8.0.0",
     "json2yaml": "^1.1.0",
     "lodash": "^4.17.19",
-    "next": "^v9.5.2",
+    "next": "^v9.5.4",
     "next-compose-plugins": "^2.2.0",
     "next-optimized-images": "^2.6.2",
     "node-sass": "^4.14.1",
