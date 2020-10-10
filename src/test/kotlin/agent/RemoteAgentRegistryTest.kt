@@ -40,9 +40,9 @@ class RemoteAgentRegistryTest {
    */
   private suspend fun registerAgentWithCapabilities(capabilities: List<String>,
       registry: RemoteAgentRegistry, vertx: Vertx, ctx: VertxTestContext,
+      agentId: String = UniqueID.next(),
       sequenceProvider: (() -> Long)? = null,
-      bestSelector: (JsonArray, List<String>) -> Int): RegisteredAgent {
-    val agentId = UniqueID.next()
+      bestSelector: (JsonArray, List<String>, List<Long>) -> Int): RegisteredAgent {
     val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId
     val result = RegisteredAgent(address)
 
@@ -52,11 +52,14 @@ class RemoteAgentRegistryTest {
         "inquire" -> {
           result.inquiryCount++
           val allRcs = JsonArray()
+          val allCounts = mutableListOf<Long>()
           json.getJsonArray("requiredCapabilities").forEach {
             val obj = it as JsonObject
             allRcs.add(obj.getJsonArray("capabilities"))
+            allCounts.add(obj.getLong("processChainCount", 0L))
           }
-          val best = bestSelector(allRcs, capabilities)
+          val includeCapabilities = json.getBoolean("includeCapabilities", false)
+          val best = bestSelector(allRcs, capabilities, allCounts)
           val available = best >= 0
           val reply = json {
             if (sequenceProvider != null) {
@@ -71,6 +74,11 @@ class RemoteAgentRegistryTest {
                   "bestRequiredCapabilities" to best
               )
             }
+          }
+          if (includeCapabilities) {
+            val capsArr = JsonArray()
+            capabilities.forEach { capsArr.add(it) }
+            reply.put("capabilities", capsArr)
           }
           msg.reply(reply)
         }
@@ -152,7 +160,7 @@ class RemoteAgentRegistryTest {
     val registry = RemoteAgentRegistry(vertx)
 
     GlobalScope.launch(vertx.dispatcher()) {
-      val agent = registerAgentWithCapabilities(emptyList(), registry, vertx, ctx) { allRcs, _ ->
+      val agent = registerAgentWithCapabilities(emptyList(), registry, vertx, ctx) { allRcs, _, _ ->
         ctx.verify {
           assertThat(allRcs).isEqualTo(JsonArray().add(JsonArray()))
         }
@@ -229,7 +237,7 @@ class RemoteAgentRegistryTest {
     val reqCap = listOf("docker", "gpu")
 
     GlobalScope.launch(vertx.dispatcher()) {
-      val agent = registerAgentWithCapabilities(reqCap, registry, vertx, ctx) { allRcs, capabilities ->
+      val agent = registerAgentWithCapabilities(reqCap, registry, vertx, ctx) { allRcs, capabilities, _ ->
         ctx.verify {
           assertThat(allRcs).isEqualTo(JsonArray().add(JsonArray(capabilities)))
         }
@@ -255,7 +263,7 @@ class RemoteAgentRegistryTest {
     val reqCap1 = listOf("docker")
     val reqCap2 = listOf("gpu")
 
-    val bestSelector = { allRcs: JsonArray, capabilities: List<String> ->
+    val bestSelector = { allRcs: JsonArray, capabilities: List<String>, _: List<Long> ->
       val available = allRcs == JsonArray().add(JsonArray(capabilities))
       if (available) 0 else -1
     }
@@ -267,19 +275,25 @@ class RemoteAgentRegistryTest {
           ctx, bestSelector = bestSelector)
 
       val candidates1 = registry.selectCandidates(listOf(reqCap1 to 1))
+      var agent2InquiryCount1 = -1
       ctx.verify {
         assertThat(candidates1).hasSize(1)
         assertThat(candidates1[0]).isEqualTo(Pair(reqCap1, agent1.address))
         assertThat(agent1.inquiryCount).isEqualTo(1)
-        assertThat(agent2.inquiryCount).isEqualTo(1)
+        // agent 2 will either be asked or not (depending on the order of the
+        // agents in the registry's internal list)
+        agent2InquiryCount1 = agent2.inquiryCount
+        assertThat(agent2InquiryCount1).isBetween(0, 1)
       }
 
       val candidates2 = registry.selectCandidates(listOf(reqCap2 to 1))
       ctx.verify {
         assertThat(candidates2).hasSize(1)
         assertThat(candidates2[0]).isEqualTo(Pair(reqCap2, agent2.address))
-        assertThat(agent1.inquiryCount).isEqualTo(2)
-        assertThat(agent2.inquiryCount).isEqualTo(2)
+        // agent 1 will either be asked or not
+        assertThat(agent1.inquiryCount).isBetween(1, 2)
+        // agent 2 should definitely now have been inquired
+        assertThat(agent2.inquiryCount).isEqualTo(agent2InquiryCount1 + 1)
       }
       ctx.completeNow()
     }
@@ -296,7 +310,7 @@ class RemoteAgentRegistryTest {
     val reqCap2 = listOf("gpu")
     val reqCap3 = listOf("docker", "gpu")
 
-    val bestSelector = { allRcs: JsonArray, capabilities: List<String> ->
+    val bestSelector = { allRcs: JsonArray, capabilities: List<String>, _: List<Long> ->
       allRcs.indexOfFirst { (it as JsonArray) == JsonArray(capabilities) }
     }
 
@@ -322,6 +336,92 @@ class RemoteAgentRegistryTest {
   }
 
   /**
+   * Test that agents can be selected based on their capabilities if the
+   * registry already knows what they support
+   */
+  @Test
+  fun capabilitiesBasedSelectionWithCache(vertx: Vertx, ctx: VertxTestContext) {
+    val registry = RemoteAgentRegistry(vertx)
+
+    val reqCap1 = listOf("docker")
+    val reqCap2 = listOf("gpu")
+
+    val bestSelector = { allRcs: JsonArray, capabilities: List<String>, _: List<Long> ->
+      val available = allRcs == JsonArray().add(JsonArray(capabilities))
+      if (available) 0 else -1
+    }
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      val agent1 = registerAgentWithCapabilities(reqCap1, registry, vertx,
+          ctx, bestSelector = bestSelector)
+      val agent2 = registerAgentWithCapabilities(reqCap2, registry, vertx,
+          ctx, bestSelector = bestSelector)
+
+      // ask for capabilities that are not supported so the registry will
+      // have to ask all agents and then know about all supported capabilities
+      val candidates0 = registry.selectCandidates(listOf(listOf("foobar") to 1))
+      ctx.verify {
+        assertThat(candidates0).isEmpty()
+        assertThat(agent1.inquiryCount).isEqualTo(1)
+        assertThat(agent2.inquiryCount).isEqualTo(1)
+      }
+
+      val candidates1 = registry.selectCandidates(listOf(reqCap1 to 1))
+      ctx.verify {
+        assertThat(candidates1).hasSize(1)
+        assertThat(candidates1[0]).isEqualTo(Pair(reqCap1, agent1.address))
+        assertThat(agent1.inquiryCount).isEqualTo(2)
+        // agent 2 should never be asked now because it does not support
+        // reqCap1 and the registry should know that
+        assertThat(agent2.inquiryCount).isEqualTo(1)
+      }
+
+      val candidates2 = registry.selectCandidates(listOf(reqCap2 to 1))
+      ctx.verify {
+        assertThat(candidates2).hasSize(1)
+        assertThat(candidates2[0]).isEqualTo(Pair(reqCap2, agent2.address))
+        // agent 1 should never be asked now
+        assertThat(agent1.inquiryCount).isEqualTo(2)
+        assertThat(agent2.inquiryCount).isEqualTo(2)
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that no agent will be selected if the capabilities are not supported
+   */
+  @Test
+  fun capabilitiesBasedSelectionNone(vertx: Vertx, ctx: VertxTestContext) {
+    val registry = RemoteAgentRegistry(vertx)
+
+    val reqCap1 = listOf("docker")
+    val reqCap2 = listOf("gpu")
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      val agent1 = registerAgentWithCapabilities(reqCap1, registry, vertx,
+          ctx, bestSelector = { _, _, _ -> -1 })
+      val agent2 = registerAgentWithCapabilities(reqCap2, registry, vertx,
+          ctx, bestSelector = { _, _, _ -> -1 })
+
+      val candidates1 = registry.selectCandidates(listOf(listOf("foobar") to 1))
+      ctx.verify {
+        assertThat(candidates1).isEmpty()
+        assertThat(agent1.inquiryCount).isEqualTo(1)
+        assertThat(agent2.inquiryCount).isEqualTo(1)
+      }
+
+      val candidates2 = registry.selectCandidates(listOf(listOf("foobar") to 1))
+      ctx.verify {
+        assertThat(candidates2).isEmpty()
+        assertThat(agent1.inquiryCount).isEqualTo(1)
+        assertThat(agent2.inquiryCount).isEqualTo(1)
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
    * Test that agents with the same capabilities can be selected based on
    * their last sequence
    */
@@ -334,9 +434,9 @@ class RemoteAgentRegistryTest {
 
     GlobalScope.launch(vertx.dispatcher()) {
       val agent1 = registerAgentWithCapabilities(emptyList(), registry, vertx, ctx,
-          sequenceProvider = q1::removeFirst, bestSelector = { _,_ -> 0 })
+          sequenceProvider = q1::removeFirst, bestSelector = { _, _, _ -> 0 })
       val agent2 = registerAgentWithCapabilities(emptyList(), registry, vertx, ctx,
-          sequenceProvider = q2::removeFirst, bestSelector = { _,_ -> 0 })
+          sequenceProvider = q2::removeFirst, bestSelector = { _, _, _ -> 0 })
 
       val candidates1 = registry.selectCandidates(listOf(emptyList<String>() to 1))
       ctx.verify {
@@ -350,14 +450,101 @@ class RemoteAgentRegistryTest {
         assertThat(candidates2).hasSize(1)
         assertThat(candidates2[0]).isEqualTo(Pair(emptyList<String>(), agent1.address))
         assertThat(agent1.inquiryCount).isEqualTo(2)
-        assertThat(agent2.inquiryCount).isEqualTo(2)
+        // agent 2 should not be inquired here because agent 1 is available and
+        // has a lower sequence number
+        assertThat(agent2.inquiryCount).isEqualTo(1)
       }
       val candidates3 = registry.selectCandidates(listOf(emptyList<String>() to 1))
       ctx.verify {
         assertThat(candidates3).hasSize(1)
         assertThat(candidates3[0]).isEqualTo(Pair(emptyList<String>(), agent2.address))
         assertThat(agent1.inquiryCount).isEqualTo(3)
+        assertThat(agent2.inquiryCount).isEqualTo(2)
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that multiple agents can be selected based on their capabilities
+   * and last sequence
+   */
+  @Test
+  fun capabilitiesAndSequence(vertx: Vertx, ctx: VertxTestContext) {
+    val registry = RemoteAgentRegistry(vertx)
+
+    val q1 = ArrayDeque(listOf(0L, 1L, 5L, 7L))
+    val q2 = ArrayDeque(listOf(4L,     4L, 8L))
+    val q3 = ArrayDeque(listOf(2L, 3L, 9L    ))
+
+    val reqCap1 = listOf("docker")
+    val reqCap2 = listOf("gpu")
+    val reqCap3 = listOf("docker", "gpu")
+
+    val bestSelector = { allRcs: JsonArray, capabilities: List<String>, allCounts: List<Long> ->
+      var result = -1
+      for (i in 0 until allRcs.size()) {
+        if (allCounts[i] == 0L) {
+          continue
+        }
+        val rcs = allRcs.getJsonArray(i).map { s -> s as String }
+        if (capabilities.containsAll(rcs)) {
+          result = i
+          break
+        }
+      }
+      result
+    }
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      val agent1 = registerAgentWithCapabilities(reqCap1, registry, vertx, ctx,
+          agentId = "A", sequenceProvider = q1::removeFirst, bestSelector = bestSelector)
+      val agent2 = registerAgentWithCapabilities(reqCap2, registry, vertx, ctx,
+          agentId = "B", sequenceProvider = q2::removeFirst, bestSelector = bestSelector)
+      val agent3 = registerAgentWithCapabilities(reqCap3, registry, vertx, ctx,
+          agentId = "C", sequenceProvider = q3::removeFirst, bestSelector = bestSelector)
+
+      // ask for capabilities that are not supported to initialize cache
+      val candidates0 = registry.selectCandidates(listOf(listOf("foobar") to 1))
+      ctx.verify {
+        assertThat(candidates0).isEmpty()
+        assertThat(agent1.inquiryCount).isEqualTo(1)
+        assertThat(agent2.inquiryCount).isEqualTo(1)
+        assertThat(agent3.inquiryCount).isEqualTo(1)
+      }
+
+      val candidates1 = registry.selectCandidates(listOf(reqCap1 to 1, reqCap2 to 1))
+      ctx.verify {
+        assertThat(candidates1).containsExactlyInAnyOrder(Pair(reqCap1, agent1.address),
+            Pair(reqCap2, agent3.address))
+        assertThat(agent1.inquiryCount).isEqualTo(2)
+        // agent 2 should not have been asked because of its last sequence
+        assertThat(agent2.inquiryCount).isEqualTo(1)
+        assertThat(agent3.inquiryCount).isEqualTo(2)
+      }
+
+      val candidates2 = registry.selectCandidates(listOf(reqCap1 to 1, reqCap2 to 1))
+      ctx.verify {
+        assertThat(candidates2).containsExactlyInAnyOrder(Pair(reqCap1, agent1.address),
+            Pair(reqCap2, agent3.address))
+        assertThat(agent1.inquiryCount).isEqualTo(3)
+        // agent 2 should now have been asked because its last sequence is now
+        // lower than that of agent 3
+        assertThat(agent2.inquiryCount).isEqualTo(2)
+        // agent 3 should also have been asked because it had a lower last
+        // sequence than agent 2
+        assertThat(agent3.inquiryCount).isEqualTo(3)
+      }
+
+      val candidates3 = registry.selectCandidates(listOf(reqCap1 to 1, reqCap2 to 1))
+      ctx.verify {
+        assertThat(candidates3).containsExactlyInAnyOrder(Pair(reqCap1, agent1.address),
+            Pair(reqCap2, agent2.address))
+        assertThat(agent1.inquiryCount).isEqualTo(4)
         assertThat(agent2.inquiryCount).isEqualTo(3)
+        // agent 3 should now not have been asked because its last sequence
+        // was too high
+        assertThat(agent3.inquiryCount).isEqualTo(3)
       }
       ctx.completeNow()
     }

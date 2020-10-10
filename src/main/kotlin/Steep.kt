@@ -224,6 +224,13 @@ class Steep : CoroutineVerticle() {
         )
       }
     }
+
+    if (msg.body().getBoolean("includeCapabilities", false)) {
+      val capsArr = JsonArray()
+      capabilities.forEach { capsArr.add(it) }
+      reply.put("capabilities", capsArr)
+    }
+
     msg.reply(reply)
   }
 

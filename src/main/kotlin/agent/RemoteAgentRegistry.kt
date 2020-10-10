@@ -13,6 +13,7 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.AsyncMap
 import io.vertx.core.shareddata.LocalMap
+import io.vertx.core.shareddata.Shareable
 import io.vertx.kotlin.core.eventbus.requestAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
@@ -47,6 +48,12 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
         "RemoteAgentRegistry.LocalAgentSequenceCache"
 
     /**
+     * Name of a local map keeping agent capabilities
+     */
+    private const val LOCAL_AGENT_CAPABILITIES_CACHE_NAME =
+        "RemoteAgentRegistry.LocalAgentCapabilitiesCache"
+
+    /**
      * A key in the local map keeping track of whether the remote agent
      * registry has been initialized or not
      */
@@ -66,6 +73,12 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
         .register()
   }
 
+  /**
+   * A wrapper class that implements [Shareable] so we can put an immutable
+   * set of required capabilities into the local map [agentCapabilitiesCache]
+   */
+  private class CachedCapabilities(val rcs: Set<String>) : Shareable
+
   override val coroutineContext: CoroutineContext = vertx.dispatcher()
 
   /**
@@ -79,6 +92,11 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
   private val agentSequenceCache: LocalMap<String, Long>
 
   /**
+   * A local map keeping agent capabilities
+   */
+  private val agentCapabilitiesCache: LocalMap<String, CachedCapabilities>
+
+  /**
    * A cluster-wide map keeping IDs of [RemoteAgent]s
    */
   private val agents: Future<AsyncMap<String, Boolean>>
@@ -88,6 +106,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     val sharedData = vertx.sharedData()
     localMap = sharedData.getLocalMap(LOCAL_MAP_NAME)
     agentSequenceCache = sharedData.getLocalMap(LOCAL_AGENT_SEQUENCE_CACHE_NAME)
+    agentCapabilitiesCache = sharedData.getLocalMap(LOCAL_AGENT_CAPABILITIES_CACHE_NAME)
     val agentsPromise = Promise.promise<AsyncMap<String, Boolean>>()
     sharedData.getAsyncMap(ASYNC_MAP_NAME, agentsPromise)
     agents = agentsPromise.future()
@@ -127,6 +146,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
             val id = if (i == 1) agentId else "$agentId[$i]"
             agents.await().removeAwait(id)
             agentSequenceCache.remove(id)
+            agentCapabilitiesCache.remove(id)
             val address = REMOTE_AGENT_ADDRESS_PREFIX + id
             vertx.eventBus().publish(REMOTE_AGENT_LEFT, address)
           }
@@ -161,14 +181,11 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
    * lastSequence number)
    */
   private suspend fun getAgentSequences(): List<Pair<String, Long>> {
-    val agents = this.agents.await()
-    val keys = awaitResult<Set<String>> { agents.keys(it) }
-
     val result = mutableListOf<Pair<String, Long>>()
 
-    for (key in keys) {
-      val sequence = agentSequenceCache[key] ?: -1
-      result.add(Pair(key, sequence))
+    for (agent in getAgentIds()) {
+      val sequence = agentSequenceCache[agent] ?: -1
+      result.add(Pair(agent, sequence))
     }
 
     result.sortBy { it.second }
@@ -215,10 +232,43 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
 
       val agent = agentAndSequence.first
       val address = REMOTE_AGENT_ADDRESS_PREFIX + agent
+
+      // check if the agent actually needs to be inquired based on the
+      // capabilities we know it has
+      val supportedCapabilities = agentCapabilitiesCache[agent]?.rcs
+      if (supportedCapabilities != null) {
+        var shouldInquire = false
+        for ((rci, rcs) in requiredCapabilities.withIndex()) {
+          if (candidatesPerSet.containsKey(rci) && agentAndSequence.second >= lastCandidateSequence) {
+            // we already have a candidate for this capability set and this
+            // agent's lastSequence would definitely be higher
+            continue
+          }
+          if (supportedCapabilities.containsAll(rcs.first)) {
+            // the agent supports at least one required capabilities set
+            shouldInquire = true
+            break
+          }
+        }
+
+        if (!shouldInquire) {
+          continue
+        }
+
+        // It's not necessary to include the capabilities in the response. We
+        // already know them.
+        msgInquire.remove("includeCapabilities")
+      } else {
+        // We don't know what capabilities the agent has. It should tell us.
+        msgInquire.put("includeCapabilities", true)
+      }
+
+      // inquire agent
       try {
         val replyInquire = vertx.eventBus().requestAwait<JsonObject>(address, msgInquire)
         val lastSequence = replyInquire.body().getLong("lastSequence", -1L)
 
+        // check if the agent is available
         if (replyInquire.body().getBoolean("available")) {
           val bestRequiredCapabilities = replyInquire.body().getInteger("bestRequiredCapabilities")
           candidatesPerSet.compute(bestRequiredCapabilities) { _, l ->
@@ -233,6 +283,16 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
           msgInquire.getJsonArray("requiredCapabilities")
               .getJsonObject(bestRequiredCapabilities)
               .put("processChainCount", requiredCapabilities[bestRequiredCapabilities].second - 1)
+        }
+
+        // save capabilities this agent supports if they are included in the response
+        if (supportedCapabilities == null) {
+          val actuallySupportedCapabilities = replyInquire.body().getJsonArray("capabilities")
+          if (actuallySupportedCapabilities != null) {
+            val cachedCapabilities = mutableSetOf<String>()
+            actuallySupportedCapabilities.forEach { cachedCapabilities.add(it as String) }
+            agentCapabilitiesCache[agent] = CachedCapabilities(cachedCapabilities)
+          }
         }
 
         agentSequenceCache[agent] = lastSequence
