@@ -219,7 +219,8 @@ class Steep : CoroutineVerticle() {
         )
       } else {
         obj(
-            "available" to false
+            "available" to false,
+            "lastSequence" to lastProcessChainSequence
         )
       }
     }

@@ -41,6 +41,12 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     private const val LOCAL_MAP_NAME = "RemoteAgentRegistry.Local"
 
     /**
+     * Name of a local map keeping known lastSequence numbers for each agent
+     */
+    private const val LOCAL_AGENT_SEQUENCE_CACHE_NAME =
+        "RemoteAgentRegistry.LocalAgentSequenceCache"
+
+    /**
      * A key in the local map keeping track of whether the remote agent
      * registry has been initialized or not
      */
@@ -68,6 +74,11 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
   private val localMap: LocalMap<String, Boolean>
 
   /**
+   * A local map keeping known lastSequence numbers for each agent
+   */
+  private val agentSequenceCache: LocalMap<String, Long>
+
+  /**
    * A cluster-wide map keeping IDs of [RemoteAgent]s
    */
   private val agents: Future<AsyncMap<String, Boolean>>
@@ -76,6 +87,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     // create shared maps
     val sharedData = vertx.sharedData()
     localMap = sharedData.getLocalMap(LOCAL_MAP_NAME)
+    agentSequenceCache = sharedData.getLocalMap(LOCAL_AGENT_SEQUENCE_CACHE_NAME)
     val agentsPromise = Promise.promise<AsyncMap<String, Boolean>>()
     sharedData.getAsyncMap(ASYNC_MAP_NAME, agentsPromise)
     agents = agentsPromise.future()
@@ -114,6 +126,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
           for (i in 1..instances) {
             val id = if (i == 1) agentId else "$agentId[$i]"
             agents.await().removeAwait(id)
+            agentSequenceCache.remove(id)
             val address = REMOTE_AGENT_ADDRESS_PREFIX + id
             vertx.eventBus().publish(REMOTE_AGENT_LEFT, address)
           }
@@ -143,6 +156,26 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     return awaitResult { agents.keys(it) }
   }
 
+  /**
+   * Get list of agent IDs and their lastSequence number (sorted by
+   * lastSequence number)
+   */
+  private suspend fun getAgentSequences(): List<Pair<String, Long>> {
+    val agents = this.agents.await()
+    val keys = awaitResult<Set<String>> { agents.keys(it) }
+
+    val result = mutableListOf<Pair<String, Long>>()
+
+    for (key in keys) {
+      val sequence = agentSequenceCache[key] ?: -1
+      result.add(Pair(key, sequence))
+    }
+
+    result.sortBy { it.second }
+
+    return result
+  }
+
   override suspend fun selectCandidates(requiredCapabilities: List<Pair<Collection<String>, Long>>):
       List<Pair<Collection<String>, String>> {
     if (requiredCapabilities.isEmpty()) {
@@ -150,40 +183,59 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     }
 
     // prepare message
-    val requiredCapabilitiesArr = JsonArray(requiredCapabilities.map {
-      json {
-        obj(
-            "capabilities" to JsonArray(it.first.toList()),
-            "processChainCount" to it.second
-        )
-      }
-    })
     val msgInquire = json {
       obj(
           "action" to "inquire",
-          "requiredCapabilities" to requiredCapabilitiesArr
+          "requiredCapabilities" to JsonArray(requiredCapabilities.map {
+            json {
+              obj(
+                  "capabilities" to JsonArray(it.first.toList()),
+                  "processChainCount" to it.second
+              )
+            }
+          })
       )
     }
 
-    val agents = this.agents.await()
-    val keys = awaitResult<Set<String>> { agents.keys(it) }
+    val keys = getAgentSequences()
+    var lastCandidateSequence = -1L
 
     // ask all agents if they are able and available to execute a process
     // chain with the given required capabilities. collect these agents in
     // a list of candidates
     val candidatesPerSet = mutableMapOf<Int, MutableList<Pair<String, Long>>>()
-    for (agent in keys) {
+    for (agentAndSequence in keys) {
+      if (candidatesPerSet.size == requiredCapabilities.size &&
+          agentAndSequence.second >= lastCandidateSequence) {
+        // We do not have to inquire the other agents. We already found at
+        // least one agent for each required capability set and there will be
+        // none that has a lower lastSequence number.
+        break
+      }
+
+      val agent = agentAndSequence.first
       val address = REMOTE_AGENT_ADDRESS_PREFIX + agent
       try {
         val replyInquire = vertx.eventBus().requestAwait<JsonObject>(address, msgInquire)
+        val lastSequence = replyInquire.body().getLong("lastSequence", -1L)
+
         if (replyInquire.body().getBoolean("available")) {
-          val lastSequence = replyInquire.body().getLong("lastSequence", -1L)
           val bestRequiredCapabilities = replyInquire.body().getInteger("bestRequiredCapabilities")
           candidatesPerSet.compute(bestRequiredCapabilities) { _, l ->
             val p = Pair(address, lastSequence)
             l?.also { it.add(p) } ?: mutableListOf(p)
           }
+
+          lastCandidateSequence = lastSequence
+
+          // Pretend we already assigned EXACTLY ONE process chain with this
+          // capability set to this agent so that other agents maybe chose another set.
+          msgInquire.getJsonArray("requiredCapabilities")
+              .getJsonObject(bestRequiredCapabilities)
+              .put("processChainCount", requiredCapabilities[bestRequiredCapabilities].second - 1)
         }
+
+        agentSequenceCache[agent] = lastSequence
       } catch (t: Throwable) {
         log.error("Could not inquire agent `$agent'. Skipping it.", t)
       }
