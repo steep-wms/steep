@@ -164,7 +164,9 @@ class Scheduler : CoroutineVerticle() {
           log.warn("Agent with address `$address' did not accept process " +
               "chain `${processChain.id}'")
           submissionRegistry.setProcessChainStatus(processChain.id, REGISTERED)
-          return
+
+          // continue with the next capability set and candidate
+          continue
         }
 
         log.info("Assigned process chain `${processChain.id}' to agent `${agent.id}'")
