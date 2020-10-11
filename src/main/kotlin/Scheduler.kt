@@ -53,6 +53,11 @@ class Scheduler : CoroutineVerticle() {
   private var allRequiredCapabilities: MutableList<Pair<Collection<String>, Long>> = mutableListOf()
   private var allRequiredCapabilitiesInitialized = false
 
+  /**
+   * The remaining number of lookups to do in [lookup]
+   */
+  private var pendingLookups = 0L
+
   override suspend fun start() {
     log.info("Launching scheduler ...")
 
@@ -104,6 +109,15 @@ class Scheduler : CoroutineVerticle() {
    */
   private suspend fun lookup(maxLookups: Int = Int.MAX_VALUE,
       updateRequiredCapabilities: Boolean) {
+    // increase number of pending lookups and then check if we actually need
+    // to proceed here
+    val oldPendingLookups = pendingLookups
+    pendingLookups = (pendingLookups + maxLookups).coerceAtMost(Int.MAX_VALUE.toLong())
+    if (oldPendingLookups > 0L) {
+      // Nothing to do here. There is another lookup call running.
+      return
+    }
+
     if (updateRequiredCapabilities || !allRequiredCapabilitiesInitialized) {
       val arcs = submissionRegistry.findProcessChainRequiredCapabilities(REGISTERED)
 
@@ -115,7 +129,9 @@ class Scheduler : CoroutineVerticle() {
       allRequiredCapabilitiesInitialized = true
     }
 
-    for (i in 0 until maxLookups) {
+    while (pendingLookups > 0L) {
+      pendingLookups--
+
       // send all known required capabilities to all agents and ask them if they
       // are available and, if so, what required capabilities they can handle
       val candidates = agentRegistry.selectCandidates(allRequiredCapabilities)
@@ -136,6 +152,7 @@ class Scheduler : CoroutineVerticle() {
             vertx.eventBus().publish(REMOTE_AGENT_MISSING, arr)
           }
         }
+        pendingLookups = 0
         break
       }
 
