@@ -54,6 +54,12 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
         "RemoteAgentRegistry.LocalAgentCapabilitiesCache"
 
     /**
+     * Name of a local map keeping IDs of agents we allocated
+     */
+    private const val LOCAL_ALLOCATED_AGENTS_CACHE_NAME =
+        "RemoteAgentRegistry.LocalAllocatedAgentsCache"
+
+    /**
      * A key in the local map keeping track of whether the remote agent
      * registry has been initialized or not
      */
@@ -97,6 +103,15 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
   private val agentCapabilitiesCache: LocalMap<String, CachedCapabilities>
 
   /**
+   * A local map that keeps IDs of agents we allocated. This is used to reduce
+   * the number of inquiries sent to agents. We do not have to send an inquiry
+   * when we know the agent is currently busy because it has been allocated
+   * by us. We will still sent inquiries to agents allocated by other
+   * (non-local) remote agent registries running somewhere else in the cluster.
+   */
+  private val allocatedAgentsCache: LocalMap<String, Boolean>
+
+  /**
    * A cluster-wide map keeping IDs of [RemoteAgent]s
    */
   private val agents: Future<AsyncMap<String, Boolean>>
@@ -107,6 +122,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     localMap = sharedData.getLocalMap(LOCAL_MAP_NAME)
     agentSequenceCache = sharedData.getLocalMap(LOCAL_AGENT_SEQUENCE_CACHE_NAME)
     agentCapabilitiesCache = sharedData.getLocalMap(LOCAL_AGENT_CAPABILITIES_CACHE_NAME)
+    allocatedAgentsCache = sharedData.getLocalMap(LOCAL_ALLOCATED_AGENTS_CACHE_NAME)
     val agentsPromise = Promise.promise<AsyncMap<String, Boolean>>()
     sharedData.getAsyncMap(ASYNC_MAP_NAME, agentsPromise)
     agents = agentsPromise.future()
@@ -147,6 +163,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
             agents.await().removeAwait(id)
             agentSequenceCache.remove(id)
             agentCapabilitiesCache.remove(id)
+            allocatedAgentsCache.remove(id)
             val address = REMOTE_AGENT_ADDRESS_PREFIX + id
             vertx.eventBus().publish(REMOTE_AGENT_LEFT, address)
           }
@@ -180,10 +197,10 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
    * Get list of agent IDs and their lastSequence number (sorted by
    * lastSequence number)
    */
-  private suspend fun getAgentSequences(): List<Pair<String, Long>> {
+  private fun getAgentSequences(agentIds: Collection<String>): List<Pair<String, Long>> {
     val result = mutableListOf<Pair<String, Long>>()
 
-    for (agent in getAgentIds()) {
+    for (agent in agentIds) {
       val sequence = agentSequenceCache[agent] ?: -1
       result.add(Pair(agent, sequence))
     }
@@ -214,12 +231,16 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
       )
     }
 
-    val keys = getAgentSequences()
-    var lastCandidateSequence = -1L
+    // get IDs of agents that are not busy at the moment
+    val filteredAgentIds = getAgentIds().filter { !allocatedAgentsCache.contains(it) }
+
+    // get last sequence number of all agents (if known)
+    val keys = getAgentSequences(filteredAgentIds)
 
     // ask all agents if they are able and available to execute a process
     // chain with the given required capabilities. collect these agents in
     // a list of candidates
+    var lastCandidateSequence = -1L
     val candidatesPerSet = mutableMapOf<Int, MutableList<Pair<String, Long>>>()
     for (agentAndSequence in keys) {
       if (candidatesPerSet.size == requiredCapabilities.size &&
@@ -319,6 +340,8 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     try {
       val replyAllocate = vertx.eventBus().requestAwait<String>(address, msgAllocate)
       if (replyAllocate.body() == "ACK") {
+        val agentId = address.substring(REMOTE_AGENT_ADDRESS_PREFIX.length)
+        allocatedAgentsCache[agentId] = true
         return RemoteAgent(address, vertx)
       }
     } catch (t: Throwable) {
@@ -342,6 +365,9 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
       }
     } catch (t: Throwable) {
       log.error("Could not deallocate agent `${agent.id}'", t)
+    } finally {
+      val agentId = agent.id.substring(REMOTE_AGENT_ADDRESS_PREFIX.length)
+      allocatedAgentsCache.remove(agentId)
     }
   }
 }
