@@ -130,92 +130,115 @@ class Scheduler : CoroutineVerticle() {
     }
 
     while (pendingLookups > 0L) {
-      pendingLookups--
+      val start = System.currentTimeMillis()
 
-      // send all known required capabilities to all agents and ask them if they
-      // are available and, if so, what required capabilities they can handle
-      val candidates = agentRegistry.selectCandidates(allRequiredCapabilities)
-      if (candidates.isEmpty()) {
-        // Agents are all busy or do not accept our required capabilities.
-        // Check if we need to request a new agent.
-        val rcsi = allRequiredCapabilities.iterator()
-        while (rcsi.hasNext()) {
-          val rcs = rcsi.next().first
-          if (!submissionRegistry.existsProcessChain(REGISTERED, rcs)) {
-            // if there is no such process chain, the capabilities are not
-            // required anymore
-            rcsi.remove()
-          } else {
-            // publish a message that says we need an agent with the given
-            // capabilities
-            val arr = JsonArray(rcs.toList())
-            vertx.eventBus().publish(REMOTE_AGENT_MISSING, arr)
-          }
-        }
+      val allocatedProcessChains = lookupStep()
+
+      if (allocatedProcessChains == 0) {
+        // all agents are busy
         pendingLookups = 0
         break
+      } else {
+        log.debug("Scheduling $allocatedProcessChains process " +
+            "chain${if (allocatedProcessChains > 1) "s" else ""} " +
+            "took ${System.currentTimeMillis() - start} ms")
       }
 
-      // iterate through all agents that indicated they are available
-      for ((requiredCapabilities, address) in candidates) {
-        // get next registered process chain for the given set of required capabilities
-        val processChain = submissionRegistry.fetchNextProcessChain(
-            REGISTERED, RUNNING, requiredCapabilities)
-        if (processChain == null) {
-          // We didn't find a process chain for these required capabilities.
-          // Remove them from the list of known ones.
-          allRequiredCapabilities.removeIf { it.first == requiredCapabilities }
-          continue
-        }
+      pendingLookups--
+    }
+  }
 
-        if (requiredCapabilities.isEmpty()) {
-          log.info("Found registered process chain `${processChain.id}'")
+  /**
+   * One step in the scheduling process controlled by [lookup]. Returns the
+   * number of process chains successfully allocated to an agent.
+   */
+  private suspend fun lookupStep(): Int {
+    // send all known required capabilities to all agents and ask them if they
+    // are available and, if so, what required capabilities they can handle
+    val candidates = agentRegistry.selectCandidates(allRequiredCapabilities)
+    if (candidates.isEmpty()) {
+      // Agents are all busy or do not accept our required capabilities.
+      // Check if we need to request a new agent.
+      val rcsi = allRequiredCapabilities.iterator()
+      while (rcsi.hasNext()) {
+        val rcs = rcsi.next().first
+        if (!submissionRegistry.existsProcessChain(REGISTERED, rcs)) {
+          // if there is no such process chain, the capabilities are not
+          // required anymore
+          rcsi.remove()
         } else {
-          log.info("Found registered process chain `${processChain.id}' for " +
-              "required capabilities `$requiredCapabilities'")
+          // publish a message that says we need an agent with the given
+          // capabilities
+          val arr = JsonArray(rcs.toList())
+          vertx.eventBus().publish(REMOTE_AGENT_MISSING, arr)
         }
+      }
+      return 0
+    }
 
-        // allocate an agent for the process chain
-        val agent = agentRegistry.tryAllocate(address)
-        if (agent == null) {
-          log.warn("Agent with address `$address' did not accept process " +
-              "chain `${processChain.id}'")
-          submissionRegistry.setProcessChainStatus(processChain.id, REGISTERED)
+    // iterate through all agents that indicated they are available
+    var allocatedProcessChains = 0
+    for ((requiredCapabilities, address) in candidates) {
+      // get next registered process chain for the given set of required capabilities
+      val processChain = submissionRegistry.fetchNextProcessChain(
+          REGISTERED, RUNNING, requiredCapabilities)
+      if (processChain == null) {
+        // We didn't find a process chain for these required capabilities.
+        // Remove them from the list of known ones.
+        allRequiredCapabilities.removeIf { it.first == requiredCapabilities }
+        continue
+      }
 
-          // continue with the next capability set and candidate
-          continue
-        }
+      if (requiredCapabilities.isEmpty()) {
+        log.info("Found registered process chain `${processChain.id}'")
+      } else {
+        log.info("Found registered process chain `${processChain.id}' for " +
+            "required capabilities `$requiredCapabilities'")
+      }
 
-        log.info("Assigned process chain `${processChain.id}' to agent `${agent.id}'")
+      // allocate an agent for the process chain
+      val agent = agentRegistry.tryAllocate(address)
+      if (agent == null) {
+        log.warn("Agent with address `$address' did not accept process " +
+            "chain `${processChain.id}'")
+        submissionRegistry.setProcessChainStatus(processChain.id, REGISTERED)
 
-        // execute process chain
-        launch {
-          try {
-            submissionRegistry.setProcessChainStartTime(processChain.id, Instant.now())
-            val results = agent.execute(processChain)
-            submissionRegistry.setProcessChainResults(processChain.id, results)
-            submissionRegistry.setProcessChainStatus(processChain.id, SUCCESS)
-          } catch (_: CancellationException) {
-            log.warn("Process chain execution was cancelled")
-            submissionRegistry.setProcessChainStatus(processChain.id, CANCELLED)
-          } catch (t: Throwable) {
-            log.error("Process chain execution failed", t)
-            submissionRegistry.setProcessChainErrorMessage(processChain.id, t.message)
-            submissionRegistry.setProcessChainStatus(processChain.id, ERROR)
-          } finally {
-            agentRegistry.deallocate(agent)
-            submissionRegistry.setProcessChainEndTime(processChain.id, Instant.now())
+        // continue with the next capability set and candidate
+        continue
+      }
 
-            // try to lookup next process chain immediately
-            vertx.eventBus().send(SCHEDULER_LOOKUP_NOW, json {
-              obj(
-                  "maxLookups" to 1,
-                  "updateRequiredCapabilities" to false
-              )
-            })
-          }
+      log.info("Assigned process chain `${processChain.id}' to agent `${agent.id}'")
+      allocatedProcessChains++
+
+      // execute process chain
+      launch {
+        try {
+          submissionRegistry.setProcessChainStartTime(processChain.id, Instant.now())
+          val results = agent.execute(processChain)
+          submissionRegistry.setProcessChainResults(processChain.id, results)
+          submissionRegistry.setProcessChainStatus(processChain.id, SUCCESS)
+        } catch (_: CancellationException) {
+          log.warn("Process chain execution was cancelled")
+          submissionRegistry.setProcessChainStatus(processChain.id, CANCELLED)
+        } catch (t: Throwable) {
+          log.error("Process chain execution failed", t)
+          submissionRegistry.setProcessChainErrorMessage(processChain.id, t.message)
+          submissionRegistry.setProcessChainStatus(processChain.id, ERROR)
+        } finally {
+          agentRegistry.deallocate(agent)
+          submissionRegistry.setProcessChainEndTime(processChain.id, Instant.now())
+
+          // try to lookup next process chain immediately
+          vertx.eventBus().send(SCHEDULER_LOOKUP_NOW, json {
+            obj(
+                "maxLookups" to 1,
+                "updateRequiredCapabilities" to false
+            )
+          })
         }
       }
     }
+
+    return allocatedProcessChains
   }
 }
