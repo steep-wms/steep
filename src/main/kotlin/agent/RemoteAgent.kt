@@ -60,7 +60,7 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
           it.reply("ACK") // let the peer know that we received the result
           adapter.handle(it)
         }
-    log.info("Registered handler for replies listening on $replyAddress")
+    log.trace("Registered handler for replies listening on $replyAddress")
 
     try {
       // abort when cluster node has left
@@ -111,7 +111,7 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
       }
     } finally {
       replyConsumer.unregister()
-      log.info("Unregistered handler for replies listening on $replyAddress")
+      log.trace("Unregistered handler for replies listening on $replyAddress")
     }
   }
 }
