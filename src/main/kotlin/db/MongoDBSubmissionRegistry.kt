@@ -128,7 +128,9 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
           IndexModel(Indexes.ascending(SUBMISSION_ID), IndexOptions().background(true)),
           IndexModel(Indexes.ascending(STATUS), IndexOptions().background(true)),
           IndexModel(Indexes.ascending(SEQUENCE), IndexOptions().background(true)),
-          IndexModel(Indexes.ascending(REQUIRED_CAPABILITIES), IndexOptions().background(true))
+          IndexModel(Indexes.ascending(REQUIRED_CAPABILITIES), IndexOptions().background(true)),
+          // compound index to speed up fetchNextProcessChain
+          IndexModel(Indexes.ascending(STATUS, REQUIRED_CAPABILITIES, SEQUENCE), IndexOptions().background(true))
       )).subscribe(object : DefaultSubscriber<String>() {
         override fun onError(t: Throwable) {
           log.error("Could not create index on collection `$COLL_PROCESS_CHAINS'", t)
