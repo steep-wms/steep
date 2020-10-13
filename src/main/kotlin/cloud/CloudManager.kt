@@ -28,6 +28,9 @@ import io.vertx.kotlin.core.shareddata.getLockAwait
 import io.vertx.kotlin.core.shareddata.getLockWithTimeoutAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.cloud.VM
@@ -277,6 +280,7 @@ class CloudManager : CoroutineVerticle() {
     // - VMs that we created before but that are not in our registry
     // - VMs that we created but that do not have an agent and won't get one
     val existingVMs = cloudClient.listVMs { createdByTag == it[CREATED_BY] }
+    val deleteDeferreds = mutableListOf<Deferred<Unit>>()
     for (externalId in existingVMs) {
       val id = vmRegistry.findVMByExternalId(externalId)?.id
       val shouldDelete = if (id == null) {
@@ -303,16 +307,19 @@ class CloudManager : CoroutineVerticle() {
           false
         }
         if (active) {
-          log.info("Found orphaned VM `$externalId' ...")
-          cloudClient.destroyVM(externalId)
-          if (id != null) {
-            vmRegistry.forceSetVMStatus(id, VM.Status.DESTROYED)
-            vmRegistry.setVMReason(id, "VM was orphaned")
-            vmRegistry.setVMDestructionTime(id, Instant.now())
-          }
+          deleteDeferreds.add(async {
+            log.info("Found orphaned VM `$externalId' ...")
+            cloudClient.destroyVM(externalId)
+            if (id != null) {
+              vmRegistry.forceSetVMStatus(id, VM.Status.DESTROYED)
+              vmRegistry.setVMReason(id, "VM was orphaned")
+              vmRegistry.setVMDestructionTime(id, Instant.now())
+            }
+          })
         }
       }
     }
+    deleteDeferreds.awaitAll()
 
     // update status of VMs that don't exist anymore
     val nonTerminatedVMs = vmRegistry.findNonTerminatedVMs()
