@@ -4,8 +4,6 @@ import ConfigConstants.SCHEDULER_LOOKUP_INTERVAL
 import agent.Agent
 import agent.AgentRegistry
 import agent.AgentRegistryFactory
-import com.google.common.cache.Cache
-import com.google.common.cache.CacheBuilder
 import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus.CANCELLED
 import db.SubmissionRegistry.ProcessChainStatus.ERROR
@@ -25,7 +23,6 @@ import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.util.concurrent.CancellationException
-import java.util.concurrent.TimeUnit
 
 /**
  * The scheduler fetches process chains from a [SubmissionRegistry], executes
@@ -42,9 +39,6 @@ class Scheduler : CoroutineVerticle() {
   private lateinit var agentRegistry: AgentRegistry
 
   private lateinit var periodicLookupJob: Job
-
-  private lateinit var logFoundProcessChainCache: Cache<String, Boolean>
-  private lateinit var logNoAgentCache: Cache<String, Boolean>
 
   /**
    * A list of sets of capabilities required by process chains with the status
@@ -67,16 +61,6 @@ class Scheduler : CoroutineVerticle() {
 
     // read configuration
     val lookupInterval = config.getLong(SCHEDULER_LOOKUP_INTERVAL, 20000L)
-
-    // create simple caches to reduce repeated log output
-    logFoundProcessChainCache = CacheBuilder.newBuilder()
-        .expireAfterAccess(lookupInterval * 10, TimeUnit.MILLISECONDS)
-        .maximumSize(1000)
-        .build()
-    logNoAgentCache = CacheBuilder.newBuilder()
-        .expireAfterAccess(lookupInterval * 10, TimeUnit.MILLISECONDS)
-        .maximumSize(1000)
-        .build()
 
     // periodically look for new process chains and execute them
     periodicLookupJob = launch {

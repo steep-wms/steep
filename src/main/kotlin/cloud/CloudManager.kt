@@ -261,7 +261,7 @@ class CloudManager : CoroutineVerticle() {
    * Synchronize the VM registry with the Cloud
    */
   private suspend fun sync(cleanupOnly: Boolean = false) {
-    log.debug("Syncing VMs ...")
+    log.trace("Syncing VMs ...")
 
     // destroy all virtual machines whose agents have left
     val vmsToRemove = vmRegistry.findVMs(VM.Status.LEFT)
@@ -516,7 +516,7 @@ class CloudManager : CoroutineVerticle() {
     var setup = setupQueue.removeFirst()
     while (true) {
       val t = try {
-        log.info("Creating remote agent with setup `${setup.id}' for " +
+        log.trace("Creating remote agent with setup `${setup.id}' for " +
             "capabilities $requiredCapabilities ...")
         if (createRemoteAgent(setup)) {
           break
@@ -533,7 +533,7 @@ class CloudManager : CoroutineVerticle() {
         break
       }
 
-      log.warn("Could not create remote agent with setup `${setup.id}' and " +
+      log.trace("Could not create remote agent with setup `${setup.id}' and " +
           "capabilities $requiredCapabilities. Trying next setup ...", t)
       setup = setupQueue.removeFirst()
     }
@@ -555,7 +555,7 @@ class CloudManager : CoroutineVerticle() {
       val existingVMs = vmRegistry.countNonTerminatedVMsBySetup(setup.id)
       if (existingVMs >= setup.maxVMs.toLong()) {
         // we already created more than enough virtual machines with this setup
-        log.debug("There already are $existingVMs virtual machines with " +
+        log.trace("There already are $existingVMs virtual machines with " +
             "setup `${setup.id}'. The maximum number is ${setup.maxVMs}.")
         return false
       }
@@ -563,7 +563,7 @@ class CloudManager : CoroutineVerticle() {
       val startingVMs = vmRegistry.countStartingVMsBySetup(setup.id)
       if (startingVMs >= setup.maxCreateConcurrent) {
         // we are currently already creating enough virtual machines with this setup
-        log.debug("$startingVMs VMs are currently being created with setup " +
+        log.trace("$startingVMs VMs are currently being created with setup " +
             "`${setup.id}'. The maximum number is ${setup.maxCreateConcurrent}.")
         return false
       }
@@ -583,7 +583,7 @@ class CloudManager : CoroutineVerticle() {
           val n = countVMsWithCapabilities(vmsPerSetup, params.capabilities)
           if (n >= params.max) {
             // there already are enough VMs with these capabilities
-            log.debug("There already are $n VMs with capabilities " +
+            log.trace("There already are $n VMs with capabilities " +
                 "${params.capabilities}. The maximum number is ${params.max}.")
             return false
           }
