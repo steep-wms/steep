@@ -1,10 +1,20 @@
 package agent
 
 import AddressConstants.LOCAL_AGENT_ADDRESS_PREFIX
+import ConfigConstants
 import assertThatThrownBy
 import coVerify
+import db.PluginRegistry
+import db.PluginRegistryFactory
+import helper.OutputCollector
 import helper.Shell
 import helper.UniqueID
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkConstructor
+import io.mockk.mockkObject
+import io.mockk.spyk
+import io.mockk.verify
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.eventbus.requestAwait
@@ -14,14 +24,18 @@ import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import model.metadata.Service
+import model.plugins.ProgressEstimatorPlugin
 import model.processchain.Argument
 import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import model.processchain.ProcessChain
+import model.retry.RetryPolicy
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import runtime.OtherRuntime
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
 import java.util.concurrent.Executors
@@ -151,6 +165,148 @@ class LocalAgentTest : AgentTest() {
 
     GlobalScope.launch(vertx.dispatcher()) {
       agent.execute(processChain)
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if a progress estimator can be used
+   */
+  @Test
+  fun progressEstimator(vertx: Vertx, ctx: VertxTestContext) {
+    // mock progress estimator
+    val customProgressEstimatorName = "foobar"
+
+    val customProgressEstimator = spyk(object {
+      @Suppress("UNUSED_PARAMETER")
+      fun execute(executable: Executable, recentLines: List<String>,
+          vertx: Vertx): Double = recentLines.last().toDouble() / 5
+    })
+
+    val pluginRegistry = mockk<PluginRegistry>()
+    mockkObject(PluginRegistryFactory)
+    every { PluginRegistryFactory.create() } returns pluginRegistry
+    every {
+      pluginRegistry.findProgressEstimator(customProgressEstimatorName)
+    } returns ProgressEstimatorPlugin(
+        name = customProgressEstimatorName,
+        scriptFile = "",
+        supportedServiceId = customProgressEstimatorName,
+        compiledFunction = customProgressEstimator::execute
+    )
+
+    val exec = Executable(path = "ls", arguments = emptyList(),
+        serviceId = customProgressEstimatorName)
+    val processChain = ProcessChain(executables = listOf(exec))
+
+    // mock runtime
+    mockkConstructor(OtherRuntime::class)
+    every { anyConstructed<OtherRuntime>().execute(exec, any() as OutputCollector) } answers {
+      val collector = arg<OutputCollector>(1)
+      for (i in 0 until 5) {
+        collector.collect("$i")
+        Thread.sleep(200)
+
+        // validate progress
+        runBlocking(vertx.dispatcher()) {
+          val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
+          val msg = vertx.eventBus().requestAwait<Double?>(address, json {
+            obj(
+                "action" to "getProgress"
+            )
+          })
+          assertThat(msg.body()).isEqualTo(i / 5.0)
+        }
+      }
+    }
+
+    val agent = createAgent(vertx)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        agent.execute(processChain)
+        verify(exactly = 5) {
+          customProgressEstimator.execute(exec, any(), vertx)
+        }
+        verify(exactly = 1) {
+          anyConstructed<OtherRuntime>().execute(exec, any() as OutputCollector)
+        }
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if the progress is calculated correctly if an executable is retried
+   */
+  @Test
+  fun progressRetry(vertx: Vertx, ctx: VertxTestContext) {
+    // mock progress estimator
+    val customProgressEstimatorName = "foobar"
+
+    val customProgressEstimator = spyk(object {
+      @Suppress("UNUSED_PARAMETER")
+      fun execute(executable: Executable, recentLines: List<String>,
+          vertx: Vertx): Double = recentLines.last().toDouble() / 5
+    })
+
+    val pluginRegistry = mockk<PluginRegistry>()
+    mockkObject(PluginRegistryFactory)
+    every { PluginRegistryFactory.create() } returns pluginRegistry
+    every {
+      pluginRegistry.findProgressEstimator(customProgressEstimatorName)
+    } returns ProgressEstimatorPlugin(
+        name = customProgressEstimatorName,
+        scriptFile = "",
+        supportedServiceId = customProgressEstimatorName,
+        compiledFunction = customProgressEstimator::execute
+    )
+
+    val exec = Executable(path = "ls", arguments = emptyList(),
+        serviceId = customProgressEstimatorName, retries = RetryPolicy(2))
+    val processChain = ProcessChain(executables = listOf(exec))
+
+    // mock runtime
+    mockkConstructor(OtherRuntime::class)
+    var shouldFail = true
+    every { anyConstructed<OtherRuntime>().execute(exec, any() as OutputCollector) } answers {
+      val collector = arg<OutputCollector>(1)
+      for (i in 0 until 5) {
+        collector.collect("$i")
+        Thread.sleep(200)
+
+        // validate progress
+        runBlocking(vertx.dispatcher()) {
+          val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
+          val msg = vertx.eventBus().requestAwait<Double?>(address, json {
+            obj(
+                "action" to "getProgress"
+            )
+          })
+          assertThat(msg.body()).isEqualTo(i / 5.0)
+        }
+
+        if (shouldFail && i == 3) {
+          // Pretend we failed. We we are retried, we should still be able to
+          // get the same estimated progress.
+          shouldFail = false
+          throw Shell.ExecutionException("", "", 0)
+        }
+      }
+    }
+
+    val agent = createAgent(vertx)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        agent.execute(processChain)
+        verify(exactly = 9) {
+          customProgressEstimator.execute(exec, any(), vertx)
+        }
+        verify(exactly = 2) {
+          anyConstructed<OtherRuntime>().execute(exec, any() as OutputCollector)
+        }
+      }
       ctx.completeNow()
     }
   }

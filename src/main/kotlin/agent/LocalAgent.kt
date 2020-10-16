@@ -100,7 +100,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
       val oldProgress = progress
       if (oldProgress == null) {
         progress = roundedNew
-      } else if (roundedNew - oldProgress > 0) {
+      } else if (roundedNew >= 0) {
         progress = roundedNew
       }
       if (progress != oldProgress) {
