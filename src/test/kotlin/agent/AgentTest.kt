@@ -209,7 +209,7 @@ abstract class AgentTest {
    * Tests if a service can be executed with a retry policy
    */
   @Test
-  fun retry(vertx: Vertx, ctx: VertxTestContext) {
+  open fun retry(vertx: Vertx, ctx: VertxTestContext) {
     mockkConstructor(OtherRuntime::class)
     var called = false
     every { anyConstructed<OtherRuntime>().execute(any(), any() as OutputCollector) } throws

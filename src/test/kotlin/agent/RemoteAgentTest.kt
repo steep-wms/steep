@@ -93,6 +93,12 @@ class RemoteAgentTest : AgentTest() {
     super.customRuntime(vertx, ctx)
   }
 
+  @Test
+  override fun retry(vertx: Vertx, ctx: VertxTestContext) {
+    registerConsumer(vertx)
+    super.retry(vertx, ctx)
+  }
+
   /**
    * Test what happens if a remote agent does not accept the process chain
    */
