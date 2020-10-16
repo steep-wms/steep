@@ -3,9 +3,12 @@ package agent
 import coVerify
 import db.PluginRegistry
 import db.PluginRegistryFactory
+import helper.OutputCollector
+import helper.Shell.ExecutionException
 import helper.UniqueID
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkConstructor
 import io.mockk.mockkObject
 import io.mockk.spyk
 import io.mockk.unmockkAll
@@ -21,12 +24,14 @@ import model.processchain.Argument
 import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import model.processchain.ProcessChain
+import model.retry.RetryPolicy
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.entry
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.io.TempDir
+import runtime.OtherRuntime
 import java.io.File
 import java.nio.file.Path
 
@@ -196,6 +201,41 @@ abstract class AgentTest {
           customRuntime.execute(exec, 100, vertx)
         }
       }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Tests if a service can be executed with a retry policy
+   */
+  @Test
+  fun retry(vertx: Vertx, ctx: VertxTestContext) {
+    mockkConstructor(OtherRuntime::class)
+    var called = false
+    every { anyConstructed<OtherRuntime>().execute(any(), any() as OutputCollector) } throws
+      ExecutionException("", "", 1) andThenThrows ExecutionException("", "", 2) andThen {
+      called = true
+    }
+
+    val processChain = ProcessChain(executables = listOf(
+        Executable(path = "ls", arguments = emptyList(), retries = RetryPolicy(
+            maxAttempts = 4
+        ))
+    ))
+
+    val agent = createAgent(vertx)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        // execute process chain
+        agent.execute(processChain)
+
+        verify(exactly = 3) {
+          anyConstructed<OtherRuntime>().execute(any(), any() as OutputCollector)
+        }
+        assertThat(called).isTrue()
+      }
+
       ctx.completeNow()
     }
   }

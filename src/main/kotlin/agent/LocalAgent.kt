@@ -8,6 +8,7 @@ import db.PluginRegistryFactory
 import helper.FileSystemUtils.readRecursive
 import helper.OutputCollector
 import helper.UniqueID
+import helper.withRetry
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.eventbus.unregisterAwait
@@ -17,7 +18,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -63,7 +64,11 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
 
   override val id: String = UniqueID.next()
 
-  override val coroutineContext: CoroutineContext by lazy { dispatcher + Job() }
+  override val coroutineContext: CoroutineContext by lazy {
+    // use a SupervisorJob because executables may fail and we want to retry
+    // them without cancelling the parent coroutine context
+    dispatcher + SupervisorJob()
+  }
 
   private val pluginRegistry = PluginRegistryFactory.create()
   private val outputLinesToCollect = config
@@ -108,7 +113,6 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
       }
     }
 
-
     // execute the process chain
     val executor = Executors.newSingleThreadExecutor()
     try {
@@ -119,9 +123,11 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
 
       // run executables and track progress
       for ((index, exec) in processChain.executables.withIndex()) {
-        execute(exec, executor) { p ->
-          val step = 1.0 / processChain.executables.size
-          setProgress(step * index + step * p)
+        withRetry(exec.retries) {
+          execute(exec, executor) { p ->
+            val step = 1.0 / processChain.executables.size
+            setProgress(step * index + step * p)
+          }
         }
 
         if ((index + 1) < processChain.executables.size || progress != null) {
@@ -189,7 +195,6 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
    */
   private fun <R> interruptableAsync(executor: ExecutorService, block: () -> R): Deferred<R> = async {
     suspendCancellableCoroutine { cont ->
-      @Suppress("ThrowableNotThrown")
       val f = executor.submit {
         try {
           cont.resume(block())

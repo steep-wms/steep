@@ -2,6 +2,7 @@ package model.processchain
 
 import helper.UniqueID
 import model.metadata.Service
+import model.retry.RetryPolicy
 
 /**
  * An executable in a process chain
@@ -13,6 +14,8 @@ import model.metadata.Service
  * @param serviceId the ID of the processing service to be called (may be
  * `null` if an executable should be called that does not refer to a service
  * or if the object has been created prior to Steep v5.4.0)
+ * @param retries optional rules that define when and how often this
+ * executable should be restarted in case an error has occurred
  * @author Michel Kraemer
  */
 data class Executable(
@@ -21,5 +24,6 @@ data class Executable(
     val arguments: List<Argument>,
     val runtime: String = Service.RUNTIME_OTHER,
     val runtimeArgs: List<Argument> = emptyList(),
-    val serviceId: String? = null
+    val serviceId: String? = null,
+    val retries: RetryPolicy? = null
 )
