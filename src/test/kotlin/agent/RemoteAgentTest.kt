@@ -17,7 +17,6 @@ import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.launch
 import model.processchain.ProcessChain
 import org.assertj.core.api.Assertions.assertThat
@@ -86,6 +85,12 @@ class RemoteAgentTest : AgentTest() {
   override fun recursive(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
     registerConsumer(vertx)
     super.recursive(vertx, ctx, tempDir)
+  }
+
+  @Test
+  override fun customRuntime(vertx: Vertx, ctx: VertxTestContext) {
+    registerConsumer(vertx)
+    super.customRuntime(vertx, ctx)
   }
 
   /**

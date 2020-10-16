@@ -1,19 +1,29 @@
 package agent
 
 import coVerify
+import db.PluginRegistry
+import db.PluginRegistryFactory
 import helper.UniqueID
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.spyk
+import io.mockk.unmockkAll
+import io.mockk.verify
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import model.plugins.RuntimePlugin
 import model.processchain.Argument
 import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import model.processchain.ProcessChain
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.entry
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.io.TempDir
@@ -27,6 +37,11 @@ import java.nio.file.Path
 @ExtendWith(VertxExtension::class)
 abstract class AgentTest {
   abstract fun createAgent(vertx: Vertx): Agent
+
+  @AfterEach
+  fun tearDown() {
+    unmockkAll()
+  }
 
   /**
    * Executes a process chain that copies a file from a temporary directory to
@@ -142,6 +157,45 @@ abstract class AgentTest {
             .contains(entry(outputNewFileArg.variable.id, listOf(newFile.path)))
       }
 
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if the agent can call a custom runtime
+   */
+  @Test
+  open fun customRuntime(vertx: Vertx, ctx: VertxTestContext) {
+    val customRuntimeName = "foobar"
+
+    val customRuntime = spyk(object {
+      @Suppress("UNUSED_PARAMETER")
+      fun execute(executable: Executable, outputLinesToCollect: Int,
+          vertx: Vertx): String = "hello\nworld\n${executable.path}\n$outputLinesToCollect"
+    })
+
+    val pluginRegistry = mockk<PluginRegistry>()
+    mockkObject(PluginRegistryFactory)
+    every { PluginRegistryFactory.create() } returns pluginRegistry
+    every { pluginRegistry.findRuntime(customRuntimeName) } returns RuntimePlugin(
+        name = customRuntimeName,
+        scriptFile = "",
+        supportedRuntime = customRuntimeName,
+        compiledFunction = customRuntime::execute
+    )
+
+    val exec = Executable(path = "ls", arguments = emptyList(), runtime = customRuntimeName)
+    val processChain = ProcessChain(executables = listOf(exec))
+
+    val agent = createAgent(vertx)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        agent.execute(processChain)
+        verify(exactly = 1) {
+          customRuntime.execute(exec, 100, vertx)
+        }
+      }
       ctx.completeNow()
     }
   }
