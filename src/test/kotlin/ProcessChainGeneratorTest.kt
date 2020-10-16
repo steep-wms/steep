@@ -215,7 +215,17 @@ class ProcessChainGeneratorTest {
         T("storeThreeDependent"),
 
         // Test if a store flag inside a forEach action is evaluated correctly
-        T("storeForEach")
+        T("storeForEach"),
+
+        // Test that a retry policy from service metadata is correctly applied
+        T("retryService"),
+
+        // Test that a retry policy from an executable action is applied
+        T("retryAction"),
+
+        // Test that a retry policy from an executable action overrides the
+        // one specified in the service metadata
+        T("retryActionServiceOverride")
 
 
         //  TODO test complex graph

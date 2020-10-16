@@ -3,6 +3,7 @@ import model.metadata.RuntimeArgument
 import model.metadata.Service
 import model.metadata.ServiceParameter
 import model.processchain.Argument
+import model.retry.RetryPolicy
 
 /**
  * Common service metadata for all tests
@@ -108,7 +109,15 @@ object TestMetadata {
       )
   )
 
+  private val serviceRetry = Service("retry", "serviceWithRetryPolicy",
+      "Retry", "retry", Service.RUNTIME_OTHER, listOf(
+      ServiceParameter("input_file", "Input file", "Input file",
+          Argument.Type.INPUT, Cardinality(1, 1)),
+      ServiceParameter("output_file", "Output file", "Output file",
+          Argument.Type.OUTPUT, Cardinality(1, 1))
+  ), retries = RetryPolicy(maxAttempts = 5, delay = 1000, exponentialBackoff = 2, maxDelay = 10000))
+
   val services = listOf(serviceCp, serviceCpCustom, serviceCpDefaultParam,
       serviceJoin, serviceSplit, serviceWithDocker, serviceWithRuntimeArgs,
-      serviceSplitToDir, serviceJoinFromDir)
+      serviceSplitToDir, serviceJoinFromDir, serviceRetry)
 }

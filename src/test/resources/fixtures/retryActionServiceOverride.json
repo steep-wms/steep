@@ -1,0 +1,26 @@
+{
+  "vars": [{
+    "id": "input_file1",
+    "value": "input_file.txt"
+  }, {
+    "id": "output_file1"
+  }],
+  "actions": [{
+    "type": "execute",
+    "service": "retry",
+    "inputs": [{
+      "id": "input_file",
+      "var": "input_file1"
+    }],
+    "outputs": [{
+      "id": "output_file",
+      "var": "output_file1"
+    }],
+    "retries": {
+      "maxAttempts": 10,
+      "delay": 2000,
+      "exponentialBackoff": 4,
+      "maxDelay": 20000
+    }
+  }]
+}
