@@ -39,7 +39,7 @@ class ShellTest {
 
     Shell.execute(listOf("cp", inputFile.toString(), tempDir2.toString()))
     val outputFile = File(tempDir2, "test.txt")
-    assertThat(outputFile).exists().hasSameContentAs(inputFile)
+    assertThat(outputFile).exists().hasSameTextualContentAs(inputFile)
   }
 
   /**
