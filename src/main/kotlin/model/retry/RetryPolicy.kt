@@ -1,6 +1,8 @@
 package model.retry
 
 import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
+import helper.StringDurationToMillisecondsConverter
 
 /**
  * Defines rules for retrying operations such as the execution of
@@ -24,6 +26,7 @@ data class RetryPolicy(
      * The default is `0`, which means the operation will be retried
      * immediately.
      */
+    @JsonDeserialize(converter = StringDurationToMillisecondsConverter::class)
     val delay: Long = 0,
 
     /**
@@ -52,5 +55,6 @@ data class RetryPolicy(
      * Only applies if [exponentialBackoff] is larger than `1`. The default
      * value is `null`, which means there is no upper limit
      */
+    @JsonDeserialize(converter = StringDurationToMillisecondsConverter::class)
     val maxDelay: Long? = null
 )
