@@ -41,6 +41,7 @@
     <logger name="org.jboss.resteasy" level="INFO" />
     <logger name="org.openstack4j.core.transport.internal" level="INFO" />
     <logger name="com.hazelcast" level="INFO" />
+    <logger name="com.mitchellbosecke.pebble" level="INFO" />
     <logger name="com.zaxxer.hikari.pool" level="INFO" />
 
     <variable name="STEEP_LOG_LEVEL" value="${STEEP_LOG_LEVEL:-DEBUG}" />
