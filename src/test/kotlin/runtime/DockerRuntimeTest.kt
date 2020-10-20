@@ -2,6 +2,7 @@ package runtime
 
 import ConfigConstants
 import helper.OutputCollector
+import helper.Shell
 import helper.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
@@ -19,6 +20,7 @@ import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.io.TempDir
@@ -33,6 +35,16 @@ import java.nio.file.Path
 class DockerRuntimeTest {
   companion object {
     private const val EXPECTED = "Elvis"
+
+    @BeforeAll
+    @JvmStatic
+    fun setUp() {
+      // Make sure the alpine:latest Docker image exists on the system.
+      // Otherwise, the image will be pulled on demand and the output
+      // collectors in the unit tests below will collect the output of
+      // "docker pull" too, which will make the tests fail.
+      Shell.execute(listOf("docker", "pull", "alpine:latest"))
+    }
   }
 
   /**
