@@ -1,6 +1,6 @@
 @import "css/variables";
 
-.service-details {
+.service-details, .retry-policy-details {
   .service-details-dl {
     display: flex;
     flex-wrap: wrap;
@@ -39,10 +39,15 @@
   }
 }
 
+.retry-policy-details {
+  border-top: 1px solid $gray-300;
+  padding-top: $spacer * 2;
+}
+
 .service-parameter {
   display: flex;
   border-top: 1px solid $gray-300;
-  padding: $spacer * 2 0;
+  padding-top: $spacer * 2;
 
   h4, h5 {
     font-size: 1rem;
@@ -83,4 +88,8 @@
       margin-top: $spacer;
     }
   }
+}
+
+.service-parameter + .service-parameter {
+  margin-top: $spacer * 2;
 }

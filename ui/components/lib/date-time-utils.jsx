@@ -29,3 +29,40 @@ export function formatDurationTitle(startTime, endTime) {
   result += seconds + "s"
   return result
 }
+
+// just like formatDurationTitle but also displays days and milliseconds. Does
+// not have a startTime and an endTime, just a difference, but this can be
+// easily added (see code of formatDurationTitle).
+export function formatDurationMilliseconds(durationMilliseconds, trimRight) {
+  let milliseconds = Math.floor(durationMilliseconds % 1000)
+  let seconds = Math.floor(durationMilliseconds / 1000 % 60)
+  let minutes = Math.floor(durationMilliseconds / 1000 / 60 % 60)
+  let hours = Math.floor(durationMilliseconds / 1000 / 60 / 60 % 24)
+  let days = Math.floor(durationMilliseconds / 1000 / 60 / 60 / 24)
+  let result = ""
+  if (days > 0) {
+    result += days + "d "
+  }
+  if (!trimRight || hours > 0 || minutes > 0 || seconds > 0 || milliseconds > 0) {
+    if (result !== "" || hours > 0) {
+      result += hours + "h "
+    }
+    if (!trimRight || minutes > 0 || seconds > 0 || milliseconds > 0) {
+      if (result !== "" || minutes > 0) {
+        result += minutes + "m "
+      }
+      if (!trimRight || seconds > 0 || milliseconds > 0) {
+        if (result !== "" || seconds > 0) {
+          result += seconds + "s "
+        }
+        if (!trimRight || milliseconds > 0) {
+          result += milliseconds + "ms"
+        }
+      }
+    }
+  }
+  if (trimRight && result === "") {
+    result = "0ms"
+  }
+  return result
+}

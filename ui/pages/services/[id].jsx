@@ -6,6 +6,7 @@ import DefinitionList from "../../components/DefinitionList"
 import DefinitionListItem from "../../components/DefinitionListItem"
 import Label from "../../components/Label"
 import styles from "./[id].scss"
+import { formatDurationMilliseconds } from "../../components/lib/date-time-utils"
 import fetcher from "../../components/lib/json-fetcher"
 
 const Service = () => {
@@ -64,6 +65,24 @@ const Service = () => {
           </div>
         </DefinitionList>
       </div>
+
+      {data.retries && (<>
+        <h2>Retry policy</h2>
+        <div className="retry-policy-details">
+          <DefinitionList>
+            <div className="service-details-dl">
+              <div className="service-details-left">
+                <DefinitionListItem title="Max. attempts">{data.retries.maxAttempts || 1}</DefinitionListItem>
+                <DefinitionListItem title="Delay">{(data.retries.delay && formatDurationMilliseconds(data.retries.delay, true)) || "0ms"}</DefinitionListItem>
+              </div>
+              <div className="service-details-right">
+                <DefinitionListItem title="Exponential backoff factor">{data.retries.exponentialBackoff || 1}</DefinitionListItem>
+                <DefinitionListItem title="Maximum delay">{(data.retries.maxDelay && formatDurationMilliseconds(data.retries.maxDelay, true)) || <>&ndash;</>}</DefinitionListItem>
+              </div>
+            </div>
+          </DefinitionList>
+        </div>
+      </>)}
 
       {data.runtime_args && data.runtime_args.length > 0 && (<>
         <h2>Runtime arguments</h2>
