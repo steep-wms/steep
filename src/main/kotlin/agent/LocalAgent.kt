@@ -137,7 +137,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
       for ((index, exec) in processChain.executables.withIndex()) {
         withRetry(exec.retries) { attempt ->
           if (attempt > 1) {
-            gaugeRetries.labels(exec.serviceId).inc()
+            gaugeRetries.labels(exec.serviceId ?: "<unknown>").inc()
           }
           execute(exec, executor) { p ->
             val step = 1.0 / processChain.executables.size
