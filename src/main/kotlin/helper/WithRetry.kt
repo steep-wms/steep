@@ -15,9 +15,9 @@ private val log = LoggerFactory.getLogger("withRetry")
  * with a throwable, the method will rethrow this and only this throwable.
  * Throwables from previous attempts will not be recorded.
  */
-suspend fun <R> withRetry(policy: RetryPolicy?, block: suspend () -> R): R? {
+suspend fun <R> withRetry(policy: RetryPolicy?, block: suspend (attempt: Int) -> R): R? {
   if (policy == null) {
-    return block()
+    return block(1)
   }
 
   var attempt = 0
@@ -54,7 +54,7 @@ suspend fun <R> withRetry(policy: RetryPolicy?, block: suspend () -> R): R? {
     }
 
     try {
-      return block()
+      return block(attempt + 1)
     } catch (t: Throwable) {
       lastThrowable = t
     }

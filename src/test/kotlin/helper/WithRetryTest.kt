@@ -27,8 +27,9 @@ class WithRetryTest {
     var attempts = 0
     var timestamps = mutableListOf<Long>()
 
-    fun doSomething() {
+    fun doSomething(attempt: Int) {
       attempts++
+      assertThat(attempt).isEqualTo(attempts)
       timestamps.add(System.currentTimeMillis())
       if (attempts <= maxFails) {
         throw IllegalStateException("Attempt $attempts")
@@ -49,8 +50,8 @@ class WithRetryTest {
 
       ctx.verify {
         assertThat(o.attempts).isEqualTo(1)
-        assertThat(o.timestamps).allSatisfy { assertThat(it).isLessThan(start + 10) }
-        assertThat(end).isLessThan(start + 10)
+        assertThat(o.timestamps).allSatisfy { assertThat(it).isLessThan(start + 100) }
+        assertThat(end).isLessThan(o.timestamps.last() + 10)
       }
 
       ctx.completeNow()
@@ -72,8 +73,8 @@ class WithRetryTest {
         val end = System.currentTimeMillis()
 
         assertThat(o.attempts).isEqualTo(1)
-        assertThat(o.timestamps).allSatisfy { assertThat(it).isLessThan(start + 10) }
-        assertThat(end).isLessThan(start + 50)
+        assertThat(o.timestamps).allSatisfy { assertThat(it).isLessThan(start + 100) }
+        assertThat(end).isLessThan(o.timestamps.last() + 10)
       }
 
       ctx.completeNow()
@@ -208,7 +209,7 @@ class WithRetryTest {
       ctx.verify {
         assertThat(o.attempts).isEqualTo(4)
         assertThat(o.timestamps[0]).isLessThan(start + 10)
-        assertThat(o.timestamps[1]).isBetween(o.timestamps[0] + 100, o.timestamps[0] + 110)
+        assertThat(o.timestamps[1]).isBetween(o.timestamps[0] + 100, o.timestamps[0] + 150)
         assertThat(o.timestamps[2]).isBetween(o.timestamps[1] + 300, o.timestamps[1] + 310)
         assertThat(o.timestamps[3]).isBetween(o.timestamps[2] + 900, o.timestamps[2] + 910)
         assertThat(end).isLessThan(o.timestamps[3] + 10)

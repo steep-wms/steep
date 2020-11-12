@@ -11,6 +11,7 @@ import db.SubmissionRegistry.ProcessChainStatus.REGISTERED
 import db.SubmissionRegistry.ProcessChainStatus.RUNNING
 import db.SubmissionRegistry.ProcessChainStatus.SUCCESS
 import db.SubmissionRegistryFactory
+import io.prometheus.client.Gauge
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.json
@@ -33,6 +34,15 @@ import java.util.concurrent.CancellationException
 class Scheduler : CoroutineVerticle() {
   companion object {
     private val log = LoggerFactory.getLogger(Scheduler::class.java)
+
+    /**
+     * The number of process chains with a given status
+     */
+    private val gaugeProcessChains = Gauge.build()
+        .name("steep_scheduler_process_chains")
+        .labelNames("status")
+        .help("Number of process chains with a given status")
+        .register()
   }
 
   private lateinit var submissionRegistry: SubmissionRegistry
@@ -197,18 +207,25 @@ class Scheduler : CoroutineVerticle() {
       // execute process chain
       launch {
         try {
+          gaugeProcessChains.labels(RUNNING.name).inc()
           submissionRegistry.setProcessChainStartTime(processChain.id, Instant.now())
+
           val results = agent.execute(processChain)
+
           submissionRegistry.setProcessChainResults(processChain.id, results)
           submissionRegistry.setProcessChainStatus(processChain.id, SUCCESS)
+          gaugeProcessChains.labels(SUCCESS.name).inc()
         } catch (_: CancellationException) {
           log.warn("Process chain execution was cancelled")
           submissionRegistry.setProcessChainStatus(processChain.id, CANCELLED)
+          gaugeProcessChains.labels(CANCELLED.name).inc()
         } catch (t: Throwable) {
           log.error("Process chain execution failed", t)
           submissionRegistry.setProcessChainErrorMessage(processChain.id, t.message)
           submissionRegistry.setProcessChainStatus(processChain.id, ERROR)
+          gaugeProcessChains.labels(ERROR.name).inc()
         } finally {
+          gaugeProcessChains.labels(RUNNING.name).dec()
           agentRegistry.deallocate(agent)
           submissionRegistry.setProcessChainEndTime(processChain.id, Instant.now())
 

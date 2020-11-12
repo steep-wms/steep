@@ -9,6 +9,7 @@ import helper.FileSystemUtils.readRecursive
 import helper.OutputCollector
 import helper.UniqueID
 import helper.withRetry
+import io.prometheus.client.Gauge
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.eventbus.unregisterAwait
@@ -60,6 +61,17 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
         .expireAfterAccess(1, TimeUnit.MINUTES)
         .maximumSize(1000)
         .build<String, Boolean>()
+
+    /**
+     * The total number of times an executable with a given serviceId had
+     * to be retried
+     */
+    private val gaugeRetries = Gauge.build()
+        .name("steep_local_agent_retries")
+        .labelNames("serviceId")
+        .help("The total number of times an executable with a given " +
+            "serviceId had to be retried")
+        .register()
   }
 
   override val id: String = UniqueID.next()
@@ -123,7 +135,10 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
 
       // run executables and track progress
       for ((index, exec) in processChain.executables.withIndex()) {
-        withRetry(exec.retries) {
+        withRetry(exec.retries) { attempt ->
+          if (attempt > 1) {
+            gaugeRetries.labels(exec.serviceId).inc()
+          }
           execute(exec, executor) { p ->
             val step = 1.0 / processChain.executables.size
             setProgress(step * index + step * p)
