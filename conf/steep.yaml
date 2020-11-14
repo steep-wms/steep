@@ -44,6 +44,7 @@ steep:
 
   agent:
     enabled: true
+    instances: 1
     # id: <uniqueId>
     # capabilities:
     outputLinesToCollect: 100
