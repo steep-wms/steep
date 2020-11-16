@@ -20,6 +20,27 @@ import org.junit.jupiter.api.extension.ExtendWith
 @ExtendWith(VertxExtension::class)
 class WithRetryTest {
   /**
+   * Our tests rely on measuring the time between two method calls (i.e.
+   * between two attempts). Since performance on the test machine may vary,
+   * we test until we succeed but no more than 100 times.
+   */
+  private suspend fun verifyUntilOK(ctx: VertxTestContext, block: suspend () -> Unit) {
+    ctx.coVerify {
+      var lastThrowable: Throwable? = null
+      for (i in 1..100) {
+        try {
+          block()
+          lastThrowable = null
+          break
+        } catch (t: Throwable) {
+          lastThrowable = t
+        }
+      }
+      lastThrowable?.let { throw it }
+    }
+  }
+
+  /**
    * A test object with one method that counts how many times it has been
    * called and at which points in time
    */
@@ -43,17 +64,16 @@ class WithRetryTest {
   @Test
   fun noPolicy(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
-      val o = Obj(0)
-      val start = System.currentTimeMillis()
-      withRetry(null, o::doSomething)
-      val end = System.currentTimeMillis()
+      verifyUntilOK(ctx) {
+        val o = Obj(0)
+        val start = System.currentTimeMillis()
+        withRetry(null, o::doSomething)
+        val end = System.currentTimeMillis()
 
-      ctx.verify {
         assertThat(o.attempts).isEqualTo(1)
-        assertThat(o.timestamps).allSatisfy { assertThat(it).isLessThan(start + 100) }
+        assertThat(o.timestamps).allSatisfy { assertThat(it).isLessThan(start + 10) }
         assertThat(end).isLessThan(o.timestamps.last() + 10)
       }
-
       ctx.completeNow()
     }
   }
@@ -64,8 +84,8 @@ class WithRetryTest {
   @Test
   fun noPolicyFault(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
-      val o = Obj(1)
-      ctx.coVerify {
+      verifyUntilOK(ctx) {
+        val o = Obj(1)
         val start = System.currentTimeMillis()
         assertThatThrownBy { withRetry(null, o::doSomething) }
             .isInstanceOf(IllegalStateException::class.java)
@@ -73,10 +93,9 @@ class WithRetryTest {
         val end = System.currentTimeMillis()
 
         assertThat(o.attempts).isEqualTo(1)
-        assertThat(o.timestamps).allSatisfy { assertThat(it).isLessThan(start + 100) }
+        assertThat(o.timestamps).allSatisfy { assertThat(it).isLessThan(start + 10) }
         assertThat(end).isLessThan(o.timestamps.last() + 10)
       }
-
       ctx.completeNow()
     }
   }
@@ -87,17 +106,16 @@ class WithRetryTest {
   @Test
   fun noDelay(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
-      val o = Obj(2)
-      val start = System.currentTimeMillis()
-      withRetry(RetryPolicy(maxAttempts = 3), o::doSomething)
-      val end = System.currentTimeMillis()
+      verifyUntilOK(ctx) {
+        val o = Obj(2)
+        val start = System.currentTimeMillis()
+        withRetry(RetryPolicy(maxAttempts = 3), o::doSomething)
+        val end = System.currentTimeMillis()
 
-      ctx.verify {
         assertThat(o.attempts).isEqualTo(3)
         assertThat(o.timestamps).allSatisfy { assertThat(it).isLessThan(start + 10) }
-        assertThat(end).isLessThan(start + 10)
+        assertThat(end).isLessThan(o.timestamps.last() + 10)
       }
-
       ctx.completeNow()
     }
   }
@@ -108,8 +126,8 @@ class WithRetryTest {
   @Test
   fun noDelayFault(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
-      val o = Obj(3)
-      ctx.coVerify {
+      verifyUntilOK(ctx) {
+        val o = Obj(3)
         val start = System.currentTimeMillis()
         assertThatThrownBy { withRetry(RetryPolicy(maxAttempts = 3), o::doSomething) }
             .isInstanceOf(IllegalStateException::class.java)
@@ -118,9 +136,8 @@ class WithRetryTest {
 
         assertThat(o.attempts).isEqualTo(3)
         assertThat(o.timestamps).allSatisfy { assertThat(it).isLessThan(start + 10) }
-        assertThat(end).isLessThan(start + 50)
+        assertThat(end).isLessThan(o.timestamps.last() + 10)
       }
-
       ctx.completeNow()
     }
   }
@@ -131,17 +148,16 @@ class WithRetryTest {
   @Test
   fun noDelayEarly(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
-      val o = Obj(1)
-      val start = System.currentTimeMillis()
-      withRetry(RetryPolicy(maxAttempts = 3), o::doSomething)
-      val end = System.currentTimeMillis()
+      verifyUntilOK(ctx) {
+        val o = Obj(1)
+        val start = System.currentTimeMillis()
+        withRetry(RetryPolicy(maxAttempts = 3), o::doSomething)
+        val end = System.currentTimeMillis()
 
-      ctx.verify {
         assertThat(o.attempts).isEqualTo(2)
         assertThat(o.timestamps).allSatisfy { assertThat(it).isLessThan(start + 10) }
-        assertThat(end).isLessThan(start + 10)
+        assertThat(end).isLessThan(o.timestamps.last() + 10)
       }
-
       ctx.completeNow()
     }
   }
@@ -152,20 +168,19 @@ class WithRetryTest {
   @Test
   fun constantDelay(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
-      val o = Obj(3)
-      val start = System.currentTimeMillis()
-      withRetry(RetryPolicy(maxAttempts = 4, delay = 100), o::doSomething)
-      val end = System.currentTimeMillis()
+      verifyUntilOK(ctx) {
+        val o = Obj(3)
+        val start = System.currentTimeMillis()
+        withRetry(RetryPolicy(maxAttempts = 4, delay = 100), o::doSomething)
+        val end = System.currentTimeMillis()
 
-      ctx.verify {
         assertThat(o.attempts).isEqualTo(4)
         assertThat(o.timestamps[0]).isLessThan(start + 10)
         assertThat(o.timestamps[1]).isBetween(start + 100, start + 110)
         assertThat(o.timestamps[2]).isBetween(o.timestamps[1] + 100, o.timestamps[1] + 110)
         assertThat(o.timestamps[3]).isBetween(o.timestamps[2] + 100, o.timestamps[2] + 110)
-        assertThat(end).isLessThan(o.timestamps[3] + 10)
+        assertThat(end).isLessThan(o.timestamps.last() + 10)
       }
-
       ctx.completeNow()
     }
   }
@@ -176,21 +191,20 @@ class WithRetryTest {
   @Test
   fun exponentialBackoff(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
-      val o = Obj(4)
-      val start = System.currentTimeMillis()
-      withRetry(RetryPolicy(maxAttempts = 5, delay = 100, exponentialBackoff = 2), o::doSomething)
-      val end = System.currentTimeMillis()
+      verifyUntilOK(ctx) {
+        val o = Obj(4)
+        val start = System.currentTimeMillis()
+        withRetry(RetryPolicy(maxAttempts = 5, delay = 100, exponentialBackoff = 2), o::doSomething)
+        val end = System.currentTimeMillis()
 
-      ctx.verify {
         assertThat(o.attempts).isEqualTo(5)
         assertThat(o.timestamps[0]).isLessThan(start + 10)
         assertThat(o.timestamps[1]).isBetween(o.timestamps[0] + 100, o.timestamps[0] + 110)
         assertThat(o.timestamps[2]).isBetween(o.timestamps[1] + 200, o.timestamps[1] + 210)
         assertThat(o.timestamps[3]).isBetween(o.timestamps[2] + 400, o.timestamps[2] + 410)
         assertThat(o.timestamps[4]).isBetween(o.timestamps[3] + 800, o.timestamps[3] + 810)
-        assertThat(end).isLessThan(o.timestamps[4] + 10)
+        assertThat(end).isLessThan(o.timestamps.last() + 10)
       }
-
       ctx.completeNow()
     }
   }
@@ -201,20 +215,19 @@ class WithRetryTest {
   @Test
   fun exponentialBackoff3(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
-      val o = Obj(3)
-      val start = System.currentTimeMillis()
-      withRetry(RetryPolicy(maxAttempts = 4, delay = 100, exponentialBackoff = 3), o::doSomething)
-      val end = System.currentTimeMillis()
+      verifyUntilOK(ctx) {
+        val o = Obj(3)
+        val start = System.currentTimeMillis()
+        withRetry(RetryPolicy(maxAttempts = 4, delay = 100, exponentialBackoff = 3), o::doSomething)
+        val end = System.currentTimeMillis()
 
-      ctx.verify {
         assertThat(o.attempts).isEqualTo(4)
         assertThat(o.timestamps[0]).isLessThan(start + 10)
-        assertThat(o.timestamps[1]).isBetween(o.timestamps[0] + 100, o.timestamps[0] + 150)
+        assertThat(o.timestamps[1]).isBetween(o.timestamps[0] + 100, o.timestamps[0] + 110)
         assertThat(o.timestamps[2]).isBetween(o.timestamps[1] + 300, o.timestamps[1] + 310)
         assertThat(o.timestamps[3]).isBetween(o.timestamps[2] + 900, o.timestamps[2] + 910)
-        assertThat(end).isLessThan(o.timestamps[3] + 10)
+        assertThat(end).isLessThan(o.timestamps.last() + 10)
       }
-
       ctx.completeNow()
     }
   }
@@ -225,13 +238,13 @@ class WithRetryTest {
   @Test
   fun exponentialBackoffMaxDelay(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
-      val o = Obj(5)
-      val start = System.currentTimeMillis()
-      withRetry(RetryPolicy(maxAttempts = 6, delay = 100, exponentialBackoff = 2,
-          maxDelay = 500), o::doSomething)
-      val end = System.currentTimeMillis()
+      verifyUntilOK(ctx) {
+        val o = Obj(5)
+        val start = System.currentTimeMillis()
+        withRetry(RetryPolicy(maxAttempts = 6, delay = 100, exponentialBackoff = 2,
+            maxDelay = 500), o::doSomething)
+        val end = System.currentTimeMillis()
 
-      ctx.verify {
         assertThat(o.attempts).isEqualTo(6)
         assertThat(o.timestamps[0]).isLessThan(start + 10)
         assertThat(o.timestamps[1]).isBetween(o.timestamps[0] + 100, o.timestamps[0] + 110)
@@ -239,9 +252,8 @@ class WithRetryTest {
         assertThat(o.timestamps[3]).isBetween(o.timestamps[2] + 400, o.timestamps[2] + 410)
         assertThat(o.timestamps[4]).isBetween(o.timestamps[3] + 500, o.timestamps[3] + 510)
         assertThat(o.timestamps[5]).isBetween(o.timestamps[4] + 500, o.timestamps[4] + 510)
-        assertThat(end).isLessThan(o.timestamps[5] + 10)
+        assertThat(end).isLessThan(o.timestamps.last() + 10)
       }
-
       ctx.completeNow()
     }
   }
@@ -253,20 +265,19 @@ class WithRetryTest {
   @Test
   fun exponentialBackoffEarly(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
-      val o = Obj(2)
-      val start = System.currentTimeMillis()
-      withRetry(RetryPolicy(maxAttempts = 6, delay = 100, exponentialBackoff = 2,
-          maxDelay = 500), o::doSomething)
-      val end = System.currentTimeMillis()
+      verifyUntilOK(ctx) {
+        val o = Obj(2)
+        val start = System.currentTimeMillis()
+        withRetry(RetryPolicy(maxAttempts = 6, delay = 100, exponentialBackoff = 2,
+            maxDelay = 500), o::doSomething)
+        val end = System.currentTimeMillis()
 
-      ctx.verify {
         assertThat(o.attempts).isEqualTo(3)
         assertThat(o.timestamps[0]).isLessThan(start + 10)
         assertThat(o.timestamps[1]).isBetween(o.timestamps[0] + 100, o.timestamps[0] + 110)
         assertThat(o.timestamps[2]).isBetween(o.timestamps[1] + 200, o.timestamps[1] + 210)
-        assertThat(end).isLessThan(o.timestamps[2] + 10)
+        assertThat(end).isLessThan(o.timestamps.last() + 10)
       }
-
       ctx.completeNow()
     }
   }
@@ -277,8 +288,8 @@ class WithRetryTest {
   @Test
   fun exponentialBackoffFault(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
-      val o = Obj(4)
-      ctx.coVerify {
+      verifyUntilOK(ctx) {
+        val o = Obj(4)
         val start = System.currentTimeMillis()
         assertThatThrownBy { withRetry(RetryPolicy(maxAttempts = 4, delay = 100,
             exponentialBackoff = 2), o::doSomething) }
@@ -291,9 +302,8 @@ class WithRetryTest {
         assertThat(o.timestamps[1]).isBetween(o.timestamps[0] + 100, o.timestamps[0] + 110)
         assertThat(o.timestamps[2]).isBetween(o.timestamps[1] + 200, o.timestamps[1] + 210)
         assertThat(o.timestamps[3]).isBetween(o.timestamps[2] + 400, o.timestamps[2] + 410)
-        assertThat(end).isLessThan(o.timestamps[3] + 50)
+        assertThat(end).isLessThan(o.timestamps.last() + 50)
       }
-
       ctx.completeNow()
     }
   }
