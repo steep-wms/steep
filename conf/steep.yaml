@@ -102,6 +102,16 @@ steep:
       username: ubuntu
       privateKeyLocation: conf/steep.pem
 
+  logs:
+    level: DEBUG
+    main:
+      enabled: false
+      logFile: steep.log
+      dailyRollover:
+        enabled: true
+        maxDays: 7
+        maxSize: 104857600  # 100 MB
+
 setups:
   default:
     docker:

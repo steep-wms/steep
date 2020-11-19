@@ -353,6 +353,43 @@ object ConfigConstants {
   const val CLOUD_SSH_PRIVATE_KEY_LOCATION = "steep.cloud.ssh.privateKeyLocation"
 
   /**
+   * The default log level for all loggers (one of `TRACE`, `DEBUG`, `INFO`,
+   * `WARN`, `ERROR`, `OFF`). The default value is `DEBUG`.
+   */
+  const val LOGS_LEVEL = "steep.logs.level"
+
+  /**
+   * `true` if logging to the main log file should be enabled. The default
+   * value is `false`.
+   */
+  const val LOGS_MAIN_ENABLED = "steep.logs.main.enabled"
+
+  /**
+   * The name of the main log file. The default is `steep.log`.
+   */
+  const val LOGS_MAIN_LOGFILE = "steep.logs.main.logFile"
+
+  /**
+   * `true` if log files should be renamed every day. The file name of old
+   * logs will be based on the main log file name [LOGS_MAIN_LOGFILE] and the
+   * file's date in the form `YYYY-MM-DD` (e.g. `steep.2020-11-19.log`). The
+   * default value is `true`.
+   */
+  const val LOGS_MAIN_DAILYROLLOVER_ENABLED = "steep.logs.main.dailyRollover.enabled"
+
+  /**
+   * The maximum number of days' worth of log files to keep. The default
+   * value is `7`.
+   */
+  const val LOGS_MAIN_DAILYROLLOVER_MAXDAYS = "steep.logs.main.dailyRollover.maxDays"
+
+  /**
+   * The total maximum size of all log files. Oldest log files will deleted
+   * when this size is reached. The default value is `104857600` (= 100 MB)
+   */
+  const val LOGS_MAIN_DAILYROLLOVER_MAXSIZE = "steep.logs.main.dailyRollover.maxSize"
+
+  /**
    * Get all configuration keys from this class
    * @return the list of configuration keys
    */

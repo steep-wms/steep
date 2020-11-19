@@ -1,3 +1,5 @@
+import ch.qos.logback.classic.LoggerContext
+import ch.qos.logback.classic.joran.JoranConfigurator
 import cloud.CloudManager
 import com.hazelcast.core.MembershipAdapter
 import com.hazelcast.core.MembershipEvent
@@ -16,6 +18,8 @@ import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.spi.cluster.hazelcast.ConfigUtil
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager
 import model.plugins.call
+import org.apache.commons.text.StringEscapeUtils
+import org.slf4j.LoggerFactory
 import org.yaml.snakeyaml.Yaml
 import java.io.File
 import java.net.Inet6Address
@@ -45,6 +49,8 @@ suspend fun main() {
     overwriteWithEnvironmentVariables(overrideConf, System.getenv())
     overrideConf.forEach { (k, v) -> conf.put(k, v) }
   }
+
+  configureLogging(conf)
 
   // load hazelcast config
   val hazelcastConfig = ConfigUtil.loadConfig()
@@ -113,7 +119,7 @@ suspend fun main() {
   // listen to added and left cluster nodes
   // BUGFIX: do not use mgr.nodeListener() or you will override Vert.x's
   // internal HAManager!
-  mgr.hazelcastInstance.cluster.addMembershipListener(object: MembershipAdapter() {
+  mgr.hazelcastInstance.cluster.addMembershipListener(object : MembershipAdapter() {
     override fun memberAdded(membershipEvent: MembershipEvent) {
       if (mgr.isActive) {
         val memberAgentId = membershipEvent.member.getStringAttribute(ATTR_AGENT_ID)
@@ -210,6 +216,84 @@ private fun getDefaultAddress(): String? {
   }
 
   return null
+}
+
+/**
+ * Amend the `logback.xml` file from the classpath with the configuration
+ * properties found in the [conf] object and then configure the log framework
+ */
+fun configureLogging(conf: JsonObject) {
+  val context = LoggerFactory.getILoggerFactory() as LoggerContext
+
+  val level = conf.getString(ConfigConstants.LOGS_LEVEL)
+  if (level != "TRACE" && level != "DEBUG" && level != "INFO" &&
+      level != "WARN" && level != "ERROR" && level != "OFF") {
+    throw IllegalArgumentException("Configuration item " +
+        "`${ConfigConstants.LOGS_LEVEL}` must be one of `TRACE', `DEBUG', " +
+        "`INFO', `WARN', `ERROR', `OFF'.")
+  }
+
+  val xml = StringBuilder("<configuration>")
+
+  val mainEnabled = conf.getBoolean(ConfigConstants.LOGS_MAIN_ENABLED, false)
+  if (mainEnabled) {
+    val mainLogFile = conf.getString(ConfigConstants.LOGS_MAIN_LOGFILE, "steep.log")
+    val dot = mainLogFile.lastIndexOf('.')
+
+    val encoder = """
+      <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
+          <layout class="ch.qos.logback.classic.PatternLayout">
+              <pattern>%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n</pattern>
+          </layout>
+      </encoder>
+    """
+
+    val rolloverEnabled = conf.getBoolean(ConfigConstants.LOGS_MAIN_DAILYROLLOVER_ENABLED, true)
+    if (rolloverEnabled) {
+      val rolloverFilePattern = if (dot > 0) {
+        mainLogFile.substring(0, dot) + ".%d{yyyy-MM-dd}" + mainLogFile.substring(dot)
+      } else {
+        "$mainLogFile.%d{yyyy-MM-dd}"
+      }
+      val rolloverMaxDays = conf.getInteger(ConfigConstants.LOGS_MAIN_DAILYROLLOVER_MAXDAYS, 7)
+      val rolloverMaxSize = conf.getLong(ConfigConstants.LOGS_MAIN_DAILYROLLOVER_MAXSIZE, 104857600)
+
+      xml.append("""
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            $encoder
+            <file>${StringEscapeUtils.escapeXml11(mainLogFile)}</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <!-- daily rollover -->
+                <fileNamePattern>${StringEscapeUtils.escapeXml11(rolloverFilePattern)}</fileNamePattern>
+
+                <!-- keep n days' worth of history capped at a total size -->
+                <maxHistory>$rolloverMaxDays</maxHistory>
+                <totalSizeCap>$rolloverMaxSize</totalSizeCap>
+            </rollingPolicy>
+        </appender>
+      """)
+    } else {
+      xml.append("""
+        <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+            $encoder
+            <file>${StringEscapeUtils.escapeXml11(mainLogFile)}</file>
+        </appender>
+      """)
+    }
+  }
+
+  xml.append("""<root level="${StringEscapeUtils.escapeXml11(level)}">""")
+  if (mainEnabled) {
+    xml.append("""<appender-ref ref="FILE" />""")
+  }
+  xml.append("""
+      </root>
+    </configuration>
+  """)
+
+  val configurator = JoranConfigurator()
+  configurator.context = context
+  configurator.doConfigure(xml.toString().byteInputStream())
 }
 
 /**

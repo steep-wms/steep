@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
+    <!-- can be used to disable logback's debug output -->
+    <!-- <statusListener class="ch.qos.logback.core.status.NopStatusListener" /> -->
+
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
             <if condition='org.apache.commons.lang3.BooleanUtils.toBoolean(p("STEEP_LOGGING_ENABLEJSON"))'>
@@ -18,23 +21,6 @@
         </encoder>
     </appender>
 
-    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
-            <layout class="ch.qos.logback.classic.PatternLayout">
-                <pattern>%d{yyyy-MM-dd HH:mm:ss} - %msg%n</pattern>
-            </layout>
-        </encoder>
-        <file>steep.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <!-- daily rollover -->
-            <fileNamePattern>steep.%d{yyyy-MM-dd}.log</fileNamePattern>
-
-            <!-- keep 7 days' worth of history capped at 100MB total size -->
-            <maxHistory>7</maxHistory>
-            <totalSizeCap>100MB</totalSizeCap>
-        </rollingPolicy>
-    </appender>
-
     <logger name="org.mongodb" level="INFO" />
     <logger name="io.netty" level="INFO" />
     <logger name="org.apache.http" level="INFO" />
@@ -46,7 +32,6 @@
 
     <variable name="STEEP_LOG_LEVEL" value="${STEEP_LOG_LEVEL:-DEBUG}" />
     <root level="${STEEP_LOG_LEVEL}">
-        <appender-ref ref="FILE"/>
         <appender-ref ref="STDOUT"/>
     </root>
 </configuration>
