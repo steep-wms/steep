@@ -4,8 +4,8 @@ import java.util.Date
 plugins {
     application
     jacoco
-    kotlin("jvm") version "1.4.10"
-    id("com.github.ben-manes.versions") version "0.33.0"
+    kotlin("jvm") version "1.4.20"
+    id("com.github.ben-manes.versions") version "0.36.0"
 }
 
 buildscript {
@@ -34,7 +34,7 @@ dependencies {
     implementation("ch.qos.logback:logback-core:1.2.3")
     implementation("ch.qos.logback.contrib:logback-jackson:0.1.5")
     implementation("ch.qos.logback.contrib:logback-json-classic:0.1.5")
-    implementation("org.codehaus.janino:janino:3.0.6") // for conditionals in logback.xml
+    implementation("org.codehaus.janino:janino:3.1.2") // for conditionals in logback.xml
 
     implementation("io.vertx:vertx-core:$vertxVersion")
     implementation("io.vertx:vertx-hazelcast:$vertxVersion")
@@ -49,8 +49,8 @@ dependencies {
 
     implementation("commons-codec:commons-codec:1.15")
     implementation("commons-io:commons-io:2.8.0")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.11.3")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.11.3")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.0")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.12.0")
     implementation("com.github.zafarkhaja:java-semver:0.9.0")
     implementation("com.google.guava:guava:30.0-jre")
     implementation("com.zaxxer:HikariCP:3.4.5")
@@ -61,8 +61,8 @@ dependencies {
     implementation("org.apache.ant:ant:1.10.9")
     implementation("org.apache.commons:commons-lang3:3.11")
     implementation("org.apache.commons:commons-text:1.9")
-    implementation("org.flywaydb:flyway-core:5.2.4")
-    implementation("org.mongodb:mongodb-driver-reactivestreams:1.11.0")
+    implementation("org.flywaydb:flyway-core:7.3.1")
+    implementation("org.mongodb:mongodb-driver-reactivestreams:1.13.1")
     implementation("org.pacesys:openstack4j:3.2.0")
     implementation("org.postgresql:postgresql:42.2.18")
     implementation("org.yaml:snakeyaml:1.27")
@@ -71,15 +71,15 @@ dependencies {
     implementation(kotlin("scripting-jsr223"))
     implementation(kotlin("stdlib-jdk8"))
 
-    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:2.2.0")
-    testImplementation("io.mockk:mockk:1.10.0")
+    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.0.0")
+    testImplementation("io.mockk:mockk:1.10.3")
     testImplementation("io.vertx:vertx-junit5:$vertxVersion")
-    testImplementation("org.assertj:assertj-core:3.17.2")
+    testImplementation("org.assertj:assertj-core:3.18.1")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.7.0")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.7.0")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.7.0")
-    testImplementation("org.testcontainers:testcontainers:1.15.0-rc2")
-    testImplementation("org.testcontainers:postgresql:1.15.0-rc2")
+    testImplementation("org.testcontainers:testcontainers:1.15.0")
+    testImplementation("org.testcontainers:postgresql:1.15.0")
 }
 
 application {

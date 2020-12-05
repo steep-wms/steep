@@ -5,7 +5,7 @@ import com.mongodb.reactivestreams.client.MongoClients
 import de.flapdoodle.embed.mongo.MongodExecutable
 import de.flapdoodle.embed.mongo.MongodProcess
 import de.flapdoodle.embed.mongo.MongodStarter
-import de.flapdoodle.embed.mongo.config.MongodConfigBuilder
+import de.flapdoodle.embed.mongo.config.MongodConfig
 import de.flapdoodle.embed.mongo.distribution.Version
 import helper.dropAwait
 import io.vertx.core.Vertx
@@ -27,7 +27,7 @@ interface MongoDBTest {
 
     private lateinit var MONGOD_EXE: MongodExecutable
     private lateinit var MONGOD: MongodProcess
-    private val MONGOD_CONFIG = MongodConfigBuilder()
+    private val MONGOD_CONFIG = MongodConfig.builder()
         .version(Version.Main.PRODUCTION)
         .build()
     val CONNECTION_STRING = "mongodb://" +
