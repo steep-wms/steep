@@ -22,7 +22,7 @@
     "dayjs": "^1.9.1",
     "eslint-loader": "^4.0.2",
     "favicons": "^6.2.0",
-    "highlight.js": "^10.2.1",
+    "highlight.js": "^10.4.1",
     "imagemin-svgo": "^8.0.0",
     "json2yaml": "^1.1.0",
     "lodash": "^4.17.19",
