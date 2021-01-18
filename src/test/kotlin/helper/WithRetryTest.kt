@@ -6,6 +6,7 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import model.retry.RetryPolicy
@@ -44,7 +45,7 @@ class WithRetryTest {
    * A test object with one method that counts how many times it has been
    * called and at which points in time
    */
-  private class Obj(private val maxFails: Int) {
+  private class Obj(private val maxFails: Int, private val cancelAfter: Int? = null) {
     var attempts = 0
     var timestamps = mutableListOf<Long>()
 
@@ -52,8 +53,11 @@ class WithRetryTest {
       attempts++
       assertThat(attempt).isEqualTo(attempts)
       timestamps.add(System.currentTimeMillis())
+      if (cancelAfter != null && attempts == cancelAfter) {
+        throw CancellationException("Cancel $attempts")
+      }
       if (attempts <= maxFails) {
-        throw IllegalStateException("Attempt $attempts")
+        throw IllegalArgumentException("Attempt $attempts")
       }
     }
   }
@@ -88,7 +92,7 @@ class WithRetryTest {
         val o = Obj(1)
         val start = System.currentTimeMillis()
         assertThatThrownBy { withRetry(null, o::doSomething) }
-            .isInstanceOf(IllegalStateException::class.java)
+            .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessage("Attempt 1")
         val end = System.currentTimeMillis()
 
@@ -130,7 +134,7 @@ class WithRetryTest {
         val o = Obj(3)
         val start = System.currentTimeMillis()
         assertThatThrownBy { withRetry(RetryPolicy(maxAttempts = 3), o::doSomething) }
-            .isInstanceOf(IllegalStateException::class.java)
+            .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessage("Attempt 3")
         val end = System.currentTimeMillis()
 
@@ -293,7 +297,7 @@ class WithRetryTest {
         val start = System.currentTimeMillis()
         assertThatThrownBy { withRetry(RetryPolicy(maxAttempts = 4, delay = 100,
             exponentialBackoff = 2), o::doSomething) }
-            .isInstanceOf(IllegalStateException::class.java)
+            .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessage("Attempt 4")
         val end = System.currentTimeMillis()
 
@@ -303,6 +307,53 @@ class WithRetryTest {
         assertThat(o.timestamps[2]).isBetween(o.timestamps[1] + 200, o.timestamps[1] + 210)
         assertThat(o.timestamps[3]).isBetween(o.timestamps[2] + 400, o.timestamps[2] + 410)
         assertThat(end).isLessThan(o.timestamps.last() + 50)
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if a job can be cancelled without triggering another immediate retry
+   */
+  @Test
+  fun cancel(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      verifyUntilOK(ctx) {
+        val o = Obj(3, 2)
+        val start = System.currentTimeMillis()
+        assertThatThrownBy { withRetry(RetryPolicy(maxAttempts = 3), o::doSomething) }
+            .isInstanceOf(CancellationException::class.java)
+            .hasMessage("Cancel 2")
+        val end = System.currentTimeMillis()
+
+        assertThat(o.attempts).isEqualTo(2)
+        assertThat(o.timestamps).allSatisfy { assertThat(it).isLessThan(start + 10) }
+        // operation should be cancelled immediately
+        assertThat(end).isLessThan(o.timestamps.last() + 10)
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if a job can be cancelled without triggering another delayed retry
+   */
+  @Test
+  fun cancelDelay(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      verifyUntilOK(ctx) {
+        val o = Obj(3, 2)
+        val start = System.currentTimeMillis()
+        assertThatThrownBy { withRetry(RetryPolicy(maxAttempts = 3, delay = 100), o::doSomething) }
+            .isInstanceOf(CancellationException::class.java)
+            .hasMessage("Cancel 2")
+        val end = System.currentTimeMillis()
+
+        assertThat(o.attempts).isEqualTo(2)
+        assertThat(o.timestamps[0]).isLessThan(start + 10)
+        assertThat(o.timestamps[1]).isBetween(o.timestamps[0] + 100, o.timestamps[0] + 110)
+        // there shouldn't be any additional delay
+        assertThat(end).isLessThan(o.timestamps.last() + 10)
       }
       ctx.completeNow()
     }

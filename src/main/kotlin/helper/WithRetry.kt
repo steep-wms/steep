@@ -3,6 +3,7 @@ package helper
 import kotlinx.coroutines.delay
 import model.retry.RetryPolicy
 import org.slf4j.LoggerFactory
+import java.util.concurrent.CancellationException
 import kotlin.math.min
 import kotlin.math.pow
 
@@ -41,6 +42,11 @@ suspend fun <R> withRetry(policy: RetryPolicy?, block: suspend (attempt: Int) ->
       }
 
       if (lastThrowable != null) {
+        if (lastThrowable is CancellationException) {
+          // Job has been cancelled. Stop without retrying.
+          break
+        }
+
         log.error("$failedMsg Retrying after $actualDelay milliseconds.")
         log.trace("Cause", lastThrowable)
       }
@@ -48,6 +54,11 @@ suspend fun <R> withRetry(policy: RetryPolicy?, block: suspend (attempt: Int) ->
       delay(actualDelay)
     } else {
       if (lastThrowable != null) {
+        if (lastThrowable is CancellationException) {
+          // Job has been cancelled. Stop without retrying.
+          break
+        }
+
         log.error("$failedMsg Retrying now ...")
         log.trace("Cause", lastThrowable)
       }
