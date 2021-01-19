@@ -8,7 +8,11 @@ import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import model.retry.RetryPolicy
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -339,7 +343,7 @@ class WithRetryTest {
    * Test if a job can be cancelled without triggering another delayed retry
    */
   @Test
-  fun cancelDelay(vertx: Vertx, ctx: VertxTestContext) {
+  fun cancelWithoutRetry(vertx: Vertx, ctx: VertxTestContext) {
     GlobalScope.launch(vertx.dispatcher()) {
       verifyUntilOK(ctx) {
         val o = Obj(3, 2)
@@ -354,6 +358,40 @@ class WithRetryTest {
         assertThat(o.timestamps[1]).isBetween(o.timestamps[0] + 100, o.timestamps[0] + 110)
         // there shouldn't be any additional delay
         assertThat(end).isLessThan(o.timestamps.last() + 10)
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if a retry delay can be cancelled
+   */
+  @Test
+  fun cancelRetryDelay(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      val expectedMsg = "CANCELLED!"
+      verifyUntilOK(ctx) {
+        val coroutineCtx = coroutineContext + SupervisorJob()
+        launch {
+          // asynchronously cancel the retry delay after 100ms
+          delay(100)
+          coroutineCtx.cancel(CancellationException(expectedMsg))
+        }
+
+        val o = Obj(3)
+        val start = System.currentTimeMillis()
+        assertThatThrownBy {
+          withContext(coroutineCtx) {
+            // use very long delay that would definitely fail the test
+            withRetry(RetryPolicy(maxAttempts = 3, delay = 60000), o::doSomething)
+          }
+        }.isInstanceOf(CancellationException::class.java).hasMessage(expectedMsg)
+        val end = System.currentTimeMillis()
+
+        assertThat(o.attempts).isEqualTo(1)
+        assertThat(o.timestamps[0]).isLessThan(start + 10)
+        // there shouldn't be no more than about 100ms delay
+        assertThat(end).isLessThan(o.timestamps.last() + 120)
       }
       ctx.completeNow()
     }

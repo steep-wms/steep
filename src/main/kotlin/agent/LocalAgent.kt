@@ -17,13 +17,12 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import model.metadata.Service
 import model.plugins.call
 import model.processchain.Argument
@@ -134,19 +133,22 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
       }
 
       // run executables and track progress
-      for ((index, exec) in processChain.executables.withIndex()) {
-        withRetry(exec.retries) { attempt ->
-          if (attempt > 1) {
-            gaugeRetries.labels(exec.serviceId ?: "<unknown>").inc()
+      // use `coroutineContext` so we are able to [cancel] the execution
+      withContext(coroutineContext) {
+        for ((index, exec) in processChain.executables.withIndex()) {
+          withRetry(exec.retries) { attempt ->
+            if (attempt > 1) {
+              gaugeRetries.labels(exec.serviceId ?: "<unknown>").inc()
+            }
+            execute(exec, executor) { p ->
+              val step = 1.0 / processChain.executables.size
+              setProgress(step * index + step * p)
+            }
           }
-          execute(exec, executor) { p ->
-            val step = 1.0 / processChain.executables.size
-            setProgress(step * index + step * p)
-          }
-        }
 
-        if ((index + 1) < processChain.executables.size || progress != null) {
-          setProgress((index + 1).toDouble() / processChain.executables.size)
+          if ((index + 1) < processChain.executables.size || progress != null) {
+            setProgress((index + 1).toDouble() / processChain.executables.size)
+          }
         }
       }
     } finally {
@@ -183,33 +185,32 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
     }
 
     if (exec.runtime == Service.RUNTIME_DOCKER) {
-      interruptableAsync(executor) {
+      interruptable(executor) {
         dockerRuntime.execute(exec, collector)
-      }.await()
+      }
     } else if (exec.runtime == Service.RUNTIME_OTHER) {
-      interruptableAsync(executor) {
+      interruptable(executor) {
         otherRuntime.execute(exec, collector)
-      }.await()
+      }
     } else {
       val r = pluginRegistry.findRuntime(exec.runtime) ?:
           throw IllegalStateException("Unknown runtime: `${exec.runtime}'")
       if (r.compiledFunction.isSuspend) {
         r.compiledFunction.callSuspend(exec, outputLinesToCollect, vertx)
       } else {
-        interruptableAsync(executor) {
+        interruptable(executor) {
           r.compiledFunction.call(exec, outputLinesToCollect, vertx)
-        }.await()
+        }
       }
     }
   }
 
   /**
-   * Executes the given [block] with the given [executor] in the
-   * [coroutineContext]. Handles cancellation requests and interrupts the
-   * thread that executes the [block].
+   * Executes the given [block] with the given [executor]. Handles cancellation
+   * requests and interrupts the thread that executes the [block].
    */
-  private fun <R> interruptableAsync(executor: ExecutorService, block: () -> R): Deferred<R> = async {
-    suspendCancellableCoroutine { cont ->
+  private suspend fun <R> interruptable(executor: ExecutorService, block: () -> R): R {
+    return suspendCancellableCoroutine { cont ->
       val f = executor.submit {
         try {
           cont.resume(block())

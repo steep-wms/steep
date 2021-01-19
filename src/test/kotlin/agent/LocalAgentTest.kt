@@ -114,6 +114,51 @@ class LocalAgentTest : AgentTest() {
   }
 
   /**
+   * Test if we can cancel a process chain even if we are currently waiting
+   * for a retry
+   */
+  @Test
+  fun cancelRetryDelay(vertx: Vertx, ctx: VertxTestContext) {
+    mockkConstructor(OtherRuntime::class)
+    every { anyConstructed<OtherRuntime>().execute(any(), any() as OutputCollector) } throws
+        Shell.ExecutionException("", "", 1)
+
+    val processChain = ProcessChain(executables = listOf(
+        Executable(path = "ls", arguments = emptyList(), retries = RetryPolicy(
+            maxAttempts = 4,
+            // use very long delay that would definitely fail the test
+            delay = 600000
+        ))
+    ))
+
+    val agent = createAgent(vertx)
+
+    // cancel process chain after 200ms (while [agent.execute] waits for the next attempt)
+    vertx.setTimer(200) {
+      vertx.eventBus().send(LOCAL_AGENT_ADDRESS_PREFIX + processChain.id, json {
+        obj(
+            "action" to "cancel"
+        )
+      })
+    }
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        // execute process chain
+        assertThatThrownBy { agent.execute(processChain) }
+            .isInstanceOf(CancellationException::class.java)
+
+        // execution should have been tried exactly once
+        verify(exactly = 1) {
+          anyConstructed<OtherRuntime>().execute(any(), any() as OutputCollector)
+        }
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
    * Test if we can get the current estimated progress
    */
   @Test
