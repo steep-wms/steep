@@ -237,7 +237,7 @@ fun configureLogging(conf: JsonObject) {
 
   val mainEnabled = conf.getBoolean(ConfigConstants.LOGS_MAIN_ENABLED, false)
   if (mainEnabled) {
-    val mainLogFile = conf.getString(ConfigConstants.LOGS_MAIN_LOGFILE, "steep.log")
+    val mainLogFile = conf.getString(ConfigConstants.LOGS_MAIN_LOGFILE, "logs/steep.log")
     val dot = mainLogFile.lastIndexOf('.')
 
     val encoder = """
@@ -280,6 +280,38 @@ fun configureLogging(conf: JsonObject) {
         </appender>
       """)
     }
+  }
+
+  val processChainsEnabled = conf.getBoolean(ConfigConstants.LOGS_PROCESSCHAINS_ENABLED, false)
+  if (processChainsEnabled) {
+    val path = conf.getString(ConfigConstants.LOGS_PROCESSCHAINS_PATH, "logs/processchains")
+    val groupByPrefix = conf.getInteger(ConfigConstants.LOGS_PROCESSCHAINS_GROUPBYPREFIX, 0)
+    xml.append("""
+      <appender name="PROCESSCHAIN" class="ch.qos.logback.classic.sift.SiftingAppender">
+        <discriminator class="helper.LoggerNameBasedDiscriminator" />
+        <sift>
+            <define name="processChainLogPath" class="helper.ProcessChainLogPathPropertyDefiner">
+                <loggerName>${"$"}{loggerName}</loggerName>
+                <path>${path}</path>
+                <groupByPrefix>${groupByPrefix}</groupByPrefix>
+            </define>
+            <appender name="PROCESSCHAIN-${"$"}{loggerName}" class="ch.qos.logback.core.FileAppender">
+                <file>${"$"}{processChainLogPath}</file>
+                <layout class="ch.qos.logback.classic.PatternLayout">
+                    <pattern>%d{yyyy-MM-dd HH:mm:ss} - %msg%n</pattern>
+                </layout>
+            </appender>
+        </sift>
+    </appender>
+    """)
+  }
+
+  if (processChainsEnabled) {
+    xml.append("""
+      <logger name="agent.LocalAgent.processChain" level="INFO" additivity="false">
+          <appender-ref ref="PROCESSCHAIN" />
+      </logger>
+    """)
   }
 
   xml.append("""<root level="${StringEscapeUtils.escapeXml11(level)}">""")

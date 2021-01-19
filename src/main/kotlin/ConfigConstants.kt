@@ -365,7 +365,7 @@ object ConfigConstants {
   const val LOGS_MAIN_ENABLED = "steep.logs.main.enabled"
 
   /**
-   * The name of the main log file. The default is `steep.log`.
+   * The name of the main log file. The default is `logs/steep.log`.
    */
   const val LOGS_MAIN_LOGFILE = "steep.logs.main.logFile"
 
@@ -388,6 +388,38 @@ object ConfigConstants {
    * when this size is reached. The default value is `104857600` (= 100 MB)
    */
   const val LOGS_MAIN_DAILYROLLOVER_MAXSIZE = "steep.logs.main.dailyRollover.maxSize"
+
+  /**
+   * `true` if the output of process chains should be logged separately to disk.
+   * The output will still also appear on the console and in the main log file
+   * (if enabled), but there, it's not separated by process chain. This feature
+   * is useful if you want to record the output of individual process chains
+   * and make it available through the `/logs/processchains` HTTP endpoint.
+   * The default value is `false`.
+   */
+  const val LOGS_PROCESSCHAINS_ENABLED = "steep.logs.processChains.enabled"
+
+  /**
+   * The path where process chain logs will be stored. Individual files will
+   * will be named after the ID of the corresponding process chain (e.g.
+   * `aprsqz6d5f4aiwsdzbsq.log`). The default value is `logs/processchains`.
+   */
+  const val LOGS_PROCESSCHAINS_PATH = "steep.logs.processChains.path"
+
+  /**
+   * Set this configuration item to a value greater than `0` to group process
+   * chain log files by prefix in subdirectories under the directory configured
+   * through [LOGS_PROCESSCHAINS_PATH]. For example, if this configuration
+   * item is set to `3`, Steep will create a separate subdirectory for all
+   * process chains whose ID starts with the same three characters. The name of
+   * this subdirectory will be these three characters. The process chains
+   * `apomaokjbk3dmqovemwa` and `apomaokjbk3dmqovemsq` will be put into a
+   * subdirectory called `apo`, and the process chain `ao344a53oyoqwhdelmna`
+   * will be put into `ao3`. Note that in practice, `3` is a reasonable value,
+   * which will create a new directory about every day. A value of `0` disables
+   * grouping. The default value is `0`.
+   */
+  const val LOGS_PROCESSCHAINS_GROUPBYPREFIX = "steep.logs.processChains.groupByPrefix"
 
   /**
    * Get all configuration keys from this class

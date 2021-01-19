@@ -18,7 +18,7 @@ class ShellTest {
    */
   @Test
   fun echoOk() {
-    val collector = OutputCollector()
+    val collector = DefaultOutputCollector()
     Shell.execute(listOf("echo", "ok"), collector)
     assertThat(collector.output()).isEqualTo("ok")
   }

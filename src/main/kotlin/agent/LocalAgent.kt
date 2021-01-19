@@ -5,8 +5,9 @@ import AddressConstants.PROCESSCHAIN_PROGRESS_CHANGED
 import ConfigConstants
 import com.google.common.cache.CacheBuilder
 import db.PluginRegistryFactory
+import helper.DefaultOutputCollector
 import helper.FileSystemUtils.readRecursive
-import helper.OutputCollector
+import helper.LoggingOutputCollector
 import helper.UniqueID
 import helper.withRetry
 import io.prometheus.client.Gauge
@@ -29,6 +30,7 @@ import model.processchain.Argument
 import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import model.processchain.ProcessChain
+import org.slf4j.LoggerFactory
 import runtime.DockerRuntime
 import runtime.OtherRuntime
 import java.io.File
@@ -71,6 +73,12 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
         .help("The total number of times an executable with a given " +
             "serviceId had to be retried")
         .register()
+
+    /**
+     * Prefix of the name of the logger that logs the output of process chains.
+     * The process chain ID will be appended.
+     */
+    val PROCESSCHAIN_LOG_PREFIX = "${LocalAgent::class.java.name}.processChain."
   }
 
   override val id: String = UniqueID.next()
@@ -129,7 +137,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
     try {
       // create all required output directories
       for (exec in mkdirs) {
-        execute(exec, executor)
+        execute(exec, processChain.id, executor)
       }
 
       // run executables and track progress
@@ -140,7 +148,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
             if (attempt > 1) {
               gaugeRetries.labels(exec.serviceId ?: "<unknown>").inc()
             }
-            execute(exec, executor) { p ->
+            execute(exec, processChain.id, executor) { p ->
               val step = 1.0 / processChain.executables.size
               setProgress(step * index + step * p)
             }
@@ -176,13 +184,14 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
     coroutineContext.cancel()
   }
 
-  private suspend fun execute(exec: Executable, executor: ExecutorService,
-      progressUpdater: ((Double) -> Unit)? = null) {
-    val collector = if (progressUpdater != null) {
+  private suspend fun execute(exec: Executable, processChainId: String,
+      executor: ExecutorService, progressUpdater: ((Double) -> Unit)? = null) {
+    val logger = LoggerFactory.getLogger("${PROCESSCHAIN_LOG_PREFIX}${processChainId}")
+    val collector = LoggingOutputCollector(if (progressUpdater != null) {
       ProgressReportingOutputCollector(outputLinesToCollect, exec, progressUpdater)
     } else {
-      OutputCollector(outputLinesToCollect)
-    }
+      DefaultOutputCollector(outputLinesToCollect)
+    }, logger)
 
     if (exec.runtime == Service.RUNTIME_DOCKER) {
       interruptable(executor) {
@@ -271,7 +280,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
 
   private inner class ProgressReportingOutputCollector(maxLines: Int,
       private val exec: Executable, private val progressUpdater: (Double) -> Unit) :
-      OutputCollector(maxLines) {
+      DefaultOutputCollector(maxLines) {
     private val progressEstimator = exec.serviceId?.let {
       pluginRegistry.findProgressEstimator(it) }
 

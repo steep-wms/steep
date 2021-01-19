@@ -1,37 +1,24 @@
 package helper
 
-import java.util.LinkedList
-
 /**
- * Collects lines from the output of a command called by [Shell] up to a
- * certain maximum number
- * @param maxLines the maximum number of lines to collect
+ * Collects lines from the output of a command called by [Shell]
  * @author Michel Kraemer
  */
-open class OutputCollector(private val maxLines: Int = 100) {
-  private val lines = LinkedList<String>()
-
+interface OutputCollector {
   /**
    * Collects a new [line]. Discards the oldest one if the maximum number of
    * lines has been reached.
    */
-  open fun collect(line: String) {
-    lines.add(line)
-    if (lines.size > maxLines) {
-      lines.removeFirst()
-    }
-  }
+  fun collect(line: String)
 
   /**
    * Return the collected lines
    */
-  fun lines(): List<String> {
-    return lines
-  }
+  fun lines(): List<String>
 
   /**
    * Return all collected lines as a single string (i.e. the lines joined by
    * the line feed character)
    */
-  fun output(): String = lines().joinToString("\n")
+  fun output(): String
 }

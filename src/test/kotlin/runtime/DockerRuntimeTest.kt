@@ -1,7 +1,7 @@
 package runtime
 
 import ConfigConstants
-import helper.OutputCollector
+import helper.DefaultOutputCollector
 import helper.Shell
 import helper.UniqueID
 import io.vertx.core.Vertx
@@ -82,7 +82,7 @@ class DockerRuntimeTest {
     val runtime = DockerRuntime(config)
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.verify {
-        val collector = OutputCollector()
+        val collector = DefaultOutputCollector()
         runtime.execute(exec, collector)
         assertThat(collector.output()).isEqualTo(EXPECTED)
       }
@@ -114,7 +114,7 @@ class DockerRuntimeTest {
     val runtime = DockerRuntime(config)
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.verify {
-        val collector = OutputCollector()
+        val collector = DefaultOutputCollector()
         runtime.execute(exec, collector)
         assertThat(collector.output()).isEqualTo(EXPECTED)
       }
@@ -154,7 +154,7 @@ class DockerRuntimeTest {
     val runtime = DockerRuntime(config)
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.verify {
-        val collector = OutputCollector()
+        val collector = DefaultOutputCollector()
         runtime.execute(exec, collector)
         assertThat(collector.output()).isEqualTo(EXPECTED)
       }
@@ -190,7 +190,7 @@ class DockerRuntimeTest {
     val runtime = DockerRuntime(config)
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.verify {
-        val collector = OutputCollector()
+        val collector = DefaultOutputCollector()
         runtime.execute(exec, collector)
         assertThat(collector.output()).isEqualTo(EXPECTED)
       }
@@ -228,7 +228,7 @@ class DockerRuntimeTest {
     val runtime = DockerRuntime(config)
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.verify {
-        val collector = OutputCollector()
+        val collector = DefaultOutputCollector()
         runtime.execute(exec, collector)
         assertThat(collector.output()).isEqualTo(EXPECTED)
       }
@@ -263,7 +263,7 @@ class DockerRuntimeTest {
     val runtime = DockerRuntime(config)
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.verify {
-        val collector = OutputCollector()
+        val collector = DefaultOutputCollector()
         runtime.execute(exec, collector)
         assertThat(collector.output()).isEqualTo(EXPECTED)
       }

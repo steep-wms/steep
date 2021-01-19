@@ -20,7 +20,7 @@ object Shell {
    * @param logFailedExitCode `true` if a failed process with a non-zero exit
    * code should be logged
    */
-  fun execute(command: List<String>, outputCollector: OutputCollector = OutputCollector(),
+  fun execute(command: List<String>, outputCollector: OutputCollector = DefaultOutputCollector(),
       logFailedExitCode: Boolean = true) {
     return execute(command, File(System.getProperty("user.dir")),
         outputCollector, logFailedExitCode)
@@ -36,7 +36,7 @@ object Shell {
    * @throws ExecutionException if the command failed
    */
   private fun execute(command: List<String>, workingDir: File,
-      outputCollector: OutputCollector = OutputCollector(),
+      outputCollector: OutputCollector = DefaultOutputCollector(),
       logFailedExitCode: Boolean = true) {
     val joinedCommand = command.joinToString(" ")
     log.info(joinedCommand)

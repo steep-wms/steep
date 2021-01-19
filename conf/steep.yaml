@@ -106,11 +106,15 @@ steep:
     level: DEBUG
     main:
       enabled: false
-      logFile: steep.log
+      logFile: logs/steep.log
       dailyRollover:
         enabled: true
         maxDays: 7
         maxSize: 104857600  # 100 MB
+    processChains:
+      enabled: false
+      path: logs/processchains
+      groupByPrefix: 0
 
 setups:
   default:
