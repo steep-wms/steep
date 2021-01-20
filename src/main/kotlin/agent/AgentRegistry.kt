@@ -19,6 +19,12 @@ interface AgentRegistry {
   suspend fun getAgentIds(): Set<String>
 
   /**
+   * Same as [getAgentIds] but filtered by primary agents (i.e. the first agent
+   * in every Steep instance)
+   */
+  suspend fun getPrimaryAgentIds(): Set<String>
+
+  /**
    * Try to allocate the agent with the given [address]. The method returns
    * the allocated agent or `null` if the agent rejected the allocation request
    * or was not reachable at all.

@@ -1,26 +1,35 @@
 import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import AddressConstants.REMOTE_AGENT_BUSY
 import AddressConstants.REMOTE_AGENT_IDLE
+import AddressConstants.REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
 import agent.LocalAgent
 import agent.RemoteAgentRegistry
 import db.SubmissionRegistry
 import helper.JsonUtils
 import helper.Shell
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.Message
 import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
+import io.vertx.core.streams.ReadStream
 import io.vertx.kotlin.core.eventbus.requestAwait
+import io.vertx.kotlin.core.file.closeAwait
+import io.vertx.kotlin.core.file.openAwait
+import io.vertx.kotlin.core.file.openOptionsOf
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.kotlin.coroutines.toChannel
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.processchain.ProcessChain
 import org.slf4j.LoggerFactory
+import java.nio.file.NoSuchFileException
+import java.nio.file.Paths
 import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.CancellationException
@@ -67,6 +76,9 @@ class Steep : CoroutineVerticle() {
         throw IllegalStateException("Missing configuration item " +
             "`${ConfigConstants.AGENT_AUTO_SHUTDOWN_TIMEOUT}'")
 
+    // check if we are the primary agent of this JVM
+    val isPrimary = !agentId.matches(""".+\[\d+]""".toRegex())
+
     // consume process chains and run a local agent for each of them
     val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId
     vertx.eventBus().consumer(address, this::onAgentMessage)
@@ -75,6 +87,12 @@ class Steep : CoroutineVerticle() {
     capabilities = config.getJsonArray(ConfigConstants.AGENT_CAPABILTIIES,
         JsonArray()).map { it as String }.toSet()
     RemoteAgentRegistry(vertx).register(agentId)
+
+    // register consumer to provide process chain logs if we are the primary agent
+    if (isPrimary) {
+      vertx.eventBus().consumer(address + REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX,
+          this::onProcessChainLogs)
+    }
 
     // setup automatic shutdown
     if (autoShutdownTimeout.toMinutes() > 0) {
@@ -118,6 +136,90 @@ class Steep : CoroutineVerticle() {
       }
     } catch (e: Throwable) {
       msg.fail(400, e.message)
+    }
+  }
+
+  /**
+   * Handle message to get process chain logs
+   */
+  private fun onProcessChainLogs(msg: Message<JsonObject>) {
+    try {
+      val jsonObj: JsonObject = msg.body()
+      when (val action = jsonObj.getString("action")) {
+        "fetch" -> onFetchProcessChainLogs(msg)
+        else -> throw NoStackTraceThrowable("Unknown action `$action'")
+      }
+    } catch (e: Throwable) {
+      msg.fail(400, e.message)
+    }
+  }
+
+  /**
+   * Fetch a certain process chain log
+   */
+  private fun onFetchProcessChainLogs(msg: Message<JsonObject>) {
+    val jsonObj: JsonObject = msg.body()
+
+    // get process chain ID
+    val id = jsonObj.getString("id")
+    if (id == null) {
+      msg.fail(400, "Missing process chain ID")
+      return
+    }
+
+    // get address where we need to send the data to
+    val streamAddress = jsonObj.getString("streamAddress")
+
+    // create log file path
+    val path = config.getString(ConfigConstants.LOGS_PROCESSCHAINS_PATH)
+    if (path == null) {
+      msg.fail(404, "Path to process chain logs not configured")
+      return
+    }
+    val groupByPrefix = config.getInteger(ConfigConstants.LOGS_PROCESSCHAINS_GROUPBYPREFIX, 0)
+
+    val filename = "$id.log"
+    val filepath = if (groupByPrefix > 0) {
+      val prefix = id.substring(0, groupByPrefix)
+      Paths.get(path, prefix, filename).toString()
+    } else {
+      Paths.get(path, filename).toString()
+    }
+
+    launch {
+      // try to open the log file
+      val fs = vertx.fileSystem()
+      val file = try {
+        fs.openAwait(filepath, openOptionsOf(read = true,
+            write = false, create = false))
+      } catch (t: Throwable) {
+        if (t.cause is NoSuchFileException) {
+          msg.reply(false)
+        } else {
+          log.error("Could not read process chain log file `$filepath'", t)
+          msg.fail(500, t.message)
+        }
+        return@launch
+      }
+
+      // We were able to open the file. Respond immediately and let the
+      // client know that we will send the file.
+      msg.reply(true)
+
+      // send the file to the stream address
+      val channel = (file as ReadStream<Buffer>).toChannel(vertx)
+      for (buf in channel) {
+        val chunk = json {
+          obj(
+              "data" to buf.toString()
+          )
+        }
+        vertx.eventBus().requestAwait<Boolean>(streamAddress, chunk)
+      }
+
+      // send end marker and close file
+      vertx.eventBus().requestAwait<Boolean>(streamAddress, JsonObject())
+      file.closeAwait()
     }
   }
 

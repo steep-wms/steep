@@ -62,6 +62,13 @@ object AddressConstants {
   const val REMOTE_AGENT_ADDRESS_PREFIX = "steep.remoteAgentRegistry.agent."
 
   /**
+   * Suffix for eventbus addresses of [agent.RemoteAgent]s that are able to
+   * provide process chain logs. The actual address is
+   * [REMOTE_AGENT_ADDRESS_PREFIX] + agentId + [REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX].
+   */
+  const val REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX = ".logs.processchains"
+
+  /**
    * Prefix for addresses of local agents. Each local agent listens to one
    * of these addresses while it executes a process chain. The actual
    * address is [LOCAL_AGENT_ADDRESS_PREFIX] + ID of the process chain.

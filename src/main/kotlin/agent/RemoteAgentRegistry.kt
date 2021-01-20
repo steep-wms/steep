@@ -193,6 +193,9 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     return awaitResult { agents.keys(it) }
   }
 
+  override suspend fun getPrimaryAgentIds(): Set<String> =
+      getAgentIds().filter { !it.matches(""".+\[\d+]""".toRegex()) }.toSet()
+
   /**
    * Get list of agent IDs and their lastSequence number (sorted by
    * lastSequence number)
