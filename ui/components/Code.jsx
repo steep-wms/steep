@@ -4,9 +4,11 @@ import classNames from "classnames"
 
 import hljs from "highlight.js/lib/core"
 import json from "highlight.js/lib/languages/json"
+import log from "./lib/language-log"
 import text from "highlight.js/lib/languages/plaintext"
 import yaml from "highlight.js/lib/languages/yaml"
 hljs.registerLanguage("json", json)
+hljs.registerLanguage("log", log)
 hljs.registerLanguage("text", text)
 hljs.registerLanguage("yaml", yaml)
 
