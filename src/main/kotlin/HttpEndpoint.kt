@@ -46,9 +46,11 @@ import helper.JsonUtils
 import helper.UniqueID
 import helper.WorkflowValidator
 import helper.YamlUtils
+import io.netty.handler.codec.http.HttpHeaderNames
 import io.prometheus.client.hotspot.DefaultExports
 import io.prometheus.client.vertx.MetricsHandler
 import io.vertx.core.buffer.Buffer
+import io.vertx.core.eventbus.MessageConsumer
 import io.vertx.core.eventbus.ReplyException
 import io.vertx.core.eventbus.ReplyFailure
 import io.vertx.core.http.HttpMethod
@@ -158,6 +160,9 @@ class HttpEndpoint : CoroutineVerticle() {
         .produces("application/json")
         .produces("text/html")
         .handler(this::onGetAgentById)
+
+    router.head("/logs/processchains/:id/?")
+        .handler { ctx -> onGetProcessChainLogById(ctx, true) }
 
     router.get("/logs/processchains/:id/?")
         .produces("text/plain")
@@ -542,7 +547,7 @@ class HttpEndpoint : CoroutineVerticle() {
   /**
    * Get contents of a process chain log file by process chain ID
    */
-  private fun onGetProcessChainLogById(ctx: RoutingContext) {
+  private fun onGetProcessChainLogById(ctx: RoutingContext, headersOnly: Boolean = false) {
     launch {
       val id = ctx.pathParam("id")
 
@@ -550,90 +555,115 @@ class HttpEndpoint : CoroutineVerticle() {
       try {
         submissionRegistry.getProcessChainStatus(id)
       } catch (e: NoSuchElementException) {
-        renderError(ctx, 404, "There is no process chain with ID `$id'")
+        renderError(ctx, 404, if (headersOnly) null else "There is no process " +
+            "chain with ID `$id'")
         return@launch
       }
 
       // register temporary consumer to receive log data
+      var consumer: MessageConsumer<JsonObject>? = null
+      var timeoutTimerId: Long? = null
       val streamAddress = REMOTE_AGENT_ADDRESS_PREFIX + "_" +
           REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX + ".stream." + UniqueID.next()
-      var receivedAny = false
-      val consumer = vertx.eventBus().consumer<JsonObject>(streamAddress)
+      if (!headersOnly) {
+        var receivedAny = false
+        consumer = vertx.eventBus().consumer(streamAddress)
 
-      // create periodic timer that that unregisters the consumer on timeout
-      val timeoutTimerId = vertx.setPeriodic(1000L * 60) { timerId ->
-        if (receivedAny) {
-          receivedAny = false
-          return@setPeriodic
+        // create periodic timer that that unregisters the consumer on timeout
+        timeoutTimerId = vertx.setPeriodic(1000L * 60) { timerId ->
+          if (receivedAny) {
+            receivedAny = false
+            return@setPeriodic
+          }
+          if (consumer.isRegistered) {
+            log.warn("Unregistering stream consumer after timeout")
+            consumer.unregister()
+          }
+          vertx.cancelTimer(timerId)
         }
-        if (consumer.isRegistered) {
-          log.warn("Unregistering stream consumer after timeout")
-          consumer.unregister()
+
+        // forward log data received by the consumer to HTTP client
+        consumer.handler { msg ->
+          receivedAny = true
+          val resp = ctx.response()
+          val obj = msg.body()
+          val data = obj.getString("data")
+          if (data != null) {
+            resp.write(data)
+          } else {
+            resp.end()
+            vertx.cancelTimer(timeoutTimerId)
+            consumer.unregister()
+          }
+          msg.reply(null)
         }
-        vertx.cancelTimer(timerId)
+
+        // Prepare response. Do not set content-length because it might change
+        // while we are streaming the file.
+        ctx.response().putHeader("content-type", "text/plain")
+        ctx.response().isChunked = true
       }
-
-      // forward log data received by the consumer to HTTP client
-      consumer.handler { msg ->
-        receivedAny = true
-        val resp = ctx.response()
-        val obj = msg.body()
-        val data = obj.getString("data")
-        if (data != null) {
-          resp.write(data)
-        } else {
-          resp.end()
-          vertx.cancelTimer(timeoutTimerId)
-          consumer.unregister()
-        }
-        msg.reply(null)
-      }
-
-      // prepare response
-      ctx.response().putHeader("content-type", "text/plain")
-      ctx.response().isChunked = true
 
       // ask all agents to send us the log data if they have it
       val agentIds = agentRegistry.getPrimaryAgentIds()
-      var anyFound = false
+      var foundSize: Long? = null
       for (agentId in agentIds) {
-        val msg = json {
-          obj(
-              "action" to "fetch",
-              "id" to id,
-              "streamAddress" to streamAddress
-          )
+        val msg = if (headersOnly) {
+          json {
+            obj(
+                "action" to "exists",
+                "id" to id
+            )
+          }
+        } else {
+          json {
+            obj(
+                "action" to "fetch",
+                "id" to id,
+                "streamAddress" to streamAddress
+            )
+          }
         }
 
-        val found = try {
-          vertx.eventBus().requestAwait<Boolean>(REMOTE_AGENT_ADDRESS_PREFIX +
+        val size = try {
+          vertx.eventBus().requestAwait<Long>(REMOTE_AGENT_ADDRESS_PREFIX +
               agentId + REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX, msg).body()
         } catch (t: Throwable) {
           if (t is ReplyException && t.failureCode() == 404) {
             // agent does not have the log file
-            false
+            null
           } else {
             log.error("Could not fetch logs from remote agent `$agentId'", t)
-            false
+            null
           }
         }
 
-        if (found) {
+        if (size != null) {
           // no need to ask another agent
-          anyFound = true
+          foundSize = size
           break
         }
       }
 
-      if (!anyFound) {
-        // no agent has the log file!
-        vertx.cancelTimer(timeoutTimerId)
-        consumer.unregister()
-        renderError(ctx, 404, "Log file of process chain `$id' could not be " +
-            "found. Possible reasons: (1) the process chain has not started " +
-            "yet, (2) the agent that has executed the process chain is not " +
-            "available anymore, (3) process chain logging is disabled in " +
-            "Steep's configuration")
+      if (!headersOnly) {
+        if (foundSize == null) {
+          // no agent has the log file!
+          timeoutTimerId?.let { vertx.cancelTimer(it) }
+          consumer?.unregister()
+          renderError(ctx, 404, "Log file of process chain `$id' could not be " +
+              "found. Possible reasons: (1) the process chain has not started " +
+              "yet, (2) the agent that has executed the process chain is not " +
+              "available anymore, (3) process chain logging is disabled in " +
+              "Steep's configuration")
+        }
+      } else {
+        if (foundSize == null) {
+          renderError(ctx, 404)
+        } else {
+          ctx.response()
+              .putHeader(HttpHeaderNames.CONTENT_LENGTH, foundSize.toString())
+              .end()
+        }
       }
     }
   }

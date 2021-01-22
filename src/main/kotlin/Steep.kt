@@ -17,6 +17,7 @@ import io.vertx.kotlin.core.eventbus.requestAwait
 import io.vertx.kotlin.core.file.closeAwait
 import io.vertx.kotlin.core.file.openAwait
 import io.vertx.kotlin.core.file.openOptionsOf
+import io.vertx.kotlin.core.file.propsAwait
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.core.json.json
@@ -146,6 +147,7 @@ class Steep : CoroutineVerticle() {
     try {
       val jsonObj: JsonObject = msg.body()
       when (val action = jsonObj.getString("action")) {
+        "exists" -> onFetchProcessChainLogs(msg, true)
         "fetch" -> onFetchProcessChainLogs(msg)
         else -> throw NoStackTraceThrowable("Unknown action `$action'")
       }
@@ -155,9 +157,10 @@ class Steep : CoroutineVerticle() {
   }
 
   /**
-   * Fetch a certain process chain log
+   * Fetch a certain process chain log. Set [checkOnly] to `true` if the method
+   * should only check if the log file exists but not stream back its contents.
    */
-  private fun onFetchProcessChainLogs(msg: Message<JsonObject>) {
+  private fun onFetchProcessChainLogs(msg: Message<JsonObject>, checkOnly: Boolean = false) {
     val jsonObj: JsonObject = msg.body()
 
     // get process chain ID
@@ -188,13 +191,15 @@ class Steep : CoroutineVerticle() {
 
     launch {
       // try to open the log file
-      val fs = vertx.fileSystem()
-      val file = try {
-        fs.openAwait(filepath, openOptionsOf(read = true,
+      val (size, file) = try {
+        val fs = vertx.fileSystem()
+        val props = fs.propsAwait(filepath)
+        val f = fs.openAwait(filepath, openOptionsOf(read = true,
             write = false, create = false))
+        (props.size() to f)
       } catch (t: Throwable) {
         if (t.cause is NoSuchFileException) {
-          msg.reply(false)
+          msg.reply(null)
         } else {
           log.error("Could not read process chain log file `$filepath'", t)
           msg.fail(500, t.message)
@@ -202,24 +207,29 @@ class Steep : CoroutineVerticle() {
         return@launch
       }
 
-      // We were able to open the file. Respond immediately and let the
-      // client know that we will send the file.
-      msg.reply(true)
+      try {
+        // We were able to open the file. Respond immediately and let the
+        // client know that we will send the file.
+        msg.reply(size)
 
-      // send the file to the stream address
-      val channel = (file as ReadStream<Buffer>).toChannel(vertx)
-      for (buf in channel) {
-        val chunk = json {
-          obj(
-              "data" to buf.toString()
-          )
+        if (!checkOnly) {
+          // send the file to the stream address
+          val channel = (file as ReadStream<Buffer>).toChannel(vertx)
+          for (buf in channel) {
+            val chunk = json {
+              obj(
+                  "data" to buf.toString()
+              )
+            }
+            vertx.eventBus().requestAwait<Boolean>(streamAddress, chunk)
+          }
+
+          // send end marker and close file
+          vertx.eventBus().requestAwait<Boolean>(streamAddress, JsonObject())
         }
-        vertx.eventBus().requestAwait<Boolean>(streamAddress, chunk)
+      } finally {
+        file.closeAwait()
       }
-
-      // send end marker and close file
-      vertx.eventBus().requestAwait<Boolean>(streamAddress, JsonObject())
-      file.closeAwait()
     }
   }
 
