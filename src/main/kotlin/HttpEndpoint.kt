@@ -166,6 +166,7 @@ class HttpEndpoint : CoroutineVerticle() {
 
     router.get("/logs/processchains/:id/?")
         .produces("text/plain")
+        .produces("text/html")
         .handler(this::onGetProcessChainLogById)
 
     router.get("/new")
@@ -548,6 +549,11 @@ class HttpEndpoint : CoroutineVerticle() {
    * Get contents of a process chain log file by process chain ID
    */
   private fun onGetProcessChainLogById(ctx: RoutingContext, headersOnly: Boolean = false) {
+    if (prefersHtml(ctx)) {
+      renderAsset("ui/logs/processchains/[id].html", ctx.response())
+      return
+    }
+
     launch {
       val id = ctx.pathParam("id")
 
@@ -650,11 +656,11 @@ class HttpEndpoint : CoroutineVerticle() {
           // no agent has the log file!
           timeoutTimerId?.let { vertx.cancelTimer(it) }
           consumer?.unregister()
-          renderError(ctx, 404, "Log file of process chain `$id' could not be " +
-              "found. Possible reasons: (1) the process chain has not started " +
-              "yet, (2) the agent that has executed the process chain is not " +
-              "available anymore, (3) process chain logging is disabled in " +
-              "Steep's configuration")
+          renderError(ctx, 404, "Log file of process chain `$id' could not " +
+              "be found. Possible reasons: (1) the process chain has not " +
+              "produced any output (yet), (2) the agent that has executed " +
+              "the process chain is not available anymore, (3) process chain " +
+              "logging is disabled in Steep's configuration")
         }
       } else {
         if (foundSize == null) {

@@ -33,6 +33,7 @@ const config = {
       "/": { page: "/" },
       "/agents": { page: "/agents" },
       "/agents/[id].html": { page: "/agents/[id]" },
+      "/logs/processchains/[id].html": { page: "/logs/processchains/[id]" },
       "/new/workflow": { page: "/new/workflow" },
       "/processchains": { page: "/processchains" },
       "/processchains/[id].html": { page: "/processchains/[id]" },

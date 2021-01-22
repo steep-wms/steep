@@ -17,4 +17,12 @@
   &.error {
     border-color: $error;
   }
+
+  :global(*):first-child {
+    margin-top: 0;
+  }
+
+  :global(*):last-child {
+    margin-bottom: 0;
+  }
 }
