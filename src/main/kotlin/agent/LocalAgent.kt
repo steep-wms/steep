@@ -92,6 +92,8 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
   private val pluginRegistry = PluginRegistryFactory.create()
   private val outputLinesToCollect = config
       .getInteger(ConfigConstants.AGENT_OUTPUT_LINES_TO_COLLECT, 100)
+  private val processChainLogsEnabled = config.getBoolean(
+      ConfigConstants.LOGS_PROCESSCHAINS_ENABLED, false)
 
   private val otherRuntime by lazy { OtherRuntime() }
   private val dockerRuntime by lazy { DockerRuntime(config) }
@@ -186,12 +188,18 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
 
   private suspend fun execute(exec: Executable, processChainId: String,
       executor: ExecutorService, progressUpdater: ((Double) -> Unit)? = null) {
-    val logger = LoggerFactory.getLogger("${PROCESSCHAIN_LOG_PREFIX}${processChainId}")
-    val collector = LoggingOutputCollector(if (progressUpdater != null) {
+    val collector = if (progressUpdater != null) {
       ProgressReportingOutputCollector(outputLinesToCollect, exec, progressUpdater)
     } else {
       DefaultOutputCollector(outputLinesToCollect)
-    }, logger)
+    }.let {
+      if (processChainLogsEnabled) {
+        val logger = LoggerFactory.getLogger("${PROCESSCHAIN_LOG_PREFIX}${processChainId}")
+        LoggingOutputCollector(it, logger)
+      } else {
+        it
+      }
+    }
 
     if (exec.runtime == Service.RUNTIME_DOCKER) {
       interruptable(executor) {

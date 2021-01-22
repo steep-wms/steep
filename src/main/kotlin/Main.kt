@@ -32,6 +32,8 @@ import kotlin.system.exitProcess
 const val ATTR_AGENT_ID = "Agent-ID"
 const val ATTR_AGENT_INSTANCES = "Agent-Instances"
 
+lateinit var globalVertxInstance: io.vertx.core.Vertx
+
 suspend fun main() {
   // load configuration
   val confFileStr = File("conf/steep.yaml").readText()
@@ -115,6 +117,7 @@ suspend fun main() {
 
   // start Vert.x
   val vertx = Vertx.clusteredVertxAwait(options)
+  globalVertxInstance = vertx
 
   // listen to added and left cluster nodes
   // BUGFIX: do not use mgr.nodeListener() or you will override Vert.x's
@@ -241,10 +244,8 @@ fun configureLogging(conf: JsonObject) {
     val dot = mainLogFile.lastIndexOf('.')
 
     val encoder = """
-      <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
-          <layout class="ch.qos.logback.classic.PatternLayout">
-              <pattern>%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n</pattern>
-          </layout>
+      <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+        <pattern>%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n</pattern>
       </encoder>
     """
 
@@ -286,6 +287,11 @@ fun configureLogging(conf: JsonObject) {
   if (processChainsEnabled) {
     val path = conf.getString(ConfigConstants.LOGS_PROCESSCHAINS_PATH, "logs/processchains")
     val groupByPrefix = conf.getInteger(ConfigConstants.LOGS_PROCESSCHAINS_GROUPBYPREFIX, 0)
+    val processChainEncoder = """
+      <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+        <pattern>%d{yyyy-MM-dd HH:mm:ss} - %msg%n</pattern>
+      </encoder>
+    """
     xml.append("""
       <appender name="PROCESSCHAIN" class="ch.qos.logback.classic.sift.SiftingAppender">
         <discriminator class="helper.LoggerNameBasedDiscriminator" />
@@ -297,12 +303,22 @@ fun configureLogging(conf: JsonObject) {
             </define>
             <appender name="PROCESSCHAIN-${"$"}{loggerName}" class="ch.qos.logback.core.FileAppender">
                 <file>${"$"}{processChainLogPath}</file>
-                <layout class="ch.qos.logback.classic.PatternLayout">
-                    <pattern>%d{yyyy-MM-dd HH:mm:ss} - %msg%n</pattern>
-                </layout>
+                $processChainEncoder
             </appender>
         </sift>
-    </appender>
+      </appender>
+      <appender name="PROCESSCHAIN-EVENTBUS" class="ch.qos.logback.classic.sift.SiftingAppender">
+        <discriminator class="helper.LoggerNameBasedDiscriminator" />
+        <sift>
+          <define name="processChainLogAddress" class="helper.ProcessChainLogAddressPropertyDefiner">
+            <loggerName>${"$"}{loggerName}</loggerName>
+          </define>
+          <appender name="PROCESSCHAIN-EVENTBUS-${"$"}{loggerName}" class="helper.EventbusAppender">
+            <address>${"$"}{processChainLogAddress}</address>
+            $processChainEncoder
+          </appender>
+        </sift>
+      </appender>
     """)
   }
 
@@ -310,6 +326,7 @@ fun configureLogging(conf: JsonObject) {
     xml.append("""
       <logger name="agent.LocalAgent.processChain" level="INFO" additivity="false">
           <appender-ref ref="PROCESSCHAIN" />
+          <appender-ref ref="PROCESSCHAIN-EVENTBUS" />
       </logger>
     """)
   }

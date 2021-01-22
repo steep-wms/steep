@@ -69,6 +69,14 @@ object AddressConstants {
   const val REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX = ".logs.processchains"
 
   /**
+   * Prefix for an eventbus endpoint that receives live log messages of
+   * a running process chain. The actual address is
+   * [LOGS_PROCESSCHAINS_PREFIX] + ID of the process chain. Log messages will
+   * only be sent if [ConfigConstants.LOGS_PROCESSCHAINS_ENABLED] is `true`
+   */
+  const val LOGS_PROCESSCHAINS_PREFIX = "steep.logs.processchains."
+
+  /**
    * Prefix for addresses of local agents. Each local agent listens to one
    * of these addresses while it executes a process chain. The actual
    * address is [LOCAL_AGENT_ADDRESS_PREFIX] + ID of the process chain.

@@ -9,6 +9,7 @@
   box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
   display: none;
   white-space: nowrap;
+  user-select: none;
 
   &.visible {
     display: block;

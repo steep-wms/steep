@@ -1,5 +1,6 @@
 import AddressConstants.CONTROLLER_LOOKUP_NOW
 import AddressConstants.LOCAL_AGENT_ADDRESS_PREFIX
+import AddressConstants.LOGS_PROCESSCHAINS_PREFIX
 import AddressConstants.PROCESSCHAINS_ADDED
 import AddressConstants.PROCESSCHAINS_ADDED_SIZE
 import AddressConstants.PROCESSCHAIN_ALL_STATUS_CHANGED
@@ -84,6 +85,7 @@ import model.cloud.VM
 import model.workflow.Workflow
 import org.apache.commons.text.WordUtils
 import org.slf4j.LoggerFactory
+import java.util.regex.Pattern
 import kotlin.math.max
 import com.github.zafarkhaja.semver.Version as SemVersion
 
@@ -261,6 +263,8 @@ class HttpEndpoint : CoroutineVerticle() {
 
     val sockJSHandler = SockJSHandler.create(vertx)
     sockJSHandler.bridge(SockJSBridgeOptions()
+        .addOutboundPermitted(PermittedOptions()
+            .setAddressRegex(Pattern.quote(LOGS_PROCESSCHAINS_PREFIX) + ".+"))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(SUBMISSION_ADDED))
         .addOutboundPermitted(PermittedOptions()

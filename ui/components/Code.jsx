@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useRef } from "react"
+import { forwardRef, useRef } from "react"
 import styles from "./Code.scss"
 import classNames from "classnames"
 
@@ -18,13 +18,26 @@ const Code = forwardRef(({ lang, hasTab, children }, ref) => {
     ref = fallbackRef
   }
 
-  useEffect(() => {
-    hljs.highlightBlock(ref.current)
-  }, [ref])
+  // store already highlighted children in an array
+  let highlightedCode = useRef([])
+
+  if (children !== undefined) {
+    let carr = children
+    if (!Array.isArray(carr)) {
+      carr = [carr]
+    }
+
+    // highlight new children
+    for (let i = highlightedCode.current.length; i < carr.length; ++i) {
+      let v = hljs.highlight(lang, carr[i]).value
+      highlightedCode.current[i] = <span key={i} dangerouslySetInnerHTML={{ __html: v }} />
+    }
+  }
 
   return (
     <pre className={classNames("pre", { "has-tab": hasTab })}>
-      <code lang={lang} ref={ref} className={classNames("code", { [`language-${lang}`]: lang })}>{children}</code>
+      <code lang={lang} ref={ref} className={classNames("code",
+        { [`language-${lang}`]: lang })}>{highlightedCode.current}</code>
       <style jsx>{styles}</style>
     </pre>
   )

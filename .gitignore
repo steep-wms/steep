@@ -1,5 +1,5 @@
 .gradle/
 .idea/
 build/
-logs/
+/logs/
 out/

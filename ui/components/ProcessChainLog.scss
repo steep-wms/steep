@@ -1,0 +1,28 @@
+@import "css/variables";
+
+.processchainlog {
+  flex: 1;
+  position: relative;
+  display: none;
+
+  &.visible {
+    display: flex;
+  }
+}
+
+.follow-button {
+  position: absolute;
+  top: $spacer;
+  right: $spacer;
+  color: #fff;
+  cursor: pointer;
+  display: none;
+
+  :hover {
+    color: $gray-300;
+  }
+
+  &.visible {
+    display: inline-block;
+  }
+}
