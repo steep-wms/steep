@@ -50,8 +50,8 @@ import helper.YamlUtils
 import io.netty.handler.codec.http.HttpHeaderNames
 import io.prometheus.client.hotspot.DefaultExports
 import io.prometheus.client.vertx.MetricsHandler
+import io.vertx.core.Promise
 import io.vertx.core.buffer.Buffer
-import io.vertx.core.eventbus.MessageConsumer
 import io.vertx.core.eventbus.ReplyException
 import io.vertx.core.eventbus.ReplyFailure
 import io.vertx.core.http.HttpMethod
@@ -77,6 +77,9 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.toChannel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.Submission
@@ -570,108 +573,133 @@ class HttpEndpoint : CoroutineVerticle() {
         return@launch
       }
 
-      // register temporary consumer to receive log data
-      var consumer: MessageConsumer<JsonObject>? = null
-      var timeoutTimerId: Long? = null
-      val streamAddress = REMOTE_AGENT_ADDRESS_PREFIX + "_" +
-          REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX + ".stream." + UniqueID.next()
-      if (!headersOnly) {
-        var receivedAny = false
-        consumer = vertx.eventBus().consumer(streamAddress)
-
-        // create periodic timer that that unregisters the consumer on timeout
-        timeoutTimerId = vertx.setPeriodic(1000L * 60) { timerId ->
-          if (receivedAny) {
-            receivedAny = false
-            return@setPeriodic
-          }
-          if (consumer.isRegistered) {
-            log.warn("Unregistering stream consumer after timeout")
-            consumer.unregister()
-          }
-          vertx.cancelTimer(timerId)
-        }
-
-        // forward log data received by the consumer to HTTP client
-        consumer.handler { msg ->
-          receivedAny = true
-          val resp = ctx.response()
-          val obj = msg.body()
-          val data = obj.getString("data")
-          if (data != null) {
-            resp.write(data)
-          } else {
-            resp.end()
-            vertx.cancelTimer(timeoutTimerId)
-            consumer.unregister()
-          }
-          msg.reply(null)
-        }
-
-        // Prepare response. Do not set content-length because it might change
-        // while we are streaming the file.
-        ctx.response().putHeader("content-type", "text/plain")
-        ctx.response().isChunked = true
-      }
-
-      // ask all agents to send us the log data if they have it
-      val agentIds = agentRegistry.getPrimaryAgentIds()
+      var receivedAny = false
       var foundSize: Long? = null
-      for (agentId in agentIds) {
-        val msg = if (headersOnly) {
-          json {
-            obj(
-                "action" to "exists",
-                "id" to id
-            )
+      var clientException = false
+      val agentIds = agentRegistry.getPrimaryAgentIds()
+      val resp = ctx.response()
+      try {
+        for (agentId in agentIds) {
+          val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId +
+              REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
+          val replyAddress = "$address.reply.${UniqueID.next()}"
+
+          val consumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
+          val channel = consumer.toChannel(vertx)
+
+          // create periodic timer that cancels the channel on timeout
+          val timeoutTimerId = vertx.setPeriodic(1000L * 30) { timerId ->
+            if (receivedAny) {
+              receivedAny = false
+              return@setPeriodic
+            }
+            @Suppress("ThrowableNotThrown")
+            channel.cancel(CancellationException("Timeout while waiting for " +
+                "log data from agent"))
+            vertx.cancelTimer(timerId)
+          }
+
+          try {
+            val msg = json {
+              obj(
+                  "action" to if (headersOnly) "exists" else "fetch",
+                  "id" to id,
+                  "replyAddress" to replyAddress
+              )
+            }
+            vertx.eventBus().send(address, msg)
+
+            for (reply in channel) {
+              receivedAny = true
+
+              val obj = reply.body()
+              if (obj.isEmpty) {
+                // end marker
+                break
+              }
+
+              val error = obj.getInteger("error")
+              if (error != null) {
+                if (error == 404) {
+                  // agent does not have the log file
+                } else {
+                  throw ReplyException(ReplyFailure.ERROR, error, obj.getString("message"))
+                }
+                break
+              }
+
+              val size = obj.getLong("size")
+              val data = obj.getString("data")
+              if (size != null) {
+                // Prepare response. Do not set content-length because it might change
+                // while we are streaming the file.
+                ctx.response().putHeader("content-type", "text/plain")
+                ctx.response().isChunked = true
+                foundSize = size
+                if (headersOnly) {
+                  break
+                }
+              } else if (data != null) {
+                if (resp.writeQueueFull()) {
+                  val drainPromise = Promise.promise<Unit>()
+                  resp.exceptionHandler { drainPromise.fail(it) }
+                  resp.drainHandler { drainPromise.complete() }
+                  try {
+                    drainPromise.future().await()
+                  } catch (t: Throwable) {
+                    reply.fail(500, t.message)
+                    @Suppress("UNUSED_VALUE") // will be used in catch clause below
+                    clientException = true
+                    throw t
+                  } finally {
+                    resp.drainHandler(null)
+                    resp.exceptionHandler(null)
+                  }
+                }
+
+                resp.write(data)
+
+                reply.reply(null) // request more data
+              }
+            }
+          } finally {
+            consumer.unregister()
+            vertx.cancelTimer(timeoutTimerId)
+          }
+
+          if (foundSize != null) {
+            break
+          }
+        }
+      } catch (t: Throwable) {
+        if (!clientException) {
+          if (t is ReplyException) {
+            renderError(ctx, t.failureCode(), t.message)
+          } else {
+            renderError(ctx, 500, t.message)
           }
         } else {
-          json {
-            obj(
-                "action" to "fetch",
-                "id" to id,
-                "streamAddress" to streamAddress
-            )
-          }
+          log.error("Could not send log file to client", t)
         }
-
-        val size = try {
-          vertx.eventBus().requestAwait<Long>(REMOTE_AGENT_ADDRESS_PREFIX +
-              agentId + REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX, msg).body()
-        } catch (t: Throwable) {
-          if (t is ReplyException && t.failureCode() == 404) {
-            // agent does not have the log file
-            null
-          } else {
-            log.error("Could not fetch logs from remote agent `$agentId'", t)
-            null
-          }
-        }
-
-        if (size != null) {
-          // no need to ask another agent
-          foundSize = size
-          break
-        }
+        return@launch
       }
 
       if (!headersOnly) {
         if (foundSize == null) {
           // no agent has the log file!
-          timeoutTimerId?.let { vertx.cancelTimer(it) }
-          consumer?.unregister()
           renderError(ctx, 404, "Log file of process chain `$id' could not " +
               "be found. Possible reasons: (1) the process chain has not " +
               "produced any output (yet), (2) the agent that has executed " +
               "the process chain is not available anymore, (3) process chain " +
               "logging is disabled in Steep's configuration")
+        } else {
+          resp.end()
         }
       } else {
         if (foundSize == null) {
           renderError(ctx, 404)
         } else {
-          ctx.response()
-              .putHeader(HttpHeaderNames.CONTENT_LENGTH, foundSize.toString())
+          resp.putHeader(HttpHeaderNames.CONTENT_LENGTH, foundSize.toString())
               .end()
         }
       }

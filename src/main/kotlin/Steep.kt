@@ -163,22 +163,38 @@ class Steep : CoroutineVerticle() {
   private fun onFetchProcessChainLogs(msg: Message<JsonObject>, checkOnly: Boolean = false) {
     val jsonObj: JsonObject = msg.body()
 
-    // get process chain ID
-    val id = jsonObj.getString("id")
-    if (id == null) {
-      msg.fail(400, "Missing process chain ID")
+    // get address where we need to send the data to
+    val replyAddress = jsonObj.getString("replyAddress")
+    if (replyAddress == null) {
+      // there's nothing we can do here
+      log.error("No reply address given")
       return
     }
 
-    // get address where we need to send the data to
-    val streamAddress = jsonObj.getString("streamAddress")
+    // get process chain ID
+    val id = jsonObj.getString("id")
+    if (id == null) {
+      vertx.eventBus().send(replyAddress, json {
+        obj(
+            "error" to 400,
+            "message" to "Missing process chain ID"
+        )
+      })
+      return
+    }
 
     // create log file path
     val path = config.getString(ConfigConstants.LOGS_PROCESSCHAINS_PATH)
     if (path == null) {
-      msg.fail(404, "Path to process chain logs not configured")
+      vertx.eventBus().send(replyAddress, json {
+        obj(
+            "error" to 404,
+            "message" to "Path to process chain logs not configured"
+        )
+      })
       return
     }
+
     val groupByPrefix = config.getInteger(ConfigConstants.LOGS_PROCESSCHAINS_GROUPBYPREFIX, 0)
 
     val filename = "$id.log"
@@ -199,10 +215,20 @@ class Steep : CoroutineVerticle() {
         (props.size() to f)
       } catch (t: Throwable) {
         if (t.cause is NoSuchFileException) {
-          msg.reply(null)
+          vertx.eventBus().send(replyAddress, json {
+            obj(
+                "error" to 404,
+                "message" to "Log file does not exist"
+            )
+          })
         } else {
-          log.error("Could not read process chain log file `$filepath'", t)
-          msg.fail(500, t.message)
+          log.error("Could not open process chain log file `$filepath'", t)
+          vertx.eventBus().send(replyAddress, json {
+            obj(
+                "error" to 500,
+                "message" to "Could not open process chain log file"
+            )
+          })
         }
         return@launch
       }
@@ -210,22 +236,37 @@ class Steep : CoroutineVerticle() {
       try {
         // We were able to open the file. Respond immediately and let the
         // client know that we will send the file.
-        msg.reply(size)
+        vertx.eventBus().send(replyAddress, json {
+          obj(
+              "size" to size
+          )
+        })
 
         if (!checkOnly) {
-          // send the file to the stream address
+          // send the file to the reply address
           val channel = (file as ReadStream<Buffer>).toChannel(vertx)
+
+          file.exceptionHandler { t ->
+            vertx.eventBus().send(replyAddress, json {
+              obj(
+                  "error" to 500,
+                  "message" to t.message
+              )
+            })
+            channel.cancel()
+          }
+
           for (buf in channel) {
             val chunk = json {
               obj(
                   "data" to buf.toString()
               )
             }
-            vertx.eventBus().requestAwait<Boolean>(streamAddress, chunk)
+            vertx.eventBus().requestAwait<Unit>(replyAddress, chunk)
           }
 
-          // send end marker and close file
-          vertx.eventBus().requestAwait<Boolean>(streamAddress, JsonObject())
+          // send end marker
+          vertx.eventBus().send(replyAddress, JsonObject())
         }
       } finally {
         file.closeAwait()
