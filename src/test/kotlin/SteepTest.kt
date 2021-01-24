@@ -1,3 +1,5 @@
+import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
+import AddressConstants.REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
 import agent.LocalAgent
 import agent.RemoteAgentRegistry
 import db.SubmissionRegistry
@@ -11,6 +13,7 @@ import io.mockk.mockkConstructor
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import io.vertx.core.Vertx
+import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.deploymentOptionsOf
@@ -18,6 +21,7 @@ import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
+import io.vertx.kotlin.coroutines.toChannel
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -27,7 +31,10 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.io.TempDir
+import java.io.File
 import java.io.IOException
+import java.nio.file.Path
 import java.rmi.RemoteException
 
 /**
@@ -38,9 +45,10 @@ import java.rmi.RemoteException
 class SteepTest {
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var agentId: String
+  private lateinit var processChainLogPath: String
 
   @BeforeEach
-  fun setUp(vertx: Vertx, ctx: VertxTestContext) {
+  fun setUp(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
     agentId = UniqueID.next()
 
     // mock submission registry
@@ -48,12 +56,18 @@ class SteepTest {
     mockkObject(SubmissionRegistryFactory)
     every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
 
+    val processChainLogPathFile = File(tempDir.toFile(), "processchains")
+    processChainLogPathFile.mkdirs()
+    processChainLogPath = processChainLogPathFile.absolutePath
+
     // deploy verticle under test
     val config = json {
       obj(
           ConfigConstants.AGENT_CAPABILTIIES to array("docker", "gpu"),
           ConfigConstants.AGENT_BUSY_TIMEOUT to 1L,
-          ConfigConstants.AGENT_ID to agentId
+          ConfigConstants.AGENT_ID to agentId,
+          ConfigConstants.LOGS_PROCESSCHAINS_ENABLED to true,
+          ConfigConstants.LOGS_PROCESSCHAINS_PATH to processChainLogPath
       )
     }
     val options = deploymentOptionsOf(config)
@@ -199,7 +213,7 @@ class SteepTest {
           listOf(processChain.requiredCapabilities to 1))
       ctx.verify {
         assertThat(candidates).containsExactly(Pair(processChain.requiredCapabilities,
-            AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX + agentId))
+            REMOTE_AGENT_ADDRESS_PREFIX + agentId))
       }
       ctx.completeNow()
     }
@@ -224,11 +238,11 @@ class SteepTest {
           listOf(requiredCapabilities1 to 1, requiredCapabilities2 to 1))
       ctx.verify {
         assertThat(candidates1).containsExactly(Pair(requiredCapabilities2,
-            AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX + agentId))
+            REMOTE_AGENT_ADDRESS_PREFIX + agentId))
         assertThat(candidates2).containsExactly(Pair(requiredCapabilities1,
-            AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX + agentId))
+            REMOTE_AGENT_ADDRESS_PREFIX + agentId))
         assertThat(candidates3).containsExactly(Pair(requiredCapabilities1,
-            AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX + agentId))
+            REMOTE_AGENT_ADDRESS_PREFIX + agentId))
       }
       ctx.completeNow()
     }
@@ -313,6 +327,127 @@ class SteepTest {
         assertThat(agent2).isNotNull
       }
       ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if we can fetch a process chain log file
+   */
+  @Test
+  fun fetchProcessChainLogFile(vertx: Vertx, ctx: VertxTestContext) {
+    val id = "abcdefg123456"
+    val contents = "Hello world"
+    val logFile = File(processChainLogPath, "$id.log")
+    logFile.writeText(contents)
+
+    val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId +
+        REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
+    val replyAddress = "$address.reply.${UniqueID.next()}"
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val consumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
+        val channel = consumer.toChannel(vertx)
+
+        val msg = json {
+          obj(
+              "action" to "fetch",
+              "id" to id,
+              "replyAddress" to replyAddress
+          )
+        }
+        vertx.eventBus().send(address, msg)
+
+        var size: Long? = null
+        val receivedContents = StringBuilder()
+        for (reply in channel) {
+          val obj = reply.body()
+          if (obj.isEmpty) {
+            break
+          } else if (obj.getLong("size") != null) {
+            size = obj.getLong("size")
+          } else if (obj.getString("data") != null) {
+            receivedContents.append(obj.getString("data"))
+            reply.reply(null)
+          } else {
+            ctx.failNow(IllegalStateException("Illegal message: ${obj.encode()}"))
+          }
+        }
+
+        assertThat(size).isEqualTo(contents.length.toLong())
+        assertThat(receivedContents.toString()).isEqualTo(contents)
+
+        ctx.completeNow()
+      }
+    }
+  }
+
+  /**
+   * Test if we can check if a process chain log file exists
+   */
+  @Test
+  fun existsProcessChainLogFile(vertx: Vertx, ctx: VertxTestContext) {
+    val id = "abcdefg123456"
+    val contents = "Hello world"
+    val logFile = File(processChainLogPath, "$id.log")
+    logFile.writeText(contents)
+
+    val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId +
+        REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
+    val replyAddress = "$address.reply.${UniqueID.next()}"
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val consumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
+        val channel = consumer.toChannel(vertx)
+
+        val msg = json {
+          obj(
+              "action" to "exists",
+              "id" to id,
+              "replyAddress" to replyAddress
+          )
+        }
+        vertx.eventBus().send(address, msg)
+
+        val obj = channel.receive().body()
+        assertThat(obj.getInteger("size")).isEqualTo(contents.length.toLong())
+
+        ctx.completeNow()
+      }
+    }
+  }
+
+  /**
+   * Test if we fetching a process chain log file fails if it does not exist
+   */
+  @Test
+  fun fetchNonExistingProcessChainLogFile(vertx: Vertx, ctx: VertxTestContext) {
+    val id = "FOOBAR"
+
+    val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId +
+        REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
+    val replyAddress = "$address.reply.${UniqueID.next()}"
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val consumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
+        val channel = consumer.toChannel(vertx)
+
+        val msg = json {
+          obj(
+              "action" to "fetch",
+              "id" to id,
+              "replyAddress" to replyAddress
+          )
+        }
+        vertx.eventBus().send(address, msg)
+
+        val obj = channel.receive().body()
+        assertThat(obj.getInteger("error")).isEqualTo(404)
+
+        ctx.completeNow()
+      }
     }
   }
 }

@@ -1,4 +1,8 @@
 import AddressConstants.LOCAL_AGENT_ADDRESS_PREFIX
+import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
+import AddressConstants.REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
+import agent.AgentRegistry
+import agent.AgentRegistryFactory
 import com.fasterxml.jackson.module.kotlin.convertValue
 import db.MetadataRegistry
 import db.MetadataRegistryFactory
@@ -29,6 +33,7 @@ import io.vertx.ext.web.codec.BodyCodec
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.deploymentOptionsOf
+import io.vertx.kotlin.core.eventbus.requestAwait
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
@@ -61,6 +66,8 @@ import org.junit.jupiter.api.extension.ExtendWith
 import java.net.ServerSocket
 import java.nio.charset.StandardCharsets
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.regex.Pattern
 
 /**
  * Tests for [HttpEndpoint]
@@ -70,6 +77,7 @@ import java.time.Instant
 class HttpEndpointTest {
   private val maxPostSize = 1024
   private var port: Int = 0
+  private lateinit var agentRegistry: AgentRegistry
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var metadataRegistry: MetadataRegistry
   private lateinit var vmRegistry: VMRegistry
@@ -81,6 +89,11 @@ class HttpEndpointTest {
   @BeforeEach
   fun setUp(vertx: Vertx, ctx: VertxTestContext) {
     port = ServerSocket(0).use { it.localPort }
+
+    // mock agent registry
+    agentRegistry = mockk()
+    mockkObject(AgentRegistryFactory)
+    every { AgentRegistryFactory.create(any()) } returns agentRegistry
 
     // mock submission registry
     submissionRegistry = mockk()
@@ -1693,6 +1706,215 @@ class HttpEndpointTest {
               )
           )
         })
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if the process chain logs endpoint returns 404 if the process chain
+   * does not exist in the registry
+   */
+  @Test
+  fun getProcessChainLogByIdUnknownProcessChain(vertx: Vertx, ctx: VertxTestContext) {
+    val id = "abcdef123456"
+
+    coEvery { submissionRegistry.getProcessChainStatus(id) } throws NoSuchElementException()
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        client.get(port, "localhost", "/logs/processchains/$id")
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .sendAwait()
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if the process chain logs endpoint returns 404 if there is no agent
+   */
+  @Test
+  fun getProcessChainLogByIdNoAgent(vertx: Vertx, ctx: VertxTestContext) {
+    val id = "abcdef123456"
+
+    coEvery { submissionRegistry.getProcessChainStatus(id) } returns
+        ProcessChainStatus.REGISTERED
+
+    coEvery { agentRegistry.getPrimaryAgentIds() } returns emptySet()
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        client.get(port, "localhost", "/logs/processchains/$id")
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .sendAwait()
+      }
+      ctx.completeNow()
+    }
+  }
+
+  private fun prepareGetProcessChainLogById(vertx: Vertx, ctx: VertxTestContext,
+      id: String, contents: String, agent1Asked: AtomicInteger,
+      agent2Asked: AtomicInteger, checkOnly: Boolean, errorMessage: String? = null) {
+    val agentId1 = "agent1"
+    val agentId2 = "agent2"
+
+    coEvery { submissionRegistry.getProcessChainStatus(id) } returns
+        ProcessChainStatus.REGISTERED
+
+    coEvery { agentRegistry.getPrimaryAgentIds() } returns setOf(agentId1, agentId2)
+
+    // create an agent that does not know the log file
+    val address1 = REMOTE_AGENT_ADDRESS_PREFIX + agentId1 +
+        REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
+    vertx.eventBus().consumer<JsonObject>(address1) { msg ->
+      agent1Asked.getAndIncrement()
+      val obj = msg.body()
+      ctx.verify {
+        assertThat(obj.getString("id")).isEqualTo(id)
+        val replyAddress = obj.getString("replyAddress")
+        assertThat(replyAddress).matches(Pattern.quote("$address1.reply.") + ".+")
+        vertx.eventBus().send(replyAddress, json {
+          obj(
+              "error" to 404
+          )
+        })
+      }
+    }
+
+    // create an agent that returns the log file
+    val address2 = REMOTE_AGENT_ADDRESS_PREFIX + agentId2 +
+        REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
+    vertx.eventBus().consumer<JsonObject>(address2) { msg ->
+      agent2Asked.getAndIncrement()
+      val obj = msg.body()
+      GlobalScope.launch(vertx.dispatcher()) {
+        ctx.coVerify {
+          assertThat(obj.getString("id")).isEqualTo(id)
+          val replyAddress = obj.getString("replyAddress")
+          assertThat(replyAddress).matches(Pattern.quote("$address2.reply.") + ".+")
+
+          if (errorMessage != null) {
+            vertx.eventBus().send(replyAddress, json {
+              obj(
+                  "error" to 500,
+                  "message" to errorMessage
+              )
+            })
+          } else {
+            vertx.eventBus().send(replyAddress, json {
+              obj(
+                  "size" to contents.length.toLong()
+              )
+            })
+
+            if (!checkOnly) {
+              val chunk = json {
+                obj(
+                    "data" to contents
+                )
+              }
+              vertx.eventBus().requestAwait<Unit>(replyAddress, chunk)
+              vertx.eventBus().send(replyAddress, JsonObject())
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Test if we can get the contents of a process chain log file
+   */
+  @Test
+  fun getProcessChainLogById(vertx: Vertx, ctx: VertxTestContext) {
+    val id = "abcdef123456"
+    val contents = "Hello world"
+
+    val agent1Asked = AtomicInteger(0)
+    val agent2Asked = AtomicInteger(0)
+    prepareGetProcessChainLogById(vertx, ctx, id, contents, agent1Asked,
+        agent2Asked, false)
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/logs/processchains/$id")
+            .`as`(BodyCodec.string())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(contentType("text/plain"))
+            .sendAwait()
+
+        assertThat(agent1Asked.get()).isEqualTo(1)
+        assertThat(agent2Asked.get()).isEqualTo(1)
+
+        assertThat(response.body()).isEqualTo(contents)
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if we can get the size of a process chain log file
+   */
+  @Test
+  fun getProcessChainLogByIdHeadersOnly(vertx: Vertx, ctx: VertxTestContext) {
+    val id = "abcdef123456789"
+    val contents = "Hello world!"
+
+    val agent1Asked = AtomicInteger(0)
+    val agent2Asked = AtomicInteger(0)
+    prepareGetProcessChainLogById(vertx, ctx, id, contents, agent1Asked,
+        agent2Asked, true)
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val response = client.head(port, "localhost", "/logs/processchains/$id")
+            .`as`(BodyCodec.string())
+            .expect(ResponsePredicate.SC_SUCCESS)
+            .sendAwait()
+
+        assertThat(response.getHeader("Content-Length").toInt())
+            .isEqualTo(contents.length)
+
+        assertThat(agent1Asked.get()).isEqualTo(1)
+        assertThat(agent2Asked.get()).isEqualTo(1)
+
+        assertThat(response.body()).isNull()
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if getProcessChainLogById() can handle errors
+   */
+  @Test
+  fun getProcessChainLogByIdError(vertx: Vertx, ctx: VertxTestContext) {
+    val id = "abcdef123456789"
+    val contents = "Hello world!"
+    val error = "THIS IS AN ERROR!"
+
+    val agent1Asked = AtomicInteger(0)
+    val agent2Asked = AtomicInteger(0)
+    prepareGetProcessChainLogById(vertx, ctx, id, contents, agent1Asked,
+        agent2Asked, false, error)
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val response = client.head(port, "localhost", "/logs/processchains/$id")
+            .`as`(BodyCodec.string())
+            .expect(ResponsePredicate.SC_SERVER_ERRORS)
+            .sendAwait()
+
+        assertThat(agent1Asked.get()).isEqualTo(1)
+        assertThat(agent2Asked.get()).isEqualTo(1)
+
+        assertThat(response.body()).isNull()
       }
       ctx.completeNow()
     }
