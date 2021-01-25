@@ -233,12 +233,51 @@ class Steep : CoroutineVerticle() {
         return@launch
       }
 
+      val givenStart = jsonObj.getLong("start", 0)
+      val (start, end) = if (givenStart >= 0) {
+        if (givenStart >= size) {
+          vertx.eventBus().send(replyAddress, json {
+            obj(
+                "error" to 416,
+                "message" to "Range start position out of bounds"
+            )
+          })
+          return@launch
+        }
+
+        val givenEnd = jsonObj.getLong("end")
+        val e = when {
+          givenEnd == null -> size
+          givenEnd < givenStart -> {
+            vertx.eventBus().send(replyAddress, json {
+              obj(
+                  "error" to 416,
+                  "message" to "Range end position must not be less than " +
+                      "range start position"
+              )
+            })
+            return@launch
+          }
+          else -> (givenEnd + 1).coerceAtMost(size)
+        }
+
+        (givenStart to e)
+      } else {
+        ((size + givenStart).coerceAtLeast(0) to size)
+      }
+      file.setReadPos(start)
+      val length = end - start
+      file.setReadLength(length)
+
       try {
         // We were able to open the file. Respond immediately and let the
         // client know that we will send the file.
         vertx.eventBus().send(replyAddress, json {
           obj(
-              "size" to size
+              "size" to size,
+              "start" to start,
+              "end" to (end - 1),
+              "length" to length
           )
         })
 

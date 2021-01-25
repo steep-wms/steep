@@ -44,6 +44,7 @@ import db.VMRegistryFactory
 import db.migration.removeExecuteActionParameters
 import db.migration.removeStoreActions
 import helper.JsonUtils
+import helper.RangeParser
 import helper.UniqueID
 import helper.WorkflowValidator
 import helper.YamlUtils
@@ -561,6 +562,21 @@ class HttpEndpoint : CoroutineVerticle() {
       return
     }
 
+    val (rangeStart, rangeEnd) = run {
+      val range = ctx.request().getHeader("Range")
+      if (range == null) {
+        (null to null)
+      } else {
+        val parsedRange = RangeParser.parse(range)
+        if (parsedRange == null) {
+          renderError(ctx, 416)
+          return
+        } else {
+          (parsedRange.first to parsedRange.second)
+        }
+      }
+    }
+
     launch {
       val id = ctx.pathParam("id")
 
@@ -607,6 +623,8 @@ class HttpEndpoint : CoroutineVerticle() {
                   "replyAddress" to replyAddress
               )
             }
+            rangeStart?.let { msg.put("start", it) }
+            rangeEnd?.let { msg.put("end", it) }
             vertx.eventBus().send(address, msg)
 
             for (reply in channel) {
@@ -629,12 +647,19 @@ class HttpEndpoint : CoroutineVerticle() {
               }
 
               val size = obj.getLong("size")
+              val start = obj.getLong("start")
+              val end = obj.getLong("end")
+              val length = obj.getLong("length")
               val data = obj.getString("data")
               if (size != null) {
-                // Prepare response. Do not set content-length because it might change
-                // while we are streaming the file.
-                ctx.response().putHeader("content-type", "text/plain")
-                ctx.response().isChunked = true
+                // prepare response
+                resp.putHeader(HttpHeaderNames.CONTENT_TYPE, "text/plain")
+                    .putHeader(HttpHeaderNames.ACCEPT_RANGES, "bytes")
+                    .putHeader(HttpHeaderNames.CONTENT_LENGTH, length.toString())
+                if (rangeStart != null || rangeEnd != null) {
+                  resp.putHeader(HttpHeaderNames.CONTENT_RANGE, "$start-$end/$size")
+                  resp.statusCode = 206
+                }
                 foundSize = size
                 if (headersOnly) {
                   break
@@ -700,6 +725,7 @@ class HttpEndpoint : CoroutineVerticle() {
           renderError(ctx, 404)
         } else {
           resp.putHeader(HttpHeaderNames.CONTENT_LENGTH, foundSize.toString())
+              .putHeader(HttpHeaderNames.ACCEPT_RANGES, "bytes")
               .end()
         }
       }

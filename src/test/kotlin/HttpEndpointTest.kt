@@ -138,7 +138,7 @@ class HttpEndpointTest {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/")
             .`as`(BodyCodec.jsonObject())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
         assertThat(response.body().map).containsKey("version")
@@ -158,7 +158,7 @@ class HttpEndpointTest {
         // with "Accept: application/json"
         val response1 = client.get(port, "localhost", "/")
             .`as`(BodyCodec.jsonObject())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .putHeader("Accept", "application/json")
             .sendAwait()
@@ -167,7 +167,7 @@ class HttpEndpointTest {
         // with "Accept: text/html"
         val response2 = client.get(port, "localhost", "/")
             .`as`(BodyCodec.string())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(contentType("text/html"))
             .putHeader("Accept", "text/html")
             .sendAwait()
@@ -176,7 +176,7 @@ class HttpEndpointTest {
         // with "Accept: */*"
         val response3 = client.get(port, "localhost", "/")
             .`as`(BodyCodec.jsonObject())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .putHeader("Accept", "*/*")
             .sendAwait()
@@ -185,7 +185,7 @@ class HttpEndpointTest {
         // with complex "Accept" header
         val response4 = client.get(port, "localhost", "/")
             .`as`(BodyCodec.jsonObject())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .putHeader("Accept", "application/json,text/html")
             .sendAwait()
@@ -194,7 +194,7 @@ class HttpEndpointTest {
         // with complex "Accept" header
         val response5 = client.get(port, "localhost", "/")
             .`as`(BodyCodec.string())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(contentType("text/html"))
             .putHeader("Accept", "text/html,application/json")
             .sendAwait()
@@ -203,7 +203,7 @@ class HttpEndpointTest {
         // with complex "Accept" header
         val response6 = client.get(port, "localhost", "/")
             .`as`(BodyCodec.jsonObject())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .putHeader("Accept", "text/html;q=0.5,application/json;q=1.0")
             .sendAwait()
@@ -211,7 +211,7 @@ class HttpEndpointTest {
 
         // without "Accept" header
         val response7 = client.get(port, "localhost", "/")
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .sendAwait()
         assertThat(JsonObject(response7.body().toString(StandardCharsets.UTF_8)).map).containsKey("version")
       }
@@ -238,7 +238,7 @@ class HttpEndpointTest {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/services")
             .`as`(BodyCodec.jsonArray())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
 
@@ -273,7 +273,7 @@ class HttpEndpointTest {
 
         val response = client.get(port, "localhost", "/services/ID")
             .`as`(BodyCodec.jsonObject())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
 
@@ -340,7 +340,7 @@ class HttpEndpointTest {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/workflows")
             .`as`(BodyCodec.jsonArray())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
 
@@ -417,7 +417,7 @@ class HttpEndpointTest {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/workflows?status=SUCCESS")
             .`as`(BodyCodec.jsonArray())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
 
@@ -477,7 +477,7 @@ class HttpEndpointTest {
 
         val response = client.get(port, "localhost", "/workflows/${s1.id}")
             .`as`(BodyCodec.jsonObject())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
 
@@ -539,7 +539,7 @@ class HttpEndpointTest {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/workflows/${s1.id}")
             .`as`(BodyCodec.jsonObject())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
 
@@ -592,7 +592,7 @@ class HttpEndpointTest {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/workflows/${s1.id}")
             .`as`(BodyCodec.jsonObject())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
 
@@ -646,7 +646,7 @@ class HttpEndpointTest {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/workflows/${s1.id}")
             .`as`(BodyCodec.jsonObject())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
 
@@ -1178,7 +1178,7 @@ class HttpEndpointTest {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/processchains")
             .`as`(BodyCodec.jsonArray())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
 
@@ -1262,7 +1262,7 @@ class HttpEndpointTest {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/processchains?submissionId=${s1.id}")
             .`as`(BodyCodec.jsonArray())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
 
@@ -1327,7 +1327,7 @@ class HttpEndpointTest {
         val response = client.get(port, "localhost",
               "/processchains?submissionId=${s1.id}&status=SUCCESS")
             .`as`(BodyCodec.jsonArray())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
 
@@ -1384,7 +1384,7 @@ class HttpEndpointTest {
 
         val response = client.get(port, "localhost", "/processchains/${pc1.id}")
             .`as`(BodyCodec.jsonObject())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
 
@@ -1448,7 +1448,7 @@ class HttpEndpointTest {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/processchains/${pc1.id}")
             .`as`(BodyCodec.jsonObject())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
 
@@ -1635,7 +1635,7 @@ class HttpEndpointTest {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/vms")
             .`as`(BodyCodec.jsonArray())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
 
@@ -1684,7 +1684,7 @@ class HttpEndpointTest {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/vms?status=CREATING")
             .`as`(BodyCodec.jsonArray())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .sendAwait()
 
@@ -1756,8 +1756,9 @@ class HttpEndpointTest {
   }
 
   private fun prepareGetProcessChainLogById(vertx: Vertx, ctx: VertxTestContext,
-      id: String, contents: String, agent1Asked: AtomicInteger,
-      agent2Asked: AtomicInteger, checkOnly: Boolean, errorMessage: String? = null) {
+      id: String, contents: String, start: Int = 0, end: Int = contents.length,
+      agent1Asked: AtomicInteger, agent2Asked: AtomicInteger,
+      checkOnly: Boolean = false, errorMessage: String? = null) {
     val agentId1 = "agent1"
     val agentId2 = "agent2"
 
@@ -1776,11 +1777,19 @@ class HttpEndpointTest {
         assertThat(obj.getString("id")).isEqualTo(id)
         val replyAddress = obj.getString("replyAddress")
         assertThat(replyAddress).matches(Pattern.quote("$address1.reply.") + ".+")
-        vertx.eventBus().send(replyAddress, json {
-          obj(
-              "error" to 404
-          )
-        })
+        if (end < start) {
+          vertx.eventBus().send(replyAddress, json {
+            obj(
+                "error" to 416
+            )
+          })
+        } else {
+          vertx.eventBus().send(replyAddress, json {
+            obj(
+                "error" to 404
+            )
+          })
+        }
       }
     }
 
@@ -1792,6 +1801,12 @@ class HttpEndpointTest {
       val obj = msg.body()
       GlobalScope.launch(vertx.dispatcher()) {
         ctx.coVerify {
+          if (start != 0) {
+            assertThat(obj.getLong("start")).isEqualTo(start.toLong())
+          }
+          if (end != contents.length) {
+            assertThat(obj.getLong("end")).isEqualTo(end.toLong() - 1L)
+          }
           assertThat(obj.getString("id")).isEqualTo(id)
           val replyAddress = obj.getString("replyAddress")
           assertThat(replyAddress).matches(Pattern.quote("$address2.reply.") + ".+")
@@ -1806,14 +1821,17 @@ class HttpEndpointTest {
           } else {
             vertx.eventBus().send(replyAddress, json {
               obj(
-                  "size" to contents.length.toLong()
+                  "size" to contents.length.toLong(),
+                  "start" to start.toLong(),
+                  "end" to end.toLong() - 1L,
+                  "length" to (end - start).toLong()
               )
             })
 
             if (!checkOnly) {
               val chunk = json {
                 obj(
-                    "data" to contents
+                    "data" to contents.substring(start, end)
                 )
               }
               vertx.eventBus().requestAwait<Unit>(replyAddress, chunk)
@@ -1835,15 +1853,15 @@ class HttpEndpointTest {
 
     val agent1Asked = AtomicInteger(0)
     val agent2Asked = AtomicInteger(0)
-    prepareGetProcessChainLogById(vertx, ctx, id, contents, agent1Asked,
-        agent2Asked, false)
+    prepareGetProcessChainLogById(vertx, ctx, id, contents,
+        agent1Asked = agent1Asked, agent2Asked = agent2Asked)
 
     val client = WebClient.create(vertx)
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/logs/processchains/$id")
             .`as`(BodyCodec.string())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .expect(contentType("text/plain"))
             .sendAwait()
 
@@ -1851,6 +1869,41 @@ class HttpEndpointTest {
         assertThat(agent2Asked.get()).isEqualTo(1)
 
         assertThat(response.body()).isEqualTo(contents)
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if we can get a subset of the contents of a process chain log file
+   */
+  @Test
+  fun getProcessChainLogByIdRange(vertx: Vertx, ctx: VertxTestContext) {
+    val id = "abcdef123456"
+    val contents = "Hello world"
+
+    val agent1Asked = AtomicInteger(0)
+    val agent2Asked = AtomicInteger(0)
+    prepareGetProcessChainLogById(vertx, ctx, id, contents, start = 2, end = 3,
+        agent1Asked = agent1Asked, agent2Asked = agent2Asked)
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/logs/processchains/$id")
+            .`as`(BodyCodec.string())
+            .putHeader("Range", "bytes=2-2")
+            .expect(ResponsePredicate.SC_PARTIAL_CONTENT)
+            .expect(contentType("text/plain"))
+            .sendAwait()
+
+        assertThat(agent1Asked.get()).isEqualTo(1)
+        assertThat(agent2Asked.get()).isEqualTo(1)
+
+        assertThat(response.getHeader("Content-Length")).isEqualTo("1")
+        assertThat(response.getHeader("Content-Range")).isEqualTo("2-2/11")
+        assertThat(response.getHeader("Accept-Ranges")).isEqualTo("bytes")
+        assertThat(response.body()).isEqualTo(contents.substring(2, 3))
       }
       ctx.completeNow()
     }
@@ -1866,15 +1919,15 @@ class HttpEndpointTest {
 
     val agent1Asked = AtomicInteger(0)
     val agent2Asked = AtomicInteger(0)
-    prepareGetProcessChainLogById(vertx, ctx, id, contents, agent1Asked,
-        agent2Asked, true)
+    prepareGetProcessChainLogById(vertx, ctx, id, contents,
+        agent1Asked = agent1Asked, agent2Asked = agent2Asked, checkOnly = true)
 
     val client = WebClient.create(vertx)
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.coVerify {
         val response = client.head(port, "localhost", "/logs/processchains/$id")
             .`as`(BodyCodec.string())
-            .expect(ResponsePredicate.SC_SUCCESS)
+            .expect(ResponsePredicate.SC_OK)
             .sendAwait()
 
         assertThat(response.getHeader("Content-Length").toInt())
@@ -1900,8 +1953,9 @@ class HttpEndpointTest {
 
     val agent1Asked = AtomicInteger(0)
     val agent2Asked = AtomicInteger(0)
-    prepareGetProcessChainLogById(vertx, ctx, id, contents, agent1Asked,
-        agent2Asked, false, error)
+    prepareGetProcessChainLogById(vertx, ctx, id, contents,
+        agent1Asked = agent1Asked, agent2Asked = agent2Asked,
+        errorMessage = error)
 
     val client = WebClient.create(vertx)
     GlobalScope.launch(vertx.dispatcher()) {
@@ -1915,6 +1969,35 @@ class HttpEndpointTest {
         assertThat(agent2Asked.get()).isEqualTo(1)
 
         assertThat(response.body()).isNull()
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if we can handle invalid range requests
+   */
+  @Test
+  fun getProcessChainLogByIdRangeInvalid(vertx: Vertx, ctx: VertxTestContext) {
+    val id = "abcdef123456"
+    val contents = "Hello world"
+
+    val agent1Asked = AtomicInteger(0)
+    val agent2Asked = AtomicInteger(0)
+    prepareGetProcessChainLogById(vertx, ctx, id, contents, start = 3, end = 2,
+        agent1Asked = agent1Asked, agent2Asked = agent2Asked)
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        client.get(port, "localhost", "/logs/processchains/$id")
+            .`as`(BodyCodec.string())
+            .putHeader("Range", "bytes=3-2")
+            .expect(ResponsePredicate.SC_REQUESTED_RANGE_NOT_SATISFIABLE)
+            .sendAwait()
+
+        assertThat(agent1Asked.get()).isEqualTo(1)
+        assertThat(agent2Asked.get()).isEqualTo(0)
       }
       ctx.completeNow()
     }
