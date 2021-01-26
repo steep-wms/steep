@@ -1901,7 +1901,7 @@ class HttpEndpointTest {
         assertThat(agent2Asked.get()).isEqualTo(1)
 
         assertThat(response.getHeader("Content-Length")).isEqualTo("1")
-        assertThat(response.getHeader("Content-Range")).isEqualTo("2-2/11")
+        assertThat(response.getHeader("Content-Range")).isEqualTo("bytes 2-2/11")
         assertThat(response.getHeader("Accept-Ranges")).isEqualTo("bytes")
         assertThat(response.body()).isEqualTo(contents.substring(2, 3))
       }

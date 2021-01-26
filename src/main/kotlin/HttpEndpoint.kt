@@ -657,7 +657,7 @@ class HttpEndpoint : CoroutineVerticle() {
                     .putHeader(HttpHeaderNames.ACCEPT_RANGES, "bytes")
                     .putHeader(HttpHeaderNames.CONTENT_LENGTH, length.toString())
                 if (rangeStart != null || rangeEnd != null) {
-                  resp.putHeader(HttpHeaderNames.CONTENT_RANGE, "$start-$end/$size")
+                  resp.putHeader(HttpHeaderNames.CONTENT_RANGE, "bytes $start-$end/$size")
                   resp.statusCode = 206
                 }
                 foundSize = size
