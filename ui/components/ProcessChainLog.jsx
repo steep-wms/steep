@@ -8,14 +8,17 @@ import EventBus from "vertx3-eventbus-client"
 import { useCallback, useContext, useEffect, useRef, useState } from "react"
 import { throttle } from "lodash"
 import { ChevronsDown } from "react-feather"
+import parseRangeHeader from "parse-content-range-header"
 import classNames from "classnames"
 import styles from "./ProcessChainLog.scss"
 
 const ProcessChainLog = ({ id }) => {
   const ref = useRef()
+  const nextEntryKey = useRef(0)
   const [contents, setContents] = useState([])
   const [liveContents, setLiveContents] = useState([])
   const [error, setError] = useState()
+  const [loadingVisible, setLoadingVisible] = useState(false)
   const [followButtonVisible, setFollowButtonVisible] = useState(false)
   const eventBus = useContext(EventBusContext)
 
@@ -39,63 +42,104 @@ const ProcessChainLog = ({ id }) => {
 
   useEffect(() => {
     let codeRef = ref.current
+    let contentRange = undefined
 
     const onScroll = throttle(() => {
       setFollowButtonVisible(!shouldScrollToEnd(1))
+
+      if (codeRef.scrollTop === 0 && contentRange !== undefined && contentRange.first > 0) {
+        setLoadingVisible(true)
+        load(true)
+      }
     }, 100)
 
     if (id === undefined) {
       return
     }
 
-    // fetch process chain log
-    let options = {
-      headers: {
-        "accept": "text/plain"
-      }
-    }
-
     async function handleResponse(r) {
       let body = await r.text()
       if (r.status === 404) {
         return undefined
+      } else if (r.status === 206) {
+        contentRange = parseRangeHeader(r.headers.get("content-range"))
+        if (contentRange.first !== 0) {
+          // strip first line (which is most likely incomplete)
+          let lineEnd = body.indexOf("\n") + 1
+          body = body.substring(lineEnd)
+          contentRange.first += lineEnd
+        }
       } else if (r.status !== 200) {
         throw new Error(body)
       }
       return body
     }
 
-    fetcher(`${process.env.baseUrl}/logs/processchains/${id}`, false, options, handleResponse)
-        .then(log => {
-          if (log === undefined) {
-            setError(<Alert error>
-              <p>Unable to find process chain logs</p>
-              <p>This can have several reasons:</p>
-              <ul>
-                <li>The process chain has not produced any output (yet)</li>
-                <li>The agent that has executed the process chain is not available anymore</li>
-                <li>Process chain logging is disabled in Steep&rsquo;s configuration</li>
-              </ul>
-            </Alert>)
-          } else {
-            setContents([log])
-            scrollToEnd(true)
-            setFollowButtonVisible(false)
-          }
-        })
-        .catch(err => {
-          console.log(err)
-          setError(<Alert error>Could not load process chain</Alert>)
-        })
+    function load(more = false) {
+      let bytes = -2000000 // load last 2 MB
+      if (more) {
+        bytes = Math.max(0, contentRange.first + bytes) + "-" + (contentRange.first - 1)
+      }
 
-    // register event bus consumer receiving live log lines
-    let address = LOGS_PROCESSCHAINS_PREFIX + id
+      let options = {
+        headers: {
+          "accept": "text/plain",
+          "range": `bytes=${bytes}`
+        }
+      }
+
+      fetcher(`${process.env.baseUrl}/logs/processchains/${id}`, false, options, handleResponse)
+          .then(log => {
+            if (log === undefined) {
+              setError(<Alert error>
+                  <p>Unable to find process chain logs</p>
+                  <p>This can have various reasons:</p>
+                  <ul>
+                    <li>The process chain has not produced any output (yet)</li>
+                    <li>The agent that has executed the process chain is not available anymore</li>
+                    <li>Process chain logging is disabled in Steep&rsquo;s configuration</li>
+                  </ul>
+                </Alert>)
+              setContents([])
+            } else {
+              if (!more) {
+                setContents([{
+                  key: nextEntryKey.current++,
+                  value: log
+                }])
+                scrollToEnd(true)
+                setFollowButtonVisible(false)
+              } else {
+                let oldScrollBottom = codeRef.scrollHeight - codeRef.scrollTop
+                setContents(old => [{
+                  key: nextEntryKey.current++,
+                  value: log
+                }, ...old])
+                setTimeout(() => {
+                  codeRef.scrollTop = codeRef.scrollHeight - oldScrollBottom
+                  setLoadingVisible(false)
+                }, 0)
+              }
+            }
+          })
+          .catch(err => {
+            console.log(err)
+            setError(<Alert error>Could not load process chain</Alert>)
+            setContents([])
+          })
+    }
 
     function onNewLogLine(err, msg) {
-      setLiveContents(oldContents => [...oldContents, msg.body])
+      setLiveContents(oldContents => [...oldContents, {
+        key: nextEntryKey.current++,
+        value: msg.body
+      }])
       setError(undefined)
       scrollToEnd()
     }
+
+    // register event bus consumer receiving live log lines
+    let address = LOGS_PROCESSCHAINS_PREFIX + id
 
     if (eventBus !== undefined) {
       eventBus.registerHandler(address, onNewLogLine)
@@ -103,6 +147,8 @@ const ProcessChainLog = ({ id }) => {
 
     // register scroll listener to control visibility of "follow" button
     codeRef.addEventListener("scroll", onScroll)
+
+    load()
 
     return () => {
       if (eventBus !== undefined && eventBus.state === EventBus.OPEN) {
@@ -122,6 +168,13 @@ const ProcessChainLog = ({ id }) => {
         <Tooltip title="Follow">
           <ChevronsDown className="feather" />
         </Tooltip>
+      </div>
+      <div className={classNames("loading", { visible: loadingVisible })}>
+        <div className="sk-flow">
+          <div className="sk-flow-dot"></div>
+          <div className="sk-flow-dot"></div>
+          <div className="sk-flow-dot"></div>
+        </div>
       </div>
     </div>
     <style jsx>{styles}</style>

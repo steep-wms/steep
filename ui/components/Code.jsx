@@ -18,9 +18,10 @@ const Code = forwardRef(({ lang, hasTab, children }, ref) => {
     ref = fallbackRef
   }
 
-  // store already highlighted children in an array
-  let highlightedCode = useRef([])
+  // store already highlighted children in a map
+  let cache = useRef(new Map())
 
+  let highlightedCode = []
   if (children !== undefined) {
     let carr = children
     if (!Array.isArray(carr)) {
@@ -28,16 +29,24 @@ const Code = forwardRef(({ lang, hasTab, children }, ref) => {
     }
 
     // highlight new children
-    for (let i = highlightedCode.current.length; i < carr.length; ++i) {
-      let v = hljs.highlight(lang, carr[i]).value
-      highlightedCode.current[i] = <span key={i} dangerouslySetInnerHTML={{ __html: v }} />
+    for (let i = 0; i < carr.length; ++i) {
+      let c = carr[i]
+      let key = c.key !== undefined ? c.key : c
+      let highlighted = cache.current.get(key)
+      if (highlighted === undefined) {
+        let value = c.value !== undefined ? c.value : c
+        let html = hljs.highlight(lang, value).value
+        highlighted = <span key={key} dangerouslySetInnerHTML={{ __html: html }} />
+        cache.current.set(key, highlighted)
+      }
+      highlightedCode.push(highlighted)
     }
   }
 
   return (
     <pre className={classNames("pre", { "has-tab": hasTab })}>
       <code lang={lang} ref={ref} className={classNames("code",
-        { [`language-${lang}`]: lang })}>{highlightedCode.current}</code>
+        { [`language-${lang}`]: lang })}>{highlightedCode}</code>
       <style jsx>{styles}</style>
     </pre>
   )
