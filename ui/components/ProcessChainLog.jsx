@@ -13,7 +13,7 @@ import styles from "./ProcessChainLog.scss"
 
 const ProcessChainLog = ({ id }) => {
   const ref = useRef()
-  const [contents, setContents] = useState()
+  const [contents, setContents] = useState([])
   const [liveContents, setLiveContents] = useState([])
   const [error, setError] = useState()
   const [followButtonVisible, setFollowButtonVisible] = useState(false)
@@ -77,10 +77,11 @@ const ProcessChainLog = ({ id }) => {
                 <li>Process chain logging is disabled in Steep&rsquo;s configuration</li>
               </ul>
             </Alert>)
+          } else {
+            setContents([log])
+            scrollToEnd(true)
+            setFollowButtonVisible(false)
           }
-          setContents(log)
-          scrollToEnd(true)
-          setFollowButtonVisible(false)
         })
         .catch(err => {
           console.log(err)
@@ -92,6 +93,7 @@ const ProcessChainLog = ({ id }) => {
 
     function onNewLogLine(err, msg) {
       setLiveContents(oldContents => [...oldContents, msg.body])
+      setError(undefined)
       scrollToEnd()
     }
 
@@ -110,10 +112,12 @@ const ProcessChainLog = ({ id }) => {
     }
   }, [id, eventBus, scrollToEnd, shouldScrollToEnd])
 
+  let codeVisible = contents.length > 0 || liveContents.length > 0
+
   return (<>
-    {error}
-    <div className={classNames("processchainlog", { visible: contents || liveContents.length > 0 })}>
-      <Code lang="log" ref={ref}>{contents && [contents, ...liveContents]}</Code>
+    {codeVisible || error}
+    <div className={classNames("processchainlog", { visible: codeVisible })}>
+      <Code lang="log" ref={ref}>{[...contents, ...liveContents]}</Code>
       <div className={classNames("follow-button", { visible: followButtonVisible })} onClick={onFollowClick}>
         <Tooltip title="Follow">
           <ChevronsDown className="feather" />
