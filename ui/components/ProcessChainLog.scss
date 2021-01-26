@@ -1,9 +1,9 @@
 @import "css/variables";
 
 .processchainlog {
-  flex: 1;
   position: relative;
   display: none;
+  height: 100%;
 
   &.visible {
     display: flex;
