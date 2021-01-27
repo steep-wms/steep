@@ -1,0 +1,32 @@
+@import "css/variables";
+
+.collapse-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.arrow {
+  fill: $gray-600;
+
+  .collapse-button:hover & {
+    fill: $primary;
+  }
+}
+
+.icon {
+  display: flex;
+  width: 1.25rem;
+  margin-bottom: 0.15rem;
+  color: $gray-600;
+
+  :global(svg) {
+    transform: rotate(0deg);
+  }
+
+  &.hanging-indent {
+    margin-left: -1.25rem;
+  }
+}

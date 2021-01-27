@@ -3,6 +3,8 @@
 .code-box {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  max-height: 100%;
 
   .code-box-title {
     display: flex;

@@ -4,6 +4,7 @@ import { useRouter } from "next/router"
 import { useContext, useEffect, useState } from "react"
 import Alert from "../../components/Alert"
 import CancelModal from "../../components/CancelModal"
+import CollapseButton from "../../components/CollapseButton"
 import CodeBox from "../../components/CodeBox"
 import DefinitionList from "../../components/DefinitionList"
 import DefinitionListItem from "../../components/DefinitionListItem"
@@ -11,16 +12,21 @@ import Label from "../../components/Label"
 import ListItemProgressBox from "../../components/ListItemProgressBox"
 import LiveDuration from "../../components/LiveDuration"
 import ProcessChainContext from "../../components/processchains/ProcessChainContext"
+import ProcessChainLog from "../../components/ProcessChainLog"
 import Tooltip from "../../components/Tooltip"
 import { formatDate, formatDurationTitle } from "../../components/lib/date-time-utils"
 import fetcher from "../../components/lib/json-fetcher"
 import { disableBodyScroll, enableBodyScroll } from "body-scroll-lock"
+import classNames from "classnames"
+import styles from "./[id].scss"
 
 function ProcessChainDetails({ id }) {
   const processChains = useContext(ProcessChainContext.Items)
   const updateProcessChains = useContext(ProcessChainContext.UpdateItems)
   const [error, setError] = useState()
   const [cancelModalOpen, setCancelModalOpen] = useState()
+  const [logCollapsed, setLogCollapsed] = useState()
+  const [logError, setLogError] = useState()
 
   useEffect(() => {
     if (id) {
@@ -140,8 +146,16 @@ function ProcessChainDetails({ id }) {
         <h2>Error message</h2>
         <Alert error>{pc.errorMessage}</Alert>
       </>)}
+      <h2><CollapseButton collapsed={logCollapsed}
+        onCollapse={() => setLogCollapsed(!logCollapsed)}>Log</CollapseButton></h2>
+      {logCollapsed && (
+        <div className={classNames("log-wrapper", { error: logError !== undefined })}>
+          <ProcessChainLog id={id} onError={setLogError} />
+        </div>
+      )}
       <h2>Executables</h2>
       <CodeBox json={pc.executables} />
+      <style jsx>{styles}</style>
     </>)
   }
 

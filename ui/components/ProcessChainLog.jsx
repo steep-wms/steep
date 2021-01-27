@@ -12,12 +12,12 @@ import parseRangeHeader from "parse-content-range-header"
 import classNames from "classnames"
 import styles from "./ProcessChainLog.scss"
 
-const ProcessChainLog = ({ id }) => {
+const ProcessChainLog = ({ id, onError }) => {
   const ref = useRef()
   const nextEntryKey = useRef(0)
   const [contents, setContents] = useState([])
   const [liveContents, setLiveContents] = useState([])
-  const [error, setError] = useState()
+  const [error, doSetError] = useState()
   const [loadingVisible, setLoadingVisible] = useState(false)
   const [followButtonVisible, setFollowButtonVisible] = useState(false)
   const eventBus = useContext(EventBusContext)
@@ -30,7 +30,7 @@ const ProcessChainLog = ({ id }) => {
 
   const scrollToEnd = useCallback((force = false) => {
     setTimeout(() => {
-      if (force || shouldScrollToEnd()) {
+      if ((force || shouldScrollToEnd()) && ref.current !== null) {
         ref.current.scrollTop = ref.current.scrollHeight
       }
     }, 0)
@@ -39,6 +39,13 @@ const ProcessChainLog = ({ id }) => {
   const onFollowClick = useCallback(() => {
     scrollToEnd(true)
   }, [scrollToEnd])
+
+  const setError = useCallback((error) => {
+    doSetError(error)
+    if (onError) {
+      onError(error)
+    }
+  }, [onError])
 
   useEffect(() => {
     let codeRef = ref.current
@@ -88,8 +95,19 @@ const ProcessChainLog = ({ id }) => {
         }
       }
 
+      let loadTimer
+      if (!more) {
+        loadTimer = setTimeout(() => {
+          setContents([""])
+          setLoadingVisible(true)
+        }, 50)
+      }
+
       fetcher(`${process.env.baseUrl}/logs/processchains/${id}`, false, options, handleResponse)
           .then(log => {
+            if (loadTimer !== undefined) {
+              clearTimeout(loadTimer)
+            }
             if (log === undefined) {
               setError(<Alert error>
                   <p>Unable to find process chain logs</p>
@@ -109,6 +127,7 @@ const ProcessChainLog = ({ id }) => {
                 }])
                 scrollToEnd(true)
                 setFollowButtonVisible(false)
+                setLoadingVisible(false)
               } else {
                 let oldScrollBottom = codeRef.scrollHeight - codeRef.scrollTop
                 setContents(old => [{
@@ -123,6 +142,9 @@ const ProcessChainLog = ({ id }) => {
             }
           })
           .catch(err => {
+            if (loadTimer !== undefined) {
+              clearTimeout(loadTimer)
+            }
             console.log(err)
             setError(<Alert error>Could not load process chain</Alert>)
             setContents([])
@@ -156,7 +178,7 @@ const ProcessChainLog = ({ id }) => {
       }
       codeRef.removeEventListener("scroll", onScroll)
     }
-  }, [id, eventBus, scrollToEnd, shouldScrollToEnd])
+  }, [id, eventBus, scrollToEnd, shouldScrollToEnd, setError])
 
   let codeVisible = contents.length > 0 || liveContents.length > 0
 
