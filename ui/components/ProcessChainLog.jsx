@@ -110,7 +110,7 @@ const ProcessChainLog = ({ id, onError }) => {
             }
             if (log === undefined) {
               setError(<Alert error>
-                  <p>Unable to find process chain logs</p>
+                  <p>Unable to find process chain log</p>
                   <p>This can have various reasons:</p>
                   <ul>
                     <li>The process chain has not produced any output (yet)</li>

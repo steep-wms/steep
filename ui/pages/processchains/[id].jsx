@@ -8,6 +8,8 @@ import CollapseButton from "../../components/CollapseButton"
 import CodeBox from "../../components/CodeBox"
 import DefinitionList from "../../components/DefinitionList"
 import DefinitionListItem from "../../components/DefinitionListItem"
+import EventBusContext from "../../components/lib/EventBusContext"
+import { LOGS_PROCESSCHAINS_PREFIX } from "../../components/lib/EventBusMessages"
 import Label from "../../components/Label"
 import ListItemProgressBox from "../../components/ListItemProgressBox"
 import LiveDuration from "../../components/LiveDuration"
@@ -17,18 +19,42 @@ import Tooltip from "../../components/Tooltip"
 import { formatDate, formatDurationTitle } from "../../components/lib/date-time-utils"
 import fetcher from "../../components/lib/json-fetcher"
 import { disableBodyScroll, enableBodyScroll } from "body-scroll-lock"
+import EventBus from "vertx3-eventbus-client"
 import classNames from "classnames"
 import styles from "./[id].scss"
 
 function ProcessChainDetails({ id }) {
   const processChains = useContext(ProcessChainContext.Items)
   const updateProcessChains = useContext(ProcessChainContext.UpdateItems)
+  const eventBus = useContext(EventBusContext)
   const [error, setError] = useState()
   const [cancelModalOpen, setCancelModalOpen] = useState()
+  const [logAvailable, setLogAvailable] = useState(false)
   const [logCollapsed, setLogCollapsed] = useState()
   const [logError, setLogError] = useState()
 
   useEffect(() => {
+    let processChainLogConsumerAddress = LOGS_PROCESSCHAINS_PREFIX + id
+
+    function waitForLog() {
+      // register a handler that listens to log events, enables the log
+      // section, and then unregisters itself
+      if (eventBus !== undefined) {
+        eventBus.registerHandler(processChainLogConsumerAddress, onNewLogLine)
+      }
+    }
+
+    function onNewLogLine() {
+      setLogAvailable(true)
+      unregisterLogConsumer()
+    }
+
+    function unregisterLogConsumer() {
+      if (eventBus !== undefined && eventBus.state === EventBus.OPEN) {
+        eventBus.unregisterHandler(processChainLogConsumerAddress, onNewLogLine)
+      }
+    }
+
     if (id) {
       fetcher(`${process.env.baseUrl}/processchains/${id}`)
         .then(pc => updateProcessChains({ action: "set", items: [pc] }))
@@ -36,8 +62,21 @@ function ProcessChainDetails({ id }) {
           console.log(err)
           setError(<Alert error>Could not load process chain</Alert>)
         })
+
+      // check if a log file is available
+      fetcher(`${process.env.baseUrl}/logs/processchains/${id}`, false, {
+        method: "HEAD"
+      }).then(() => setLogAvailable(true))
+        .catch(() => {
+          setLogAvailable(false)
+          waitForLog()
+        })
     }
-  }, [id, updateProcessChains])
+
+    return () => {
+      unregisterLogConsumer()
+    }
+  }, [id, updateProcessChains, eventBus])
 
   function onCancel() {
     setCancelModalOpen(true)
@@ -87,12 +126,16 @@ function ProcessChainDetails({ id }) {
       pc.id
     ]
 
+    let menuItems = []
+    if (logAvailable) {
+      menuItems.push(<a href={`${process.env.baseUrl}/logs/processchains/${id}?forceDownload=true`}>
+        <li key="download-log">Download log</li></a>)
+    }
     if (pc.status === "REGISTERED" || pc.status === "RUNNING") {
-      menu = (
-        <ul>
-          <li onClick={onCancel}>Cancel</li>
-        </ul>
-      )
+      menuItems.push(<li key="cancel" onClick={onCancel}>Cancel</li>)
+    }
+    if (menuItems.length > 0) {
+      menu = <ul>{menuItems}</ul>
     }
 
     let reqcap
@@ -146,13 +189,15 @@ function ProcessChainDetails({ id }) {
         <h2>Error message</h2>
         <Alert error>{pc.errorMessage}</Alert>
       </>)}
-      <h2><CollapseButton collapsed={logCollapsed}
-        onCollapse={() => setLogCollapsed(!logCollapsed)}>Log</CollapseButton></h2>
-      {logCollapsed && (
-        <div className={classNames("log-wrapper", { error: logError !== undefined })}>
-          <ProcessChainLog id={id} onError={setLogError} />
-        </div>
-      )}
+      {logAvailable && (<>
+        <h2><CollapseButton collapsed={logCollapsed}
+          onCollapse={() => setLogCollapsed(!logCollapsed)}>Log</CollapseButton></h2>
+        {logCollapsed && (
+          <div className={classNames("log-wrapper", { error: logError !== undefined })}>
+            <ProcessChainLog id={id} onError={setLogError} />
+          </div>
+        )}
+      </>)}
       <h2>Executables</h2>
       <CodeBox json={pc.executables} />
       <style jsx>{styles}</style>
