@@ -557,7 +557,8 @@ class HttpEndpoint : CoroutineVerticle() {
    * Get contents of a process chain log file by process chain ID
    */
   private fun onGetProcessChainLogById(ctx: RoutingContext, headersOnly: Boolean = false) {
-    if (prefersHtml(ctx)) {
+    val forceDownload = ctx.request().getParam("forceDownload").toBoolean()
+    if (!forceDownload && prefersHtml(ctx)) {
       renderAsset("ui/logs/processchains/[id].html", ctx.response())
       return
     }
@@ -659,6 +660,10 @@ class HttpEndpoint : CoroutineVerticle() {
                 if (rangeStart != null || rangeEnd != null) {
                   resp.putHeader(HttpHeaderNames.CONTENT_RANGE, "bytes $start-$end/$size")
                   resp.statusCode = 206
+                }
+                if (forceDownload) {
+                  resp.putHeader(HttpHeaderNames.CONTENT_DISPOSITION,
+                      "attachment; filename=\"${id}.log\"")
                 }
                 foundSize = size
                 if (headersOnly) {

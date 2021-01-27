@@ -15,8 +15,16 @@ const ProcessChainLogs = () => {
     id
   ]
 
+  let menu = (
+    <ul>
+      <a href={`${process.env.baseUrl}/logs/processchains/${id}?forceDownload=true`}>
+        <li>Download</li>
+      </a>
+    </ul>
+  )
+
   return (
-    <DetailPage breadcrumbs={breadcrumbs} title={id} footerNoTopMargin={true}>
+    <DetailPage breadcrumbs={breadcrumbs} title={id} footerNoTopMargin={true} menu={menu}>
       <div className="log-container">
         <ProcessChainLog id={id} />
       </div>

@@ -3,6 +3,11 @@
 .dropdown {
   position: relative;
 
+  :global(a) {
+    color: $gray-700;
+    text-decoration: none;
+  }
+
   :global(ul) :global(li) {
     white-space: nowrap;
 
