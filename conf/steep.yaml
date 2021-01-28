@@ -39,8 +39,10 @@ steep:
         - x-page-total
         - accept-ranges
         - content-range
+        - x-content-range
       allowHeaders:
         - range
+        - x-range
       allowMethods:
         - GET
         - POST

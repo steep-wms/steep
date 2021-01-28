@@ -68,8 +68,8 @@ const ProcessChainLog = ({ id, onError }) => {
       let body = await r.text()
       if (r.status === 404) {
         return undefined
-      } else if (r.status === 206) {
-        contentRange = parseRangeHeader(r.headers.get("content-range"))
+      } else if (r.status === 200) {
+        contentRange = parseRangeHeader(r.headers.get("x-content-range"))
         if (contentRange.first !== 0) {
           // strip first line (which is most likely incomplete)
           let lineEnd = body.indexOf("\n") + 1
@@ -91,7 +91,7 @@ const ProcessChainLog = ({ id, onError }) => {
       let options = {
         headers: {
           "accept": "text/plain",
-          "range": `bytes=${bytes}`
+          "x-range": `bytes=${bytes}`
         }
       }
 

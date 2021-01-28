@@ -563,8 +563,15 @@ class HttpEndpoint : CoroutineVerticle() {
       return
     }
 
+    // the 'x-range' header works just like the 'range' header but allows
+    // client applications to send requests with "Accept-Encoding: gzip",
+    // which does not work in most browsers when sending range requests
+    // because they force "Accept-Encoding: identity" in this case
+    val extendedRange = ctx.request().getHeader("x-range")
+    val usesExtendedRange = extendedRange != null
+
     val (rangeStart, rangeEnd) = run {
-      val range = ctx.request().getHeader("Range")
+      val range = extendedRange ?: ctx.request().getHeader("Range")
       if (range == null) {
         (null to null)
       } else {
@@ -658,8 +665,14 @@ class HttpEndpoint : CoroutineVerticle() {
                     .putHeader(HttpHeaderNames.ACCEPT_RANGES, "bytes")
                     .putHeader(HttpHeaderNames.CONTENT_LENGTH, length.toString())
                 if (rangeStart != null || rangeEnd != null) {
-                  resp.putHeader(HttpHeaderNames.CONTENT_RANGE, "bytes $start-$end/$size")
-                  resp.statusCode = 206
+                  if (usesExtendedRange) {
+                    // use status code 200 so we can send gzip'd response
+                    resp.putHeader("x-content-range", "bytes $start-$end/$size")
+                    resp.statusCode = 200
+                  } else {
+                    resp.putHeader(HttpHeaderNames.CONTENT_RANGE, "bytes $start-$end/$size")
+                    resp.statusCode = 206
+                  }
                 }
                 if (forceDownload) {
                   resp.putHeader(HttpHeaderNames.CONTENT_DISPOSITION,

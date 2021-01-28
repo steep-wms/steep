@@ -1910,6 +1910,42 @@ class HttpEndpointTest {
   }
 
   /**
+   * Test if we can get a subset of the contents of a process chain log file
+   * using our own `X-Range` HTTP header
+   */
+  @Test
+  fun getProcessChainLogByIdXRange(vertx: Vertx, ctx: VertxTestContext) {
+    val id = "abcdef123456"
+    val contents = "Hello world"
+
+    val agent1Asked = AtomicInteger(0)
+    val agent2Asked = AtomicInteger(0)
+    prepareGetProcessChainLogById(vertx, ctx, id, contents, start = 2, end = 3,
+        agent1Asked = agent1Asked, agent2Asked = agent2Asked)
+
+    val client = WebClient.create(vertx)
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/logs/processchains/$id")
+            .`as`(BodyCodec.string())
+            .putHeader("X-Range", "bytes=2-2")
+            .expect(ResponsePredicate.SC_OK)
+            .expect(contentType("text/plain"))
+            .sendAwait()
+
+        assertThat(agent1Asked.get()).isEqualTo(1)
+        assertThat(agent2Asked.get()).isEqualTo(1)
+
+        assertThat(response.getHeader("Content-Length")).isEqualTo("1")
+        assertThat(response.getHeader("X-Content-Range")).isEqualTo("bytes 2-2/11")
+        assertThat(response.getHeader("Accept-Ranges")).isEqualTo("bytes")
+        assertThat(response.body()).isEqualTo(contents.substring(2, 3))
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
    * Test if we can get the size of a process chain log file
    */
   @Test
