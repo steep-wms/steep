@@ -22,22 +22,16 @@ const ProcessChainLog = ({ id, onError }) => {
   const [followButtonVisible, setFollowButtonVisible] = useState(false)
   const eventBus = useContext(EventBusContext)
 
-  const shouldScrollToEnd = useCallback((factor = 2) => {
-    let lineHeight = parseInt(window.getComputedStyle(ref.current).lineHeight)
-    let threshold = ref.current.scrollHeight - ref.current.clientHeight - lineHeight * factor
-    return threshold < ref.current.scrollTop
-  }, [])
-
-  const scrollToEnd = useCallback((force = false) => {
+  const scrollToEnd = useCallback(() => {
     setTimeout(() => {
-      if ((force || shouldScrollToEnd()) && ref.current !== null) {
+      if (ref.current) {
         ref.current.scrollTop = ref.current.scrollHeight
       }
     }, 0)
-  }, [shouldScrollToEnd])
+  }, [])
 
   const onFollowClick = useCallback(() => {
-    scrollToEnd(true)
+    scrollToEnd()
   }, [scrollToEnd])
 
   const setError = useCallback((error) => {
@@ -50,9 +44,18 @@ const ProcessChainLog = ({ id, onError }) => {
   useEffect(() => {
     let codeRef = ref.current
     let contentRange = undefined
+    let scrollLockedAtEnd = true
+
+    function isScrollAtEnd() {
+      let lineHeight = parseInt(window.getComputedStyle(codeRef).lineHeight)
+      let threshold = codeRef.scrollHeight - codeRef.clientHeight - lineHeight
+      return threshold < codeRef.scrollTop
+    }
 
     const onScroll = throttle(() => {
-      setFollowButtonVisible(!shouldScrollToEnd(1))
+      let scrollAtEnd = isScrollAtEnd()
+      setFollowButtonVisible(!scrollAtEnd)
+      scrollLockedAtEnd = scrollAtEnd
 
       if (codeRef.scrollTop === 0 && contentRange !== undefined && contentRange.first > 0) {
         setLoadingVisible(true)
@@ -125,7 +128,7 @@ const ProcessChainLog = ({ id, onError }) => {
                   key: nextEntryKey.current++,
                   value: log
                 }])
-                scrollToEnd(true)
+                scrollToEnd()
                 setFollowButtonVisible(false)
                 setLoadingVisible(false)
               } else {
@@ -157,7 +160,9 @@ const ProcessChainLog = ({ id, onError }) => {
         value: msg.body
       }])
       setError(undefined)
-      scrollToEnd()
+      if (scrollLockedAtEnd) {
+        scrollToEnd()
+      }
     }
 
     // register event bus consumer receiving live log lines
@@ -178,7 +183,7 @@ const ProcessChainLog = ({ id, onError }) => {
       }
       codeRef.removeEventListener("scroll", onScroll)
     }
-  }, [id, eventBus, scrollToEnd, shouldScrollToEnd, setError])
+  }, [id, eventBus, scrollToEnd, setError])
 
   let codeVisible = contents.length > 0 || liveContents.length > 0
 
