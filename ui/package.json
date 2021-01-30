@@ -38,6 +38,8 @@
     "react-feather": "^2.0.8",
     "react-modal": "^3.11.2",
     "react-timeago": "^4.4.0",
+    "react-virtualized-auto-sizer": "^1.0.4",
+    "react-window": "^1.8.6",
     "serve": "^11.3.2",
     "spinkit": "^2.0.1",
     "styled-jsx-plugin-sass": "^1.0.0",

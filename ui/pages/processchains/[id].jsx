@@ -128,8 +128,8 @@ function ProcessChainDetails({ id }) {
 
     let menuItems = []
     if (logAvailable) {
-      menuItems.push(<a href={`${process.env.baseUrl}/logs/processchains/${id}?forceDownload=true`}>
-        <li key="download-log">Download log</li></a>)
+      menuItems.push(<a href={`${process.env.baseUrl}/logs/processchains/${id}?forceDownload=true`}
+        key="download-log"><li>Download log</li></a>)
     }
     if (pc.status === "REGISTERED" || pc.status === "RUNNING") {
       menuItems.push(<li key="cancel" onClick={onCancel}>Cancel</li>)

@@ -1,10 +1,8 @@
 @import "css/variables";
 
 .pre {
-  &, :global(.hljs) {
-    background: $gray-700;
-    color: #fff;
-  }
+  background: $gray-700;
+  color: #fff;
 }
 
 .pre {
@@ -14,15 +12,28 @@
   flex: 1;
   max-width: 100%;
 
-  &.has-tab {
-    border-top-left-radius: 0;
-  }
-
   .code {
     height: calc(100% - #{$spacer});
     margin: $spacer / 2 $spacer;
     display: block;
     overflow: auto;
     color: #fff;
+  }
+}
+
+.follow-button {
+  position: absolute;
+  top: $spacer;
+  right: $spacer;
+  color: #fff;
+  cursor: pointer;
+  display: none;
+
+  :hover {
+    color: $gray-300;
+  }
+
+  &.visible {
+    display: inline-block;
   }
 }

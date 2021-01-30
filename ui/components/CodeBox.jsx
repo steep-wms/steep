@@ -1,11 +1,16 @@
 import classNames from "classnames"
 import styles from "./CodeBox.scss"
-import Code from "./Code"
 import Tooltip from "./Tooltip"
 import { useEffect, useRef, useState } from "react"
 import stringify from "./lib/yaml-stringify"
 import Clipboard from "clipboard"
 import { Clipboard as ClipboardIcon } from "react-feather"
+
+import hljs from "highlight.js/lib/core"
+import json from "highlight.js/lib/languages/json"
+import yaml from "highlight.js/lib/languages/yaml"
+hljs.registerLanguage("json", json)
+hljs.registerLanguage("yaml", yaml)
 
 const COPY = "Copy to clipboard"
 const COPIED = "Copied!"
@@ -22,6 +27,11 @@ const CodeBox = ({ json }) => {
   str = str.replace()
 
   let yamlStr = stringify(json)
+
+  useEffect(() => {
+    hljs.highlightBlock(jsonRef.current)
+    hljs.highlightBlock(yamlRef.current)
+  }, [])
 
   useEffect(() => {
     let clipboardYaml = new Clipboard(copyBtnRef.current, {
@@ -57,10 +67,10 @@ const CodeBox = ({ json }) => {
       </div>
       <div className="code-box-main">
         <div className={classNames("code-box-tab", { active: activeLang === "yaml" })}>
-          <Code lang="yaml" ref={yamlRef} hasTab>{yamlStr}</Code>
+          <pre><code lang="yaml" ref={yamlRef}>{yamlStr}</code></pre>
         </div>
         <div className={classNames("code-box-tab", { active: activeLang === "json" })}>
-          <Code lang="json" ref={jsonRef} hasTab>{str}</Code>
+          <pre><code lang="json" ref={jsonRef}>{str}</code></pre>
         </div>
         <span className="code-box-copy-btn">
           <Tooltip title={copyTooltipTitle} forceVisible={copyTooltipVisible}

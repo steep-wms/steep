@@ -3,8 +3,6 @@
 .code-box {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  max-height: 100%;
 
   .code-box-title {
     display: flex;
@@ -59,5 +57,23 @@
 
   .code-box-main {
     position: relative;
+  }
+
+  :global(.hljs), :global(pre) {
+    background: $gray-700;
+    color: #fff;
+  }
+
+  :global(pre) {
+    border-radius: $border-radius;
+    border-top-left-radius: 0;
+    padding: $spacer / 2 0;
+    margin-top: 0;
+
+    :global(code) {
+      margin: $spacer / 2 $spacer;
+      display: block;
+      overflow: auto;
+    }
   }
 }

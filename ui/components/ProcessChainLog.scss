@@ -14,23 +14,6 @@
   }
 }
 
-.follow-button {
-  position: absolute;
-  top: $spacer;
-  right: $spacer;
-  color: #fff;
-  cursor: pointer;
-  display: none;
-
-  :hover {
-    color: $gray-300;
-  }
-
-  &.visible {
-    display: inline-block;
-  }
-}
-
 .loading {
   --sk-size: 36px;
   --sk-color: #fff;
