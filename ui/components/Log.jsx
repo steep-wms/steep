@@ -43,12 +43,12 @@ const Log = ({ children = [], onLoadMore }) => {
 
   function onScroll({ scrollOffset }) {
     if (listOuterRef.current) {
-      let endOffset = listOuterRef.current.scrollHeight - listOuterRef.current.clientHeight
+      let endOffset = listOuterRef.current.scrollHeight - listOuterRef.current.clientHeight - 5
       let atEnd = endOffset <= scrollOffset
       scrollLockedAtEnd.current = atEnd
       setFollowButtonVisible(!atEnd)
 
-      if (children.length > 0 && scrollOffset === 0 && onLoadMore) {
+      if (children.length > 0 && scrollOffset < 5 && onLoadMore) {
         let oldScrollPosition = listOuterRef.current.scrollHeight
         onLoadMore(() => {
           listRef.current.scrollTo(listOuterRef.current.scrollHeight - oldScrollPosition)
