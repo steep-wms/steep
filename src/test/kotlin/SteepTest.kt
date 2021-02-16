@@ -343,6 +343,7 @@ class SteepTest {
         break
       } else if (obj.getLong("size") != null) {
         header = obj
+        reply.reply(null)
       } else if (obj.getString("data") != null) {
         receivedContents.append(obj.getString("data"))
         reply.reply(null)

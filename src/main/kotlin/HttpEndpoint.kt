@@ -679,6 +679,7 @@ class HttpEndpoint : CoroutineVerticle() {
                       "attachment; filename=\"${id}.log\"")
                 }
                 foundSize = size
+                reply.reply(null) // acknowledge reception of this message
                 if (headersOnly) {
                   break
                 }

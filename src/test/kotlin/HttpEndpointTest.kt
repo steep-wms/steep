@@ -1819,7 +1819,7 @@ class HttpEndpointTest {
               )
             })
           } else {
-            vertx.eventBus().send(replyAddress, json {
+            vertx.eventBus().requestAwait<Unit>(replyAddress, json {
               obj(
                   "size" to contents.length.toLong(),
                   "start" to start.toLong(),

@@ -272,7 +272,7 @@ class Steep : CoroutineVerticle() {
       try {
         // We were able to open the file. Respond immediately and let the
         // client know that we will send the file.
-        vertx.eventBus().send(replyAddress, json {
+        vertx.eventBus().requestAwait<Unit>(replyAddress, json {
           obj(
               "size" to size,
               "start" to start,
