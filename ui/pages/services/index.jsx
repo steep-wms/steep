@@ -20,7 +20,9 @@ const Services = () => {
   let serviceElements
   if (services !== undefined) {
     serviceElements = []
-    for (let service of services) {
+    let sortedServices = [...services]
+    sortedServices.sort((a, b) => a.name.localeCompare(b.name))
+    for (let service of sortedServices) {
       let linkHref = "/services/[id]"
       let linkAs = `/services/${service.id}`
       serviceElements.push(
