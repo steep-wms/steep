@@ -7,6 +7,7 @@ import agent.RemoteAgentRegistry
 import db.SubmissionRegistry
 import helper.JsonUtils
 import helper.Shell
+import helper.withRetry
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.Message
 import io.vertx.core.impl.NoStackTraceThrowable
@@ -28,6 +29,7 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.processchain.ProcessChain
+import model.retry.RetryPolicy
 import org.slf4j.LoggerFactory
 import java.nio.file.NoSuchFileException
 import java.nio.file.Paths
@@ -272,14 +274,16 @@ class Steep : CoroutineVerticle() {
       try {
         // We were able to open the file. Respond immediately and let the
         // client know that we will send the file.
-        vertx.eventBus().requestAwait<Unit>(replyAddress, json {
-          obj(
-              "size" to size,
-              "start" to start,
-              "end" to (end - 1),
-              "length" to length
-          )
-        })
+        withRetry(RetryPolicy(5, 100, 2)) {
+          vertx.eventBus().requestAwait<Unit>(replyAddress, json {
+            obj(
+                "size" to size,
+                "start" to start,
+                "end" to (end - 1),
+                "length" to length
+            )
+          })
+        }
 
         if (!checkOnly) {
           // send the file to the reply address
