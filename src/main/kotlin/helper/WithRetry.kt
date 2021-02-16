@@ -21,10 +21,18 @@ suspend fun <R> withRetry(policy: RetryPolicy?, block: suspend (attempt: Int) ->
     return block(1)
   }
 
+  // get caller location
+  val withRetryClassName = object {}.javaClass.enclosingMethod.declaringClass.name
+  val callerLocation = run {
+    val t = Throwable()
+    val st = t.stackTrace.find { it.className != withRetryClassName }
+    if (st != null) "[${st.className}:${st.lineNumber}] " else ""
+  }
+
   var attempt = 0
   var lastThrowable: Throwable? = null
   while (policy.maxAttempts == -1 || attempt < policy.maxAttempts) {
-    val failedMsg = when {
+    val failedMsg = callerLocation + when {
       policy.maxAttempts > 0 ->
         "Operation failed $attempt out of ${policy.maxAttempts} times."
       attempt > 1 ->
