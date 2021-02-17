@@ -273,7 +273,9 @@ class Steep : CoroutineVerticle() {
 
       try {
         // We were able to open the file. Respond immediately and let the
-        // client know that we will send the file.
+        // client know that we will send the file (use retry policy because
+        // the client might not be ready for our answer yet, i.e. the consumer
+        // has perhaps not been registered yet)
         withRetry(RetryPolicy(5, 100, 2)) {
           vertx.eventBus().requestAwait<Unit>(replyAddress, json {
             obj(
