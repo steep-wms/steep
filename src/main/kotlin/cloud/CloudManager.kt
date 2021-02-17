@@ -66,6 +66,12 @@ class CloudManager : CoroutineVerticle() {
     private const val SETUP_ID = "Setup-Id"
 
     /**
+     * A metadata key indicating the external ID of a VM to which a block
+     * device has been attached (or was attached)
+     */
+    private const val VM_EXTERNAL_ID = "VM-External-Id"
+
+    /**
      * Name of a cluster-wide lock used to make atomic operations on the
      * VM registry
      */
@@ -280,7 +286,7 @@ class CloudManager : CoroutineVerticle() {
     // - VMs that we created before but that are not in our registry
     // - VMs that we created but that do not have an agent and won't get one
     val existingVMs = cloudClient.listVMs { createdByTag == it[CREATED_BY] }
-    val deleteDeferreds = mutableListOf<Deferred<Unit>>()
+    val deleteDeferreds = mutableListOf<Deferred<String>>()
     for (externalId in existingVMs) {
       val id = vmRegistry.findVMByExternalId(externalId)?.id
       val shouldDelete = if (id == null) {
@@ -315,11 +321,13 @@ class CloudManager : CoroutineVerticle() {
               vmRegistry.setVMReason(id, "VM was orphaned")
               vmRegistry.setVMDestructionTime(id, Instant.now())
             }
+            externalId
           })
         }
       }
     }
-    deleteDeferreds.awaitAll()
+    val deletedVMs = deleteDeferreds.awaitAll()
+    val remainingVMs = existingVMs.toSet() - deletedVMs
 
     // update status of VMs that don't exist anymore
     val nonTerminatedVMs = vmRegistry.findNonTerminatedVMs()
@@ -347,6 +355,19 @@ class CloudManager : CoroutineVerticle() {
         vmRegistry.setVMReason(nonTerminatedVM.id, "VM did not exist anymore")
       }
     }
+
+    // delete block devices that are not attached to a VM (anymore) and whose
+    // external VM ID is unknown
+    val unattachedBlockDevices = cloudClient.listAvailableBlockDevices { bd ->
+      createdByTag == bd[CREATED_BY] && (!bd.containsKey(VM_EXTERNAL_ID) ||
+          !remainingVMs.contains(bd[VM_EXTERNAL_ID]))
+    }
+    unattachedBlockDevices.map { volumeId ->
+      async {
+        log.info("Deleting unattached volume `$volumeId' ...")
+        cloudClient.destroyBlockDevice(volumeId)
+      }
+    }.awaitAll()
 
     if (!cleanupOnly) {
       // ensure there's a minimum number of VMs
@@ -608,12 +629,22 @@ class CloudManager : CoroutineVerticle() {
       }
 
       try {
+
+        // create VM
         val externalId = createVM(vm.id, setup)
         vmRegistry.setVMExternalID(vm.id, externalId)
         vmRegistry.setVMCreationTime(vm.id, Instant.now())
 
+        // create other volumes in background
+        val volumeDeferreds = createVolumesAsync(externalId, setup)
+
         try {
           cloudClient.waitForVM(externalId)
+
+          val volumeIds = volumeDeferreds.awaitAll()
+          for (volumeId in volumeIds) {
+            cloudClient.attachVolume(externalId, volumeId)
+          }
 
           val ipAddress = cloudClient.getIPAddress(externalId)
           vmRegistry.setVMIPAddress(vm.id, ipAddress)
@@ -623,6 +654,15 @@ class CloudManager : CoroutineVerticle() {
         } catch (e: Throwable) {
           vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYING)
           cloudClient.destroyVM(externalId)
+          for (vd in volumeDeferreds) {
+            val volumeId = try {
+              vd.await()
+            } catch (vt: Throwable) {
+              log.error("Could not create volume", vt)
+              null
+            }
+            volumeId?.let { cloudClient.destroyBlockDevice(it) }
+          }
           throw e
         }
 
@@ -652,15 +692,31 @@ class CloudManager : CoroutineVerticle() {
 
     val name = "fraunhofer-steep-${id}"
     val imageId = cloudClient.getImageID(setup.imageName)
-    val blockDeviceId = cloudClient.createBlockDevice(imageId,
-        setup.blockDeviceSizeGb, setup.blockDeviceVolumeType,
-        setup.availabilityZone, metadata)
+    val blockDeviceId = cloudClient.createBlockDevice(setup.blockDeviceSizeGb,
+        setup.blockDeviceVolumeType, imageId, true, setup.availabilityZone, metadata)
     try {
       return cloudClient.createVM(name, setup.flavor, blockDeviceId,
           setup.availabilityZone, metadata)
     } catch (t: Throwable) {
       cloudClient.destroyBlockDevice(blockDeviceId)
       throw t
+    }
+  }
+
+  /**
+   * Asynchronously create all additional volumes for the VM with the given
+   * [externalId] specified by the given [setup]. Return a list of [Deferred]
+   * objects that can be used to wait for the completion of the asynchronous
+   * operation and to obtain the IDs of the created volumes.
+   */
+  private suspend fun createVolumesAsync(externalId: String, setup: Setup): List<Deferred<String>> {
+    val metadata = mapOf(CREATED_BY to createdByTag, SETUP_ID to setup.id,
+        VM_EXTERNAL_ID to externalId)
+    return setup.additionalVolumes.map { volume ->
+      async {
+        cloudClient.createBlockDevice(volume.sizeGb, volume.type, null, false,
+            volume.availabilityZone ?: setup.availabilityZone, metadata)
+      }
     }
   }
 

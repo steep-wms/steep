@@ -6,6 +6,17 @@ package cloud
  */
 interface CloudClient {
   /**
+   * Get a list of block devices that match the given metadata filter. Only
+   * available block devices will be returned!
+   * @param metadataFilter A filter that will be called with the metadata of
+   * each available block device. If the filter returns `true` the block
+   * device's ID will be included in the method's result
+   * @return the list of matching, available block devices
+   */
+  suspend fun listAvailableBlockDevices(metadataFilter: ((Map<String, String>) ->
+      Boolean)? = null): List<String>
+
+  /**
    * Get a list of virtual machines that match the given metadata filter
    * @param metadataFilter A filter that will be called with the metadata of
    * each available virtual machine. If the filter returns `true` the virtual
@@ -24,18 +35,20 @@ interface CloudClient {
   /**
    * Create a block device. The block device will be available to be mounted
    * when the method returns.
-   * @param imageId the ID of the virtual machine image to deploy to the
-   * block device
    * @param blockDeviceSizeGb the size of the block device in GB
    * @param volumeType the type of the volume (may be `null` if the type
    * should be selected automatically)
+   * @param imageId the ID of the virtual machine image to deploy to the
+   * block device (may be `null` if the device should be empty)
+   * @param bootable `true` if the device should be bootable so it can act
+   * as the main/primary volume of a VM
    * @param availabilityZone the availability zone in which to create the block
    * device
    * @param metadata the metadata to attach to the block device
    * @return the block device ID
    */
-  suspend fun createBlockDevice(imageId: String, blockDeviceSizeGb: Int,
-      volumeType: String?, availabilityZone: String,
+  suspend fun createBlockDevice(blockDeviceSizeGb: Int, volumeType: String?,
+      imageId: String?, bootable: Boolean, availabilityZone: String,
       metadata: Map<String, String>): String
 
   /**
@@ -84,4 +97,11 @@ interface CloudClient {
    * @return the IP address
    */
   suspend fun getIPAddress(vmId: String): String
+
+  /**
+   * Attach a volume to a virtual machine
+   * @param vmId the ID of the virtual machine
+   * @param volumeId the ID of the volume to attach
+   */
+  suspend fun attachVolume(vmId: String, volumeId: String)
 }

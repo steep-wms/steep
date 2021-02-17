@@ -39,6 +39,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.cloud.VM
 import model.setup.Setup
+import model.setup.Volume
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -57,6 +58,7 @@ import java.nio.file.Path
 class CloudManagerTest {
   companion object {
     private const val MY_OLD_VM = "MY_OLD_VM"
+    private const val MY_OLD_VOLUME = "MY_OLD_VOLUME"
     private const val CREATED_BY_TAG = "CloudManagerTest"
     private const val SYNC_INTERVAL = 2
     private const val KEEP_ALIVE_INTERVAL = 1
@@ -136,9 +138,9 @@ class CloudManagerTest {
 
     coEvery { client.getImageID(setup.imageName) } returns setup.imageName
     if (mockCreateResources) {
-      coEvery { client.createBlockDevice(setup.imageName, setup.blockDeviceSizeGb,
-          setup.blockDeviceVolumeType, setup.availabilityZone,
-          metadata) } answers { UniqueID.next() }
+      coEvery { client.createBlockDevice(setup.blockDeviceSizeGb,
+          setup.blockDeviceVolumeType, setup.imageName, true,
+          setup.availabilityZone, metadata) } answers { UniqueID.next() }
       coEvery { client.createVM(any(), setup.flavor, any(), setup.availabilityZone,
           metadata) } answers { UniqueID.next() }
     }
@@ -206,6 +208,13 @@ class CloudManagerTest {
    */
   @Nested
   inner class SSHUsername {
+    @BeforeEach
+    fun setUp() {
+      // mock client
+      coEvery { client.listVMs(any()) } returns emptyList()
+      coEvery { client.listAvailableBlockDevices(any()) } returns emptyList()
+    }
+
     /**
      * Test that the cloud manager accepts an SSH username per setup even if
      * there is no global one
@@ -250,11 +259,17 @@ class CloudManagerTest {
     private lateinit var testSetupLarge: Setup
     private lateinit var testSetupAlternative: Setup
     private lateinit var testSetupTwo: Setup
+    private lateinit var testSetupWithVolumes: Setup
+
+    private val testVolume1 = Volume(10)
+    private val testVolume2 = Volume(20, "SSD")
+    private val testVolume3 = Volume(30, "SSD", AZ02)
 
     @BeforeEach
     fun setUp(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
       // mock client
       coEvery { client.listVMs(any()) } returns emptyList()
+      coEvery { client.listAvailableBlockDevices(any()) } returns emptyList()
 
       // create dummy file
       val tempDirFile = tempDir.toRealPath().toFile()
@@ -279,9 +294,13 @@ class CloudManagerTest {
           null, 0, 3, maxCreateConcurrent = 2,
           provisioningScripts = listOf(testSh.absolutePath),
           providedCapabilities = listOf("test4", "foo"))
+      testSetupWithVolumes = Setup("testWithVolumes", "myflavor", "myImage", AZ01, 500000,
+          null, 0, 1, provisioningScripts = listOf(testSh.absolutePath),
+          providedCapabilities = listOf("test5", "foo"), additionalVolumes = listOf(
+            testVolume1, testVolume2, testVolume3))
 
       deployCloudManager(tempDir, listOf(testSetup, testSetupLarge,
-          testSetupAlternative, testSetupTwo), vertx, ctx)
+          testSetupAlternative, testSetupTwo, testSetupWithVolumes), vertx, ctx)
     }
 
     /**
@@ -295,9 +314,8 @@ class CloudManagerTest {
         ctx.coVerify {
           coVerify(exactly = 1) {
             client.getImageID(testSetup.imageName)
-            client.createBlockDevice(testSetup.imageName,
-                testSetup.blockDeviceSizeGb, null,
-                testSetup.availabilityZone, any())
+            client.createBlockDevice(testSetup.blockDeviceSizeGb, null,
+                testSetup.imageName, true, testSetup.availabilityZone, any())
             client.createVM(any(), testSetup.flavor, any(),
                 testSetup.availabilityZone, any())
             client.getIPAddress(any())
@@ -323,9 +341,8 @@ class CloudManagerTest {
         ctx.coVerify {
           coVerify(exactly = 1) {
             client.getImageID(testSetup.imageName)
-            client.createBlockDevice(testSetup.imageName,
-                testSetup.blockDeviceSizeGb, null,
-                testSetup.availabilityZone, any())
+            client.createBlockDevice(testSetup.blockDeviceSizeGb, null,
+                testSetup.imageName, true, testSetup.availabilityZone, any())
             client.createVM(any(), testSetup.flavor, any(),
                 testSetup.availabilityZone, any())
             client.getIPAddress(any())
@@ -348,9 +365,8 @@ class CloudManagerTest {
         ctx.coVerify {
           coVerify(exactly = 1) {
             client.getImageID(testSetup.imageName)
-            client.createBlockDevice(testSetup.imageName,
-                testSetup.blockDeviceSizeGb, null,
-                testSetup.availabilityZone, any())
+            client.createBlockDevice(testSetup.blockDeviceSizeGb, null,
+                testSetup.imageName, true, testSetup.availabilityZone, any())
             client.createVM(any(), testSetup.flavor, any(),
                 testSetup.availabilityZone, any())
             client.getIPAddress(any())
@@ -376,9 +392,8 @@ class CloudManagerTest {
         ctx.coVerify {
           coVerify(exactly = 4) {
             client.getImageID(testSetupLarge.imageName)
-            client.createBlockDevice(testSetupLarge.imageName,
-                testSetupLarge.blockDeviceSizeGb, "SSD",
-                testSetupLarge.availabilityZone, any())
+            client.createBlockDevice(testSetupLarge.blockDeviceSizeGb, "SSD",
+                testSetupLarge.imageName, true, testSetupLarge.availabilityZone, any())
             client.createVM(any(), testSetupLarge.flavor, any(),
                 testSetupLarge.availabilityZone, any())
             client.getIPAddress(any())
@@ -403,13 +418,11 @@ class CloudManagerTest {
 
         // mock additional methods
         coEvery { client.destroyBlockDevice(any()) } just Runs
-        coEvery { client.createBlockDevice(testSetup.imageName,
-            testSetup.blockDeviceSizeGb,
-            testSetup.blockDeviceVolumeType,
+        coEvery { client.createBlockDevice(testSetup.blockDeviceSizeGb,
+            testSetup.blockDeviceVolumeType, testSetup.imageName, true,
             testSetup.availabilityZone, any()) } answers { UniqueID.next() }
-        coEvery { client.createBlockDevice(testSetupAlternative.imageName,
-            testSetupAlternative.blockDeviceSizeGb,
-            testSetupAlternative.blockDeviceVolumeType,
+        coEvery { client.createBlockDevice(testSetupAlternative.blockDeviceSizeGb,
+            testSetupAlternative.blockDeviceVolumeType, testSetupAlternative.imageName, true,
             testSetupAlternative.availabilityZone, any()) } answers { UniqueID.next() }
 
         doCreateOnDemand(testSetup, vertx, ctx, false, listOf("foo"))
@@ -419,15 +432,14 @@ class CloudManagerTest {
             client.getImageID(testSetup.imageName)
           }
           coVerify(exactly = 1) {
-            client.createBlockDevice(testSetup.imageName,
-                testSetup.blockDeviceSizeGb, null,
-                testSetup.availabilityZone, any())
+            client.createBlockDevice(testSetup.blockDeviceSizeGb, null,
+                testSetup.imageName, true, testSetup.availabilityZone, any())
             client.createVM(any(), testSetup.flavor, any(),
                 testSetup.availabilityZone, any())
           }
           coVerify(exactly = 1) {
-            client.createBlockDevice(testSetupAlternative.imageName,
-                testSetupAlternative.blockDeviceSizeGb, null,
+            client.createBlockDevice(testSetupAlternative.blockDeviceSizeGb,
+                null, testSetupAlternative.imageName, true,
                 testSetupAlternative.availabilityZone, any())
             client.createVM(any(), testSetupAlternative.flavor, any(),
                 testSetupAlternative.availabilityZone, any())
@@ -459,9 +471,8 @@ class CloudManagerTest {
         ctx.coVerify {
           coVerify(exactly = 2) {
             client.getImageID(testSetupTwo.imageName)
-            client.createBlockDevice(testSetupTwo.imageName,
-                testSetupTwo.blockDeviceSizeGb, null,
-                testSetupTwo.availabilityZone, any())
+            client.createBlockDevice(testSetupTwo.blockDeviceSizeGb, null,
+                testSetupTwo.imageName, true, testSetupTwo.availabilityZone, any())
             client.createVM(any(), testSetupTwo.flavor, any(),
                 testSetupTwo.availabilityZone, any())
             client.getIPAddress(any())
@@ -485,11 +496,58 @@ class CloudManagerTest {
         ctx.coVerify {
           coVerify(exactly = 3) {
             client.getImageID(testSetupTwo.imageName)
-            client.createBlockDevice(testSetupTwo.imageName,
-                testSetupTwo.blockDeviceSizeGb, null,
-                testSetupTwo.availabilityZone, any())
+            client.createBlockDevice(testSetupTwo.blockDeviceSizeGb, null,
+                testSetupTwo.imageName, true, testSetupTwo.availabilityZone, any())
             client.createVM(any(), testSetupTwo.flavor, any(),
                 testSetupTwo.availabilityZone, any())
+            client.getIPAddress(any())
+          }
+        }
+
+        ctx.completeNow()
+      }
+    }
+
+    /**
+     * Test if a VM with additional volumes ([testSetupWithVolumes]) can be
+     * created on demand
+     */
+    @Test
+    fun createVMWithVolumesOnDemand(vertx: Vertx, ctx: VertxTestContext) {
+      val volumeId1 = UniqueID.next()
+      val volumeId2 = UniqueID.next()
+      val volumeId3 = UniqueID.next()
+      coEvery { client.createBlockDevice(testVolume1.sizeGb,
+          testVolume1.type, null, false, AZ01, any()) } returns volumeId1
+      coEvery { client.createBlockDevice(testVolume2.sizeGb,
+          testVolume2.type, null, false, AZ01, any()) } returns volumeId2
+      coEvery { client.createBlockDevice(testVolume3.sizeGb,
+          testVolume3.type, null, false, AZ02, any()) } returns volumeId3
+      coEvery { client.attachVolume(any(), volumeId1) } just Runs
+      coEvery { client.attachVolume(any(), volumeId2) } just Runs
+      coEvery { client.attachVolume(any(), volumeId3) } just Runs
+
+      GlobalScope.launch(vertx.dispatcher()) {
+        doCreateOnDemand(testSetupWithVolumes, vertx, ctx)
+
+        ctx.coVerify {
+          coVerify(exactly = 1) {
+            client.getImageID(testSetupWithVolumes.imageName)
+            client.createBlockDevice(testSetupWithVolumes.blockDeviceSizeGb, null,
+                testSetup.imageName, true, testSetup.availabilityZone, any())
+            client.createVM(any(), testSetupWithVolumes.flavor, any(),
+                testSetupWithVolumes.availabilityZone, any())
+
+            client.createBlockDevice(testVolume1.sizeGb, testVolume1.type,
+                null, false, AZ01, any())
+            client.createBlockDevice(testVolume2.sizeGb, testVolume2.type,
+                null, false, AZ01, any())
+            client.createBlockDevice(testVolume3.sizeGb, testVolume3.type,
+                null, false, AZ02, any())
+            client.attachVolume(any(), volumeId1)
+            client.attachVolume(any(), volumeId2)
+            client.attachVolume(any(), volumeId3)
+
             client.getIPAddress(any())
           }
         }
@@ -513,8 +571,10 @@ class CloudManagerTest {
     fun setUp(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
       // return a VM that should be deleted when the verticle starts up
       coEvery { client.listVMs(any()) } returns listOf(MY_OLD_VM)
+      coEvery { client.listAvailableBlockDevices(any()) } returns listOf(MY_OLD_VOLUME)
       coEvery { client.isVMActive(MY_OLD_VM) } returns true
       coEvery { client.destroyVM(MY_OLD_VM) } just Runs
+      coEvery { client.destroyBlockDevice(MY_OLD_VOLUME) } just Runs
 
       GlobalScope.launch(vertx.dispatcher()) {
         // pretend we already created a VM
@@ -534,6 +594,21 @@ class CloudManagerTest {
         ctx.coVerify {
           coVerify(exactly = 1) {
             client.destroyVM(MY_OLD_VM)
+          }
+        }
+        ctx.completeNow()
+      }
+    }
+
+    /**
+     * Check if our old volume has been deleted on startup
+     */
+    @Test
+    fun destroyExistingVolume(vertx: Vertx, ctx: VertxTestContext) {
+      GlobalScope.launch(vertx.dispatcher()) {
+        ctx.coVerify {
+          coVerify(exactly = 1) {
+            client.destroyBlockDevice(MY_OLD_VOLUME)
           }
         }
         ctx.completeNow()
@@ -585,9 +660,10 @@ class CloudManagerTest {
       // mock client
       val createdVMs = mutableListOf<String>()
       coEvery { client.listVMs(any()) } answers { createdVMs }
+      coEvery { client.listAvailableBlockDevices(any()) } returns emptyList()
       coEvery { client.getImageID(testSetupMin.imageName) } returns testSetupMin.imageName
-      coEvery { client.createBlockDevice(testSetupMin.imageName,
-          testSetupMin.blockDeviceSizeGb, testSetupMin.blockDeviceVolumeType,
+      coEvery { client.createBlockDevice(testSetupMin.blockDeviceSizeGb,
+          testSetupMin.blockDeviceVolumeType, testSetupMin.imageName, true,
           testSetupMin.availabilityZone, any()) } answers { UniqueID.next() }
       coEvery { client.createVM(any(), testSetupMin.flavor, any(),
           testSetupMin.availabilityZone, any()) } answers {
@@ -636,10 +712,9 @@ class CloudManagerTest {
         ctx.coVerify {
           coVerify(exactly = 2) {
             client.getImageID(testSetupMin.imageName)
-            client.createBlockDevice(testSetupMin.imageName,
-                testSetupMin.blockDeviceSizeGb,
-                testSetupMin.blockDeviceVolumeType,
-                testSetupMin.availabilityZone, any())
+            client.createBlockDevice(testSetupMin.blockDeviceSizeGb,
+                testSetupMin.blockDeviceVolumeType, testSetupMin.imageName,
+                true, testSetupMin.availabilityZone, any())
             client.createVM(any(), testSetupMin.flavor, any(),
                 testSetupMin.availabilityZone, any())
             client.getIPAddress(any())
@@ -677,6 +752,7 @@ class CloudManagerTest {
 
       // mock client
       coEvery { client.listVMs(any()) } returns emptyList()
+      coEvery { client.listAvailableBlockDevices(any()) } returns emptyList()
 
       // create test setups
       val tempDirFile = tempDir.toRealPath().toFile()
@@ -702,14 +778,14 @@ class CloudManagerTest {
       coEvery { client.getImageID(testSetup.imageName) } returns testSetup.imageName
       coEvery { client.getImageID(testSetup2.imageName) } returns testSetup2.imageName
       coEvery { client.getImageID(testSetup3.imageName) } returns testSetup3.imageName
-      coEvery { client.createBlockDevice(testSetup.imageName,
-          testSetup.blockDeviceSizeGb, testSetup.blockDeviceVolumeType,
+      coEvery { client.createBlockDevice(testSetup.blockDeviceSizeGb,
+          testSetup.blockDeviceVolumeType, testSetup.imageName, true,
           testSetup.availabilityZone, any()) } answers { UniqueID.next() }
-      coEvery { client.createBlockDevice(testSetup2.imageName,
-          testSetup2.blockDeviceSizeGb, testSetup2.blockDeviceVolumeType,
+      coEvery { client.createBlockDevice(testSetup2.blockDeviceSizeGb,
+          testSetup2.blockDeviceVolumeType, testSetup2.imageName, true,
           testSetup2.availabilityZone, any()) } answers { UniqueID.next() }
-      coEvery { client.createBlockDevice(testSetup3.imageName,
-          testSetup3.blockDeviceSizeGb, testSetup3.blockDeviceVolumeType,
+      coEvery { client.createBlockDevice(testSetup3.blockDeviceSizeGb,
+          testSetup3.blockDeviceVolumeType, testSetup3.imageName, true,
           testSetup3.availabilityZone, any()) } answers { UniqueID.next() }
       coEvery { client.createVM(any(), testSetup.flavor, any(),
           testSetup.availabilityZone, any()) } answers {
@@ -786,9 +862,8 @@ class CloudManagerTest {
         ctx.coVerify {
           coVerify(exactly = 1) {
             client.getImageID(testSetup3.imageName)
-            client.createBlockDevice(testSetup3.imageName,
-                testSetup3.blockDeviceSizeGb,
-                testSetup3.blockDeviceVolumeType,
+            client.createBlockDevice(testSetup3.blockDeviceSizeGb,
+                testSetup3.blockDeviceVolumeType, testSetup3.imageName, true,
                 testSetup3.availabilityZone, any())
             client.createVM(any(), testSetup3.flavor, any(),
                 testSetup3.availabilityZone, any())
@@ -817,18 +892,16 @@ class CloudManagerTest {
         ctx.coVerify {
           coVerify(exactly = 1) {
             client.getImageID(testSetup.imageName)
-            client.createBlockDevice(testSetup.imageName,
-                testSetup.blockDeviceSizeGb,
-                testSetup.blockDeviceVolumeType,
+            client.createBlockDevice(testSetup.blockDeviceSizeGb,
+                testSetup.blockDeviceVolumeType, testSetup.imageName, true,
                 testSetup.availabilityZone, any())
             client.createVM(any(), testSetup.flavor, any(),
                 testSetup.availabilityZone, any())
           }
           coVerify(exactly = 1) {
             client.getImageID(testSetup2.imageName)
-            client.createBlockDevice(testSetup2.imageName,
-                testSetup2.blockDeviceSizeGb,
-                testSetup2.blockDeviceVolumeType,
+            client.createBlockDevice(testSetup2.blockDeviceSizeGb,
+                testSetup2.blockDeviceVolumeType, testSetup2.imageName, true,
                 testSetup2.availabilityZone, any())
             client.createVM(any(), testSetup2.flavor, any(),
                 testSetup2.availabilityZone, any())
@@ -852,9 +925,8 @@ class CloudManagerTest {
         ctx.coVerify {
           coVerify(exactly = max) {
             client.getImageID(setup.imageName)
-            client.createBlockDevice(setup.imageName,
-                setup.blockDeviceSizeGb, null,
-                setup.availabilityZone, any())
+            client.createBlockDevice(setup.blockDeviceSizeGb, null,
+                setup.imageName, true, setup.availabilityZone, any())
             client.createVM(any(), setup.flavor, any(),
                 setup.availabilityZone, any())
             client.getIPAddress(any())
@@ -910,17 +982,15 @@ class CloudManagerTest {
         ctx.coVerify {
           coVerify(exactly = 2) {
             client.getImageID(testSetup.imageName)
-            client.createBlockDevice(testSetup.imageName,
-                testSetup.blockDeviceSizeGb, null,
-                testSetup.availabilityZone, any())
+            client.createBlockDevice(testSetup.blockDeviceSizeGb, null,
+                testSetup.imageName, true, testSetup.availabilityZone, any())
             client.createVM(any(), testSetup.flavor, any(),
                 testSetup.availabilityZone, any())
           }
           coVerify(exactly = 1) {
             client.getImageID(testSetup2.imageName)
-            client.createBlockDevice(testSetup2.imageName,
-                testSetup2.blockDeviceSizeGb, null,
-                testSetup2.availabilityZone, any())
+            client.createBlockDevice(testSetup2.blockDeviceSizeGb, null,
+                testSetup2.imageName, true, testSetup2.availabilityZone, any())
             client.createVM(any(), testSetup2.flavor, any(),
                 testSetup2.availabilityZone, any())
           }

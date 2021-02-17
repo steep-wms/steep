@@ -8,8 +8,8 @@ import ConfigConstants
  * @param flavor the VM flavor
  * @param imageName the name of the VM image to deploy
  * @param availabilityZone the availability zone in which to create the VM
- * @param blockDeviceSizeGb the size of the VM's block device in gigabytes
- * @param blockDeviceVolumeType the type of the VM's block device (may be
+ * @param blockDeviceSizeGb the size of the VM's main block device in gigabytes
+ * @param blockDeviceVolumeType the type of the VM's main block device (may be
  * `null` if the type should be selected automatically)
  * @param minVMs the minimum number of VMs to create with this setup
  * @param maxVMs the maximum number of VMs to create with this setup
@@ -21,6 +21,8 @@ import ConfigConstants
  * will have
  * @param sshUsername an optional username for the SSH connection to the
  * created VM (overrides [ConfigConstants.CLOUD_SSH_USERNAME])
+ * @param additionalVolumes an optional list of [Volume]s that will be attached
+ * to the VM
  * @author Michel Kraemer
  */
 data class Setup(
@@ -35,5 +37,6 @@ data class Setup(
     val maxCreateConcurrent: Int = 1,
     val provisioningScripts: List<String> = emptyList(),
     val providedCapabilities: List<String> = emptyList(),
-    val sshUsername: String? = null
+    val sshUsername: String? = null,
+    val additionalVolumes: List<Volume> = emptyList()
 )

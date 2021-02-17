@@ -92,6 +92,18 @@ class OpenStackClient(endpoint: String, username: String, password: String,
     }
   }
 
+  override suspend fun listAvailableBlockDevices(metadataFilter: ((Map<String, String>) ->
+      Boolean)?): List<String> {
+    val os = this.os.await()
+    val volumes = blocking { os.blockStorage().volumes().list() }
+    val availableVolumes = volumes.filter { it.status == Volume.Status.AVAILABLE }
+    return if (metadataFilter == null) {
+      availableVolumes.map { it.id }
+    } else {
+      availableVolumes.filter { metadataFilter(it.metaData) }.map { it.id }
+    }
+  }
+
   override suspend fun listVMs(metadataFilter: ((Map<String, String>) -> Boolean)?): List<String> {
     val os = this.os.await()
     val servers = blocking { os.compute().servers().list() }
@@ -113,19 +125,22 @@ class OpenStackClient(endpoint: String, username: String, password: String,
     return images[0].id
   }
 
-  override suspend fun createBlockDevice(imageId: String,
-      blockDeviceSizeGb: Int, volumeType: String?, availabilityZone: String,
-      metadata: Map<String, String>): String {
-    log.info("Creating block device ...")
+  override suspend fun createBlockDevice(blockDeviceSizeGb: Int,
+      volumeType: String?, imageId: String?, bootable: Boolean,
+      availabilityZone: String, metadata: Map<String, String>): String {
+    log.info("Creating volume ...")
 
     val builder = Builders.volume()
         .name("fraunhofer-steep-" + UniqueID.next())
         .metadata(metadata)
         .size(blockDeviceSizeGb)
         .volumeType(volumeType)
-        .bootable(true)
-        .imageRef(imageId)
+        .bootable(bootable)
         .zone(availabilityZone)
+
+    if (imageId != null) {
+      builder.imageRef(imageId)
+    }
 
     val os = this.os.await()
     val volume = blocking { os.blockStorage().volumes().create(builder.build()) } ?:
@@ -361,5 +376,11 @@ class OpenStackClient(endpoint: String, username: String, password: String,
       blocking { os.compute().floatingIps().deallocateIP(floatingIp.id) }
       throw e
     }
+  }
+
+  override suspend fun attachVolume(vmId: String, volumeId: String) {
+    log.info("Attaching volume `$volumeId' to VM `$vmId' ...")
+    val os = this.os.await()
+    blocking { os.compute().servers().attachVolume(vmId, volumeId, null) }
   }
 }
