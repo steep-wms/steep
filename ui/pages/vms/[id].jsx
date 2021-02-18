@@ -145,6 +145,25 @@ function VMDetails({ id }) {
           </DefinitionList>
         </div>
       </div>
+      <div className="vm-details-two-column">
+        <div className="vm-details-left">
+          <DefinitionList>
+            <DefinitionListItem title="Additional volumes">
+              {(vm.setup.additionalVolumes === undefined || vm.setup.additionalVolumes.length === 0) && <>&ndash;</>}
+              {(vm.setup.additionalVolumes !== undefined && vm.setup.additionalVolumes.length > 0) && (
+                <div className="vm-details-volume-grid">
+                  {vm.setup.additionalVolumes.map(volume => <>
+                    <div className="vm-details-volume-size">{volume.sizeGb} GB</div>
+                    <div className="vm-details-volume-type">{volume.type || "(auto)"}</div>
+                    <div className="vm-details-volume-availability-zone">{volume.availabilityZone ||
+                      vm.setup.availabilityZone || <>&ndash;</>}</div>
+                  </>)}
+                </div>
+              )}
+            </DefinitionListItem>
+          </DefinitionList>
+        </div>
+      </div>
       <style jsx>{styles}</style>
     </>)
   }
