@@ -30,6 +30,10 @@
     <logger name="com.mitchellbosecke.pebble" level="INFO" />
     <logger name="com.zaxxer.hikari.pool" level="INFO" />
 
+    <!-- Suppress errors if migration status could not be read (which happens
+         on the OTC for instance). We don't need it anyhow. -->
+    <logger name="org.openstack4j.model.storage.block.Volume$MigrationStatus" level="FATAL" />
+
     <variable name="STEEP_LOG_LEVEL" value="${STEEP_LOG_LEVEL:-DEBUG}" />
     <root level="${STEEP_LOG_LEVEL}">
         <appender-ref ref="STDOUT"/>
