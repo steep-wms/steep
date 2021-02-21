@@ -40,8 +40,10 @@ class SetupSelectorTest {
         500000, maxVMs = 4, maxCreateConcurrent = 3, providedCapabilities = listOf(RQ1))
     private val SETUP07 = Setup("setup7", "myFlavor", "myImage", "az-01",
         500000, maxVMs = 5, maxCreateConcurrent = 5, providedCapabilities = listOf(RQ1))
-    private val SETUP08= Setup("setup7", "myFlavor", "myImage", "az-01",
+    private val SETUP08 = Setup("setup8", "myFlavor", "myImage", "az-01",
         500000, maxVMs = 5, maxCreateConcurrent = 5, providedCapabilities = listOf(RQ1, RQ2))
+    private val SETUP09 = Setup("setup9", "myFlavor", "myImage", "az-01",
+        500000, minVMs = 2, maxVMs = 5, maxCreateConcurrent = 5, providedCapabilities = listOf(RQ2))
   }
 
   /**
@@ -254,6 +256,172 @@ class SetupSelectorTest {
         assertThat(selector.select(5, listOf(RQ1), setups))
             .containsExactly(SETUP07, SETUP07, SETUP07)
       }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if a minimum number of VMs can be created based on agent pool params
+   */
+  @Test
+  fun selectMinimum(vertx: Vertx, ctx: VertxTestContext) {
+    val vmRegistry = mockk<VMRegistry>()
+    val selector = SetupSelector(vmRegistry, listOf(
+        PoolAgentParams(listOf(RQ1), min = 2),
+        PoolAgentParams(listOf(RQ1, RQ2), min = 1)))
+
+    val setups = listOf(SETUP07, SETUP08)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        assertThat(selector.selectMinimum(setups, false))
+            .containsExactly(SETUP07, SETUP07, SETUP08)
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that only two VMs will be created if the pool agent params overlap
+   * and one of them has a maximum of 2.
+   */
+  @Test
+  fun selectMinimumOverlapping(vertx: Vertx, ctx: VertxTestContext) {
+    val vmRegistry = mockk<VMRegistry>()
+    val selector = SetupSelector(vmRegistry, listOf(
+        PoolAgentParams(listOf(RQ1), min = 2, max = 2),
+        PoolAgentParams(listOf(RQ1, RQ2), min = 1)))
+
+    val setups = listOf(SETUP07, SETUP08)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        assertThat(selector.selectMinimum(setups, false))
+            .containsExactly(SETUP07, SETUP07)
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that only three VMs will be created if the pool agent params overlap
+   * and one of them has a maximum of 3 but only a minimum of 1.
+   */
+  @Test
+  fun selectMinimumOverlappingMore(vertx: Vertx, ctx: VertxTestContext) {
+    val vmRegistry = mockk<VMRegistry>()
+    val selector = SetupSelector(vmRegistry, listOf(
+        PoolAgentParams(listOf(RQ1), min = 2, max = 3),
+        PoolAgentParams(listOf(RQ1, RQ2), min = 2)))
+
+    val setups = listOf(SETUP07, SETUP08)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        assertThat(selector.selectMinimum(setups, false))
+            .containsExactly(SETUP07, SETUP07, SETUP08)
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that a minimum number of VMs can be created if [Setup.minVMs]
+   * has been specified
+   */
+  @Test
+  fun selectMinimumVMs(vertx: Vertx, ctx: VertxTestContext) {
+    val vmRegistry = mockk<VMRegistry>()
+    val selector = SetupSelector(vmRegistry, emptyList())
+
+    val setups = listOf(SETUP07, SETUP08, SETUP09)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        assertThat(selector.selectMinimum(setups, false))
+            .containsExactly(SETUP09, SETUP09)
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that a minimum number of VMs can be created if both [Setup.minVMs]
+   * and [PoolAgentParams.min] have been specified in various combinations
+   */
+  @Test
+  fun selectMinimumVMsAndParams(vertx: Vertx, ctx: VertxTestContext) {
+    val vmRegistry = mockk<VMRegistry>()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val selector1 = SetupSelector(vmRegistry, listOf(
+            PoolAgentParams(listOf(RQ1), min = 2, max = 3),
+            PoolAgentParams(listOf(RQ1, RQ2), min = 2)))
+        val setups1 = listOf(SETUP07, SETUP08, SETUP09)
+        assertThat(selector1.selectMinimum(setups1, false))
+            .containsExactly(SETUP07, SETUP07, SETUP08, SETUP09, SETUP09)
+
+        val selector2 = SetupSelector(vmRegistry, listOf(
+            PoolAgentParams(listOf(RQ2), min = 2)))
+        val setups2 = listOf(SETUP07, SETUP09)
+        assertThat(selector2.selectMinimum(setups2, false))
+            .containsExactly(SETUP09, SETUP09)
+
+        val selector3 = SetupSelector(vmRegistry, listOf(
+            PoolAgentParams(listOf(RQ2), min = 1)))
+        val setups3 = listOf(SETUP07, SETUP09)
+        assertThat(selector3.selectMinimum(setups3, false))
+            .containsExactly(SETUP09, SETUP09)
+
+        val selector4 = SetupSelector(vmRegistry, listOf(
+            PoolAgentParams(listOf(RQ2), min = 4)))
+        val setups4 = listOf(SETUP07, SETUP09)
+        assertThat(selector4.selectMinimum(setups4, false))
+            .containsExactly(SETUP09, SETUP09, SETUP09, SETUP09)
+
+        val selector5 = SetupSelector(vmRegistry, listOf(
+            PoolAgentParams(listOf(RQ2), min = 10)))
+        val setups5 = listOf(SETUP07, SETUP09)
+        assertThat(selector5.selectMinimum(setups5, false))
+            .containsExactly(SETUP09, SETUP09, SETUP09, SETUP09, SETUP09)
+
+        val selector6 = SetupSelector(vmRegistry, listOf(
+            PoolAgentParams(listOf(RQ2), min = 1, max = 1)))
+        val setups6 = listOf(SETUP07, SETUP09)
+        assertThat(selector6.selectMinimum(setups6, false))
+            .containsExactly(SETUP09)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if a minimum number of VMs can be created based on agent pool params
+   * and that existing VMs are correctly considered
+   */
+  @Test
+  fun selectMinimumExisting(vertx: Vertx, ctx: VertxTestContext) {
+    val vmRegistry = mockk<VMRegistry>()
+
+    coEvery { vmRegistry.findNonTerminatedVMs() } returns listOf(
+        VM(setup = SETUP07), VM(setup = SETUP08), VM(setup = SETUP08))
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val selector = SetupSelector(vmRegistry, listOf(
+            PoolAgentParams(listOf(RQ1), min = 2),
+            PoolAgentParams(listOf(RQ1, RQ2), min = 3)))
+        val setups = listOf(SETUP07, SETUP08)
+
+        assertThat(selector.selectMinimum(setups, false))
+            .containsExactly(SETUP07, SETUP07, SETUP08, SETUP08, SETUP08)
+
+        assertThat(selector.selectMinimum(setups, true))
+            .containsExactly(SETUP07, SETUP08)
+      }
+
       ctx.completeNow()
     }
   }
