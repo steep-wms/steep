@@ -406,53 +406,52 @@ class CloudManagerTest {
     /**
      * Test if a VM with an alternative [testSetup] can be created
      */
-    // TODO implement error handling in new setup selection strategy
-    // @Test
-    // fun createVMAlternativeSetup(vertx: Vertx, ctx: VertxTestContext) {
-    //   GlobalScope.launch(vertx.dispatcher()) {
-    //     // let the first setup throw an exception and the second succeed
-    //     coEvery { client.createVM(any(), testSetup.flavor, any(),
-    //         testSetup.availabilityZone, any()) } throws IllegalStateException()
-    //     coEvery { client.createVM(any(), testSetupAlternative.flavor, any(),
-    //         testSetupAlternative.availabilityZone, any()) } answers { UniqueID.next() }
-    //
-    //     // mock additional methods
-    //     coEvery { client.destroyBlockDevice(any()) } just Runs
-    //     coEvery { client.createBlockDevice(testSetup.blockDeviceSizeGb,
-    //         testSetup.blockDeviceVolumeType, testSetup.imageName, true,
-    //         testSetup.availabilityZone, any()) } answers { UniqueID.next() }
-    //     coEvery { client.createBlockDevice(testSetupAlternative.blockDeviceSizeGb,
-    //         testSetupAlternative.blockDeviceVolumeType, testSetupAlternative.imageName, true,
-    //         testSetupAlternative.availabilityZone, any()) } answers { UniqueID.next() }
-    //
-    //     doCreateOnDemand(testSetup, vertx, ctx, 1, false, listOf("foo"))
-    //
-    //     ctx.coVerify {
-    //       coVerify(exactly = 2) {
-    //         client.getImageID(testSetup.imageName)
-    //       }
-    //       coVerify(exactly = 1) {
-    //         client.createBlockDevice(testSetup.blockDeviceSizeGb, null,
-    //             testSetup.imageName, true, testSetup.availabilityZone, any())
-    //         client.createVM(any(), testSetup.flavor, any(),
-    //             testSetup.availabilityZone, any())
-    //       }
-    //       coVerify(exactly = 1) {
-    //         client.createBlockDevice(testSetupAlternative.blockDeviceSizeGb,
-    //             null, testSetupAlternative.imageName, true,
-    //             testSetupAlternative.availabilityZone, any())
-    //         client.createVM(any(), testSetupAlternative.flavor, any(),
-    //             testSetupAlternative.availabilityZone, any())
-    //       }
-    //       coVerify(exactly = 1) {
-    //         client.getIPAddress(any())
-    //         client.destroyBlockDevice(any())
-    //       }
-    //     }
-    //
-    //     ctx.completeNow()
-    //   }
-    // }
+    @Test
+    fun createVMAlternativeSetup(vertx: Vertx, ctx: VertxTestContext) {
+      GlobalScope.launch(vertx.dispatcher()) {
+        // let the first setup throw an exception and the second succeed
+        coEvery { client.createVM(any(), testSetup.flavor, any(),
+            testSetup.availabilityZone, any()) } throws IllegalStateException()
+        coEvery { client.createVM(any(), testSetupAlternative.flavor, any(),
+            testSetupAlternative.availabilityZone, any()) } answers { UniqueID.next() }
+
+        // mock additional methods
+        coEvery { client.destroyBlockDevice(any()) } just Runs
+        coEvery { client.createBlockDevice(testSetup.blockDeviceSizeGb,
+            testSetup.blockDeviceVolumeType, testSetup.imageName, true,
+            testSetup.availabilityZone, any()) } answers { UniqueID.next() }
+        coEvery { client.createBlockDevice(testSetupAlternative.blockDeviceSizeGb,
+            testSetupAlternative.blockDeviceVolumeType, testSetupAlternative.imageName, true,
+            testSetupAlternative.availabilityZone, any()) } answers { UniqueID.next() }
+
+        doCreateOnDemand(testSetup, vertx, ctx, 1, false, listOf("foo"))
+
+        ctx.coVerify {
+          coVerify(exactly = 2) {
+            client.getImageID(testSetup.imageName)
+          }
+          coVerify(exactly = 1) {
+            client.createBlockDevice(testSetup.blockDeviceSizeGb, null,
+                testSetup.imageName, true, testSetup.availabilityZone, any())
+            client.createVM(any(), testSetup.flavor, any(),
+                testSetup.availabilityZone, any())
+          }
+          coVerify(exactly = 1) {
+            client.createBlockDevice(testSetupAlternative.blockDeviceSizeGb,
+                null, testSetupAlternative.imageName, true,
+                testSetupAlternative.availabilityZone, any())
+            client.createVM(any(), testSetupAlternative.flavor, any(),
+                testSetupAlternative.availabilityZone, any())
+          }
+          coVerify(exactly = 1) {
+            client.getIPAddress(any())
+            client.destroyBlockDevice(any())
+          }
+        }
+
+        ctx.completeNow()
+      }
+    }
 
     /**
      * Make sure we can only create two VMs with [testSetupTwo] at a time

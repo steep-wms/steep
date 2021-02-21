@@ -442,10 +442,23 @@ class CloudManager : CoroutineVerticle() {
    * and deploy a remote agent to each of them
    */
   internal suspend fun createRemoteAgent(n: Long, requiredCapabilities: Collection<String>) {
-    createRemoteAgent { setupSelector.select(n, requiredCapabilities, setups) }
+    var remaining = n
+    val goodSetups = setups.toMutableList()
+    while (remaining > 0 && goodSetups.isNotEmpty()) {
+      val result = createRemoteAgent { setupSelector.select(remaining, requiredCapabilities, goodSetups) }
+
+      // remove failed setups (i.e. retain alternatives), then try again
+      remaining = 0
+      for (p in result) {
+        if (!p.second) {
+          remaining++
+          goodSetups.remove(p.first.setup)
+        }
+      }
+    }
   }
 
-  private suspend fun createRemoteAgent(selector: suspend () -> List<Setup>) {
+  private suspend fun createRemoteAgent(selector: suspend () -> List<Setup>): List<Pair<VM, Boolean>> {
     // atomically create VM entries in the registry
     val sharedData = vertx.sharedData()
     val lock = sharedData.getLockAwait(LOCK_VMS)
@@ -459,14 +472,16 @@ class CloudManager : CoroutineVerticle() {
     } finally {
       lock.release()
     }
-    createRemoteAgents(vmsToCreate)
+    return createRemoteAgents(vmsToCreate)
   }
 
   /**
    * Create virtual machines and deploy remote agents to them based on the
-   * given list of registered [vmsToCreate] and their corresponding setups
+   * given list of registered [vmsToCreate] and their corresponding setups.
+   * Return a list that contains pairs of a VM and a boolean telling if the
+   * VM was created successfully or not.
    */
-  private suspend fun createRemoteAgents(vmsToCreate: List<Pair<VM, Setup>>) {
+  private suspend fun createRemoteAgents(vmsToCreate: List<Pair<VM, Setup>>): List<Pair<VM, Boolean>> {
     val sharedData = vertx.sharedData()
     val deferreds = vmsToCreate.map { (vm, setup) ->
       // create multiple VMs in parallel
@@ -534,7 +549,15 @@ class CloudManager : CoroutineVerticle() {
       }
     }
 
-    deferreds.awaitAll()
+    return deferreds.mapIndexed { i, d ->
+      vmsToCreate[i].first to try {
+        d.await()
+        true
+      } catch (t: Throwable) {
+        log.error("Could not create VM", t)
+        false
+      }
+    }
   }
 
   /**
