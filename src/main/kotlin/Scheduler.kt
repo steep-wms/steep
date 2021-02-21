@@ -155,16 +155,21 @@ class Scheduler : CoroutineVerticle() {
       // Check if we need to request a new agent.
       val rcsi = allRequiredCapabilities.iterator()
       while (rcsi.hasNext()) {
-        val rcs = rcsi.next().first
-        if (!submissionRegistry.existsProcessChain(REGISTERED, rcs)) {
+        val rcs = rcsi.next()
+        if (!submissionRegistry.existsProcessChain(REGISTERED, rcs.first)) {
           // if there is no such process chain, the capabilities are not
           // required anymore
           rcsi.remove()
         } else {
           // publish a message that says we need an agent with the given
           // capabilities
-          val arr = JsonArray(rcs.toList())
-          vertx.eventBus().publish(REMOTE_AGENT_MISSING, arr)
+          val msg = json {
+            obj(
+                "n" to rcs.second,
+                "requiredCapabilities" to JsonArray(rcs.first.toList())
+            )
+          }
+          vertx.eventBus().publish(REMOTE_AGENT_MISSING, msg)
         }
       }
       return 0
@@ -173,13 +178,17 @@ class Scheduler : CoroutineVerticle() {
     // iterate through all agents that indicated they are available
     var allocatedProcessChains = 0
     for ((requiredCapabilities, address) in candidates) {
+      val arci = allRequiredCapabilities.indexOfFirst { it.first == requiredCapabilities }
+
       // get next registered process chain for the given set of required capabilities
       val processChain = submissionRegistry.fetchNextProcessChain(
           REGISTERED, RUNNING, requiredCapabilities)
       if (processChain == null) {
         // We didn't find a process chain for these required capabilities.
         // Remove them from the list of known ones.
-        allRequiredCapabilities.removeIf { it.first == requiredCapabilities }
+        if (arci >= 0) {
+          allRequiredCapabilities.removeAt(arci)
+        }
         continue
       }
 
@@ -203,6 +212,12 @@ class Scheduler : CoroutineVerticle() {
 
       log.info("Assigned process chain `${processChain.id}' to agent `${agent.id}'")
       allocatedProcessChains++
+
+      // update number of remaining process chains for this required capability set
+      if (arci >= 0) {
+        val rc = allRequiredCapabilities[arci]
+        allRequiredCapabilities[arci] = rc.copy(second = (rc.second - 1).coerceAtLeast(0))
+      }
 
       // execute process chain
       launch {

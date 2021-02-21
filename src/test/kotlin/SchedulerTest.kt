@@ -27,6 +27,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.lang.IllegalStateException
+import kotlin.math.max
 
 /**
  * Tests for the [Scheduler]
@@ -84,6 +85,8 @@ class SchedulerTest {
    * @param ctx the test context
    */
   private fun testSimple(nProcessChains: Int, nAgents: Int, vertx: Vertx, ctx: VertxTestContext) {
+    val remainingExpectedRequiredCapabilities = expectedRequiredCapabilities.toMutableList()
+
     // mock agents
     val allAgents = (1..nAgents).map { n ->
       val a = mockk<Agent>()
@@ -104,13 +107,21 @@ class SchedulerTest {
     coEvery { agentRegistry.selectCandidates(capture(slotRequiredCapabilities)) } answers {
       ctx.verify {
         if (slotRequiredCapabilities.captured.isNotEmpty()) {
-          assertThat(slotRequiredCapabilities.captured).isEqualTo(expectedRequiredCapabilities)
+          assertThat(slotRequiredCapabilities.captured)
+              .isEqualTo(remainingExpectedRequiredCapabilities)
         }
       }
       slotRequiredCapabilities.captured.mapIndexedNotNull { i, rc ->
         if (i >= availableAgents.size) {
           null
         } else {
+          // reduce number of process chains per expected required capability set
+          for ((j, rerc) in remainingExpectedRequiredCapabilities.withIndex()) {
+            if (rerc.first == rc.first) {
+              remainingExpectedRequiredCapabilities[j] = rerc.copy(
+                  second = max(0, rerc.second - 1))
+            }
+          }
           Pair(rc.first, availableAgents[i].id)
         }
       }
