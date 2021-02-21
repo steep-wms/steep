@@ -134,9 +134,12 @@ class SetupSelector(private val vmRegistry: VMRegistry,
 
   /**
    * Return a list of VMs to create according to the minimum numbers configured
-   * in the given [setups] and [poolAgentParams]
+   * in the given [setups] and [poolAgentParams]. If the [removeExisting] flag
+   * is set, the method does not return entries for existing VMs with matching
+   * setups (i.e. it only returns entries necessary to create new VMs and to
+   * reach the specified minima).
    */
-  suspend fun selectMinimum(setups: List<Setup>): List<Setup> {
+  suspend fun selectMinimum(setups: List<Setup>, removeExisting: Boolean = true): List<Setup> {
     val result = mutableListOf<Setup>()
 
     // determine minimum number of VMs
@@ -190,18 +193,20 @@ class SetupSelector(private val vmRegistry: VMRegistry,
       }
     }
 
-    // reduce the number of VMs to create by the number of existing ones
-    val nVMsPerSetup = countNonTerminatedVMsPerSetup()
-    val nToCreatePerSetup = mutableMapOf<String, Int>()
-    val i = result.iterator()
-    while (i.hasNext()) {
-      val setup = i.next()
-      val nExisting = nVMsPerSetup[setup.id]?.toInt() ?: 0
-      val nToCreate = nToCreatePerSetup[setup.id] ?: 0
-      if (nToCreate < nExisting) {
-        i.remove()
+    if (removeExisting) {
+      // reduce the number of VMs to create by the number of existing ones
+      val nVMsPerSetup = countNonTerminatedVMsPerSetup()
+      val nToCreatePerSetup = mutableMapOf<String, Int>()
+      val i = result.iterator()
+      while (i.hasNext()) {
+        val setup = i.next()
+        val nExisting = nVMsPerSetup[setup.id]?.toInt() ?: 0
+        val nToCreate = nToCreatePerSetup[setup.id] ?: 0
+        if (nToCreate < nExisting) {
+          i.remove()
+        }
+        nToCreatePerSetup[setup.id] = nToCreate + 1
       }
-      nToCreatePerSetup[setup.id] = nToCreate + 1
     }
 
     return result

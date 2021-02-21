@@ -395,61 +395,33 @@ class CloudManager : CoroutineVerticle() {
    * [PoolAgentParams.min]
    */
   private suspend fun sendKeepAlive() {
-    // get existing VMs
-    val registeredVmsPerSetup = vmRegistry.findNonTerminatedVMs().groupBy { it.setup.id }
+    // get a list of a minimum number of setups
+    val minimumSetups = setupSelector.selectMinimum(setups, false)
 
-    // sort entries so they have the same order as the configured setups
-    // this is necessary so we get the same results as [SetupSelector.selectMinimum]
-    val vmsPerSetup = mutableMapOf<String, List<VM>>()
-    for (setup in setups) {
-      registeredVmsPerSetup[setup.id]?.let {
-        vmsPerSetup.put(setup.id, it)
+    // get existing VMs
+    val vmsPerSetup = mutableMapOf<String, MutableList<VM>>()
+    vmRegistry.findNonTerminatedVMs().sortedBy { it.id }.groupByTo(vmsPerSetup) { it.setup.id }
+
+    // Get a minimum number of VMs per setup. Since `vmsPerSetup` is sorted by ID
+    // and we take elements from its head, the created list should always contain
+    // the same VMs (i.e. we will always send keep-alive messages to the same VMs)
+    val vmsToKeep = mutableListOf<VM>()
+    for (setup in minimumSetups) {
+      val vms = vmsPerSetup[setup.id]
+      if (vms != null && vms.isNotEmpty()) {
+        vmsToKeep.add(vms.removeFirst())
       }
     }
 
-    val setupsById = setups.map { it.id to it }.toMap()
-    val pap = poolAgentParams.toMutableList()
-    for ((setupId, vms) in vmsPerSetup) {
-      val setup = setupsById[setupId] ?: continue
-
-      // get minimum number of VMs defined by setup
-      var minimum = min(vms.size, setup.minVMs)
-
-      // check if there are pool agent parameters that also require a minimum
-      // number of VMs
-      val papToAdd = mutableListOf<PoolAgentParams>()
-      val papi = pap.iterator()
-      while (papi.hasNext()) {
-        val p = papi.next()
-        if (setup.providedCapabilities.containsAll(p.capabilities)) {
-          // we found parameters our setup satisfies
-          if (p.min > minimum) {
-            minimum = min(vms.size, p.min)
-          }
-          papi.remove()
-          if (p.min - minimum > 0) {
-            papToAdd.add(p.copy(min = p.min - minimum))
-          }
-        }
+    // send keep-alive messages to these VMs
+    for (vm in vmsToKeep) {
+      val address = REMOTE_AGENT_ADDRESS_PREFIX + vm.id
+      val msg = json {
+        obj(
+            "action" to "keepAlive"
+        )
       }
-      pap.addAll(papToAdd)
-
-      if (minimum > 0) {
-        // Get a minimum number of VMs. Sort the VMs by ID and take the first
-        // `minimum` ones. This makes sure we always send messages to the same VMs.
-        val minVMs = vms.sortedBy { it.id }.take(minimum)
-
-        // send keep-alive message to these VMs
-        for (vm in minVMs) {
-          val address = REMOTE_AGENT_ADDRESS_PREFIX + vm.id
-          val msg = json {
-            obj(
-                "action" to "keepAlive"
-            )
-          }
-          vertx.eventBus().send(address, msg)
-        }
-      }
+      vertx.eventBus().send(address, msg)
     }
   }
 
