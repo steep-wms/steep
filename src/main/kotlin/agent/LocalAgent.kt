@@ -213,10 +213,10 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
       val r = pluginRegistry.findRuntime(exec.runtime) ?:
           throw IllegalStateException("Unknown runtime: `${exec.runtime}'")
       if (r.compiledFunction.isSuspend) {
-        r.compiledFunction.callSuspend(exec, outputLinesToCollect, vertx)
+        r.compiledFunction.callSuspend(exec, collector, vertx)
       } else {
         interruptable(executor) {
-          r.compiledFunction.call(exec, outputLinesToCollect, vertx)
+          r.compiledFunction.call(exec, collector, vertx)
         }
       }
     }

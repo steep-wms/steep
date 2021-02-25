@@ -175,8 +175,12 @@ abstract class AgentTest {
 
     val customRuntime = spyk(object {
       @Suppress("UNUSED_PARAMETER")
-      fun execute(executable: Executable, outputLinesToCollect: Int,
-          vertx: Vertx): String = "hello\nworld\n${executable.path}\n$outputLinesToCollect"
+      fun execute(executable: Executable, outputCollector: OutputCollector,
+          vertx: Vertx) {
+        outputCollector.collect("hello")
+        outputCollector.collect("world")
+        outputCollector.collect(executable.path)
+      }
     })
 
     val pluginRegistry = mockk<PluginRegistry>()
@@ -198,7 +202,7 @@ abstract class AgentTest {
       ctx.coVerify {
         agent.execute(processChain)
         verify(exactly = 1) {
-          customRuntime.execute(exec, 100, vertx)
+          customRuntime.execute(exec, any(), vertx)
         }
       }
       ctx.completeNow()

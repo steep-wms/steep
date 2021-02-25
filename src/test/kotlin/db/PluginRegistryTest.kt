@@ -4,6 +4,7 @@ import ConfigConstants
 import assertThatThrownBy
 import coVerify
 import com.fasterxml.jackson.databind.exc.InvalidTypeIdException
+import helper.DefaultOutputCollector
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.junit5.VertxExtension
@@ -240,12 +241,14 @@ class PluginRegistryTest {
 
       val pr = PluginRegistryFactory.create()
       val runtime = pr.findRuntime("dummy")
+      val outputCollector = DefaultOutputCollector()
       ctx.coVerify {
         assertThat(runtime).isNotNull
-        assertThat(runtime!!.compiledFunction.call(Executable(
+        runtime!!.compiledFunction.call(Executable(
             path = "path",
             arguments = emptyList()
-        ), 100, vertx)).isEqualTo("DUMMY")
+        ), outputCollector, vertx)
+        assertThat(outputCollector.output()).isEqualTo("DUMMY")
       }
 
       ctx.completeNow()

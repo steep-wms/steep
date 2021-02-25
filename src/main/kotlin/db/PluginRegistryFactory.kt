@@ -1,6 +1,7 @@
 package db
 
 import ConfigConstants
+import helper.OutputCollector
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -12,11 +13,14 @@ import model.plugins.Plugin
 import model.plugins.ProcessChainAdapterPlugin
 import model.plugins.ProgressEstimatorPlugin
 import model.plugins.RuntimePlugin
+import model.processchain.Executable
 import model.processchain.ProcessChain
 import org.slf4j.LoggerFactory
 import javax.script.ScriptEngine
 import javax.script.ScriptEngineManager
 import kotlin.reflect.KFunction
+import kotlin.reflect.full.callSuspend
+import kotlin.reflect.jvm.javaType
 
 /**
  * Creates instances of [PluginRegistry]
@@ -75,9 +79,55 @@ object PluginRegistryFactory {
       is OutputAdapterPlugin -> plugin.copy(compiledFunction = f as KFunction<List<String>>)
       is ProcessChainAdapterPlugin -> plugin.copy(compiledFunction = f as KFunction<List<ProcessChain>>)
       is ProgressEstimatorPlugin -> plugin.copy(compiledFunction = f as KFunction<Double?>)
-      is RuntimePlugin -> plugin.copy(compiledFunction = f as KFunction<String>)
+      is RuntimePlugin -> {
+        if (isDeprecatedRuntime(f as KFunction<*>)) {
+          log.warn("Runtime plugin `${plugin.name}' uses a deprecated function " +
+              "signature, which will be removed in Steep 6.0.0. Please update " +
+              "the plugin as soon as possible!")
+          val kf = f as KFunction<String>
+          val nf = if (kf.isSuspend) {
+            object {
+              suspend fun i(exec: Executable, outputCollector: OutputCollector, vertx: Vertx) {
+                val output = kf.callSuspend(exec, 100, vertx)
+                outputCollector.collect(output)
+              }
+            }::i
+          } else {
+            object {
+              fun i(exec: Executable, outputCollector: OutputCollector, vertx: Vertx) {
+                val output = kf.call(exec, 100, vertx)
+                outputCollector.collect(output)
+              }
+            }::i
+          }
+          plugin.copy(compiledFunction = nf)
+        } else {
+          plugin.copy(compiledFunction = f as KFunction<Unit>)
+        }
+      }
       else -> throw RuntimeException("Unknown plugin type: ${plugin::class.java}")
     }
+  }
+
+  private fun isDeprecatedRuntime(f: KFunction<*>): Boolean {
+    if (f.parameters.size != 3) {
+      return false
+    }
+    val paramType = f.parameters[1].type.javaType
+    if (paramType !is Class<*>) {
+      return false
+    }
+    if (!Int::class.java.isAssignableFrom(paramType)) {
+      return false
+    }
+    val returnType = f.returnType.javaType
+    if (returnType !is Class<*>) {
+      return false
+    }
+    if (!String::class.java.isAssignableFrom(returnType)) {
+      return false
+    }
+    return true
   }
 
   /**
