@@ -4,7 +4,7 @@ import java.util.Date
 plugins {
     application
     jacoco
-    kotlin("jvm") version "1.4.20"
+    kotlin("jvm") version "1.4.30"
     id("com.github.ben-manes.versions") version "0.36.0"
 }
 
