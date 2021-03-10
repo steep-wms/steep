@@ -1,0 +1,13 @@
+- id: service1
+  name: Service 1
+  description: My first service
+  path: &mypath "service.sh"
+  runtime: &myruntime other
+  parameters: &myparams []
+
+- id: service2
+  name: Service 2
+  description: My second service
+  path: *mypath
+  runtime: *myruntime
+  parameters: *myparams

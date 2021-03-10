@@ -7,6 +7,7 @@ import io.vertx.core.Vertx
 import io.vertx.kotlin.core.executeBlockingAwait
 import io.vertx.kotlin.core.file.readFileAwait
 import org.apache.sshd.common.util.io.DirectoryScanner
+import org.yaml.snakeyaml.Yaml
 import java.io.File
 import java.nio.file.Path
 
@@ -51,7 +52,12 @@ abstract class AbstractFileRegistry {
       if (file.toLowerCase().endsWith(".json")) {
         JsonUtils.mapper.readValue(content, tr)
       } else {
-        YamlUtils.mapper.readValue(content, tr)
+        // Use SnakeYML to parse file and then Jackson to convert it to an
+        // object. This is a workaround for jackson-dataformats-text bug #98:
+        // https://github.com/FasterXML/jackson-dataformats-text/issues/98
+        val yaml = Yaml()
+        val l = yaml.load<List<Any>>(content)
+        YamlUtils.mapper.convertValue(l, tr)
       }
     }
   }
