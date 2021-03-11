@@ -28,6 +28,7 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
+import io.vertx.kotlin.core.deployVerticleAwait
 import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
@@ -179,6 +180,67 @@ class CloudManagerTest {
     }
 
     cloudManager.createRemoteAgent(n, requiredCapabilities.toSet())
+  }
+
+  /**
+   * Test if the setups.yaml file can contain YAML references
+   */
+  @Test
+  fun yamlReferences(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
+    // create setups file
+    val tempDirFile = tempDir.toRealPath().toFile()
+    val setupFile = File(tempDirFile, "test_setups.yaml")
+    setupFile.writeText("""
+      - id: mysetup
+        flavor: &flavor myflavor
+        imageName: &image myimage
+        availabilityZone: myaz
+        blockDeviceSizeGb: 100
+        maxVMs: 1
+        additionalVolumes: &myadditionalvolumes
+          - sizeGb: 50
+      - id: mysecondsetup
+        flavor: *flavor
+        imageName: *image
+        availabilityZone: myaz
+        blockDeviceSizeGb: 100
+        maxVMs: 1
+        additionalVolumes: *myadditionalvolumes
+    """.trimIndent())
+
+    // mock client
+    coEvery { client.listVMs(any()) } returns emptyList()
+    coEvery { client.listAvailableBlockDevices(any()) } returns emptyList()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      // deploy verticle under test
+      val config = json {
+        obj(
+            ConfigConstants.CLOUD_CREATED_BY_TAG to CREATED_BY_TAG,
+            ConfigConstants.CLOUD_SSH_USERNAME to "elvis",
+            ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION to "myprivatekey.pem",
+            ConfigConstants.CLOUD_SETUPS_FILE to setupFile.toString()
+        )
+      }
+      val options = deploymentOptionsOf(config)
+      cloudManager = CloudManager()
+
+      ctx.coVerify {
+        // this should not throw!
+        vertx.deployVerticleAwait(cloudManager, options)
+
+        assertThat(cloudManager.setups).hasSize(2)
+        val s1 = cloudManager.setups[0]
+        val s2 = cloudManager.setups[1]
+        assertThat(s2.flavor).isEqualTo(s1.flavor)
+        assertThat(s2.imageName).isEqualTo(s1.imageName)
+        assertThat(s2.additionalVolumes).isEqualTo(s1.additionalVolumes)
+        assertThat(s2.additionalVolumes).hasSize(1)
+        assertThat(s2.additionalVolumes[0].sizeGb).isEqualTo(50)
+      }
+
+      ctx.completeNow()
+    }
   }
 
   /**

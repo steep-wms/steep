@@ -13,7 +13,6 @@ import ConfigConstants.CLOUD_SSH_USERNAME
 import agent.AgentRegistry
 import agent.AgentRegistryFactory
 import com.fasterxml.jackson.module.kotlin.convertValue
-import com.fasterxml.jackson.module.kotlin.readValue
 import com.mitchellbosecke.pebble.PebbleEngine
 import db.VMRegistry
 import db.VMRegistryFactory
@@ -39,6 +38,7 @@ import model.cloud.VM
 import model.setup.Setup
 import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
+import org.yaml.snakeyaml.Yaml
 import java.io.File
 import java.io.IOException
 import java.io.StringWriter
@@ -122,7 +122,7 @@ class CloudManager : CoroutineVerticle() {
   /**
    * A list of pre-configured setups
    */
-  private lateinit var setups: List<Setup>
+  internal lateinit var setups: List<Setup>
 
   /**
    * Registry to save created VMs
@@ -161,7 +161,12 @@ class CloudManager : CoroutineVerticle() {
     // load setups file
     val setupsFile = config.getString(CLOUD_SETUPS_FILE) ?: throw IllegalStateException(
         "Missing configuration item `$CLOUD_SETUPS_FILE'")
-    setups = YamlUtils.mapper.readValue(File(setupsFile))
+    // Use SnakeYAML to parse file and then Jackson to convert it to an
+    // object. This is a workaround for jackson-dataformats-text bug #98:
+    // https://github.com/FasterXML/jackson-dataformats-text/issues/98
+    val yaml = Yaml()
+    val l = yaml.load<List<Any>>(File(setupsFile).readText())
+    setups = YamlUtils.mapper.convertValue(l)
 
     // if sshUsername is null, check if all setups have an sshUsername
     if (sshUsername == null) {

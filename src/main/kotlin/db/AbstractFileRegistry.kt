@@ -52,7 +52,7 @@ abstract class AbstractFileRegistry {
       if (file.toLowerCase().endsWith(".json")) {
         JsonUtils.mapper.readValue(content, tr)
       } else {
-        // Use SnakeYML to parse file and then Jackson to convert it to an
+        // Use SnakeYAML to parse file and then Jackson to convert it to an
         // object. This is a workaround for jackson-dataformats-text bug #98:
         // https://github.com/FasterXML/jackson-dataformats-text/issues/98
         val yaml = Yaml()
