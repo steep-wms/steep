@@ -3,7 +3,6 @@ package db
 import ConfigConstants
 import assertThatThrownBy
 import coVerify
-import com.fasterxml.jackson.databind.exc.InvalidTypeIdException
 import helper.DefaultOutputCollector
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
@@ -282,7 +281,7 @@ class PluginRegistryTest {
       ctx.coVerify {
         assertThatThrownBy {
           PluginRegistryFactory.initialize(vertx, config)
-        }.isInstanceOf(InvalidTypeIdException::class.java)
+        }.isInstanceOf(IllegalArgumentException::class.java)
       }
       ctx.completeNow()
     }
