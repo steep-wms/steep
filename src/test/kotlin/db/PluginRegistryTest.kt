@@ -213,16 +213,56 @@ class PluginRegistryTest {
   }
 
   /**
+   * Test if a simple progress estimator (using the deprecated `supportedServiceId'
+   * property) can be compiled and executed
+   */
+  @Test
+  fun compileDummyProgressEstimatorDeprecated(vertx: Vertx, ctx: VertxTestContext) {
+    GlobalScope.launch(vertx.dispatcher()) {
+      val config = json {
+        obj(
+            ConfigConstants.PLUGINS to "src/**/db/dummyProgressEstimatorDeprecated.yaml"
+        )
+      }
+      PluginRegistryFactory.initialize(vertx, config)
+
+      val pr = PluginRegistryFactory.create()
+      val estimator = pr.findProgressEstimator("dummy")
+      ctx.coVerify {
+        assertThat(estimator).isNotNull
+        val e = Executable(
+            path = "path",
+            arguments = emptyList()
+        )
+        assertThat(estimator!!.compiledFunction.call(e, listOf("0"), vertx)).isEqualTo(0.0)
+        assertThat(estimator.compiledFunction.call(e, listOf("10"), vertx)).isEqualTo(0.1)
+        assertThat(estimator.compiledFunction.call(e, listOf("100"), vertx)).isEqualTo(1.0)
+        assertThat(estimator.compiledFunction.call(e, listOf("aa"), vertx)).isEqualTo(null)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
    * Test if [PluginRegistry.findProgressEstimator] works correctly
    */
   @Test
   fun findProgressEstimator() {
-    val estimator1 = ProgressEstimatorPlugin("a", "file.kts", "copy")
-    val estimator2 = ProgressEstimatorPlugin("b", "file2.kts", "sleep")
-    val estimator3 = ProgressEstimatorPlugin("c", "file3.kts", "hello-world")
-    val pr = PluginRegistry(listOf(estimator1, estimator2, estimator3))
+    val estimator1 = ProgressEstimatorPlugin("a", "file.kts",
+        supportedServiceIds = listOf("copy"))
+    val estimator2 = ProgressEstimatorPlugin("b", "file2.kts",
+        supportedServiceIds = listOf("sleep"))
+    val estimator3 = ProgressEstimatorPlugin("c", "file3.kts",
+        supportedServiceIds = listOf("hello-world"))
+    val estimator4 = ProgressEstimatorPlugin("d", "file4.kts",
+        supportedServiceIds = listOf("duplicate1", "duplicate2"))
+    val pr = PluginRegistry(listOf(estimator1, estimator2, estimator3,
+        estimator4))
     assertThat(pr.findProgressEstimator("copy")).isSameAs(estimator1)
     assertThat(pr.findProgressEstimator("wrongEstimator")).isNull()
+    assertThat(pr.findProgressEstimator("duplicate1")).isSameAs(estimator4)
+    assertThat(pr.findProgressEstimator("duplicate2")).isSameAs(estimator4)
   }
 
   /**

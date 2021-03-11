@@ -78,7 +78,14 @@ object PluginRegistryFactory {
       is InitializerPlugin -> plugin.copy(compiledFunction = f as KFunction<Unit>)
       is OutputAdapterPlugin -> plugin.copy(compiledFunction = f as KFunction<List<String>>)
       is ProcessChainAdapterPlugin -> plugin.copy(compiledFunction = f as KFunction<List<ProcessChain>>)
-      is ProgressEstimatorPlugin -> plugin.copy(compiledFunction = f as KFunction<Double?>)
+      is ProgressEstimatorPlugin -> {
+        if (plugin.supportedServiceId != null) {
+          log.warn("Progress estimator plugin `${plugin.name}' uses the " +
+              "deprecated parameter `supportedServiceId', which will be removed " +
+              "in Steep 6.0.0. Please use `supportedServiceIds' instead.")
+        }
+        plugin.copy(compiledFunction = f as KFunction<Double?>)
+      }
       is RuntimePlugin -> {
         if (isDeprecatedRuntime(f as KFunction<*>)) {
           log.warn("Runtime plugin `${plugin.name}' uses a deprecated function " +

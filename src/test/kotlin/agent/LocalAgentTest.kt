@@ -236,7 +236,7 @@ class LocalAgentTest : AgentTest() {
     } returns ProgressEstimatorPlugin(
         name = customProgressEstimatorName,
         scriptFile = "",
-        supportedServiceId = customProgressEstimatorName,
+        supportedServiceIds = listOf(customProgressEstimatorName),
         compiledFunction = customProgressEstimator::execute
     )
 
@@ -303,7 +303,7 @@ class LocalAgentTest : AgentTest() {
     } returns ProgressEstimatorPlugin(
         name = customProgressEstimatorName,
         scriptFile = "",
-        supportedServiceId = customProgressEstimatorName,
+        supportedServiceIds = listOf(customProgressEstimatorName),
         compiledFunction = customProgressEstimator::execute
     )
 

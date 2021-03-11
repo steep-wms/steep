@@ -18,7 +18,8 @@ class PluginRegistry(compiledPlugins: List<Plugin>) {
   private val processChainAdapters = compiledPlugins
       .filterIsInstance<ProcessChainAdapterPlugin>()
   private val progressEstimators = compiledPlugins.filterIsInstance<ProgressEstimatorPlugin>()
-      .associateBy { it.supportedServiceId }
+      .flatMap { p -> p.supportedServiceIds.map { it to p } }
+      .toMap()
   private val runtimes = compiledPlugins.filterIsInstance<RuntimePlugin>()
       .associateBy { it.supportedRuntime }
 

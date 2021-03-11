@@ -26,8 +26,16 @@ data class ProgressEstimatorPlugin(
 
     /**
      * The ID of the service this estimator plugin supports
+     * @deprecated Use [supportedServiceIds] instead. This parameter will be
+     * removed in Steep 6.0.0
      */
-    val supportedServiceId: String,
+    @Deprecated("Use `supportedServiceIds' instead", replaceWith = ReplaceWith("supportedServiceIds"))
+    val supportedServiceId: String? = null,
+
+    /**
+     * A list of IDs of the services this estimator plugin supports
+     */
+    val supportedServiceIds: List<String> = supportedServiceId?.let { listOf(it) } ?: emptyList(),
 
     /**
      * The compiled plugin
