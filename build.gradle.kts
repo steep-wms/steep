@@ -1,5 +1,6 @@
 import java.text.SimpleDateFormat
 import java.util.Date
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     application
@@ -70,6 +71,7 @@ dependencies {
     implementation(kotlin("reflect"))
     implementation(kotlin("scripting-jsr223"))
     implementation(kotlin("stdlib-jdk8"))
+    implementation(kotlin("script-runtime"))
 
     testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.0.0")
     testImplementation("io.mockk:mockk:1.10.3")
@@ -102,10 +104,31 @@ tasks {
         }
     }
 
-    compileKotlin {
-        kotlinOptions {
-            jvmTarget = "1.8"
+    kotlin {
+        target {
+            compilations {
+                val main by getting
+
+                create("plugins") {
+                    dependencies {
+                        implementation(main.compileDependencyFiles + main.output.classesDirs)
+                    }
+
+                    defaultSourceSet {
+                        kotlin.srcDir("$projectDir/conf/plugins")
+                    }
+                }
+            }
+
+            compilations.all {
+                kotlinOptions {
+                    jvmTarget = "1.8"
+                }
+            }
         }
+    }
+
+    compileKotlin {
         sourceSets {
             main {
                 resources {
@@ -113,12 +136,6 @@ tasks {
                     srcDirs("$projectDir/ui/out")
                 }
             }
-        }
-    }
-
-    compileTestKotlin {
-        kotlinOptions {
-            jvmTarget = "1.8"
         }
     }
 
@@ -160,12 +177,21 @@ tasks {
         }
     }
 
+    val compilePluginsKotlin by getting
+    jar {
+        dependsOn(compilePluginsKotlin)
+    }
+
     distributions {
         main {
             contents {
                 // include 'conf' directory in distribution
                 from(projectDir) {
                     include("conf/**/*")
+                }
+                from("$buildDir/classes/kotlin/plugins") {
+                    include("*.class")
+                    into("conf/plugins")
                 }
             }
         }
