@@ -24,6 +24,7 @@ import kotlin.reflect.KCallable
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.callSuspend
 import kotlin.reflect.jvm.javaType
+import kotlin.reflect.jvm.kotlinFunction
 
 /**
  * Creates instances of [PluginRegistry]
@@ -60,7 +61,7 @@ object PluginRegistryFactory {
   private fun tryLoadPreCompiled(plugin: Plugin): KCallable<*>? {
     // check if there is a pre-compiled class file
     val scriptFile = File(plugin.scriptFile)
-    val className = scriptFile.nameWithoutExtension.capitalize()
+    val className = "${scriptFile.nameWithoutExtension.capitalize()}Kt"
     val classFileName = "$className.class"
     if (!File(scriptFile.parent, classFileName).exists()) {
       return null
@@ -69,13 +70,14 @@ object PluginRegistryFactory {
     // try to load class file
     log.info("Loading pre-compiled plugin `${plugin.name}' (${plugin.scriptFile}[$classFileName])")
     return try {
-      val cl = URLClassLoader(arrayOf(scriptFile.parentFile.toURI().toURL()))
-      val cls = cl.loadClass(className).kotlin
-      val f = cls.members.find { it.name == plugin.name }
+      val cl = URLClassLoader(arrayOf(scriptFile.parentFile.toURI().toURL()), javaClass.classLoader)
+      val cls = cl.loadClass(className)
+      val f = cls.methods.find { it.name == plugin.name }
       if (f == null) {
         log.error("Pre-compiled plugin does not contain a function named `${plugin.name}'")
+        return null
       }
-      f
+      f.kotlinFunction
     } catch (t: Throwable) {
       log.error("Could not load pre-compiled plugin `${plugin.name}'", t)
       null
