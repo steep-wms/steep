@@ -16,8 +16,11 @@ import model.plugins.RuntimePlugin
 import model.processchain.Executable
 import model.processchain.ProcessChain
 import org.slf4j.LoggerFactory
+import java.io.File
+import java.net.URLClassLoader
 import javax.script.ScriptEngine
 import javax.script.ScriptEngineManager
+import kotlin.reflect.KCallable
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.callSuspend
 import kotlin.reflect.jvm.javaType
@@ -54,23 +57,50 @@ object PluginRegistryFactory {
     pluginRegistry = PluginRegistry(compiledPlugins)
   }
 
+  private fun tryLoadPreCompiled(plugin: Plugin): KCallable<*>? {
+    // check if there is a pre-compiled class file
+    val scriptFile = File(plugin.scriptFile)
+    val className = scriptFile.nameWithoutExtension.capitalize()
+    val classFileName = "$className.class"
+    if (!File(scriptFile.parent, classFileName).exists()) {
+      return null
+    }
+
+    // try to load class file
+    log.info("Loading pre-compiled plugin `${plugin.name}' (${plugin.scriptFile}[$classFileName])")
+    return try {
+      val cl = URLClassLoader(arrayOf(scriptFile.parentFile.toURI().toURL()))
+      val cls = cl.loadClass(className).kotlin
+      val f = cls.members.find { it.name == plugin.name }
+      if (f == null) {
+        log.error("Pre-compiled plugin does not contain a function named `${plugin.name}'")
+      }
+      f
+    } catch (t: Throwable) {
+      log.error("Could not load pre-compiled plugin `${plugin.name}'", t)
+      null
+    }
+  }
+
   /**
    * Compile a [plugin] with the given script [engine]
    */
   private suspend fun compile(plugin: Plugin, engine: ScriptEngine, vertx: Vertx): Plugin {
-    log.info("Compiling plugin `${plugin.name}' (${plugin.scriptFile})")
+    val f = tryLoadPreCompiled(plugin) ?: run {
+      log.info("Compiling plugin `${plugin.name}' (${plugin.scriptFile})")
 
-    val script = vertx.fileSystem().readFileAwait(plugin.scriptFile).toString()
-    val f = vertx.executeBlockingAwait<KFunction<*>> { promise ->
-      val bindings = engine.createBindings()
+      val script = vertx.fileSystem().readFileAwait(plugin.scriptFile).toString()
+      vertx.executeBlockingAwait<KFunction<*>> { promise ->
+        val bindings = engine.createBindings()
 
-      engine.eval(script + """
+        engine.eval(script + """
 
-        jsr223Bindings["export"] = ::${plugin.name}
-      """.trimIndent(), bindings)
+          jsr223Bindings["export"] = ::${plugin.name}
+        """.trimIndent(), bindings)
 
-      promise.complete(bindings["export"] as KFunction<*>? ?: throw RuntimeException(
-          "Plugin does not export a function with name `${plugin.name}'"))
+        promise.complete(bindings["export"] as KFunction<*>? ?: throw RuntimeException(
+            "Plugin does not export a function with name `${plugin.name}'"))
+      }
     }
 
     @Suppress("UNCHECKED_CAST")
