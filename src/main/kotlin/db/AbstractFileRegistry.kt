@@ -28,7 +28,7 @@ abstract class AbstractFileRegistry {
     }
 
     val files = vertx.executeBlockingAwait<List<String>> { promise ->
-      promise.complete(glob(paths))
+      promise.complete(glob(paths).flatMap { e -> e.value.map { file -> "${e.key}/$file" }})
     } ?: emptyList()
 
     // We need this here to get access to T.

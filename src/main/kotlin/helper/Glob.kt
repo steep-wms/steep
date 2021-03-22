@@ -11,16 +11,17 @@ import java.nio.file.Paths
  * Resolve files from the given list of glob patterns. For example, /tmp/&#42;
  * retrieves all files in the /tmp directory. /tmp/&#42;&#42;/&#42; recursively
  * retrieves all files from /tmp and all its subdirectory. Uses Ant's [FileSet]
- * internally.
+ * internally. Returns a map of root paths and files found within these root
+ * paths.
  */
-fun glob(patterns: Collection<String>): List<String> {
+fun glob(patterns: Collection<String>): Map<String, List<String>> {
   return glob(*patterns.toTypedArray())
 }
 
 /**
  * See [glob]
  */
-fun glob(vararg patterns: String): List<String> {
+fun glob(vararg patterns: String): Map<String, List<String>> {
   /**
    * Check if the given string contains a glob character ('*', '{', '?', or '[')
    */
@@ -38,7 +39,7 @@ fun glob(vararg patterns: String): List<String> {
     return false
   }
 
-  val files = mutableListOf<String>()
+  val files = mutableListOf<Pair<String, String>>()
   for (p in patterns) {
     // convert Windows backslashes to slashes
     val pattern = if (SystemUtils.IS_OS_WINDOWS) {
@@ -67,7 +68,7 @@ fun glob(vararg patterns: String): List<String> {
 
     if (globs.isEmpty()) {
       // string does not contain a glob pattern at all
-      files.add(pattern)
+      files.add(parts.dropLast(1).joinToString("/") to parts.last())
     } else {
       // string contains a glob pattern
       if (roots.isEmpty()) {
@@ -84,9 +85,9 @@ fun glob(vararg patterns: String): List<String> {
       fs.dir = File(root)
       fs.setIncludes(glob)
       val ds = fs.getDirectoryScanner(project)
-      ds.includedFiles.mapTo(files) { Paths.get(root, it).toString() }
+      ds.includedFiles.mapTo(files) { root to it }
     }
   }
 
-  return files
+  return files.groupBy({ it.first }, { it.second })
 }

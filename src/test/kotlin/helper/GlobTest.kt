@@ -44,7 +44,8 @@ class GlobTest {
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.coVerify {
         val r = glob(f.absolutePath)
-        assertThat(r).containsExactly(f.absolutePath)
+        assertThat(r).hasSize(1)
+        assertThat(r[tempDir.toFile().absolutePath]).containsExactly("test.txt")
       }
       ctx.completeNow()
     }
@@ -60,7 +61,7 @@ class GlobTest {
       ctx.coVerify {
         val r = glob(file1)
         assertThat(r).hasSize(1)
-        assertThat(r).allMatch { it.endsWith(file1) }
+        assertThat(r["src/test/resources/helper/glob"]).containsExactly("dummy.txt")
       }
       ctx.completeNow()
     }
@@ -76,9 +77,9 @@ class GlobTest {
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.coVerify {
         val r = glob(pattern)
-        assertThat(r).hasSize(2)
-        assertThat(r).anyMatch { it.endsWith("dummy.txt") }
-        assertThat(r).anyMatch { it.endsWith("dummy2.txt") }
+        assertThat(r).hasSize(1)
+        assertThat(r["src/test/resources/helper/glob"]).containsExactlyInAnyOrder(
+            "dummy.txt", "dummy2.txt")
       }
       ctx.completeNow()
     }
@@ -92,16 +93,22 @@ class GlobTest {
     val f = File(tempDir.toFile(), "test.txt")
     f.writeText("Hello world!")
 
+    val tempSubdir = File(tempDir.toFile(), "subdir")
+    tempSubdir.mkdirs()
+    val f2 = File(tempSubdir, "test2.txt")
+    f2.writeText("Another file")
+
     val path = "src/test/resources/helper/glob"
     val pattern = "$path/*"
 
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.coVerify {
-        val r = glob("${tempDir.toFile().absolutePath}/*", pattern)
-        assertThat(r).hasSize(3)
-        assertThat(r).anyMatch { it == f.absolutePath }
-        assertThat(r).anyMatch { it.endsWith("dummy.txt") }
-        assertThat(r).anyMatch { it.endsWith("dummy2.txt") }
+        val r = glob("${tempDir.toFile().absolutePath}/**/*", pattern)
+        assertThat(r).hasSize(2)
+        assertThat(r[tempDir.toFile().absolutePath]).containsExactlyInAnyOrder(
+            "test.txt", "subdir/test2.txt")
+        assertThat(r["src/test/resources/helper/glob"]).containsExactlyInAnyOrder(
+            "dummy.txt", "dummy2.txt")
       }
       ctx.completeNow()
     }
