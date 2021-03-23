@@ -12,6 +12,7 @@ import ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION
 import ConfigConstants.CLOUD_SSH_USERNAME
 import agent.AgentRegistry
 import agent.AgentRegistryFactory
+import cloud.template.ProvisioningTemplateExtension
 import com.fasterxml.jackson.module.kotlin.convertValue
 import com.mitchellbosecke.pebble.PebbleEngine
 import db.VMRegistry
@@ -22,6 +23,7 @@ import io.vertx.core.Promise
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.Lock
+import io.vertx.kotlin.core.executeBlockingAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.core.shareddata.getLockAwait
@@ -629,7 +631,7 @@ class CloudManager : CoroutineVerticle() {
     val engine = PebbleEngine.Builder()
         .strictVariables(true)
         .newLineTrimming(false)
-        .extension(ProvisionTemplateExtension())
+        .extension(ProvisioningTemplateExtension(ssh))
         .build()
     val context = mapOf<String, Any>(
         "config" to config.map,
@@ -641,21 +643,26 @@ class CloudManager : CoroutineVerticle() {
 
     // run provisioning scripts
     for (script in setup.provisioningScripts) {
-      // compile script template
-      val compiledTemplate = engine.getTemplate(script)
-      val writer = StringWriter()
-      compiledTemplate.evaluate(writer, context)
-
-      // upload compiled script
       val destFileName = "/tmp/" + FilenameUtils.getName(script)
-      val tmpFile = File.createTempFile("job", null)
-      tmpFile.deleteOnExit()
-      try {
-        tmpFile.writeText(writer.toString())
-        ssh.uploadFile(tmpFile.absolutePath, destFileName)
-      } finally {
-        tmpFile.delete()
-      }
+
+      // compile script template
+      vertx.executeBlockingAwait<Unit>({ ebp ->
+        val compiledTemplate = engine.getTemplate(script)
+        val writer = StringWriter()
+        compiledTemplate.evaluate(writer, context)
+
+        // upload compiled script
+        val tmpFile = File.createTempFile("job", null)
+        tmpFile.deleteOnExit()
+        try {
+          tmpFile.writeText(writer.toString())
+          ssh.uploadFilesBlocking(listOf(tmpFile.absolutePath), destFileName)
+        } finally {
+          tmpFile.delete()
+        }
+
+        ebp.complete()
+      }, false)
 
       // execute script
       ssh.execute("sudo chmod +x $destFileName")

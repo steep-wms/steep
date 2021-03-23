@@ -1,4 +1,4 @@
-package cloud
+package cloud.template
 
 import com.mitchellbosecke.pebble.extension.Function
 import com.mitchellbosecke.pebble.template.EvaluationContext
@@ -6,8 +6,8 @@ import com.mitchellbosecke.pebble.template.PebbleTemplate
 import java.io.File
 
 /**
- * A custom function for the template engine that the [CloudManager] uses for
- * provisioning scripts. This function reads the contents of a file. Use it
+ * A custom function for the template engine that the [cloud.CloudManager] uses
+ * for provisioning scripts. This function reads the contents of a file. Use it
  * as follows:
  *
  *     {{ readFile(filename) }}
@@ -17,7 +17,7 @@ import java.io.File
  *     {{ readFile("conf/steep.yaml") }}
  *
  * Paths can be absolute or relative to the current working directory (typically
- * the Steep's application directory)
+ * Steep's application directory)
  *
  * @author Michel Kraemer
  */

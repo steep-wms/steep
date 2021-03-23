@@ -26,7 +26,7 @@ class SSHClient(private val ip: String, private val username: String,
    * Otherwise return normally.
    */
   suspend fun tryConnect(timeoutSeconds: Int) {
-    executeBlocking {
+    blocking {
       execute(listOf("ssh",
           "-i", identityFile,
           "-o", "ConnectTimeout=$timeoutSeconds",
@@ -39,19 +39,38 @@ class SSHClient(private val ip: String, private val username: String,
   }
 
   /**
-   * Upload a file to the remote machine.
-   * @param src the path to the source file
-   * @param dest the destination path on the remote machine
+   * Upload a [src] file to the given [dest] on the remote machine.
    */
-  suspend fun uploadFile(src: String, dest: String) {
-    executeBlocking {
-      execute(listOf("scp",
-          "-i", identityFile,
-          "-o", "LogLevel=ERROR",
-          "-o", "StrictHostKeyChecking=no",
-          "-o", "UserKnownHostsFile=/dev/null",
-          src, "$username@$ip:$dest"))
+  suspend fun uploadFile(src: String, dest: String, recursive: Boolean = false) {
+    uploadFiles(listOf(src), dest, recursive)
+  }
+
+  /**
+   * Upload multiple [sources] to the given [dest] on the remote machine.
+   */
+  suspend fun uploadFiles(sources: List<String>, dest: String, recursive: Boolean = false) {
+    blocking {
+      uploadFilesBlocking(sources, dest, recursive)
     }
+  }
+
+  /**
+   * Blocking version of [uploadFiles]
+   */
+  fun uploadFilesBlocking(sources: List<String>, dest: String, recursive: Boolean = false) {
+    val args = mutableListOf("scp")
+    if (recursive) {
+      args.add("-r")
+    }
+    args.addAll(listOf(
+        "-i", identityFile,
+        "-o", "LogLevel=ERROR",
+        "-o", "StrictHostKeyChecking=no",
+        "-o", "UserKnownHostsFile=/dev/null"
+    ))
+    args.addAll(sources)
+    args.add("$username@$ip:$dest")
+    execute(args)
   }
 
   /**
@@ -59,17 +78,24 @@ class SSHClient(private val ip: String, private val username: String,
    * [helper.Shell.ExecutionException] if the command was not successful.
    */
   suspend fun execute(command: String) {
-    executeBlocking {
-      execute(listOf("ssh",
-          "-i", identityFile,
-          "-o", "LogLevel=ERROR",
-          "-o", "StrictHostKeyChecking=no",
-          "-o", "UserKnownHostsFile=/dev/null",
-          "$username@$ip", command))
+    blocking {
+      executeBlocking(command)
     }
   }
 
-  private suspend fun executeBlocking(block: () -> Unit) {
+  /**
+   * Blocking version of [execute]
+   */
+  fun executeBlocking(command: String) {
+    execute(listOf("ssh",
+        "-i", identityFile,
+        "-o", "LogLevel=ERROR",
+        "-o", "StrictHostKeyChecking=no",
+        "-o", "UserKnownHostsFile=/dev/null",
+        "$username@$ip", command))
+  }
+
+  private suspend fun blocking(block: () -> Unit) {
     // execute commands in a separate worker executor with a very long timeout
     val executor = vertx.createSharedWorkerExecutor(SSHClient::class.simpleName,
         30, Long.MAX_VALUE)
