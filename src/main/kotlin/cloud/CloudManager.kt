@@ -645,24 +645,29 @@ class CloudManager : CoroutineVerticle() {
     for (script in setup.provisioningScripts) {
       val destFileName = "/tmp/" + FilenameUtils.getName(script)
 
-      // compile script template
-      vertx.executeBlockingAwait<Unit>({ ebp ->
+      // compile script template and write result into temporary file
+      val tmpFile = vertx.executeBlockingAwait<File>({ ebp ->
         val compiledTemplate = engine.getTemplate(script)
         val writer = StringWriter()
         compiledTemplate.evaluate(writer, context)
 
-        // upload compiled script
-        val tmpFile = File.createTempFile("job", null)
-        tmpFile.deleteOnExit()
+        val f = File.createTempFile("job", null)
+        f.deleteOnExit()
         try {
-          tmpFile.writeText(writer.toString())
-          ssh.uploadFilesBlocking(listOf(tmpFile.absolutePath), destFileName)
-        } finally {
-          tmpFile.delete()
+          f.writeText(writer.toString())
+          ebp.complete(f)
+        } catch (t: Throwable) {
+          f.delete()
+          throw t
         }
+      }, false)!!
 
-        ebp.complete()
-      }, false)
+      // upload compiled script
+      try {
+        ssh.uploadFile(tmpFile.absolutePath, destFileName)
+      } finally {
+        tmpFile.delete()
+      }
 
       // execute script
       ssh.execute("sudo chmod +x $destFileName")
