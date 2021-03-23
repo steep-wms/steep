@@ -53,6 +53,7 @@ class UploadFunction(private val sshClient: SSHClient) : Function {
 
     // create target directories
     val tmpDest = "/tmp/steep-upload-${UniqueID.next()}"
+    sshClient.executeBlocking("""mkdir -p "$tmpDest"""")
     val dirsToCreate = groupedFiles.keys.filter { it.isNotEmpty() }
     if (dirsToCreate.isNotEmpty()) {
       sshClient.executeBlocking("""mkdir -p ${dirsToCreate.joinToString(" ") { d ->
