@@ -11,6 +11,7 @@ import helper.LoggingOutputCollector
 import helper.UniqueID
 import helper.withRetry
 import io.prometheus.client.Gauge
+import io.vertx.core.Context
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.eventbus.unregisterAwait
@@ -134,12 +135,16 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
       }
     }
 
+    // create object that holds the current Vert.x context so runtimes which
+    // are executed in another coroutine cotext can access it
+    val contextWrapper = VertxContextWrapper(vertx)
+
     // execute the process chain
     val executor = Executors.newSingleThreadExecutor()
     try {
       // create all required output directories
       for (exec in mkdirs) {
-        execute(exec, processChain.id, executor)
+        execute(exec, processChain.id, executor, contextWrapper)
       }
 
       // run executables and track progress
@@ -150,7 +155,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
             if (attempt > 1) {
               gaugeRetries.labels(exec.serviceId ?: "<unknown>").inc()
             }
-            execute(exec, processChain.id, executor) { p ->
+            execute(exec, processChain.id, executor, contextWrapper) { p ->
               val step = 1.0 / processChain.executables.size
               setProgress(step * index + step * p)
             }
@@ -187,7 +192,8 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
   }
 
   private suspend fun execute(exec: Executable, processChainId: String,
-      executor: ExecutorService, progressUpdater: ((Double) -> Unit)? = null) {
+      executor: ExecutorService, vertx: VertxContextWrapper,
+      progressUpdater: ((Double) -> Unit)? = null) {
     val collector = if (progressUpdater != null) {
       ProgressReportingOutputCollector(outputLinesToCollect, exec, progressUpdater)
     } else {
@@ -305,5 +311,14 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
         }
       }
     }
+  }
+
+  /**
+   * Small wrapper class that delegates to [Vertx] but holds a Vert.x context
+   * that runtimes can access even if they are running in a different thread
+   */
+  private class VertxContextWrapper(delegate: Vertx,
+      private val context: Context = delegate.orCreateContext) : Vertx by delegate {
+    override fun getOrCreateContext(): Context = context
   }
 }
