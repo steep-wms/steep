@@ -202,7 +202,7 @@ abstract class AgentTest {
       ctx.coVerify {
         agent.execute(processChain)
         verify(exactly = 1) {
-          customRuntime.execute(exec, any(), vertx)
+          customRuntime.execute(exec, any(), any())
         }
       }
       ctx.completeNow()
