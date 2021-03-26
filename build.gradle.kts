@@ -139,6 +139,10 @@ tasks {
         }
     }
 
+    withType<Test>().configureEach {
+        maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).takeIf { it > 0 } ?: 1
+    }
+
     val generateVersionFile by creating {
         doLast {
             val dst = File(buildDir, "generated-src/main/resources")
