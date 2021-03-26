@@ -7,6 +7,7 @@ import db.SubmissionRegistryFactory
 import helper.Shell
 import helper.UniqueID
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkConstructor
@@ -25,6 +26,7 @@ import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
 import io.vertx.kotlin.coroutines.toChannel
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -185,6 +187,110 @@ class SteepTest {
             .isInstanceOf(RemoteException::class.java)
             .hasMessage("$errorMessage\n\nExit code: $exitCode\n\n$lastOutput")
       }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Execute a simple process chain and check if the operation is idempotent
+   * (i.e. if we can call [agent.RemoteAgent.execute] multiple times but still
+   * only execute the process chain once)
+   */
+  @Test
+  fun executeProcessChainIdempotent(vertx: Vertx, ctx: VertxTestContext) {
+    val processChain = ProcessChain()
+    val remoteAgentRegistry = RemoteAgentRegistry(vertx)
+    val expectedResults = mapOf("output_files" to listOf("test1", "test2"))
+
+    mockkConstructor(LocalAgent::class)
+    coEvery { anyConstructed<LocalAgent>().execute(processChain) } coAnswers {
+      // pretend it takes 1s to execute the process chain
+      delay(1000)
+      expectedResults
+    }
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      val candidates = remoteAgentRegistry.selectCandidates(
+          listOf(processChain.requiredCapabilities to 1))
+      ctx.coVerify {
+        val agent = remoteAgentRegistry.tryAllocate(candidates[0].second,
+            processChain.id)
+        assertThat(agent).isNotNull
+
+        val d1 = async {
+          agent!!.execute(processChain)
+        }
+        val d2 = async {
+          agent!!.execute(processChain)
+        }
+
+        val results1 = d1.await()
+        val results2 = d2.await()
+
+        assertThat(results1).isEqualTo(expectedResults)
+        assertThat(results2).isEqualTo(expectedResults)
+
+        // make sure `execute` was only called once
+        coVerify(exactly = 1) {
+          anyConstructed<LocalAgent>().execute(processChain)
+        }
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Execute a simple process chain and check if the operation is idempotent
+   * even if we allocate the agent twice and have two different
+   * [agent.RemoteAgent] instances
+   */
+  @Test
+  fun executeProcessChainAllocateIdempotent(vertx: Vertx, ctx: VertxTestContext) {
+    val processChain = ProcessChain()
+    val remoteAgentRegistry = RemoteAgentRegistry(vertx)
+    val expectedResults = mapOf("output_files" to listOf("test1", "test2"))
+
+    mockkConstructor(LocalAgent::class)
+    coEvery { anyConstructed<LocalAgent>().execute(processChain) } coAnswers {
+      // pretend it takes 1s to execute the process chain
+      delay(1000)
+      expectedResults
+    }
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      val candidates = remoteAgentRegistry.selectCandidates(
+          listOf(processChain.requiredCapabilities to 1))
+      ctx.coVerify {
+        val agent1 = remoteAgentRegistry.tryAllocate(candidates[0].second,
+            processChain.id)
+        assertThat(agent1).isNotNull
+
+        val d1 = async {
+          agent1!!.execute(processChain)
+        }
+
+        delay(500)
+
+        val agent2 = remoteAgentRegistry.tryAllocate(candidates[0].second,
+            processChain.id)
+        assertThat(agent2).isNotNull
+        val d2 = async {
+          agent2!!.execute(processChain)
+        }
+
+        val results1 = d1.await()
+        val results2 = d2.await()
+
+        assertThat(results1).isEqualTo(expectedResults)
+        assertThat(results2).isEqualTo(expectedResults)
+
+        // make sure `execute` was only called once
+        coVerify(exactly = 1) {
+          anyConstructed<LocalAgent>().execute(processChain)
+        }
+      }
+
       ctx.completeNow()
     }
   }

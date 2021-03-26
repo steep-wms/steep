@@ -48,7 +48,7 @@ class Steep : CoroutineVerticle() {
   }
 
   private data class BusyMarker(val timestamp: Instant,
-      val processChainId: String?, val replyAddress: String? = null)
+      val processChainId: String?, val replyAddresses: Set<String> = emptySet())
 
   private val startTime = Instant.now()
   private var stateChangedTime = startTime
@@ -454,7 +454,12 @@ class Steep : CoroutineVerticle() {
     if (isBusy() && busy?.processChainId != processChainId) {
       msg.fail(503, "Agent is busy")
     } else {
-      markBusy(BusyMarker(Instant.now(), processChainId))
+      val currentBusy = busy
+      if (currentBusy?.processChainId != null && currentBusy.processChainId == processChainId) {
+        markBusy(currentBusy.copy(timestamp = Instant.now()))
+      } else {
+        markBusy(BusyMarker(Instant.now(), processChainId))
+      }
       msg.reply("ACK")
     }
   }
@@ -470,7 +475,8 @@ class Steep : CoroutineVerticle() {
   /**
    * Extract the process chain and a reply address from the given message and
    * send an acknowledgement. Execute the process chain asynchronously with a
-   * [LocalAgent] and send the results to the reply address
+   * [LocalAgent] and send the results to the reply address. This method is
+   * idempotent if the same process chain is already being executed.
    * @param msg the message containing the process chain and the reply address
    */
   private fun onProcessChain(msg: Message<JsonObject>) {
@@ -481,11 +487,31 @@ class Steep : CoroutineVerticle() {
       val processChain = JsonUtils.fromJson<ProcessChain>(jsonObj["processChain"])
       lastProcessChainSequence = jsonObj.getLong("sequence", -1L)
 
-      val marker = BusyMarker(Instant.now(), processChain.id, replyAddress)
-      markBusy(marker)
+      val currentBusy = busy
+      if (currentBusy != null) {
+        val updatedMarker = currentBusy.copy(timestamp = Instant.now(),
+            processChainId = processChain.id,
+            replyAddresses = currentBusy.replyAddresses + replyAddress)
+        markBusy(updatedMarker)
+
+        if (currentBusy.processChainId == processChain.id && currentBusy.replyAddresses.isNotEmpty()) {
+          // We are already executing this process chain. Return now!
+          log.info("Agent `$agentId' has been allocated with the same process " +
+              "chain `${processChain.id}'. Continuing execution.")
+          msg.reply("ACK")
+          return
+        }
+      } else {
+        val marker = BusyMarker(Instant.now(), processChain.id, setOf(replyAddress))
+        markBusy(marker)
+      }
+
       val busyTimer = vertx.setPeriodic(busyTimeout.toMillis() / 2) {
-        // periodically update timestamp of busy marker
-        markBusy(marker.copy(timestamp = Instant.now()))
+        // periodically update timestamp of current busy marker
+        val currentMarker = busy // get most current marker
+        if (currentMarker != null) {
+          markBusy(currentMarker.copy(timestamp = Instant.now()))
+        }
       }
 
       // run the local agent and return its results
@@ -493,17 +519,25 @@ class Steep : CoroutineVerticle() {
         try {
           log.info("Executing process chain ${processChain.id} ...")
           val answer = executeProcessChain(processChain)
-          for (tries in 4 downTo 0) {
-            try {
-              log.info("Sending results of process chain ${processChain.id} " +
-                  "to $replyAddress ...")
-              vertx.eventBus().requestAwait<Any>(replyAddress, answer)
-              break
-            } catch (t: Throwable) {
-              log.error("Error sending results of process chain " +
-                  "${processChain.id} to peer. Waiting 1 second. " +
-                  "$tries retries remaining.", t)
-              delay(1000)
+
+          // don't accept idempotent allocations anymore
+          val replyAddresses = busy?.replyAddresses ?: listOf(replyAddress)
+          markBusy(BusyMarker(Instant.now(), null))
+
+          // send answer to all reply addresses
+          for (address in replyAddresses) {
+            for (tries in 4 downTo 0) {
+              try {
+                log.info("Sending results of process chain ${processChain.id} " +
+                    "to $address ...")
+                vertx.eventBus().requestAwait<Any>(address, answer)
+                break
+              } catch (t: Throwable) {
+                log.error("Error sending results of process chain " +
+                    "${processChain.id} to peer. Waiting 1 second. " +
+                    "$tries retries remaining.", t)
+                delay(1000)
+              }
             }
           }
         } finally {
