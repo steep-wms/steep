@@ -128,7 +128,7 @@ class SchedulerTest {
     }
 
     val slotAgentAddress = slot<String>()
-    coEvery { agentRegistry.tryAllocate(capture(slotAgentAddress)) } answers {
+    coEvery { agentRegistry.tryAllocate(capture(slotAgentAddress), any()) } answers {
       val agent = availableAgents.find { it.id == slotAgentAddress.captured }
       if (agent != null) {
         availableAgents.remove(agent)
@@ -235,14 +235,14 @@ class SchedulerTest {
     // mock agent
     val agent = mockk<Agent>()
     val agentId = "Mock agent"
+    val pc = ProcessChain()
     every { agent.id } returns agentId
     coEvery { agent.execute(any()) } throws Exception(message)
-    coEvery { agentRegistry.tryAllocate(agentId) } returns agent andThen null
+    coEvery { agentRegistry.tryAllocate(agentId, pc.id) } returns agent andThen null
     coEvery { agentRegistry.selectCandidates(any()) } returns
         listOf(Pair(emptySet(), agentId)) andThen emptyList()
 
     // mock submission registry
-    val pc = ProcessChain()
     coEvery { submissionRegistry.setProcessChainStatus(pc.id, ERROR) } just Runs
     coEvery { submissionRegistry.setProcessChainStartTime(pc.id, any()) } just Runs
     coEvery { submissionRegistry.setProcessChainEndTime(pc.id, any()) } just Runs

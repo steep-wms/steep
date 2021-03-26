@@ -47,11 +47,14 @@ class Steep : CoroutineVerticle() {
     private val log = LoggerFactory.getLogger(Steep::class.java)
   }
 
+  private data class BusyMarker(val timestamp: Instant,
+      val processChainId: String?, val replyAddress: String? = null)
+
   private val startTime = Instant.now()
   private var stateChangedTime = startTime
 
   private lateinit var capabilities: Set<String>
-  private var busy: Instant? = null
+  private var busy: BusyMarker? = null
   private lateinit var busyTimeout: Duration
   private var lastProcessChainSequence = -1L
   private lateinit var autoShutdownTimeout: Duration
@@ -323,9 +326,9 @@ class Steep : CoroutineVerticle() {
    * Returns `true` if the agent is busy
    */
   private fun isBusy(): Boolean {
-    val timedOut = busy?.isBefore(Instant.now().minus(busyTimeout)) ?: return false
+    val timedOut = busy?.timestamp?.isBefore(Instant.now().minus(busyTimeout)) ?: return false
     if (timedOut) {
-      markBusy(false)
+      markBusy(null)
       log.error("Idle agent `${agentId}' was automatically marked as available again")
       return false
     }
@@ -335,14 +338,14 @@ class Steep : CoroutineVerticle() {
   /**
    * Marks this agent as busy or not busy
    */
-  private fun markBusy(busy: Boolean = true) {
-    if (busy) {
+  private fun markBusy(marker: BusyMarker?) {
+    if (marker != null) {
       if (this.busy == null) {
         vertx.eventBus().publish(REMOTE_AGENT_BUSY,
             REMOTE_AGENT_ADDRESS_PREFIX + agentId)
         stateChangedTime = Instant.now()
       }
-      this.busy = Instant.now()
+      this.busy = marker
     } else {
       if (this.busy != null) {
         vertx.eventBus().publish(REMOTE_AGENT_IDLE,
@@ -442,13 +445,16 @@ class Steep : CoroutineVerticle() {
   }
 
   /**
-   * Handle an allocation message
+   * Handle an allocation message. This method is idempotent if the
+   * `processChainId` in the message equals the ID of the process chain
+   * currently being executed.
    */
   private fun onAgentAllocate(msg: Message<JsonObject>) {
-    if (isBusy()) {
+    val processChainId = msg.body().getString("processChainId")
+    if (isBusy() && busy?.processChainId != processChainId) {
       msg.fail(503, "Agent is busy")
     } else {
-      markBusy()
+      markBusy(BusyMarker(Instant.now(), processChainId))
       msg.reply("ACK")
     }
   }
@@ -457,7 +463,7 @@ class Steep : CoroutineVerticle() {
    * Handle a deallocation message
    */
   private fun onAgentDeallocate(msg: Message<JsonObject>) {
-    markBusy(false)
+    markBusy(null)
     msg.reply("ACK")
   }
 
@@ -475,9 +481,11 @@ class Steep : CoroutineVerticle() {
       val processChain = JsonUtils.fromJson<ProcessChain>(jsonObj["processChain"])
       lastProcessChainSequence = jsonObj.getLong("sequence", -1L)
 
-      markBusy()
+      val marker = BusyMarker(Instant.now(), processChain.id, replyAddress)
+      markBusy(marker)
       val busyTimer = vertx.setPeriodic(busyTimeout.toMillis() / 2) {
-        markBusy()
+        // periodically update timestamp of busy marker
+        markBusy(marker.copy(timestamp = Instant.now()))
       }
 
       // run the local agent and return its results

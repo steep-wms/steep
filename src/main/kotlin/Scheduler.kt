@@ -200,7 +200,7 @@ class Scheduler : CoroutineVerticle() {
       }
 
       // allocate an agent for the process chain
-      val agent = agentRegistry.tryAllocate(address)
+      val agent = agentRegistry.tryAllocate(address, processChain.id)
       if (agent == null) {
         log.warn("Agent with address `$address' did not accept process " +
             "chain `${processChain.id}'")

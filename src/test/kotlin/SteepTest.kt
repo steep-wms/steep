@@ -94,7 +94,8 @@ class SteepTest {
       val candidates = remoteAgentRegistry.selectCandidates(
           listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
-        val agent = remoteAgentRegistry.tryAllocate(candidates[0].second)
+        val agent = remoteAgentRegistry.tryAllocate(candidates[0].second,
+            processChain.id)
         assertThat(agent).isNotNull
 
         val results = agent!!.execute(processChain)
@@ -120,7 +121,8 @@ class SteepTest {
       val candidates = remoteAgentRegistry.selectCandidates(
           listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
-        val agent = remoteAgentRegistry.tryAllocate(candidates[0].second)
+        val agent = remoteAgentRegistry.tryAllocate(candidates[0].second,
+            processChain.id)
         assertThat(agent).isNotNull
 
         val results = agent!!.execute(processChain)
@@ -147,7 +149,8 @@ class SteepTest {
       val candidates = remoteAgentRegistry.selectCandidates(
           listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
-        val agent = remoteAgentRegistry.tryAllocate(candidates[0].second)
+        val agent = remoteAgentRegistry.tryAllocate(candidates[0].second,
+            processChain.id)
         assertThatThrownBy { agent!!.execute(processChain) }
             .isInstanceOf(RemoteException::class.java)
             .hasMessage(errorMessage)
@@ -175,7 +178,8 @@ class SteepTest {
       val candidates = remoteAgentRegistry.selectCandidates(
           listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
-        val agent = remoteAgentRegistry.tryAllocate(candidates[0].second)
+        val agent = remoteAgentRegistry.tryAllocate(candidates[0].second,
+            processChain.id)
         assertThat(agent).isNotNull
         assertThatThrownBy { agent!!.execute(processChain) }
             .isInstanceOf(RemoteException::class.java)
@@ -256,21 +260,23 @@ class SteepTest {
    */
   @Test
   fun allocateDeallocate(vertx: Vertx, ctx: VertxTestContext) {
-    val processChain = ProcessChain()
     val remoteAgentRegistry = RemoteAgentRegistry(vertx)
 
     GlobalScope.launch(vertx.dispatcher()) {
       val candidates = remoteAgentRegistry.selectCandidates(
-          listOf(processChain.requiredCapabilities to 1))
+          listOf(emptySet<String>() to 1))
       ctx.coVerify {
-        val agent1 = remoteAgentRegistry.tryAllocate(candidates[0].second)
+        val agent1 = remoteAgentRegistry.tryAllocate(candidates[0].second,
+            UniqueID.next())
         assertThat(agent1).isNotNull
 
-        val agent2 = remoteAgentRegistry.tryAllocate(candidates[0].second)
+        val agent2 = remoteAgentRegistry.tryAllocate(candidates[0].second,
+            UniqueID.next())
         assertThat(agent2).isNull()
 
         remoteAgentRegistry.deallocate(agent1!!)
-        val agent3 = remoteAgentRegistry.tryAllocate(candidates[0].second)
+        val agent3 = remoteAgentRegistry.tryAllocate(candidates[0].second,
+            UniqueID.next())
         assertThat(agent3).isNotNull
       }
       ctx.completeNow()
@@ -283,6 +289,35 @@ class SteepTest {
    */
   @Test
   fun idle(vertx: Vertx, ctx: VertxTestContext) {
+    val remoteAgentRegistry = RemoteAgentRegistry(vertx)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      val candidates = remoteAgentRegistry.selectCandidates(
+          listOf(emptySet<String>() to 1))
+      ctx.coVerify {
+        val agent1 = remoteAgentRegistry.tryAllocate(candidates[0].second,
+            UniqueID.next())
+        assertThat(agent1).isNotNull
+
+        val agent2 = remoteAgentRegistry.tryAllocate(candidates[0].second,
+            UniqueID.next())
+        assertThat(agent2).isNull()
+
+        delay(1001)
+
+        val agent3 = remoteAgentRegistry.tryAllocate(candidates[0].second,
+            UniqueID.next())
+        assertThat(agent3).isNotNull
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if we can reallocate an agent if we send the same process chain ID again
+   */
+  @Test
+  fun idempotentAllocate(vertx: Vertx, ctx: VertxTestContext) {
     val processChain = ProcessChain()
     val remoteAgentRegistry = RemoteAgentRegistry(vertx)
 
@@ -290,16 +325,13 @@ class SteepTest {
       val candidates = remoteAgentRegistry.selectCandidates(
           listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
-        val agent1 = remoteAgentRegistry.tryAllocate(candidates[0].second)
+        val agent1 = remoteAgentRegistry.tryAllocate(candidates[0].second,
+            processChain.id)
         assertThat(agent1).isNotNull
 
-        val agent2 = remoteAgentRegistry.tryAllocate(candidates[0].second)
-        assertThat(agent2).isNull()
-
-        delay(1001)
-
-        val agent3 = remoteAgentRegistry.tryAllocate(candidates[0].second)
-        assertThat(agent3).isNotNull
+        val agent2 = remoteAgentRegistry.tryAllocate(candidates[0].second,
+            processChain.id)
+        assertThat(agent2).isNotNull
       }
       ctx.completeNow()
     }
@@ -320,13 +352,15 @@ class SteepTest {
       val candidates = remoteAgentRegistry.selectCandidates(
           listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
-        val agent = remoteAgentRegistry.tryAllocate(candidates[0].second)
+        val agent = remoteAgentRegistry.tryAllocate(candidates[0].second,
+            processChain.id)
         assertThat(agent).isNotNull
         agent!!.execute(processChain)
 
         delay(1001)
 
-        val agent2 = remoteAgentRegistry.tryAllocate(candidates[0].second)
+        val agent2 = remoteAgentRegistry.tryAllocate(candidates[0].second,
+            processChain.id)
         assertThat(agent2).isNotNull
       }
       ctx.completeNow()

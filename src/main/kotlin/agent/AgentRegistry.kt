@@ -25,11 +25,12 @@ interface AgentRegistry {
   suspend fun getPrimaryAgentIds(): Set<String>
 
   /**
-   * Try to allocate the agent with the given [address]. The method returns
-   * the allocated agent or `null` if the agent rejected the allocation request
-   * or was not reachable at all.
+   * Try to allocate the agent with the given [address] and ask it if it's
+   * available for executing the process chain with the given [processChainId].
+   * The method returns the allocated agent or `null` if the agent rejected the
+   * allocation request or was not reachable at all.
    */
-  suspend fun tryAllocate(address: String): Agent?
+  suspend fun tryAllocate(address: String, processChainId: String): Agent?
 
   /**
    * Deallocate an agent

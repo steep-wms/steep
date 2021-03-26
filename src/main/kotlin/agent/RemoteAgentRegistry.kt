@@ -333,10 +333,11 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     }
   }
 
-  override suspend fun tryAllocate(address: String): Agent? {
+  override suspend fun tryAllocate(address: String, processChainId: String): Agent? {
     val msgAllocate = json {
       obj(
-          "action" to "allocate"
+          "action" to "allocate",
+          "processChainId" to processChainId
       )
     }
 

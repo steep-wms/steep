@@ -114,7 +114,7 @@ class RemoteAgentRegistryTest {
   fun allocateNoAgent(vertx: Vertx, ctx: VertxTestContext) {
     val registry = RemoteAgentRegistry(vertx)
     GlobalScope.launch(vertx.dispatcher()) {
-      val agent = registry.tryAllocate("DUMMY_ADDRESS")
+      val agent = registry.tryAllocate("DUMMY_ADDRESS", UniqueID.next())
       ctx.verify {
         assertThat(agent).isNull()
       }
@@ -187,6 +187,7 @@ class RemoteAgentRegistryTest {
 
     val agentId = UniqueID.next()
     val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId
+    val processChainId = UniqueID.next()
 
     var allocateCount = 0
     var deallocateCount = 0
@@ -195,6 +196,9 @@ class RemoteAgentRegistryTest {
       val json = msg.body()
       when (val action = json.getString("action")) {
         "allocate" -> {
+          ctx.verify {
+            assertThat(json.getString("processChainId")).isEqualTo(processChainId)
+          }
           allocateCount++
           msg.reply("ACK")
         }
@@ -209,7 +213,7 @@ class RemoteAgentRegistryTest {
     GlobalScope.launch(vertx.dispatcher()) {
       registry.register(agentId)
 
-      val agent = registry.tryAllocate(address)
+      val agent = registry.tryAllocate(address, processChainId)
       ctx.verify {
         assertThat(agent).isNotNull
         assertThat(agent!!.id).isEqualTo(address)
@@ -558,6 +562,8 @@ class RemoteAgentRegistryTest {
   fun skipBusy(vertx: Vertx, ctx: VertxTestContext) {
     val registry = RemoteAgentRegistry(vertx)
 
+    val processChainId = UniqueID.next()
+
     val agentId1 = UniqueID.next()
     val address1 = REMOTE_AGENT_ADDRESS_PREFIX + agentId1
 
@@ -590,6 +596,9 @@ class RemoteAgentRegistryTest {
           })
         }
         "allocate" -> {
+          ctx.verify {
+            assertThat(json.getString("processChainId")).isEqualTo(processChainId)
+          }
           allocateCount1++
           msg.fail(503, "Sorry, but I'm actually busy. :-(")
         }
@@ -630,7 +639,7 @@ class RemoteAgentRegistryTest {
         assertThat(allocateCount2).isEqualTo(0)
 
         assertThat(candidates1).containsExactly(Pair(emptyList(), address1))
-        val agent1 = registry.tryAllocate(address1)
+        val agent1 = registry.tryAllocate(address1, processChainId)
         assertThat(agent1).isNull()
 
         assertThat(inquiryCount1).isEqualTo(1)
@@ -640,7 +649,7 @@ class RemoteAgentRegistryTest {
 
         val candidates2 = registry.selectCandidates(listOf(emptyList<String>() to 1))
         assertThat(candidates2).containsExactly(Pair(emptyList(), address2))
-        val agent2 = registry.tryAllocate(address2)
+        val agent2 = registry.tryAllocate(address2, processChainId)
         assertThat(agent2).isNotNull
 
         assertThat(inquiryCount1).isEqualTo(2)
