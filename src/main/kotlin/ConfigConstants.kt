@@ -178,6 +178,13 @@ object ConfigConstants {
   const val SCHEDULER_LOOKUP_INTERVAL = "steep.scheduler.lookupIntervalMilliseconds"
 
   /**
+   * The interval at which the scheduler looks for orphaned running
+   * process chains (i.e. process chains that are in the status `RUNNING' but
+   * that are currently not being processed by any [Scheduler])
+   */
+  const val SCHEDULER_LOOKUP_ORPHANS_INTERVAL = "steep.scheduler.lookupOrphansIntervalMilliseconds"
+
+  /**
    * `true` if this Steep instance should be able to execute process
    * chains through [agent.LocalAgent]
    */

@@ -7,6 +7,7 @@ import db.SubmissionRegistry.ProcessChainStatus.REGISTERED
 import db.SubmissionRegistry.ProcessChainStatus.RUNNING
 import db.SubmissionRegistry.ProcessChainStatus.SUCCESS
 import db.SubmissionRegistryFactory
+import helper.UniqueID
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -19,6 +20,9 @@ import io.mockk.unmockkAll
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
+import io.vertx.kotlin.core.deploymentOptionsOf
+import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.obj
 import kotlinx.coroutines.delay
 import model.processchain.ProcessChain
 import org.assertj.core.api.Assertions.assertThat
@@ -66,7 +70,12 @@ class SchedulerTest {
     every { AgentRegistryFactory.create(any()) } returns agentRegistry
 
     // deploy verticle under test
-    vertx.deployVerticle(Scheduler::class.qualifiedName, ctx.completing())
+    val options = deploymentOptionsOf(config = json {
+      obj(
+          ConfigConstants.AGENT_ID to UniqueID.next()
+      )
+    })
+    vertx.deployVerticle(Scheduler::class.qualifiedName, options, ctx.completing())
   }
 
   @AfterEach

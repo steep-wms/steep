@@ -238,23 +238,14 @@ class Controller : CoroutineVerticle() {
         // load generator state
         generator.loadState(executionState)
 
-        // reset running process chains and repeat failed process chains
-        val runningProcessChains = submissionRegistry.countProcessChains(submission.id,
-            ProcessChainStatus.RUNNING)
-        val failedProcessChains = submissionRegistry.countProcessChains(submission.id,
-            ProcessChainStatus.ERROR)
-        if (runningProcessChains > 0 || failedProcessChains > 0) {
-          val pcstatuses = submissionRegistry.findProcessChainStatusesBySubmissionId(submission.id)
-          for ((pcId, pcstatus) in pcstatuses) {
-            if (pcstatus === ProcessChainStatus.RUNNING || pcstatus === ProcessChainStatus.ERROR) {
-              submissionRegistry.setProcessChainStatus(pcId, ProcessChainStatus.REGISTERED)
-              submissionRegistry.setProcessChainStartTime(pcId, null)
-            }
-            if (pcstatus === ProcessChainStatus.ERROR) {
-              submissionRegistry.setProcessChainErrorMessage(pcId, null)
-              submissionRegistry.setProcessChainEndTime(pcId, null)
-            }
-          }
+        // repeat failed process chains (because we don't know why they failed)
+        val failedProcessChains = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
+            submission.id, ProcessChainStatus.ERROR)
+        for (pcId in failedProcessChains) {
+          submissionRegistry.setProcessChainStatus(pcId, ProcessChainStatus.REGISTERED)
+          submissionRegistry.setProcessChainStartTime(pcId, null)
+          submissionRegistry.setProcessChainErrorMessage(pcId, null)
+          submissionRegistry.setProcessChainEndTime(pcId, null)
         }
 
         // Re-load all process chains. waitForProcessChains() will only

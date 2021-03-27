@@ -351,16 +351,11 @@ class ControllerTest {
         ProcessChainStatus.RUNNING) } returns 1
     coEvery { submissionRegistry.countProcessChains(submission.id,
         ProcessChainStatus.ERROR) } returns 1
-    coEvery { submissionRegistry.findProcessChainStatusesBySubmissionId(submission.id) } returns mapOf(
-        processChains[0].id to ProcessChainStatus.SUCCESS,
-        processChains[1].id to ProcessChainStatus.ERROR,
-        processChains[2].id to ProcessChainStatus.RUNNING
-    )
+    coEvery { submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(submission.id,
+        ProcessChainStatus.ERROR) } returns listOf(processChains[1].id)
 
-    // make sure the controller resets the status of the failed and the running process chain
+    // make sure the controller resets the status of the failed process chain
     coEvery { submissionRegistry.setProcessChainStatus(processChains[1].id,
-        ProcessChainStatus.REGISTERED) } just Runs
-    coEvery { submissionRegistry.setProcessChainStatus(processChains[2].id,
         ProcessChainStatus.REGISTERED) } just Runs
     coEvery { submissionRegistry.setProcessChainErrorMessage(processChains[1].id, null) } just Runs
 

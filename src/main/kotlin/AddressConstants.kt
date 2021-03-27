@@ -19,6 +19,20 @@ object AddressConstants {
   const val SCHEDULER_LOOKUP_NOW = "steep.scheduler.lookupNow"
 
   /**
+   * Prefix for eventbus addresses of [Scheduler]s. Each scheduler listens to
+   * one of these addresses. The actual address is [SCHEDULER_PREFIX] + (ID of
+   * the scheduler's primary remote agent) + SUFFIX for the operation.
+   */
+  const val SCHEDULER_PREFIX = "steep.scheduler."
+
+  /**
+   * Eventbus address suffix to get the IDs of all process chains a scheduler
+   * is currently executing. The actual address is [SCHEDULER_PREFIX] + (ID of
+   * the scheduler's primary remote agent) + this SUFFIX.
+   */
+  const val SCHEDULER_RUNNING_PROCESS_CHAINS_SUFFIX = ".runningProcessChains"
+
+  /**
    * Will be published when a new cluster node has been added
    */
   const val CLUSTER_NODE_ADDED = "steep.cluster.nodeAdded"

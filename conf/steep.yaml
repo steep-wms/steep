@@ -67,6 +67,7 @@ steep:
   scheduler:
     enabled: true
     lookupIntervalMilliseconds: 20000
+    lookupOrphansIntervalMilliseconds: 300000
 
   db:
     driver: inmemory

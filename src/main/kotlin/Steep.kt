@@ -80,7 +80,7 @@ class Steep : CoroutineVerticle() {
         ConfigConstants.AGENT_AUTO_SHUTDOWN_TIMEOUT, 0))
     agentId = config.getString(ConfigConstants.AGENT_ID) ?:
         throw IllegalStateException("Missing configuration item " +
-            "`${ConfigConstants.AGENT_AUTO_SHUTDOWN_TIMEOUT}'")
+            "`${ConfigConstants.AGENT_ID}'")
 
     // check if we are the primary agent of this JVM
     val isPrimary = !agentId.matches(""".+\[\d+]""".toRegex())
@@ -369,6 +369,12 @@ class Steep : CoroutineVerticle() {
           "stateChangedTime" to stateChangedTime
       )
     }
+
+    val processChainId = busy?.processChainId
+    if (processChainId != null) {
+      reply.put("processChainId", processChainId)
+    }
+
     msg.reply(reply)
   }
 
