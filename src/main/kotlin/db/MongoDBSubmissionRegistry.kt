@@ -392,6 +392,17 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         )
       }, PROCESS_CHAIN_EXCLUDES_BUT_SUBMISSION_ID).map { readProcessChain(it) }
 
+  override suspend fun findProcessChainIdsByStatus(status: ProcessChainStatus) =
+      collProcessChains.findAwait(json {
+        obj(
+            STATUS to status.toString()
+        )
+      }, projection = json {
+        obj(
+            INTERNAL_ID to 1
+        )
+      }).map { it.getString(INTERNAL_ID) }
+
   override suspend fun findProcessChainIdsBySubmissionIdAndStatus(
       submissionId: String, status: ProcessChainStatus) =
       collProcessChains.findAwait(json {

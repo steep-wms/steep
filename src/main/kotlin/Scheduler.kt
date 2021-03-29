@@ -406,13 +406,12 @@ class Scheduler : CoroutineVerticle() {
     }
 
     try {
-      // TODO we only need IDs here
       // get all process chains with status RUNNING from the registry
       // IMPORTANT: we need to do this first before we ask the schedulers which
       // process chains they are executing. Otherwise, we might risk finding
       // chains that have been started by a scheduler right after we asked it.
-      val runningProcessChains = submissionRegistry.findProcessChains(
-          status = RUNNING).map { it.first.id }
+      val runningProcessChains = submissionRegistry.findProcessChainIdsByStatus(
+          status = RUNNING)
 
       // ask all scheduler instances which process chains they are currently executing
       val allRunningProcessChains = mutableSetOf<String>()
@@ -436,9 +435,8 @@ class Scheduler : CoroutineVerticle() {
 
       // check again if orphaned process chains are still running (or if they
       // had just been finished by a scheduler before we had the chance to ask it)
-      // TODO Again, we only need IDs here
-      val stillRunningProcessChains = submissionRegistry.findProcessChains(
-          status = RUNNING).map { it.first.id }.toSet()
+      val stillRunningProcessChains = submissionRegistry.findProcessChainIdsByStatus(
+          status = RUNNING).toSet()
       val orphanedProcessChains = orphanedCandidates.filter {
         stillRunningProcessChains.contains(it) }
       if (orphanedProcessChains.isEmpty()) {

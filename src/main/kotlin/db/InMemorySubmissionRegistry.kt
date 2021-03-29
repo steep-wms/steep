@@ -285,6 +285,11 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
           .let { if (size >= 0) it.take(size) else it }
           .map { Pair(it.processChain, it.submissionId) }
 
+  override suspend fun findProcessChainIdsByStatus(status: ProcessChainStatus) =
+      findProcessChainEntries()
+          .filter { it.status == status }
+          .map { it.processChain.id }
+
   override suspend fun findProcessChainIdsBySubmissionIdAndStatus(
       submissionId: String, status: ProcessChainStatus) =
       findProcessChainEntries()

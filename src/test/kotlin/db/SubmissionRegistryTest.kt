@@ -715,6 +715,43 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun findProcessChainIdsByStatus(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow())
+    val pc1 = ProcessChain()
+    val pc2 = ProcessChain()
+    val pc3 = ProcessChain()
+    val s2 = Submission(workflow = Workflow())
+    val pc4 = ProcessChain()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addProcessChains(listOf(pc1, pc2), s1.id,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      submissionRegistry.addProcessChains(listOf(pc3), s1.id,
+          SubmissionRegistry.ProcessChainStatus.SUCCESS)
+      submissionRegistry.addProcessChains(listOf(pc4), s2.id)
+
+      val statuses0 = submissionRegistry.findProcessChainIdsByStatus(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      val statuses1 = submissionRegistry.findProcessChainIdsByStatus(
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      val statuses2 = submissionRegistry.findProcessChainIdsByStatus(
+          SubmissionRegistry.ProcessChainStatus.SUCCESS)
+      val statuses3 = submissionRegistry.findProcessChainIdsByStatus(
+          SubmissionRegistry.ProcessChainStatus.CANCELLED)
+      ctx.verify {
+        assertThat(statuses0).isEqualTo(listOf(pc4.id))
+        assertThat(statuses1).isEqualTo(listOf(pc1.id, pc2.id))
+        assertThat(statuses2).isEqualTo(listOf(pc3.id))
+        assertThat(statuses3).isEmpty()
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun findProcessChainIdsBySubmissionIdAndStatus(vertx: Vertx, ctx: VertxTestContext) {
     val s1 = Submission(workflow = Workflow())
     val pc1 = ProcessChain()
