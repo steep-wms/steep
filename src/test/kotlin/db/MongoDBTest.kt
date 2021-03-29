@@ -7,7 +7,8 @@ import de.flapdoodle.embed.mongo.MongodProcess
 import de.flapdoodle.embed.mongo.MongodStarter
 import de.flapdoodle.embed.mongo.config.MongodConfig
 import de.flapdoodle.embed.mongo.distribution.Version
-import helper.dropAwait
+import helper.deleteAllAwait
+import helper.listCollectionNamesAwait
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
@@ -57,7 +58,18 @@ interface MongoDBTest {
     val client = MongoClients.create(cs)
 
     GlobalScope.launch(vertx.dispatcher()) {
-      client.getDatabase(cs.database).dropAwait()
+      // Don't drop the whole database - just delete the contents of all
+      // collections instead. It makes the unit tests much faster (they now take
+      // a few seconds vs several minutes) because the collections do not have
+      // to be recreated all the time.
+      // client.getDatabase(cs.database).dropAwait()
+      val db = client.getDatabase(cs.database)
+      val collectionNames = db.listCollectionNamesAwait()
+      for (name in collectionNames) {
+        val coll = db.getCollection(name)
+        coll.deleteAllAwait()
+      }
+
       client.close()
       ctx.completeNow()
     }

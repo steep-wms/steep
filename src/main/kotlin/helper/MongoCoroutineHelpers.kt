@@ -5,6 +5,7 @@ import com.mongodb.client.gridfs.model.GridFSFile
 import com.mongodb.client.model.CountOptions
 import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.WriteModel
+import com.mongodb.client.result.DeleteResult
 import com.mongodb.client.result.UpdateResult
 import com.mongodb.reactivestreams.client.MongoCollection
 import com.mongodb.reactivestreams.client.MongoDatabase
@@ -14,6 +15,7 @@ import com.mongodb.reactivestreams.client.gridfs.GridFSUploadStream
 import io.vertx.core.json.JsonObject
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
+import org.bson.BsonDocument
 import org.bson.BsonValue
 import org.reactivestreams.Publisher
 import org.reactivestreams.Subscriber
@@ -108,6 +110,12 @@ suspend fun <T> MongoCollection<T>.countDocumentsAwait(filter: JsonObject,
   } ?: 0
 }
 
+suspend fun MongoDatabase.listCollectionNamesAwait(): List<String> {
+  return suspendCancellableCoroutine { cont: CancellableContinuation<List<String>> ->
+    listCollectionNames().subscribe(CollectionSubscriber(cont))
+  }
+}
+
 suspend fun MongoDatabase.dropAwait() {
   wrapCoroutine { drop() }
 }
@@ -176,6 +184,12 @@ suspend fun <T> MongoCollection<T>.updateManyAwait(filter: JsonObject,
   return wrapCoroutine {
     updateMany(wrap(filter), wrap(update))
   } ?: throw IllegalStateException("Update operation did not produce a result")
+}
+
+suspend fun <T> MongoCollection<T>.deleteAllAwait(): DeleteResult {
+  return wrapCoroutine {
+    deleteMany(BsonDocument())
+  } ?: throw IllegalStateException("Delete operation did not produce a result")
 }
 
 suspend fun GridFSBucket.findAwait(filter: JsonObject): GridFSFile? {
