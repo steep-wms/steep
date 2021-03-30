@@ -4,19 +4,24 @@
  */
 object AddressConstants {
   /**
-   * Make the controller look up for new submissions now
+   * Make the controller look for new submissions now
    */
   const val CONTROLLER_LOOKUP_NOW = "steep.controller.lookupNow"
 
   /**
-   * Make the controller look up for orphaned running submissions now
+   * Make the controller look for orphaned running submissions now
    */
   const val CONTROLLER_LOOKUP_ORPHANS_NOW = "steep.controller.lookupOrphansNow"
 
   /**
-   * Make the scheduler look up for new process chains now
+   * Make the scheduler look for new process chains now
    */
   const val SCHEDULER_LOOKUP_NOW = "steep.scheduler.lookupNow"
+
+  /**
+   * Make the scheduler look for orphaned running process chains now
+   */
+  const val SCHEDULER_LOOKUP_ORPHANS_NOW = "steep.scheduler.lookupOrphansNow"
 
   /**
    * Prefix for eventbus addresses of [Scheduler]s. Each scheduler listens to

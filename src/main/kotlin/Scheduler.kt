@@ -2,6 +2,7 @@ import AddressConstants.CLUSTER_NODE_LEFT
 import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import AddressConstants.REMOTE_AGENT_MISSING
 import AddressConstants.SCHEDULER_LOOKUP_NOW
+import AddressConstants.SCHEDULER_LOOKUP_ORPHANS_NOW
 import AddressConstants.SCHEDULER_PREFIX
 import AddressConstants.SCHEDULER_RUNNING_PROCESS_CHAINS_SUFFIX
 import ConfigConstants.SCHEDULER_LOOKUP_INTERVAL
@@ -127,6 +128,26 @@ class Scheduler : CoroutineVerticle() {
       }
     }
 
+    vertx.eventBus().consumer<JsonObject?>(SCHEDULER_LOOKUP_NOW) { msg ->
+      val maxLookups = msg.body()?.getInteger("maxLookups") ?: Int.MAX_VALUE
+      val updateRequiredCapabilities = msg.body()?.getBoolean("updateRequiredCapabilities") ?: true
+      launch {
+        lookup(maxLookups, updateRequiredCapabilities)
+      }
+    }
+
+    vertx.eventBus().consumer<Unit>(SCHEDULER_LOOKUP_ORPHANS_NOW) {
+      launch {
+        lookupOrphans()
+      }
+    }
+
+    val addressRunningProcessChains =
+        "$SCHEDULER_PREFIX$agentId$SCHEDULER_RUNNING_PROCESS_CHAINS_SUFFIX"
+    vertx.eventBus().consumer<Any?>(addressRunningProcessChains) { msg ->
+      msg.reply(JsonArray(runningProcessChainIds.toList()))
+    }
+
     // periodically look for orphaned running process chains and re-execute them
     periodicLookupOrphansJob = launch {
       while (true) {
@@ -137,20 +158,6 @@ class Scheduler : CoroutineVerticle() {
     launch {
       // look up for orphaned running process chains now
       lookupOrphans()
-    }
-
-    vertx.eventBus().consumer<JsonObject?>(SCHEDULER_LOOKUP_NOW) { msg ->
-      val maxLookups = msg.body()?.getInteger("maxLookups") ?: Int.MAX_VALUE
-      val updateRequiredCapabilities = msg.body()?.getBoolean("updateRequiredCapabilities") ?: true
-      launch {
-        lookup(maxLookups, updateRequiredCapabilities)
-      }
-    }
-
-    val addressRunningProcessChains =
-        "$SCHEDULER_PREFIX$agentId$SCHEDULER_RUNNING_PROCESS_CHAINS_SUFFIX"
-    vertx.eventBus().consumer<Any?>(addressRunningProcessChains) { msg ->
-      msg.reply(JsonArray(runningProcessChainIds.toList()))
     }
   }
 
@@ -444,7 +451,7 @@ class Scheduler : CoroutineVerticle() {
         return
       }
 
-      log.info("Found ${orphanedCandidates.size} orphaned running process " +
+      log.info("Found ${orphanedProcessChains.size} orphaned running process " +
           "chains. Trying to resume ...")
 
       // ask all agents which process chains they are currently executing

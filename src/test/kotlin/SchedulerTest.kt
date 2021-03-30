@@ -1,6 +1,7 @@
 import agent.Agent
 import agent.AgentRegistry
 import agent.AgentRegistryFactory
+import agent.RemoteAgent
 import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus.ERROR
 import db.SubmissionRegistry.ProcessChainStatus.REGISTERED
@@ -17,20 +18,28 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.slot
 import io.mockk.unmockkAll
+import io.vertx.core.Promise
 import io.vertx.core.Vertx
+import io.vertx.core.json.JsonObject
+import io.vertx.core.shareddata.AsyncMap
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.deploymentOptionsOf
+import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.core.shareddata.putAwait
+import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import model.processchain.ProcessChain
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import java.lang.IllegalStateException
 import kotlin.math.max
 
 /**
@@ -41,6 +50,7 @@ import kotlin.math.max
 class SchedulerTest {
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var agentRegistry: AgentRegistry
+  private lateinit var agentId: String
 
   private var expectedRequiredCapabilities = listOf<Pair<Collection<String>, Long>>()
 
@@ -55,6 +65,7 @@ class SchedulerTest {
     coEvery { submissionRegistry.findProcessChainRequiredCapabilities(any()) } answers {
       expectedRequiredCapabilities.map { it.first }
     }
+    coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING) } returns emptyList()
     val rcsSlot = slot<Collection<String>>()
     coEvery { submissionRegistry.countProcessChains(null, REGISTERED, capture(rcsSlot)) } answers {
       expectedRequiredCapabilities.find {
@@ -70,9 +81,10 @@ class SchedulerTest {
     every { AgentRegistryFactory.create(any()) } returns agentRegistry
 
     // deploy verticle under test
+    agentId = UniqueID.next()
     val options = deploymentOptionsOf(config = json {
       obj(
-          ConfigConstants.AGENT_ID to UniqueID.next()
+          ConfigConstants.AGENT_ID to agentId
       )
     })
     vertx.deployVerticle(Scheduler::class.qualifiedName, options, ctx.completing())
@@ -272,5 +284,109 @@ class SchedulerTest {
         pc andThen null
 
     vertx.eventBus().publish(AddressConstants.SCHEDULER_LOOKUP_NOW, null)
+  }
+
+  /**
+   * Test if process chains that are not monitored by a scheduler instance but
+   * are still executed by an agent can be resumed.
+   */
+  @Test
+  fun resumeProcessChains(vertx: Vertx, ctx: VertxTestContext) {
+    // a process chain that is not executed by an agent (should be restarted)
+    val pc1 = ProcessChain(id = "pc1")
+    // a process chain that is executed by an agent (should be resumed!)
+    val pc2 = ProcessChain(id = "pc2")
+    // a process chain that is still monitored by another scheduler
+    val pc3 = ProcessChain(id = "pc3")
+    // a process chain that was first running but is then not anymore
+    val pc4 = ProcessChain(id = "pc4")
+
+    val pc2Results = mapOf("var" to listOf("test.txt"))
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      // add another scheduler that monitors 'pc3'
+      val otherSchedulerId = UniqueID.next()
+      val sharedData = vertx.sharedData()
+      val schedulersPromise = Promise.promise<AsyncMap<String, Boolean>>()
+      sharedData.getAsyncMap("Scheduler.Async", schedulersPromise)
+      val schedulers = schedulersPromise.future().await()
+      schedulers.putAwait(otherSchedulerId, true)
+      var otherSchedulerCalled = false
+      val schedulerRunningAddress = AddressConstants.SCHEDULER_PREFIX +
+          "$otherSchedulerId${AddressConstants.SCHEDULER_RUNNING_PROCESS_CHAINS_SUFFIX}"
+      vertx.eventBus().consumer<Any?>(schedulerRunningAddress) { msg ->
+        otherSchedulerCalled = true
+        msg.reply(json {
+          array(pc3.id)
+        })
+      }
+
+      // mock submission registry
+      coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING) } returns
+          listOf(pc1.id, pc2.id, pc3.id, pc4.id) andThen listOf(pc1.id, pc2.id, pc3.id)
+      coEvery { submissionRegistry.setProcessChainStatus(pc1.id, REGISTERED) } just Runs
+      coEvery { submissionRegistry.setProcessChainStartTime(pc1.id, null) } just Runs
+      coEvery { submissionRegistry.findProcessChainById(pc2.id) } returns pc2
+      coEvery { submissionRegistry.setProcessChainResults(pc2.id, pc2Results) } just Runs
+      coEvery { submissionRegistry.setProcessChainStatus(pc2.id, SUCCESS) } just Runs
+      coEvery { submissionRegistry.setProcessChainEndTime(pc2.id, any()) } just Runs
+      coEvery { submissionRegistry.existsProcessChain(REGISTERED, any()) } returns false
+
+      // mock agent registry
+      coEvery { agentRegistry.getAgentIds() } returns setOf(agentId)
+      val agentAddress = "${AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX}$agentId"
+      vertx.eventBus().consumer<JsonObject>(agentAddress) { msg ->
+        ctx.verify {
+          assertThat(msg.body().getString("action")).isEqualTo("info")
+        }
+        msg.reply(json {
+          obj(
+              "id" to agentId,
+              "processChainId" to pc2.id
+          )
+        })
+      }
+      val mockAgent = mockk<RemoteAgent>()
+      coEvery { agentRegistry.tryAllocate(agentAddress, pc2.id) } returns mockAgent
+      every { mockAgent.id } returns agentId
+      coEvery { mockAgent.execute(pc2) } returns pc2Results
+      coEvery { agentRegistry.deallocate(mockAgent) } just Runs
+
+      // finalize (agentRegistry.selectCandidates should be called at then end
+      // when pc2 has been resumed and executed successfully)
+      coEvery { agentRegistry.selectCandidates(any()) } answers {
+        ctx.verify {
+          assertThat(otherSchedulerCalled).isTrue
+
+          coVerify(atLeast = 2) {
+            submissionRegistry.findProcessChainIdsByStatus(RUNNING)
+          }
+          coVerify(exactly = 1) {
+            // check that pc1 was successfully reset
+            submissionRegistry.setProcessChainStatus(pc1.id, REGISTERED)
+            submissionRegistry.setProcessChainStartTime(pc1.id, null)
+
+            // check that pc2 was successfully resumed
+            submissionRegistry.findProcessChainById(pc2.id)
+            submissionRegistry.setProcessChainResults(pc2.id, pc2Results)
+            submissionRegistry.setProcessChainStatus(pc2.id, SUCCESS)
+            submissionRegistry.setProcessChainEndTime(pc2.id, any())
+          }
+          coVerify(exactly = 1) {
+            // check that pc2 was successfully executed
+            agentRegistry.getAgentIds()
+            agentRegistry.tryAllocate(agentAddress, pc2.id)
+            mockAgent.execute(pc2)
+            agentRegistry.deallocate(mockAgent)
+          }
+        }
+
+        ctx.completeNow()
+
+        emptyList()
+      }
+
+      vertx.eventBus().publish(AddressConstants.SCHEDULER_LOOKUP_ORPHANS_NOW, null)
+    }
   }
 }
