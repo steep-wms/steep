@@ -20,17 +20,20 @@ const UPDATE_MESSAGES = {
   [AGENT_LEFT]: (body) => ({
     id: body.substring(AGENT_ADDRESS_PREFIX.length),
     left: true,
+    processChainId: undefined,
     stateChangedTime: new Date()
   }),
   [AGENT_BUSY]: (body) => ({
-    id: body.substring(AGENT_ADDRESS_PREFIX.length),
+    id: body.id,
     available: false,
-    stateChangedTime: new Date()
+    processChainId: body.processChainId,
+    stateChangedTime: new Date(body.stateChangedTime)
   }),
   [AGENT_IDLE]: (body) => ({
-    id: body.substring(AGENT_ADDRESS_PREFIX.length),
+    id: body.id,
     available: true,
-    stateChangedTime: new Date()
+    processChainId: undefined,
+    stateChangedTime: new Date(body.stateChangedTime)
   })
 }
 

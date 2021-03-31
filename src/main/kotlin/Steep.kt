@@ -341,16 +341,31 @@ class Steep : CoroutineVerticle() {
   private fun markBusy(marker: BusyMarker?) {
     if (marker != null) {
       if (this.busy == null) {
-        vertx.eventBus().publish(REMOTE_AGENT_BUSY,
-            REMOTE_AGENT_ADDRESS_PREFIX + agentId)
         stateChangedTime = Instant.now()
+        val msg = json {
+          obj(
+            "id" to agentId,
+            "available" to false,
+            "stateChangedTime" to stateChangedTime
+          )
+        }
+        if (marker.processChainId != null) {
+          msg.put("processChainId", marker.processChainId)
+        }
+        vertx.eventBus().publish(REMOTE_AGENT_BUSY, msg)
       }
       this.busy = marker
     } else {
       if (this.busy != null) {
-        vertx.eventBus().publish(REMOTE_AGENT_IDLE,
-            REMOTE_AGENT_ADDRESS_PREFIX + agentId)
         stateChangedTime = Instant.now()
+        val msg = json {
+          obj(
+              "id" to agentId,
+              "available" to true,
+              "stateChangedTime" to stateChangedTime
+          )
+        }
+        vertx.eventBus().publish(REMOTE_AGENT_IDLE, msg)
       }
       this.busy = null
     }

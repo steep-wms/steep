@@ -64,6 +64,10 @@ function AgentDetails({ id }) {
             <DefinitionListItem title="Capabilities">
               {caps}
             </DefinitionListItem>
+            <DefinitionListItem title="Allocated process chain">
+              {a.processChainId ? <Link href={`/processchains/${a.processChainId}`}>
+                {a.processChainId}</Link> : <>&ndash;</>}
+            </DefinitionListItem>
           </DefinitionList>
         </div>
         <div className="detail-header-right">
