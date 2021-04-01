@@ -84,6 +84,23 @@ object ConfigConstants {
   const val CLUSTER_HAZELCAST_TCPENABLED = "steep.cluster.hazelcast.tcpEnabled"
 
   /**
+   * `true` if the IP addresses from potential Hazelcast cluster members should
+   * be restored on startup from the [db.VMRegistry] (i.e. VMs that are still
+   * running will automatically be added to the list of members)
+   */
+  const val CLUSTER_HAZELCAST_RESTORE_MEMBERS_ENABLED =
+      "steep.cluster.hazelcast.restoreMembersOnStartup.enabled"
+
+  /**
+   * If [CLUSTER_HAZELCAST_RESTORE_MEMBERS_ENABLED] is `true`, potential
+   * Hazelcast members will be restored from the [db.VMRegistry]. This
+   * configuration item specifies on which Hazelcast port these members are
+   * listening.
+   */
+  const val CLUSTER_HAZELCAST_RESTORE_MEMBERS_DEFAULT_PORT =
+      "steep.cluster.hazelcast.restoreMembersOnStartup.defaultPort"
+
+  /**
    * `true` if an HTTP server should be deployed
    */
   const val HTTP_ENABLED = "steep.http.enabled"

@@ -4,12 +4,14 @@ import cloud.CloudManager
 import com.hazelcast.core.MembershipAdapter
 import com.hazelcast.core.MembershipEvent
 import db.PluginRegistryFactory
+import db.VMRegistryFactory
 import helper.JsonUtils
 import helper.LazyJsonObjectMessageCodec
 import helper.UniqueID
 import io.vertx.core.VertxOptions
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.Vertx
+import io.vertx.kotlin.core.closeAwait
 import io.vertx.kotlin.core.deployVerticleAwait
 import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.json.json
@@ -81,6 +83,13 @@ suspend fun main() {
   val members = conf.getJsonArray(ConfigConstants.CLUSTER_HAZELCAST_MEMBERS)
   if (members != null) {
     hazelcastConfig.networkConfig.join.tcpIpConfig.members = members.map { it.toString() }
+  }
+
+  // restore Hazelcast members from IP addresses of running VMs
+  if (conf.getBoolean(ConfigConstants.CLUSTER_HAZELCAST_RESTORE_MEMBERS_ENABLED, false)) {
+    val defaultPort = conf.getInteger(ConfigConstants.CLUSTER_HAZELCAST_RESTORE_MEMBERS_DEFAULT_PORT, 5701)
+    val restoredMembers = restoreMembers(defaultPort)
+    restoredMembers.forEach { hazelcastConfig.networkConfig.join.tcpIpConfig.addMember(it) }
   }
 
   // enable TCP or multicast
@@ -343,6 +352,30 @@ fun configureLogging(conf: JsonObject) {
   val configurator = JoranConfigurator()
   configurator.context = context
   configurator.doConfigure(xml.toString().byteInputStream())
+}
+
+suspend fun restoreMembers(defaultPort: Int): List<String> {
+  // create temporary non-clustered Vert.x instance
+  val vertx = io.vertx.core.Vertx.vertx()
+  try {
+    // create temporary VM registry
+    val vmRegistry = VMRegistryFactory.create(vertx)
+    try {
+      // find non-terminated VMs and map their IP addresses to member addresses
+      val nonTerminatedVMs = vmRegistry.findNonTerminatedVMs()
+      return nonTerminatedVMs.mapNotNull { vm ->
+        if (vm.ipAddress != null) {
+          "${vm.ipAddress}:$defaultPort"
+        } else {
+          null
+        }
+      }
+    } finally {
+      vmRegistry.close()
+    }
+  } finally {
+    vertx.closeAwait()
+  }
 }
 
 /**

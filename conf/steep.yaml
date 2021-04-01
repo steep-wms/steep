@@ -21,6 +21,9 @@ steep:
       # members:
         # - 146.140.36.83
       # tcpEnabled: false
+      # restoreMembersOnStartup:
+      #   enabled: true
+      #   defaultPort: 5701
 
   http:
     enabled: true
