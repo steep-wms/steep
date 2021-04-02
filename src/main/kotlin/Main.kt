@@ -56,6 +56,8 @@ suspend fun main() {
 
   configureLogging(conf)
 
+  val log = LoggerFactory.getLogger(Main::class.java)
+
   // load hazelcast config
   val hazelcastConfig = ConfigUtil.loadConfig()
 
@@ -88,7 +90,8 @@ suspend fun main() {
   // restore Hazelcast members from IP addresses of running VMs
   if (conf.getBoolean(ConfigConstants.CLUSTER_HAZELCAST_RESTORE_MEMBERS_ENABLED, false)) {
     val defaultPort = conf.getInteger(ConfigConstants.CLUSTER_HAZELCAST_RESTORE_MEMBERS_DEFAULT_PORT, 5701)
-    val restoredMembers = restoreMembers(defaultPort)
+    val restoredMembers = restoreMembers(defaultPort, conf)
+    log.info("Restored cluster members from VM registry: $restoredMembers")
     restoredMembers.forEach { hazelcastConfig.networkConfig.join.tcpIpConfig.addMember(it) }
   }
 
@@ -354,12 +357,12 @@ fun configureLogging(conf: JsonObject) {
   configurator.doConfigure(xml.toString().byteInputStream())
 }
 
-suspend fun restoreMembers(defaultPort: Int): List<String> {
+suspend fun restoreMembers(defaultPort: Int, config: JsonObject): List<String> {
   // create temporary non-clustered Vert.x instance
   val vertx = io.vertx.core.Vertx.vertx()
   try {
     // create temporary VM registry
-    val vmRegistry = VMRegistryFactory.create(vertx)
+    val vmRegistry = VMRegistryFactory.create(vertx, config)
     try {
       // find non-terminated VMs and map their IP addresses to member addresses
       val nonTerminatedVMs = vmRegistry.findNonTerminatedVMs()

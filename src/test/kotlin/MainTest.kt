@@ -6,6 +6,7 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import kotlinx.coroutines.GlobalScope
@@ -37,15 +38,17 @@ class MainTest {
     val vm2 = VM(setup = setup)
     val vm3 = VM(setup = setup, ipAddress = ip3)
 
+    val conf = JsonObject()
+
     // mock VM registry
     val vmRegistry = mockk<VMRegistry>()
     mockkObject(VMRegistryFactory)
-    every { VMRegistryFactory.create(any()) } returns vmRegistry
+    every { VMRegistryFactory.create(any(), conf) } returns vmRegistry
     coEvery { vmRegistry.findNonTerminatedVMs() } returns listOf(vm1, vm2, vm3)
     coEvery { vmRegistry.close() } just Runs
 
     GlobalScope.launch {
-      val members = restoreMembers(defaultPort)
+      val members = restoreMembers(defaultPort, conf)
       assertThat(members).containsExactlyInAnyOrder("$ip1:$defaultPort",
           "$ip3:$defaultPort")
       ctx.completeNow()

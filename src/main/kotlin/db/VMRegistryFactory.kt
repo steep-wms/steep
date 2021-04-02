@@ -4,6 +4,7 @@ import db.RegistryFactoryConstants.DRIVER_INMEMORY
 import db.RegistryFactoryConstants.DRIVER_MONGODB
 import db.RegistryFactoryConstants.DRIVER_POSTGRESQL
 import io.vertx.core.Vertx
+import io.vertx.core.json.JsonObject
 import org.slf4j.LoggerFactory
 import java.lang.IllegalStateException
 
@@ -17,14 +18,16 @@ object VMRegistryFactory {
   /**
    * Create a new [VMRegistry]
    * @param vertx the current Vert.x instance
+   * @param config optional configuration object that overrides the current
+   * Vert.x context's configuration
    * @return the [VMRegistry]
    */
-  fun create(vertx: Vertx): VMRegistry {
-    val config = vertx.orCreateContext.config()
-    val driver = config.getString(ConfigConstants.DB_DRIVER, DRIVER_INMEMORY)
-    val url = config.getString(ConfigConstants.DB_URL)
-    val username = config.getString(ConfigConstants.DB_USERNAME)
-    val password = config.getString(ConfigConstants.DB_PASSWORD)
+  fun create(vertx: Vertx, config: JsonObject? = null): VMRegistry {
+    val conf = config ?: vertx.orCreateContext.config()
+    val driver = conf.getString(ConfigConstants.DB_DRIVER, DRIVER_INMEMORY)
+    val url = conf.getString(ConfigConstants.DB_URL)
+    val username = conf.getString(ConfigConstants.DB_USERNAME)
+    val password = conf.getString(ConfigConstants.DB_PASSWORD)
     log.info("Using database driver: $driver")
     val result = when (driver) {
       DRIVER_INMEMORY -> InMemoryVMRegistry(vertx)
