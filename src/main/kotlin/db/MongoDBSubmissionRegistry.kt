@@ -578,7 +578,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     }
 
     val buf = readGridFSDocument(bucketProcessChainResults, processChainId)
-    return buf?.let { JsonUtils.mapper.readValue(it.array()) }
+    return buf?.let { JsonUtils.readValue(it.array()) }
   }
 
   override suspend fun setProcessChainErrorMessage(processChainId: String, errorMessage: String?) {
