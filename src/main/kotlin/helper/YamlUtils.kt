@@ -18,5 +18,5 @@ object YamlUtils {
   /**
    * Convenience method calling [ObjectMapper.readValue]
    */
-  inline fun <reified T> readValue(content: String) = JsonUtils.mapper.readValue<T>(content)
+  inline fun <reified T> readValue(content: String) = mapper.readValue<T>(content)
 }
