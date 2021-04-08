@@ -1,7 +1,7 @@
 {
   "name": "Steep Workflow Management System",
   "short_name": "Steep",
-  "description": null,
+  "description": "Web-based user interface of Steep",
   "dir": "auto",
   "lang": "en-US",
   "display": "standalone",

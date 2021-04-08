@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "name": "Steep Workflow Management System",
-  "description": null,
+  "description": "Web-based user interface of Steep",
   "icons": {
     "60": "/favicons/firefox_app_60x60.png",
     "128": "/favicons/firefox_app_128x128.png",
