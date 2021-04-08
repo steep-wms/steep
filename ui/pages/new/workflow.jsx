@@ -3,7 +3,7 @@ import DetailPage from "../../components/layouts/DetailPage"
 import classNames from "classnames"
 import fetcher from "../../components/lib/json-fetcher"
 import stringify from "../../components/lib/yaml-stringify"
-import { monaco, ControlledEditor } from "@monaco-editor/react"
+import Editor, { useMonaco } from "@monaco-editor/react"
 import { useEffect, useRef, useState } from "react"
 import { Circle } from "react-feather"
 import { useRouter } from "next/router"
@@ -16,32 +16,11 @@ const Submit = () => {
   const router = useRouter()
 
   const editorRef = useRef()
-  const monacoRef = useRef()
+  const monaco = useMonaco()
 
   useEffect(() => {
-    if (router.query.from !== undefined) {
-      fetcher(`${process.env.baseUrl}/workflows/${router.query.from}`).then(response => {
-        setValue(stringify(response.workflow))
-        setReady(true)
-        if (editorRef.current && monacoRef.current) {
-          editorRef.current.setSelection(new monacoRef.current.Selection(0, 0, 0, 0))
-        }
-      }).catch(error => {
-        setError(error.message)
-        console.log(error)
-      })
-    }
-  }, [router.query.from])
-
-  function handleEditorDidMount(_, editor) {
-    editorRef.current = editor
-
-    monaco.init().then((monacoInstance) => {
-      monacoRef.current = monacoInstance
-
-      editor.focus()
-
-      monacoInstance.editor.defineTheme("steep", {
+    if (monaco) {
+      monaco.editor.defineTheme("steep", {
         base: "vs-dark",
         inherit: true,
         rules: [
@@ -62,11 +41,31 @@ const Submit = () => {
           "scrollbar.shadow": "#495057"
         }
       })
-      monacoInstance.editor.setTheme("steep")
-    })
+      monaco.editor.setTheme("steep")
+    }
+  }, [monaco])
+
+  useEffect(() => {
+    if (router.query.from !== undefined) {
+      fetcher(`${process.env.baseUrl}/workflows/${router.query.from}`).then(response => {
+        setValue(stringify(response.workflow))
+        setReady(true)
+        if (editorRef.current && monaco) {
+          editorRef.current.setSelection(new monaco.Selection(0, 0, 0, 0))
+        }
+      }).catch(error => {
+        setError(error.message)
+        console.log(error)
+      })
+    }
+  }, [router.query.from, monaco])
+
+  function handleEditorOnMount(editor) {
+    editorRef.current = editor
+    editor.focus()
   }
 
-  function handleEditorChange(ev, value) {
+  function handleEditorChange(value) {
     setValue(value)
     setReady(value !== undefined && value.length > 0)
   }
@@ -122,8 +121,8 @@ const Submit = () => {
         </div>}
         <div className="editor-main">
           <div className="editor-wrapper">
-            <ControlledEditor width="100%" height="100%" language="yaml" value={value}
-              editorDidMount={handleEditorDidMount} onChange={handleEditorChange}
+            <Editor width="100%" height="100%" language="yaml" value={value}
+              onMount={handleEditorOnMount} onChange={handleEditorChange}
               theme="steep" loading={loading} options={options} />
           </div>
           <div className="buttons">
