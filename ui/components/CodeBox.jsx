@@ -29,8 +29,8 @@ const CodeBox = ({ json }) => {
   let yamlStr = stringify(json)
 
   useEffect(() => {
-    hljs.highlightBlock(jsonRef.current)
-    hljs.highlightBlock(yamlRef.current)
+    hljs.highlightElement(jsonRef.current)
+    hljs.highlightElement(yamlRef.current)
   }, [])
 
   useEffect(() => {
