@@ -1,6 +1,5 @@
 package db
 
-import com.fasterxml.jackson.module.kotlin.readValue
 import com.google.common.cache.CacheBuilder
 import db.SubmissionRegistry.ProcessChainStatus
 import helper.JsonUtils
@@ -112,7 +111,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       val params = json {
         array(
             submission.id,
-            JsonUtils.mapper.writeValueAsString(submission)
+            JsonUtils.writeValueAsString(submission)
         )
       }
       connection.updateWithParamsAwait(statement, params)
@@ -146,7 +145,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       } else {
         connection.queryAwait(statement.toString())
       }
-      rs.results.map { JsonUtils.mapper.readValue(it.getString(0)) }
+      rs.results.map { JsonUtils.readValue(it.getString(0)) }
     }
   }
 
@@ -159,7 +158,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         )
       }
       val rs = connection.querySingleWithParamsAwait(statement, params)
-      rs?.let { JsonUtils.mapper.readValue<Submission>(it.getString(0)) }
+      rs?.let { JsonUtils.readValue<Submission>(it.getString(0)) }
     }
   }
 
@@ -214,7 +213,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       }
       val rs = connection.querySingleWithParamsAwait(statement, params)
       rs?.let { arr ->
-        JsonUtils.mapper.readValue<Submission>(arr.getString(0)).also {
+        JsonUtils.readValue<Submission>(arr.getString(0)).also {
           val newObj = json {
             obj(
                 STATUS to newStatus.toString()
@@ -263,7 +262,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       }
       val rs = connection.querySingleWithParamsAwait(statement, params) ?: throw NoSuchElementException(
           "There is no submission with ID `$submissionId'")
-      Submission.Status.valueOf(JsonUtils.mapper.readValue(rs.getString(0)))
+      Submission.Status.valueOf(JsonUtils.readValue(rs.getString(0)))
     }
   }
 
@@ -285,12 +284,12 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   override suspend fun setSubmissionResults(submissionId: String,
       results: Map<String, List<Any>>?) {
     updateColumn(SUBMISSIONS, submissionId, RESULTS,
-        JsonUtils.mapper.writeValueAsString(results), true)
+        JsonUtils.writeValueAsString(results), true)
   }
 
   override suspend fun getSubmissionResults(submissionId: String): Map<String, List<Any>>? =
       getSubmissionColumn(submissionId, RESULTS) { r ->
-        r.getString(0)?.let { JsonUtils.mapper.readValue<Map<String, List<Any>>>(it) } }
+        r.getString(0)?.let { JsonUtils.readValue<Map<String, List<Any>>>(it) } }
 
   override suspend fun setSubmissionErrorMessage(submissionId: String,
       errorMessage: String?) {
@@ -329,7 +328,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
               it.id,
               submissionId,
               status.toString(),
-              JsonUtils.mapper.writeValueAsString(it)
+              JsonUtils.writeValueAsString(it)
           )
         }
       }
@@ -380,8 +379,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         connection.queryAwait(statement.toString())
       }
 
-      rs.results.map { Pair(JsonUtils.mapper.readValue(
-          it.getString(0)), it.getString(1)) }
+      rs.results.map { Pair(JsonUtils.readValue(it.getString(0)), it.getString(1)) }
     }
   }
 
@@ -427,7 +425,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         )
       }
       val rs = connection.queryWithParamsAwait(statement, params)
-      rs.results.map { Pair(it.getString(0), ProcessChainStatus.valueOf(it.getString(1))) }.toMap()
+      rs.results.associate { Pair(it.getString(0), ProcessChainStatus.valueOf(it.getString(1))) }
     }
   }
 
@@ -442,7 +440,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         )
       }
       val rs = connection.queryWithParamsAwait(statement, params)
-      rs.results.map { JsonUtils.mapper.readValue<List<String>>(it.getString(0)) }
+      rs.results.map { JsonUtils.readValue<List<String>>(it.getString(0)) }
     }
   }
 
@@ -455,7 +453,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         )
       }
       val rs = connection.querySingleWithParamsAwait(statement, params)
-      rs?.let { JsonUtils.mapper.readValue<ProcessChain>(it.getString(0)) }
+      rs?.let { JsonUtils.readValue<ProcessChain>(it.getString(0)) }
     }
   }
 
@@ -478,7 +476,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       }
       if (requiredCapabilities != null) {
         conditions.add("$DATA->'$REQUIRED_CAPABILITIES'=?::jsonb")
-        params.add(JsonUtils.mapper.writeValueAsString(requiredCapabilities))
+        params.add(JsonUtils.writeValueAsString(requiredCapabilities))
       }
 
       val rs = if (conditions.isNotEmpty()) {
@@ -509,14 +507,14 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
             "ORDER BY $SERIAL LIMIT 1" to json {
           array(
               currentStatus.toString(),
-              JsonUtils.mapper.writeValueAsString(requiredCapabilities)
+              JsonUtils.writeValueAsString(requiredCapabilities)
           )
         }
       }
 
       val rs = connection.querySingleWithParamsAwait(statement, params)
       rs?.let { arr ->
-        JsonUtils.mapper.readValue<ProcessChain>(arr.getString(0)).also {
+        JsonUtils.readValue<ProcessChain>(arr.getString(0)).also {
           updateColumn(PROCESS_CHAINS, it.id, STATUS, newStatus.toString(),
               false, connection)
         }
@@ -538,7 +536,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
             "AND $DATA->'$REQUIRED_CAPABILITIES'=?::jsonb LIMIT 1" to json {
           array(
               currentStatus.toString(),
-              JsonUtils.mapper.writeValueAsString(requiredCapabilities)
+              JsonUtils.writeValueAsString(requiredCapabilities)
           )
         }
       }
@@ -564,7 +562,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
   override suspend fun setProcessChainStartTime(processChainId: String, startTime: Instant?) {
     updateColumn(PROCESS_CHAINS, processChainId, START_TIME,
-        JsonUtils.mapper.writeValueAsString(startTime), false)
+        JsonUtils.writeValueAsString(startTime), false)
   }
 
   override suspend fun getProcessChainStartTime(processChainId: String): Instant? =
@@ -573,7 +571,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
   override suspend fun setProcessChainEndTime(processChainId: String, endTime: Instant?) {
     updateColumn(PROCESS_CHAINS, processChainId, END_TIME,
-        JsonUtils.mapper.writeValueAsString(endTime), false)
+        JsonUtils.writeValueAsString(endTime), false)
   }
 
   override suspend fun getProcessChainEndTime(processChainId: String): Instant? =
@@ -622,12 +620,12 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   override suspend fun setProcessChainResults(processChainId: String,
       results: Map<String, List<Any>>?) {
     updateColumn(PROCESS_CHAINS, processChainId, RESULTS,
-        JsonUtils.mapper.writeValueAsString(results), true)
+        JsonUtils.writeValueAsString(results), true)
   }
 
   override suspend fun getProcessChainResults(processChainId: String): Map<String, List<Any>>? =
       getProcessChainColumn(processChainId, RESULTS) { r ->
-        r.getString(0)?.let { JsonUtils.mapper.readValue<Map<String, List<Any>>>(it) } }
+        r.getString(0)?.let { JsonUtils.readValue<Map<String, List<Any>>>(it) } }
 
   override suspend fun setProcessChainErrorMessage(processChainId: String,
       errorMessage: String?) {

@@ -1,6 +1,5 @@
 package helper
 
-import com.fasterxml.jackson.module.kotlin.readValue
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -14,8 +13,8 @@ class WorkflowValidatorTest {
    * Read a workflow from a test fixture
    */
   private fun readWorkflow(name: String): Workflow {
-    val text = javaClass.getResource("/fixtures/$name.json").readText()
-    return JsonUtils.mapper.readValue(text)
+    val text = javaClass.getResource("/fixtures/$name.json")!!.readText()
+    return JsonUtils.readValue(text)
   }
 
   /**

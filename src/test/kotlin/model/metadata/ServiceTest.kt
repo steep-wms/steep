@@ -17,7 +17,7 @@ class ServiceTest {
   @Test
   fun read() {
     val mapper = jacksonObjectMapper()
-    val fixture = javaClass.getResource("dummy.json").readText()
+    val fixture = javaClass.getResource("dummy.json")!!.readText()
     val services = mapper.readValue<List<Service>>(fixture)
 
     assertThat(services).hasSize(1)

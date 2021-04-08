@@ -59,7 +59,7 @@ data class Submission(
    * capabilities required to execute this submission
    */
   fun collectRequiredCapabilities(services: List<Service>): Set<String> {
-    val serviceMetadata = services.map { it.id to it }.toMap()
+    val serviceMetadata = services.associateBy { it.id }
     return collectRequiredCapabilities(workflow.actions, serviceMetadata)
   }
 }

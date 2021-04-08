@@ -32,7 +32,6 @@ import agent.AgentRegistry
 import agent.AgentRegistryFactory
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.convertValue
-import com.fasterxml.jackson.module.kotlin.readValue
 import com.github.zafarkhaja.semver.expr.CompositeExpression.Helper.gte
 import com.github.zafarkhaja.semver.expr.CompositeExpression.Helper.lte
 import db.MetadataRegistry
@@ -101,8 +100,8 @@ class HttpEndpoint : CoroutineVerticle() {
   companion object {
     private val log = LoggerFactory.getLogger(HttpEndpoint::class.java)
 
-    private val VERSION: Version = JsonUtils.mapper.readValue(
-        HttpEndpoint::class.java.getResource("/version.json"))
+    private val VERSION: Version = JsonUtils.readValue(
+        HttpEndpoint::class.java.getResource("/version.json")!!)
 
     private val JSON = ParsableMIMEValue("application/json")
     private val HTML = ParsableMIMEValue("text/html")
@@ -1028,9 +1027,9 @@ class HttpEndpoint : CoroutineVerticle() {
     val workflowJson: Map<String, Any> = try {
       val str = ctx.bodyAsString.trim()
       if (str[0] == '{') {
-        JsonUtils.mapper.readValue(str)
+        JsonUtils.readValue(str)
       } else {
-        YamlUtils.mapper.readValue(str)
+        YamlUtils.readValue(str)
       }
     } catch (e: Exception) {
       renderError(ctx, 400, "Invalid workflow JSON: " + e.message)
@@ -1103,7 +1102,7 @@ class HttpEndpoint : CoroutineVerticle() {
         ctx.response()
             .setStatusCode(202)
             .putHeader("content-type", "application/json")
-            .end(JsonUtils.mapper.writeValueAsString(submission))
+            .end(JsonUtils.writeValueAsString(submission))
 
         // notify controller to speed up lookup process
         vertx.eventBus().send(CONTROLLER_LOOKUP_NOW, null)

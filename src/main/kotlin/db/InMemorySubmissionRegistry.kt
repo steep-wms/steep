@@ -1,6 +1,5 @@
 package db
 
-import com.fasterxml.jackson.module.kotlin.readValue
 import db.SubmissionRegistry.ProcessChainStatus
 import helper.JsonUtils
 import io.vertx.core.Future
@@ -99,7 +98,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
 
   override suspend fun addSubmission(submission: Submission) {
     val entry = SubmissionEntry(submissionEntryID.getAndIncrement(), submission)
-    val str = JsonUtils.mapper.writeValueAsString(entry)
+    val str = JsonUtils.writeValueAsString(entry)
     submissions.await().putAwait(submission.id, str)
   }
 
@@ -108,7 +107,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     val map = submissions.await()
     val values = awaitResult<List<String>> { map.values(it) }
     return values
-        .map { JsonUtils.mapper.readValue<SubmissionEntry>(it) }
+        .map { JsonUtils.readValue<SubmissionEntry>(it) }
         .filter { status == null || it.submission.status == status }
         .sortedBy { it.serial }
         .let { if (order < 0) it.reversed() else it }
@@ -119,7 +118,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
 
   private suspend fun findSubmissionEntryById(submissionId: String): SubmissionEntry? {
     return submissions.await().getAwait(submissionId)?.let {
-      JsonUtils.mapper.readValue<SubmissionEntry>(it)
+      JsonUtils.readValue<SubmissionEntry>(it)
     }
   }
 
@@ -129,7 +128,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   override suspend fun findSubmissionIdsByStatus(status: Submission.Status): Collection<String> {
     val map = submissions.await()
     val values = awaitResult<List<String>> { map.values(it) }
-    return values.map { JsonUtils.mapper.readValue<SubmissionEntry>(it) }
+    return values.map { JsonUtils.readValue<SubmissionEntry>(it) }
         .filter { it.submission.status == status }
         .sortedBy { it.serial }
         .map { it.submission.id }
@@ -141,7 +140,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       map.sizeAwait().toLong()
     } else {
       val values = awaitResult<List<String>> { map.values(it) }
-      values.map { JsonUtils.mapper.readValue<SubmissionEntry>(it) }
+      values.map { JsonUtils.readValue<SubmissionEntry>(it) }
           .filter { it.submission.status == status }
           .size.toLong()
     }
@@ -154,11 +153,11 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     try {
       val map = submissions.await()
       val values = awaitResult<List<String>> { map.values(it) }
-      val entry = values.map { JsonUtils.mapper.readValue<SubmissionEntry>(it) }
+      val entry = values.map { JsonUtils.readValue<SubmissionEntry>(it) }
           .find { it.submission.status == currentStatus }
       return entry?.let {
         val newEntry = it.copy(submission = it.submission.copy(status = newStatus))
-        map.putAwait(it.submission.id, JsonUtils.mapper.writeValueAsString(newEntry))
+        map.putAwait(it.submission.id, JsonUtils.writeValueAsString(newEntry))
         it.submission
       }
     } finally {
@@ -173,9 +172,9 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     try {
       val map = submissions.await()
       map.getAwait(submissionId)?.let {
-        val oldEntry = JsonUtils.mapper.readValue<SubmissionEntry>(it)
+        val oldEntry = JsonUtils.readValue<SubmissionEntry>(it)
         val newEntry = updater(oldEntry)
-        map.putAwait(submissionId, JsonUtils.mapper.writeValueAsString(newEntry))
+        map.putAwait(submissionId, JsonUtils.writeValueAsString(newEntry))
       }
     } finally {
       lock.release()
@@ -256,7 +255,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
         for (processChain in processChains) {
           val e = ProcessChainEntry(processChainEntryID.getAndIncrement(),
               processChain, submissionId, status)
-          map.putAwait(processChain.id, JsonUtils.mapper.writeValueAsString(e))
+          map.putAwait(processChain.id, JsonUtils.writeValueAsString(e))
         }
       } finally {
         processChainLock.release()
@@ -269,7 +268,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   private suspend fun findProcessChainEntries(): List<ProcessChainEntry> {
     val map = processChains.await()
     val values = awaitResult<List<String>> { map.values(it) }
-    return values.map { JsonUtils.mapper.readValue<ProcessChainEntry>(it) }
+    return values.map { JsonUtils.readValue<ProcessChainEntry>(it) }
         .sortedBy { it.serial }
   }
 
@@ -299,8 +298,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   override suspend fun findProcessChainStatusesBySubmissionId(submissionId: String) =
       findProcessChainEntries()
           .filter { it.submissionId == submissionId }
-          .map { Pair(it.processChain.id, it.status) }
-          .toMap()
+          .associate { Pair(it.processChain.id, it.status) }
 
   override suspend fun findProcessChainRequiredCapabilities(status: ProcessChainStatus) =
       findProcessChainEntries()
@@ -310,7 +308,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
 
   override suspend fun findProcessChainById(processChainId: String): ProcessChain? {
     return processChains.await().getAwait(processChainId)?.let {
-      JsonUtils.mapper.readValue<ProcessChainEntry>(it).processChain
+      JsonUtils.readValue<ProcessChainEntry>(it).processChain
     }
   }
 
@@ -333,14 +331,14 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     try {
       val map = processChains.await()
       val values = awaitResult<List<String>> { map.values(it) }
-      val entry = values.map { JsonUtils.mapper.readValue<ProcessChainEntry>(it) }
+      val entry = values.map { JsonUtils.readValue<ProcessChainEntry>(it) }
           .filter { it.status == currentStatus && (requiredCapabilities == null ||
               (it.processChain.requiredCapabilities.size == requiredCapabilities.size &&
                   it.processChain.requiredCapabilities.containsAll(requiredCapabilities))) }
           .minByOrNull { it.serial }
       return entry?.let {
         val newEntry = it.copy(status = newStatus)
-        map.putAwait(it.processChain.id, JsonUtils.mapper.writeValueAsString(newEntry))
+        map.putAwait(it.processChain.id, JsonUtils.writeValueAsString(newEntry))
         it.processChain
       }
     } finally {
@@ -355,7 +353,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     try {
       val map = processChains.await()
       val values = awaitResult<List<String>> { map.values(it) }
-      return values.map { JsonUtils.mapper.readValue<ProcessChainEntry>(it) }
+      return values.map { JsonUtils.readValue<ProcessChainEntry>(it) }
           .any { it.status == currentStatus && (requiredCapabilities == null ||
               (it.processChain.requiredCapabilities.size == requiredCapabilities.size &&
                   it.processChain.requiredCapabilities.containsAll(requiredCapabilities))) }
@@ -368,7 +366,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     val map = processChains.await()
     val str = map.getAwait(processChainId) ?: throw NoSuchElementException(
         "There is no process chain with ID `$processChainId'")
-    return JsonUtils.mapper.readValue(str)
+    return JsonUtils.readValue(str)
   }
 
   private suspend fun updateProcessChain(processChainId: String,
@@ -378,9 +376,9 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     try {
       val map = processChains.await()
       map.getAwait(processChainId)?.let {
-        val entry = JsonUtils.mapper.readValue<ProcessChainEntry>(it)
+        val entry = JsonUtils.readValue<ProcessChainEntry>(it)
         val newEntry = updater(entry)
-        map.putAwait(processChainId, JsonUtils.mapper.writeValueAsString(newEntry))
+        map.putAwait(processChainId, JsonUtils.writeValueAsString(newEntry))
       }
     } finally {
       lock.release()
@@ -427,12 +425,12 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     try {
       val map = processChains.await()
       val values = awaitResult<List<String>> { map.values(it) }
-      values.map { JsonUtils.mapper.readValue<ProcessChainEntry>(it) }
+      values.map { JsonUtils.readValue<ProcessChainEntry>(it) }
           .filter { it.submissionId == submissionId && it.status == currentStatus }
           .forEach { entry ->
             val newEntry = entry.copy(status = newStatus)
             map.putAwait(entry.processChain.id,
-                JsonUtils.mapper.writeValueAsString(newEntry))
+                JsonUtils.writeValueAsString(newEntry))
           }
     } finally {
       lock.release()

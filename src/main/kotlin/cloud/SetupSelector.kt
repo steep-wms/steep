@@ -27,9 +27,9 @@ class SetupSelector(private val vmRegistry: VMRegistry,
       setups: List<Setup>): Long {
     // also consider how many VMs we are about to create
     val merged = (nCreatedPerSetup.entries + nVMsPerSetup.entries)
-        .groupBy { it.key }.mapValues { e -> e.value.map { v -> v.value }.sum() }
+        .groupBy { it.key }.mapValues { e -> e.value.sumOf { v -> v.value } }
 
-    val setupsById = setups.map { it.id to it }.toMap()
+    val setupsById = setups.associateBy { it.id }
     return merged.map { (setupId, n) ->
       val setup = setupsById[setupId]
       if (setup?.providedCapabilities?.containsAll(capabilities) == true) {

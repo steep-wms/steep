@@ -5,7 +5,6 @@ import org.apache.commons.lang3.SystemUtils
 import org.apache.tools.ant.Project
 import org.apache.tools.ant.types.FileSet
 import java.io.File
-import java.nio.file.Paths
 
 /**
  * Resolve files from the given list of glob patterns. For example, /tmp/&#42;

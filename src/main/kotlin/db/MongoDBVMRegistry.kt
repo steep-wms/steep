@@ -74,11 +74,10 @@ class MongoDBVMRegistry(private val vertx: Vertx,
     }
   }
 
-  private val collVMs: MongoCollection<JsonObject>
+  private val collVMs: MongoCollection<JsonObject> =
+      db.getCollection(COLL_VMS, JsonObject::class.java)
 
   init {
-    collVMs = db.getCollection(COLL_VMS, JsonObject::class.java)
-
     if (createIndexes) {
       collVMs.createIndexes(listOf(
           IndexModel(Indexes.ascending(EXTERNAL_ID), IndexOptions().background(true)),

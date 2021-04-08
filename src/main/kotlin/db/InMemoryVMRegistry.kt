@@ -1,6 +1,5 @@
 package db
 
-import com.fasterxml.jackson.module.kotlin.readValue
 import helper.JsonUtils
 import io.vertx.core.Future
 import io.vertx.core.Promise
@@ -57,7 +56,7 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
 
   override suspend fun addVM(vm: VM) {
     val entry = VMEntry(vmEntryID.getAndIncrement(), vm)
-    val str = JsonUtils.mapper.writeValueAsString(entry)
+    val str = JsonUtils.writeValueAsString(entry)
     vms.await().putAwait(vm.id, str)
   }
 
@@ -66,7 +65,7 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
     val map = vms.await()
     val values = awaitResult<List<String>> { map.values(it) }
     return values
-        .map { JsonUtils.mapper.readValue<VMEntry>(it) }
+        .map { JsonUtils.readValue<VMEntry>(it) }
         .filter { status == null || it.vm.status == status }
         .sortedBy { it.serial }
         .let { if (order < 0) it.reversed() else it }
@@ -77,7 +76,7 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
 
   private suspend fun findVMEntryById(id: String): VMEntry? {
     return vms.await().getAwait(id)?.let {
-      JsonUtils.mapper.readValue<VMEntry>(it)
+      JsonUtils.readValue<VMEntry>(it)
     }
   }
 
@@ -88,7 +87,7 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
     val map = vms.await()
     val values = awaitResult<List<String>> { map.values(it) }
     return values
-        .map { JsonUtils.mapper.readValue<VMEntry>(it) }
+        .map { JsonUtils.readValue<VMEntry>(it) }
         .find { it.vm.externalId == externalId }?.vm
   }
 
@@ -96,7 +95,7 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
     val map = vms.await()
     val values = awaitResult<List<String>> { map.values(it) }
     return values
-        .map { JsonUtils.mapper.readValue<VMEntry>(it) }
+        .map { JsonUtils.readValue<VMEntry>(it) }
         .filter { it.vm.status != VM.Status.DESTROYED && it.vm.status != VM.Status.ERROR }
         .map { it.vm }
   }
@@ -108,7 +107,7 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
     } else {
       val values = awaitResult<List<String>> { map.values(it) }
       values
-          .map { JsonUtils.mapper.readValue<VMEntry>(it) }
+          .map { JsonUtils.readValue<VMEntry>(it) }
           .filter { it.vm.status == status }
           .count().toLong()
     }
@@ -118,7 +117,7 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
     val map = vms.await()
     val values = awaitResult<List<String>> { map.values(it) }
     return values
-        .map { JsonUtils.mapper.readValue<VMEntry>(it) }
+        .map { JsonUtils.readValue<VMEntry>(it) }
         .count { it.vm.status != VM.Status.DESTROYED && it.vm.status != VM.Status.ERROR &&
             it.vm.setup.id == setupId }.toLong()
   }
@@ -127,7 +126,7 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
     val map = vms.await()
     val values = awaitResult<List<String>> { map.values(it) }
     return values
-        .map { JsonUtils.mapper.readValue<VMEntry>(it) }
+        .map { JsonUtils.readValue<VMEntry>(it) }
         .count { (it.vm.status == VM.Status.CREATING || it.vm.status == VM.Status.PROVISIONING) &&
             it.vm.setup.id == setupId }.toLong()
   }
@@ -140,7 +139,7 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
       val entry = findVMEntryById(id) ?: return
       if (entry.vm.status == currentStatus) {
         val newEntry = entry.copy(vm = entry.vm.copy(status = newStatus))
-        vms.await().putAwait(entry.vm.id, JsonUtils.mapper.writeValueAsString(newEntry))
+        vms.await().putAwait(entry.vm.id, JsonUtils.writeValueAsString(newEntry))
       }
     } finally {
       lock.release()
@@ -153,9 +152,9 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
     try {
       val map = vms.await()
       map.getAwait(id)?.let {
-        val oldEntry = JsonUtils.mapper.readValue<VMEntry>(it)
+        val oldEntry = JsonUtils.readValue<VMEntry>(it)
         val newEntry = updater(oldEntry)
-        map.putAwait(id, JsonUtils.mapper.writeValueAsString(newEntry))
+        map.putAwait(id, JsonUtils.writeValueAsString(newEntry))
       }
     } finally {
       lock.release()

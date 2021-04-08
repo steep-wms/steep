@@ -883,7 +883,7 @@ class HttpEndpointTest {
   @Test
   fun postWorkflow(vertx: Vertx, ctx: VertxTestContext) {
     val expected = Workflow()
-    val buf = Buffer.buffer(JsonUtils.mapper.writeValueAsString(expected))
+    val buf = Buffer.buffer(JsonUtils.writeValueAsString(expected))
     doPostWorkflow(vertx, ctx, buf, expected)
   }
 
@@ -981,7 +981,7 @@ class HttpEndpointTest {
         )
     )
 
-    val buf = Buffer.buffer(JsonUtils.mapper.writeValueAsString(body))
+    val buf = Buffer.buffer(JsonUtils.writeValueAsString(body))
     doPostWorkflow(vertx, ctx, buf, expected)
   }
 
@@ -1120,7 +1120,7 @@ class HttpEndpointTest {
         )
     )
 
-    val buf = Buffer.buffer(JsonUtils.mapper.writeValueAsString(body))
+    val buf = Buffer.buffer(JsonUtils.writeValueAsString(body))
     doPostWorkflow(vertx, ctx, buf, expected)
   }
 

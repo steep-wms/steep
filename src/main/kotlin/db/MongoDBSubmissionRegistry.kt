@@ -1,6 +1,5 @@
 package db
 
-import com.fasterxml.jackson.module.kotlin.readValue
 import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.IndexModel
 import com.mongodb.client.model.IndexOptions
@@ -96,22 +95,20 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         PROCESS_CHAIN_EXCLUDES.copy().also { it.remove(SUBMISSION_ID) }
   }
 
-  private val collSubmissions: MongoCollection<JsonObject>
-  private val collProcessChains: MongoCollection<JsonObject>
-  private val bucketProcessChains: GridFSBucket
-  private val bucketProcessChainResults: GridFSBucket
-  private val bucketExecutionStates: GridFSBucket
-  private val bucketSubmissionResults: GridFSBucket
+  private val collSubmissions: MongoCollection<JsonObject> =
+      db.getCollection(COLL_SUBMISSIONS, JsonObject::class.java)
+  private val collProcessChains: MongoCollection<JsonObject> =
+      db.getCollection(COLL_PROCESS_CHAINS, JsonObject::class.java)
+  private val bucketProcessChains: GridFSBucket =
+      GridFSBuckets.create(db, BUCKET_PROCESS_CHAINS)
+  private val bucketProcessChainResults: GridFSBucket =
+      GridFSBuckets.create(db, BUCKET_PROCESS_CHAIN_RESULTS)
+  private val bucketExecutionStates: GridFSBucket =
+      GridFSBuckets.create(db, BUCKET_EXECUTION_STATES)
+  private val bucketSubmissionResults: GridFSBucket =
+      GridFSBuckets.create(db, BUCKET_SUBMISSION_RESULTS)
 
   init {
-    collSubmissions = db.getCollection(COLL_SUBMISSIONS, JsonObject::class.java)
-    collProcessChains = db.getCollection(COLL_PROCESS_CHAINS, JsonObject::class.java)
-
-    bucketProcessChains = GridFSBuckets.create(db, BUCKET_PROCESS_CHAINS)
-    bucketProcessChainResults = GridFSBuckets.create(db, BUCKET_PROCESS_CHAIN_RESULTS)
-    bucketExecutionStates = GridFSBuckets.create(db, BUCKET_EXECUTION_STATES)
-    bucketSubmissionResults = GridFSBuckets.create(db, BUCKET_SUBMISSION_RESULTS)
-
     if (createIndexes) {
       // create indexes for `submission` collection
       collSubmissions.createIndexes(listOf(
@@ -314,7 +311,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     }
 
     val buf = readGridFSDocument(bucketSubmissionResults, submissionId)
-    return buf?.let { JsonUtils.mapper.readValue(it.array()) }
+    return buf?.let { JsonUtils.readValue(it.array()) }
   }
 
   override suspend fun setSubmissionErrorMessage(submissionId: String,
@@ -354,7 +351,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
             SEQUENCE to sequence + i,
             SUBMISSION_ID to submissionId,
             STATUS to status.toString(),
-            REQUIRED_CAPABILITIES to JsonUtils.mapper.writeValueAsString(pc.requiredCapabilities)
+            REQUIRED_CAPABILITIES to JsonUtils.writeValueAsString(pc.requiredCapabilities)
         )
       }
       InsertOneModel(doc)
@@ -374,7 +371,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     val buf = readGridFSDocument(bucketProcessChains, id)
         ?: throw IllegalStateException("Got process chain metadata with " +
             "ID `$id' but could not find corresponding object in GridFS bucket.")
-    return Pair(JsonUtils.mapper.readValue(buf.array()), submissionId)
+    return Pair(JsonUtils.readValue(buf.array()), submissionId)
   }
 
   override suspend fun findProcessChains(submissionId: String?,
@@ -462,7 +459,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
           it.put(STATUS, status.toString())
         }
         if (requiredCapabilities != null) {
-          it.put(REQUIRED_CAPABILITIES, JsonUtils.mapper.writeValueAsString(requiredCapabilities))
+          it.put(REQUIRED_CAPABILITIES, JsonUtils.writeValueAsString(requiredCapabilities))
         }
       })
 
@@ -476,7 +473,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       } else {
         obj(
             STATUS to currentStatus.toString(),
-            REQUIRED_CAPABILITIES to JsonUtils.mapper.writeValueAsString(requiredCapabilities)
+            REQUIRED_CAPABILITIES to JsonUtils.writeValueAsString(requiredCapabilities)
         )
       }
     }, json {
@@ -505,7 +502,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       } else {
         obj(
             STATUS to currentStatus.toString(),
-            REQUIRED_CAPABILITIES to JsonUtils.mapper.writeValueAsString(requiredCapabilities)
+            REQUIRED_CAPABILITIES to JsonUtils.writeValueAsString(requiredCapabilities)
         )
       }
     }, 1) == 1L

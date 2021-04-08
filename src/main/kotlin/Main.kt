@@ -190,8 +190,8 @@ suspend fun main() {
  */
 private fun overwriteWithEnvironmentVariables(conf: JsonObject,
     env: Map<String, String>) {
-  val names = (ConfigConstants.getConfigKeys() + conf.fieldNames()).map {
-    it.toUpperCase().replace(".", "_") to it }.toMap()
+  val names = (ConfigConstants.getConfigKeys() + conf.fieldNames())
+      .associateBy { it.toUpperCase().replace(".", "_") }
   env.forEach { (k, v) ->
     val name = names[k.toUpperCase()]
     if (name != null) {

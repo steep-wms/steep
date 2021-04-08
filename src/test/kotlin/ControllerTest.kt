@@ -1,5 +1,4 @@
 import TestMetadata.services
-import com.fasterxml.jackson.module.kotlin.readValue
 import db.MetadataRegistry
 import db.MetadataRegistryFactory
 import db.PluginRegistryFactory
@@ -101,8 +100,8 @@ class ControllerTest {
   }
 
   private fun readWorkflow(name: String): Workflow {
-    val fixture = javaClass.getResource("fixtures/$name.json").readText()
-    return JsonUtils.mapper.readValue(fixture)
+    val fixture = javaClass.getResource("fixtures/$name.json")!!.readText()
+    return JsonUtils.readValue(fixture)
   }
 
   private fun doSimple(vertx: Vertx, ctx: VertxTestContext,
@@ -112,7 +111,7 @@ class ControllerTest {
       },
       processChainResultsSupplier: (processChain: ProcessChain) -> Map<String, List<String>> = { processChain ->
         processChain.executables.flatMap { it.arguments }.filter {
-          it.type == Argument.Type.OUTPUT }.map { (it.variable.id to listOf(it.variable.value)) }.toMap()
+          it.type == Argument.Type.OUTPUT }.associate { (it.variable.id to listOf(it.variable.value)) }
       },
       expectedSubmissionStatus: Status = Status.SUCCESS,
       verify: (suspend MockKVerificationScope.(Submission) -> Unit)? = null) {

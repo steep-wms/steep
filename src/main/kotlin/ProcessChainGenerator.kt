@@ -58,7 +58,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
    */
   fun generate(results: Map<String, List<Any>>? = null): List<ProcessChain> {
     // replace variable values with results
-    results?.forEach { key, value ->
+    results?.forEach { (key, value) ->
       variableValues[key] = if (value.size == 1) value[0] else value
     }
 

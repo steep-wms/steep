@@ -3,9 +3,11 @@ package helper
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.convertValue
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.vertx.core.json.JsonObject
 import io.vertx.core.json.jackson.DatabindCodec
+import java.net.URL
 
 /**
  * Utility functions to manipulate JSON objects and arrays
@@ -84,4 +86,24 @@ object JsonUtils {
   inline fun <reified T> fromJson(obj: JsonObject): T {
     return mapper.convertValue(obj.map)
   }
+
+  /**
+   * Convenience method calling [ObjectMapper.readValue]
+   */
+  inline fun <reified T> readValue(content: String) = mapper.readValue<T>(content)
+
+  /**
+   * Convenience method calling [ObjectMapper.readValue]
+   */
+  inline fun <reified T> readValue(src: URL) = mapper.readValue<T>(src)
+
+  /**
+   * Convenience method calling [ObjectMapper.readValue]
+   */
+  inline fun <reified T> readValue(src: ByteArray) = mapper.readValue<T>(src)
+
+  /**
+   * Convenience method calling [ObjectMapper.writeValueAsString]
+   */
+  fun writeValueAsString(value: Any?): String = mapper.writeValueAsString(value)
 }

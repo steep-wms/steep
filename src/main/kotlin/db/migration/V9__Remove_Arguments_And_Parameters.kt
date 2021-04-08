@@ -1,6 +1,5 @@
 package db.migration
 
-import com.fasterxml.jackson.module.kotlin.readValue
 import helper.JsonUtils
 import org.flywaydb.core.api.migration.BaseJavaMigration
 import org.flywaydb.core.api.migration.Context
@@ -28,12 +27,12 @@ open class V9__Remove_Arguments_And_Parameters : BaseJavaMigration() {
     val resultSet = statement.executeQuery("SELECT id, data FROM processchains")
     while (resultSet.next()) {
       val id = resultSet.getString(1)
-      val obj = JsonUtils.mapper.readValue<Map<String, Any>>(resultSet.getString(2))
+      val obj = JsonUtils.readValue<Map<String, Any>>(resultSet.getString(2))
 
       val changed = processChainArgumentsToInputs(obj)
 
       if (changed) {
-        updateStatement.setString(1, JsonUtils.mapper.writeValueAsString(obj))
+        updateStatement.setString(1, JsonUtils.writeValueAsString(obj))
         updateStatement.setString(2, id)
         updated += updateStatement.executeUpdate()
       }
@@ -54,13 +53,13 @@ open class V9__Remove_Arguments_And_Parameters : BaseJavaMigration() {
     val resultSet = statement.executeQuery("SELECT id, data FROM submissions")
     while (resultSet.next()) {
       val id = resultSet.getString(1)
-      val obj = JsonUtils.mapper.readValue<Map<String, Any>>(resultSet.getString(2))
+      val obj = JsonUtils.readValue<Map<String, Any>>(resultSet.getString(2))
       val workflow = obj["workflow"]
       if (workflow is Map<*, *>) {
         val changed = removeExecuteActionParameters(workflow)
 
         if (changed) {
-          updateStatement.setString(1, JsonUtils.mapper.writeValueAsString(obj))
+          updateStatement.setString(1, JsonUtils.writeValueAsString(obj))
           updateStatement.setString(2, id)
           updated += updateStatement.executeUpdate()
         }

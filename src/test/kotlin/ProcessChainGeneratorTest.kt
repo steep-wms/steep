@@ -1,5 +1,4 @@
 import TestMetadata.services
-import com.fasterxml.jackson.module.kotlin.readValue
 import db.PluginRegistry
 import db.PluginRegistryFactory
 import helper.ConsecutiveID
@@ -259,13 +258,13 @@ class ProcessChainGeneratorTest {
   )
 
   private fun readWorkflow(name: String): Workflow {
-    val fixture = javaClass.getResource("fixtures/$name.json").readText()
-    return JsonUtils.mapper.readValue(fixture)
+    val fixture = javaClass.getResource("fixtures/$name.json")!!.readText()
+    return JsonUtils.readValue(fixture)
   }
 
   private fun readProcessChains(name: String): List<Expected> {
-    val fixture = javaClass.getResource("fixtures/${name}_result.json").readText()
-    return JsonUtils.mapper.readValue(fixture)
+    val fixture = javaClass.getResource("fixtures/${name}_result.json")!!.readText()
+    return JsonUtils.readValue(fixture)
   }
 
   @ParameterizedTest

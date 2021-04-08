@@ -1,6 +1,5 @@
 package db
 
-import com.fasterxml.jackson.module.kotlin.readValue
 import helper.JsonUtils
 import io.vertx.core.Vertx
 import io.vertx.kotlin.core.json.array
@@ -48,7 +47,7 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
       val params = json {
         array(
             vm.id,
-            JsonUtils.mapper.writeValueAsString(vm)
+            JsonUtils.writeValueAsString(vm)
         )
       }
       connection.updateWithParamsAwait(statement, params)
@@ -80,7 +79,7 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
       } else {
         connection.queryWithParamsAwait(statement.toString(), params)
       }
-      rs.results.map { JsonUtils.mapper.readValue(it.getString(0)) }
+      rs.results.map { JsonUtils.readValue(it.getString(0)) }
     }
   }
 
@@ -93,7 +92,7 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
         )
       }
       val rs = connection.querySingleWithParamsAwait(statement, params)
-      rs?.let { JsonUtils.mapper.readValue<VM>(it.getString(0)) }
+      rs?.let { JsonUtils.readValue<VM>(it.getString(0)) }
     }
   }
 
@@ -102,11 +101,11 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
       val statement = "SELECT $DATA FROM $VMS WHERE $DATA->'$EXTERNAL_ID'=?::jsonb"
       val params = json {
         array(
-            JsonUtils.mapper.writeValueAsString(externalId)
+            JsonUtils.writeValueAsString(externalId)
         )
       }
       val rs = connection.querySingleWithParamsAwait(statement, params)
-      rs?.let { JsonUtils.mapper.readValue<VM>(it.getString(0)) }
+      rs?.let { JsonUtils.readValue<VM>(it.getString(0)) }
     }
   }
 
@@ -121,7 +120,7 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
         )
       }
       val rs = connection.queryWithParamsAwait(statement, params)
-      rs.results.map { JsonUtils.mapper.readValue(it.getString(0)) }
+      rs.results.map { JsonUtils.readValue(it.getString(0)) }
     }
   }
 
@@ -155,7 +154,7 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
           "AND $DATA->'$STATUS'!=?::jsonb AND $DATA->'$STATUS'!=?::jsonb"
       val params = json {
         array(
-            JsonUtils.mapper.writeValueAsString(setupId),
+            JsonUtils.writeValueAsString(setupId),
             "\"${VM.Status.DESTROYED}\"",
             "\"${VM.Status.ERROR}\""
         )
@@ -171,7 +170,7 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
           "AND ($DATA->'$STATUS'=?::jsonb OR $DATA->'$STATUS'=?::jsonb)"
       val params = json {
         array(
-            JsonUtils.mapper.writeValueAsString(setupId),
+            JsonUtils.writeValueAsString(setupId),
             "\"${VM.Status.CREATING}\"",
             "\"${VM.Status.PROVISIONING}\""
         )
@@ -248,7 +247,7 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
       }
       val rs = connection.querySingleWithParamsAwait(statement, params) ?:
           throw NoSuchElementException("There is no VM with ID `$id'")
-      VM.Status.valueOf(JsonUtils.mapper.readValue(rs.getString(0)))
+      VM.Status.valueOf(JsonUtils.readValue(rs.getString(0)))
     }
   }
 
