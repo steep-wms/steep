@@ -27,6 +27,10 @@ const config = {
     autoPrerender: false
   },
 
+  future: {
+    webpack5: true
+  },
+
   // list pages to export
   exportPathMap() {
     return {
