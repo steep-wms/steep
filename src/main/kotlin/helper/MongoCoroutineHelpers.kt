@@ -10,8 +10,6 @@ import com.mongodb.client.result.UpdateResult
 import com.mongodb.reactivestreams.client.MongoCollection
 import com.mongodb.reactivestreams.client.MongoDatabase
 import com.mongodb.reactivestreams.client.gridfs.GridFSBucket
-import com.mongodb.reactivestreams.client.gridfs.GridFSDownloadStream
-import com.mongodb.reactivestreams.client.gridfs.GridFSUploadStream
 import io.vertx.core.json.JsonObject
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -20,6 +18,7 @@ import org.bson.BsonValue
 import org.reactivestreams.Publisher
 import org.reactivestreams.Subscriber
 import org.reactivestreams.Subscription
+import reactor.core.publisher.Mono
 import java.nio.ByteBuffer
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -204,26 +203,14 @@ suspend fun GridFSBucket.deleteAwait(id: BsonValue) {
   }
 }
 
-suspend fun GridFSUploadStream.writeAwait(src: ByteBuffer): Int {
-  return wrapCoroutine {
-    write(src)
-  } ?: throw IllegalStateException("Write operation did not produce a result")
-}
-
-suspend fun GridFSUploadStream.closeAwait() {
+suspend fun GridFSBucket.upload(filename: String, buffer: ByteBuffer) {
   wrapCoroutine {
-    close()
-  }
+    uploadFromPublisher(filename, Mono.just(buffer))
+  } ?: throw IllegalStateException("Upload operation did not produce a result")
 }
 
-suspend fun GridFSDownloadStream.readAwait(dst: ByteBuffer): Int {
+suspend fun GridFSBucket.download(filename: BsonValue): ByteBuffer {
   return wrapCoroutine {
-    read(dst)
-  } ?: throw IllegalStateException("Write operation did not produce a result")
-}
-
-suspend fun GridFSDownloadStream.closeAwait() {
-  wrapCoroutine {
-    close()
-  }
+    downloadToPublisher(filename)
+  } ?: throw IllegalStateException("Download operation did not produce a result")
 }

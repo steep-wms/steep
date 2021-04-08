@@ -12,17 +12,16 @@ import db.SubmissionRegistry.ProcessChainStatus
 import helper.DefaultSubscriber
 import helper.JsonUtils
 import helper.bulkWriteAwait
-import helper.closeAwait
 import helper.countDocumentsAwait
 import helper.deleteAwait
 import helper.distinctAwait
+import helper.download
 import helper.findAwait
 import helper.findOneAndUpdateAwait
 import helper.findOneAwait
 import helper.insertOneAwait
-import helper.readAwait
 import helper.updateManyAwait
-import helper.writeAwait
+import helper.upload
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -273,9 +272,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       }
     } else {
       val str = obj.encode()
-      val stream = bucket.openUploadStream(id)
-      stream.writeAwait(ByteBuffer.wrap(str.toByteArray()))
-      stream.closeAwait()
+      bucket.upload(id, ByteBuffer.wrap(str.toByteArray()))
     }
   }
 
@@ -285,14 +282,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
           "filename" to id
       )
     })
-
-    return file?.let {
-      val stream = bucket.openDownloadStream(it.id)
-      val buf = ByteBuffer.allocate(it.length.toInt())
-      stream.readAwait(buf)
-      stream.closeAwait()
-      buf
-    }
+    return file?.let { bucket.download(it.id) }
   }
 
   override suspend fun setSubmissionResults(submissionId: String, results: Map<String, List<Any>>?) {
