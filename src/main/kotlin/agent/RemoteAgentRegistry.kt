@@ -4,6 +4,7 @@ import AddressConstants.CLUSTER_NODE_LEFT
 import AddressConstants.REMOTE_AGENT_ADDED
 import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import AddressConstants.REMOTE_AGENT_LEFT
+import helper.debounce
 import io.prometheus.client.Gauge
 import io.vertx.core.Future
 import io.vertx.core.Promise
@@ -129,25 +130,23 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
 
     // do not register consumers multiple times
     if (localMap.compute(KEY_INITIALIZED) { _, v -> v != null } == false) {
+      val reportRemoteAgents = debounce(vertx) {
+        val size = agents.await().sizeAwait()
+        log.info("New total number of remote agents: $size")
+        gaugeAgents.set(size.toDouble())
+      }
+
       // log added agents
       vertx.eventBus().consumer<String>(REMOTE_AGENT_ADDED) { msg ->
         log.info("Remote agent `${msg.body()}' has been added.")
-        launch {
-          val size = agents.await().sizeAwait()
-          log.info("New total number of remote agents: $size")
-          gaugeAgents.set(size.toDouble())
-        }
+        reportRemoteAgents()
       }
 
       // log left agents - use local consumer here because we only need to
       // listen to our own REMOTE_AGENT_LEFT messages
       vertx.eventBus().localConsumer<String>(REMOTE_AGENT_LEFT) { msg ->
         log.info("Remote agent `${msg.body()}' has left.")
-        launch {
-          val size = agents.await().sizeAwait()
-          log.info("New total number of remote agents: $size")
-          gaugeAgents.set(size.toDouble())
-        }
+        reportRemoteAgents()
       }
 
       // unregister agents whose nodes have left
