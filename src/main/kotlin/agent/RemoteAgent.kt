@@ -63,8 +63,9 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
     log.trace("Registered handler for replies listening on $replyAddress")
 
     try {
-      // abort when cluster node has left
-      val agentLeftConsumer = vertx.eventBus().consumer<String>(
+      // abort when cluster node has left - use local consumer here because
+      // we only need to listen to our own REMOTE_AGENT_LEFT messages
+      val agentLeftConsumer = vertx.eventBus().localConsumer<String>(
           AddressConstants.REMOTE_AGENT_LEFT) { agentLeftMsg ->
         if (id == agentLeftMsg.body()) {
           adapter.cancel(CancellationException("Agent left the cluster"))

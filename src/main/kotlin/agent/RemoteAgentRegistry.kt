@@ -139,8 +139,9 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
         }
       }
 
-      // log left agents
-      vertx.eventBus().consumer<String>(REMOTE_AGENT_LEFT) { msg ->
+      // log left agents - use local consumer here because we only need to
+      // listen to our own REMOTE_AGENT_LEFT messages
+      vertx.eventBus().localConsumer<String>(REMOTE_AGENT_LEFT) { msg ->
         log.info("Remote agent `${msg.body()}' has left.")
         launch {
           val size = agents.await().sizeAwait()

@@ -197,8 +197,9 @@ class CloudManager : CoroutineVerticle() {
     // create setup selector
     setupSelector = SetupSelector(vmRegistry, poolAgentParams)
 
-    // keep track of left agents
-    vertx.eventBus().consumer<String>(REMOTE_AGENT_LEFT) { msg ->
+    // keep track of left agents - use local consumer here because
+    // we only need to listen to our own REMOTE_AGENT_LEFT messages
+    vertx.eventBus().localConsumer<String>(REMOTE_AGENT_LEFT) { msg ->
       val agentId = msg.body().substring(REMOTE_AGENT_ADDRESS_PREFIX.length)
       log.info("Agent $agentId has left the cluster. Scheduling deletion of its VM ...")
       launch {
