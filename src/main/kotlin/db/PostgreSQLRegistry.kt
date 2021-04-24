@@ -28,6 +28,34 @@ open class PostgreSQLRegistry(vertx: Vertx, url: String, username: String,
      */
     @JvmStatic protected val ID = "id"
     @JvmStatic protected val DATA = "data"
+
+    /**
+     * Holds information about a database that has already been migrated
+     */
+    private data class MigratedDatabase(val url: String, val user: String, val password: String)
+
+    /**
+     * Keeps all databases that have already been migrated
+     */
+    private val migratedDatabases = mutableSetOf<MigratedDatabase>()
+
+    /**
+     * Perform database migrations
+     * @param url the JDBC url to the database
+     * @param user the username
+     * @param password the password
+     */
+    @Synchronized
+    private fun migrate(url: String, user: String, password: String) {
+      val md = MigratedDatabase(url, user, password)
+      if (!migratedDatabases.contains(md)) {
+        val flyway = Flyway.configure()
+            .dataSource(url, user, password)
+            .load()
+        flyway.migrate()
+        migratedDatabases.add(md)
+      }
+    }
   }
 
   private val client: JDBCClient
@@ -50,19 +78,6 @@ open class PostgreSQLRegistry(vertx: Vertx, url: String, username: String,
 
   override suspend fun close() {
     client.closeAwait()
-  }
-
-  /**
-   * Perform database migrations
-   * @param url the JDBC url to the database
-   * @param user the username
-   * @param password the password
-   */
-  private fun migrate(url: String, user: String, password: String) {
-    val flyway = Flyway.configure()
-        .dataSource(url, user, password)
-        .load()
-    flyway.migrate()
   }
 
   protected suspend fun <T> withConnection(block: suspend (SQLConnection) -> T): T {
