@@ -175,6 +175,9 @@ class Scheduler : CoroutineVerticle() {
         val theirAgentId = msg.body().getString("agentId")
         log.trace("Node `$theirAgentId' has left the cluster. Removing scheduler.")
         schedulers.removeAwait(theirAgentId)
+
+        // look for orphaned process chains the scheduler might have left behind
+        lookupOrphans()
       }
     }
 

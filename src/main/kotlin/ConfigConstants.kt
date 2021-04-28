@@ -205,7 +205,10 @@ object ConfigConstants {
   /**
    * The interval at which the scheduler looks for orphaned running
    * process chains (i.e. process chains that are in the status `RUNNING' but
-   * that are currently not being processed by any [Scheduler])
+   * that are currently not being processed by any [Scheduler]). Note that
+   * the scheduler also always looks for orphaned process chains when it detects
+   * that another scheduler instance has just left the cluster (regardless of
+   * the configured interval).
    */
   const val SCHEDULER_LOOKUP_ORPHANS_INTERVAL = "steep.scheduler.lookupOrphansIntervalMilliseconds"
 
@@ -213,7 +216,9 @@ object ConfigConstants {
    * The number of milliseconds the scheduler should wait after startup before
    * it looks for orphaned running process chains for the first time. This
    * property is useful if you want to implement a rolling update from one Steep
-   * instance to another.
+   * instance to another. Note that the scheduler also looks for orphaned
+   * process chains when another scheduler instance has just left the cluster,
+   * even if the initial delay has not passed by yet.
    */
   const val SCHEDULER_LOOKUP_ORPHANS_INITIAL_DELAY = "steep.scheduler.lookupOrphansInitialDelayMilliseconds"
 
