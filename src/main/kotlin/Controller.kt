@@ -1,6 +1,7 @@
 import AddressConstants.CONTROLLER_LOOKUP_NOW
 import AddressConstants.CONTROLLER_LOOKUP_ORPHANS_NOW
 import ConfigConstants.CONTROLLER_LOOKUP_INTERVAL
+import ConfigConstants.CONTROLLER_LOOKUP_ORPHANS_INITIAL_DELAY
 import ConfigConstants.CONTROLLER_LOOKUP_ORPHANS_INTERVAL
 import ConfigConstants.OUT_PATH
 import ConfigConstants.TMP_PATH
@@ -38,6 +39,7 @@ class Controller : CoroutineVerticle() {
   companion object {
     private val log = LoggerFactory.getLogger(Controller::class.java)
     private const val DEFAULT_LOOKUP_INTERVAL = 2000L
+    private const val DEFAULT_LOOKUP_ORPHANS_INITIAL_DELAY = 0L
     private const val DEFAULT_LOOKUP_ORPHANS_INTERVAL = 300_000L
     private const val PROCESSING_SUBMISSION_LOCK_PREFIX = "Controller.ProcessingSubmission."
 
@@ -68,7 +70,7 @@ class Controller : CoroutineVerticle() {
   private var lookupInterval: Long = DEFAULT_LOOKUP_INTERVAL
   private lateinit var periodicLookupJob: Job
   private var lookupOrphansInterval: Long = DEFAULT_LOOKUP_ORPHANS_INTERVAL
-  private lateinit var periodicLookupOrphansJob: Job
+  private var periodicLookupOrphansJob: Job? = null
 
   override suspend fun start() {
     log.info("Launching controller ...")
@@ -90,6 +92,8 @@ class Controller : CoroutineVerticle() {
     lookupInterval = config.getLong(CONTROLLER_LOOKUP_INTERVAL, lookupInterval)
     lookupOrphansInterval = config.getLong(CONTROLLER_LOOKUP_ORPHANS_INTERVAL,
         lookupOrphansInterval)
+    val lookupOrphansInitialDelay = config.getLong(CONTROLLER_LOOKUP_ORPHANS_INITIAL_DELAY,
+        DEFAULT_LOOKUP_ORPHANS_INITIAL_DELAY)
 
     // periodically look for new submissions and execute them
     periodicLookupJob = launch {
@@ -99,16 +103,12 @@ class Controller : CoroutineVerticle() {
       }
     }
 
-    // periodically look for orphaned running submissions and re-execute them
-    periodicLookupOrphansJob = launch {
-      while (true) {
-        delay(lookupOrphansInterval)
-        lookupOrphans()
+    if (lookupOrphansInitialDelay > 0) {
+      vertx.setTimer(lookupOrphansInitialDelay) {
+        startLookupOrphansJob()
       }
-    }
-    launch {
-      // look up for orphaned running submissions now
-      lookupOrphans()
+    } else {
+      startLookupOrphansJob()
     }
 
     vertx.eventBus().consumer<Unit>(CONTROLLER_LOOKUP_NOW) {
@@ -124,10 +124,28 @@ class Controller : CoroutineVerticle() {
     }
   }
 
+  /**
+   * Start a periodic job that looks for orphaned submissions and execute
+   * it right away.
+   */
+  private fun startLookupOrphansJob() {
+    // periodically look for orphaned running submissions and re-execute them
+    periodicLookupOrphansJob = launch {
+      while (true) {
+        delay(lookupOrphansInterval)
+        lookupOrphans()
+      }
+    }
+    launch {
+      // look up for orphaned running submissions now
+      lookupOrphans()
+    }
+  }
+
   override suspend fun stop() {
     log.info("Stopping controller ...")
     periodicLookupJob.cancelAndJoin()
-    periodicLookupOrphansJob.cancelAndJoin()
+    periodicLookupOrphansJob?.cancelAndJoin()
     submissionRegistry.close()
   }
 

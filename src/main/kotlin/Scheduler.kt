@@ -6,6 +6,7 @@ import AddressConstants.SCHEDULER_LOOKUP_ORPHANS_NOW
 import AddressConstants.SCHEDULER_PREFIX
 import AddressConstants.SCHEDULER_RUNNING_PROCESS_CHAINS_SUFFIX
 import ConfigConstants.SCHEDULER_LOOKUP_INTERVAL
+import ConfigConstants.SCHEDULER_LOOKUP_ORPHANS_INITIAL_DELAY
 import ConfigConstants.SCHEDULER_LOOKUP_ORPHANS_INTERVAL
 import agent.Agent
 import agent.AgentRegistry
@@ -67,7 +68,7 @@ class Scheduler : CoroutineVerticle() {
   private lateinit var agentRegistry: AgentRegistry
 
   private lateinit var periodicLookupJob: Job
-  private lateinit var periodicLookupOrphansJob: Job
+  private var periodicLookupOrphansJob: Job? = null
 
   /**
    * A list of sets of capabilities required by process chains with the status
@@ -119,6 +120,7 @@ class Scheduler : CoroutineVerticle() {
     // read configuration
     val lookupInterval = config.getLong(SCHEDULER_LOOKUP_INTERVAL, 20000L)
     val lookupOrphansInterval = config.getLong(SCHEDULER_LOOKUP_ORPHANS_INTERVAL, 300_000L)
+    val lookupOrphansInitialDelay = config.getLong(SCHEDULER_LOOKUP_ORPHANS_INITIAL_DELAY, 0L)
 
     // periodically look for new process chains and execute them
     periodicLookupJob = launch {
@@ -148,16 +150,12 @@ class Scheduler : CoroutineVerticle() {
       msg.reply(JsonArray(runningProcessChainIds.toList()))
     }
 
-    // periodically look for orphaned running process chains and re-execute them
-    periodicLookupOrphansJob = launch {
-      while (true) {
-        delay(lookupOrphansInterval)
-        lookupOrphans()
+    if (lookupOrphansInitialDelay > 0) {
+      vertx.setTimer(lookupOrphansInitialDelay) {
+        startLookupOrphansJob(lookupOrphansInterval)
       }
-    }
-    launch {
-      // look up for orphaned running process chains now
-      lookupOrphans()
+    } else {
+      startLookupOrphansJob(lookupOrphansInterval)
     }
   }
 
@@ -184,10 +182,28 @@ class Scheduler : CoroutineVerticle() {
     schedulers.putAwait(agentId, true)
   }
 
+  /**
+   * Start a periodic job that looks for orphaned process chains and execute
+   * it right away.
+   */
+  private fun startLookupOrphansJob(lookupOrphansInterval: Long) {
+    // periodically look for orphaned running process chains and re-execute them
+    periodicLookupOrphansJob = launch {
+      while (true) {
+        delay(lookupOrphansInterval)
+        lookupOrphans()
+      }
+    }
+    launch {
+      // look up for orphaned running process chains now
+      lookupOrphans()
+    }
+  }
+
   override suspend fun stop() {
     log.info("Stopping scheduler ...")
     periodicLookupJob.cancelAndJoin()
-    periodicLookupOrphansJob.cancelAndJoin()
+    periodicLookupOrphansJob?.cancelAndJoin()
     submissionRegistry.close()
     schedulers.removeAwait(agentId)
   }

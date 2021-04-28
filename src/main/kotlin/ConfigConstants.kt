@@ -184,6 +184,14 @@ object ConfigConstants {
   const val CONTROLLER_LOOKUP_ORPHANS_INTERVAL = "steep.controller.lookupOrphansIntervalMilliseconds"
 
   /**
+   * The number of milliseconds the controller should wait after startup before
+   * it looks for orphaned running submissions for the first time. This property
+   * is useful if you want to implement a rolling update from one Steep
+   * instance to another.
+   */
+  const val CONTROLLER_LOOKUP_ORPHANS_INITIAL_DELAY = "steep.controller.lookupOrphansInitialDelayMilliseconds"
+
+  /**
    * `true` if the scheduler should be enabled. Set this value to `false` if
    * your Steep instance does not have access to the shared database.
    */
@@ -200,6 +208,14 @@ object ConfigConstants {
    * that are currently not being processed by any [Scheduler])
    */
   const val SCHEDULER_LOOKUP_ORPHANS_INTERVAL = "steep.scheduler.lookupOrphansIntervalMilliseconds"
+
+  /**
+   * The number of milliseconds the scheduler should wait after startup before
+   * it looks for orphaned running process chains for the first time. This
+   * property is useful if you want to implement a rolling update from one Steep
+   * instance to another.
+   */
+  const val SCHEDULER_LOOKUP_ORPHANS_INITIAL_DELAY = "steep.scheduler.lookupOrphansInitialDelayMilliseconds"
 
   /**
    * `true` if this Steep instance should be able to execute process

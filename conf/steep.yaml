@@ -66,11 +66,13 @@ steep:
   controller:
     lookupIntervalMilliseconds: 2000
     lookupOrphansIntervalMilliseconds: 300000
+    lookupOrphansInitialDelayMilliseconds: 0
 
   scheduler:
     enabled: true
     lookupIntervalMilliseconds: 20000
     lookupOrphansIntervalMilliseconds: 300000
+    lookupOrphansInitialDelayMilliseconds: 0
 
   db:
     driver: inmemory
