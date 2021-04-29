@@ -59,6 +59,9 @@ interface PostgreSQLTest {
       client.closeAwait()
       ctx.completeNow()
     }
+
+    // make sure migrations will run for the next unit test
+    PostgreSQLRegistry.migratedDatabases.clear()
   }
 
   /**

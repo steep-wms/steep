@@ -32,12 +32,12 @@ open class PostgreSQLRegistry(vertx: Vertx, url: String, username: String,
     /**
      * Holds information about a database that has already been migrated
      */
-    private data class MigratedDatabase(val url: String, val user: String, val password: String)
+    internal data class MigratedDatabase(val url: String, val user: String, val password: String)
 
     /**
      * Keeps all databases that have already been migrated
      */
-    private val migratedDatabases = mutableSetOf<MigratedDatabase>()
+    internal val migratedDatabases = mutableSetOf<MigratedDatabase>()
 
     /**
      * Perform database migrations
