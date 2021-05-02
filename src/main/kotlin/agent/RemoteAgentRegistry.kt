@@ -15,6 +15,7 @@ import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.AsyncMap
 import io.vertx.core.shareddata.LocalMap
 import io.vertx.core.shareddata.Shareable
+import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
 import io.vertx.kotlin.core.eventbus.requestAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
@@ -142,11 +143,15 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
         reportRemoteAgents()
       }
 
-      // log left agents - use local consumer here because we only need to
-      // listen to our own REMOTE_AGENT_LEFT messages
-      vertx.eventBus().localConsumer<String>(REMOTE_AGENT_LEFT) { msg ->
+      // log left agents and remove them from local caches
+      vertx.eventBus().consumer<String>(REMOTE_AGENT_LEFT) { msg ->
         log.info("Remote agent `${msg.body()}' has left.")
         reportRemoteAgents()
+
+        val id = msg.body().substring(REMOTE_AGENT_ADDRESS_PREFIX.length)
+        agentSequenceCache.remove(id)
+        agentCapabilitiesCache.remove(id)
+        allocatedAgentsCache.remove(id)
       }
 
       // unregister agents whose nodes have left
@@ -155,17 +160,13 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
           val agentId = msg.body().getString("agentId")
           val instances = msg.body().getInteger("instances", 1)
 
-          log.info("Node `${agentId}' has left the cluster. Removing remote " +
-              "agent${if (instances == 1) "" else "s"}.")
+          log.info("Node `${agentId}' has left the cluster.")
 
           for (i in 1..instances) {
             val id = if (i == 1) agentId else "$agentId[$i]"
-            agents.await().removeAwait(id)
-            agentSequenceCache.remove(id)
-            agentCapabilitiesCache.remove(id)
-            allocatedAgentsCache.remove(id)
-            val address = REMOTE_AGENT_ADDRESS_PREFIX + id
-            vertx.eventBus().publish(REMOTE_AGENT_LEFT, address)
+            // since every node in the cluster receives the CLUSTER_NODE_LEFT
+            // message, we send REMOTE_AGENT_LEFT to local consumers only
+            deregister(id, true)
           }
         }
       }
@@ -180,12 +181,30 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
    *
    * The agent should already listen to messages on the eventbus address
    * ([REMOTE_AGENT_ADDRESS_PREFIX]` + id`). The agent registry automatically
-   * unregisters the agent when the node with the [id] leaves the cluster.
+   * deregisters the agent when the node with the [id] leaves the cluster.
    */
   suspend fun register(id: String) {
     val address = REMOTE_AGENT_ADDRESS_PREFIX + id
     agents.await().putAwait(id, true)
     vertx.eventBus().publish(REMOTE_AGENT_ADDED, address)
+  }
+
+  /**
+   * Remove the remote agent with the given [id] from the registry. If the
+   * given [id] is unknown to the registry, the method does nothing. Also
+   * announce that the agent has left in the cluster.
+   */
+  suspend fun deregister(id: String) {
+    deregister(id, false)
+  }
+
+  private suspend fun deregister(id: String, localOnly: Boolean) {
+    val address = REMOTE_AGENT_ADDRESS_PREFIX + id
+    val oldValue = agents.await().removeAwait(id)
+    if (oldValue != null) {
+      vertx.eventBus().publish(REMOTE_AGENT_LEFT, address,
+          deliveryOptionsOf(localOnly = localOnly))
+    }
   }
 
   override suspend fun getAgentIds(): Set<String> {

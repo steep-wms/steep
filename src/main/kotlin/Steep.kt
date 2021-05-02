@@ -53,6 +53,7 @@ class Steep : CoroutineVerticle() {
   private val startTime = Instant.now()
   private var stateChangedTime = startTime
 
+  private lateinit var remoteAgentRegistry: RemoteAgentRegistry
   private lateinit var capabilities: Set<String>
   private var busy: BusyMarker? = null
   private lateinit var busyTimeout: Duration
@@ -92,7 +93,8 @@ class Steep : CoroutineVerticle() {
     // register remote agent
     capabilities = config.getJsonArray(ConfigConstants.AGENT_CAPABILTIIES,
         JsonArray()).map { it as String }.toSet()
-    RemoteAgentRegistry(vertx).register(agentId)
+    remoteAgentRegistry = RemoteAgentRegistry(vertx)
+    remoteAgentRegistry.register(agentId)
 
     // register consumer to provide process chain logs if we are the primary agent
     if (isPrimary) {
@@ -111,6 +113,11 @@ class Steep : CoroutineVerticle() {
       log.info("Remote agent `${agentId}' with capabilities " +
           "`$capabilities' successfully deployed")
     }
+  }
+
+  override suspend fun stop() {
+    log.info("Stopping remote agent $agentId ...")
+    remoteAgentRegistry.deregister(agentId)
   }
 
   /**
