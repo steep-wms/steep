@@ -5,14 +5,24 @@ on: [push]
 jobs:
   cypress-run:
     runs-on: ubuntu-latest
+    container: cypress/browsers:node12.13.0-chrome78-ff70
     steps:
       - name: Checkout
         uses: actions/checkout@v2
       # Install NPM dependencies, cache them correctly
       # and run all Cypress tests
+      #- uses: actions/checkout@v2
+      #- name: Set up JDK 11
+      #  uses: actions/setup-java@v1
+      #  with:
+      #    java-version: 11
+
+      #- name: Run 
+      #  run: ./gradlew run
       - name: Cypress run
         uses: cypress-io/github-action@v2
         with:
-          build: npm run build
           start: npm start
-
+          working-directory: ./ui
+          browser: chrome
+          wait-on: 'http://localhost:8080'
