@@ -28,4 +28,4 @@ jobs:
           working-directory: ./ui
           browser: chrome
           wait-on: 'http://localhost:8080'
-          wait-on-timeout: 120
+          wait-on-timeout: 600
