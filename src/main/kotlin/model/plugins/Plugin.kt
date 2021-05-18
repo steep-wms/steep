@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import kotlin.reflect.KFunction
 
 /**
- * A plugin that will be loaded during runtime and that extends Steeps's
+ * A plugin that will be loaded during runtime and that extends Steep's
  * functionality
  * @author Michel Kraemer
  */
