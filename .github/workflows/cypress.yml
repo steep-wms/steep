@@ -13,7 +13,7 @@ jobs:
     services:
       steep:
         image: steep/steep:latest
-        port: 8080
+        ports: 8080:8080
     steps:
       - name: Checkout
         uses: actions/checkout@v2
