@@ -612,8 +612,23 @@ class HttpEndpoint : CoroutineVerticle() {
               REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
           val replyAddress = "$address.reply.${UniqueID.next()}"
 
+          // register consumer to receive responses from agent
           val consumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
+          val consumerRegisteredPromise = Promise.promise<Unit>()
+          // completionHandler must be set before calling consumer.toChannel()
+          consumer.completionHandler { ar ->
+            if (ar.succeeded()) {
+              consumerRegisteredPromise.complete()
+            } else {
+              consumerRegisteredPromise.fail(ar.cause())
+            }
+          }
           val channel = consumer.toChannel(vertx)
+
+          // Important! Wait for consumer registration to be propagated across
+          // cluster before sending any request. Otherwise, responses might
+          // be sent too early!
+          consumerRegisteredPromise.future().await()
 
           // create periodic timer that cancels the channel on timeout
           val timeoutTimerId = vertx.setPeriodic(1000L * 30) { timerId ->
