@@ -99,7 +99,11 @@ class Controller : CoroutineVerticle() {
     periodicLookupJob = launch {
       while (true) {
         delay(lookupInterval)
-        lookup()
+        try {
+          lookup()
+        } catch (t: Throwable) {
+          log.error("Failed to look for submissions", t)
+        }
       }
     }
 

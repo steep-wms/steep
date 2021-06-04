@@ -126,7 +126,11 @@ class Scheduler : CoroutineVerticle() {
     periodicLookupJob = launch {
       while (true) {
         delay(lookupInterval)
-        lookup(updateRequiredCapabilities = true)
+        try {
+          lookup(updateRequiredCapabilities = true)
+        } catch (t: Throwable) {
+          log.error("Failed to look for process chains", t)
+        }
       }
     }
 
