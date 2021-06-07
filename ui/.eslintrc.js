@@ -2,12 +2,14 @@ module.exports = {
   env: {
     browser: true,
     es6: true,
-    node: true
+    node: true,
+    "cypress/globals": true
   },
   extends: [
     "eslint:recommended",
     "plugin:react/recommended",
     "plugin:react-hooks/recommended",
+    "plugin:cypress/recommended"
   ],
   globals: {
     Atomics: "readonly",
@@ -26,7 +28,8 @@ module.exports = {
     sourceType: "module"
   },
   plugins: [
-    "react"
+    "react",
+    "cypress"
   ],
   rules: {
     "comma-dangle": ["error", "never"],
@@ -44,6 +47,11 @@ module.exports = {
     "react/jsx-curly-spacing": ["error", "never"],
     "react/prop-types": "off",
     "react/react-in-jsx-scope": "off",
-    "semi": ["error", "never"]
+    "semi": ["error", "never"],
+    "cypress/no-assigning-return-values": "error",
+    "cypress/no-unnecessary-waiting": "error",
+    "cypress/assertion-before-screenshot": "warn",
+    "cypress/no-force": "warn",
+    "cypress/no-async-tests": "error"
   }
 }

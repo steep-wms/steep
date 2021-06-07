@@ -15,6 +15,8 @@ jobs:
         image: steep/steep:latest
         ports: 
           - 8080:8080
+        env: 
+          STEEP_HTTP_HOST: 0.0.0.0
     steps:
       - name: Checkout
         uses: actions/checkout@v2

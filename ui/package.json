@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next",
     "build": "npm run lint && rm -rf .next out && next build && next export -o out/ui",
-    "lint": "eslint --ext js,jsx components pages",
+    "lint": "eslint --ext js,jsx components pages ",
     "cypress:open": "cypress open",
     "start": "cd .. && ./gradlew run"
   },
@@ -52,6 +52,7 @@
   "devDependencies": {
     "cypress": "^7.2.0",
     "eslint": "^7.23.0",
+    "eslint-plugin-cypress": "^2.11.3",
     "eslint-plugin-react": "^7.23.1",
     "eslint-plugin-react-hooks": "^4.2.0"
   }

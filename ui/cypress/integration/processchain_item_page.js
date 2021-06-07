@@ -1,4 +1,3 @@
-
 const timeoutOffset = 5
 const timeoutLength = 5
 const numOfActions = 1
@@ -18,33 +17,105 @@ const payload = {
     }]
 }
 
-describe("Workflow Item Page Attributes are not hidden", () => {
+describe("Workflow > Process", () => {
     let res
+    let processes
+    let process_ids = []
     before(() => {
         cy.request("POST", "/workflows", payload).then((response) => {
             res = response
             cy.visit(`/workflows/${response.body.id}/`)
+            cy.get('.list-item-progress-box > div > a').invoke('text').then((text) => {
+                processes = parseInt(text.substring(text.search("of") + 2, text.search("completed") - 1))
+                cy.get('div.jsx-1616887521 > div > a').click()
+            })
+        })
+    })
+    it("items are visible and URL is correct", () => {
+        cy.url().should("include", `processchains/?submissionId=${res.body.id}`)
+        cy.wait(1000)
+        cy.get(".list-page").children().each(($el, index, $list) => {
+            if (index > 1 && index !== ($list.length - 1)) {
+                cy.wrap($el).get('.list-item-left > .list-item-title').should("be.visible").then(() => {
+                    cy.wrap($el).get('.list-item-left > .list-item-title > a').invoke('text').then((text) => {
+                        cy.wrap($el).get('.list-item-left > .list-item-title > a').invoke("attr", "href").should("include", `/processchains/${text}/`)
+                    })
+                })
+                cy.wrap($el).get('.list-item-left > .list-item-subtitle').should("be.visible")
+                cy.wrap($el).get('.list-item-right > .list-item-progress-box').should("be.visible")
+                cy.wrap($el).get('.list-item-right > .list-item-progress-box > .feather').should("be.visible")
+                cy.wrap($el).get('.list-item-right > .list-item-progress-box > div > strong').should("be.visible")
+            }
         })
     })
 
+
+
+})
+describe("Process chains table", () => {
+    let elements = 20
+    let res = []
+    before(() => {
+        for (let i = 0; i < elements; i++) {
+            cy.request("POST", "/workflows", payload).then((response) => {
+                res.unshift(response)
+                cy.wait(50)
+            })
+        }
+    })
+
+    beforeEach(() => {
+        cy.visit('/processchains/')
+        cy.wait(100)
+    })
+
+    it("Scheduled processes are accessible via process chains page", () => {
+        for(let i = 0; i < elements/10; i++){
+            cy.get(".list-page").children().each(($el, index, $list) => {
+                if (index > 1 && index !== ($list.length - 1)) {
+                    // $el is not working
+                    cy.get(`.list-page > :nth-child(${index}) > .list-item-left > .list-item-title`).should("be.visible").then(() => {
+                        cy.get(`.list-page > :nth-child(${index}) > .list-item-left > .list-item-title > a`).invoke('text').then((text) => {
+                            //cy.wrap($el).get('.list-item-left > .list-item-title > a').invoke("attr", "href").should("include", `/processchains/${text}/`)
+                        })
+                    })
+                    cy.get(`.list-page > :nth-child(${index}) > .list-item-left > .list-item-subtitle`).should("be.visible")
+                    cy.get(`.list-page > :nth-child(${index}) > .list-item-right > .list-item-progress-box`).should("be.visible")
+                    cy.get(`.list-page > :nth-child(${index}) > .list-item-right > .list-item-progress-box > .feather`).should("be.visible")
+                    cy.get(`.list-page > :nth-child(${index}) > .list-item-right > .list-item-progress-box > div > strong`).should("be.visible")
+                }
+            })
+        cy.get(".list-page > :last > .pagination > :last").click()
+        }
+    })
+})
+
+describe("Check Process Chains", () => {
+    let res
+    let processName
+    before(() => {
+        cy.request("POST", "/workflows", payload).then((response) => {
+            res = response
+            cy.visit(`/workflows/${response.body.id}/`)
+            cy.get('.list-item-progress-box > div > a').click()
+            cy.get('.list-page > :nth-child(3) > .list-item-left > .list-item-title').invoke('text').then((text) => {
+                processName = text
+            })
+            cy.get('.list-page > :nth-child(3) > .list-item-left > .list-item-title').click()
+
+        })
+    })
     it("has correct Header", () => {
-        cy.get(".detail-page-title > h1").should("have.text", res.body.id)
+        cy.get(".detail-page-title > h1").should("have.text", processName)
         cy.get(".detail-page-title > h1").should("be.visible")
-        cy.get(".breadcrumbs > :nth-child(2)").should("have.text", res.body.id)
-        cy.get(".breadcrumbs > :nth-child(2)").should("be.visible")
         cy.get(".breadcrumbs > :nth-child(1) > a").should("have.text", "Workflows")
         cy.get(".breadcrumbs > :nth-child(1) > a").should("be.visible")
         cy.get(".breadcrumbs > :nth-child(1) > a").should("be.visible").invoke("attr", "href").should("include", "/workflows/")
-    })
-
-    it("can access Actions Combobox", () => {
-        cy.get(".dropdown-btn").should("have.text", "Actions ")
-        cy.get(".dropdown-btn").click()
-        cy.get("li").should("have.text", "Cancel")
-        cy.get("li").click()
-        cy.get(".cancel-modal-buttons > :nth-child(1)").should("have.text", "Keep it")
-        cy.get(".cancel-modal-buttons > :nth-child(1)").click()
-        cy.get(".list-item-progress-box > div > strong").contains("Running")
+        cy.get(".breadcrumbs > :nth-child(2) >").should("have.text", res.body.id)
+        cy.get(".breadcrumbs > :nth-child(2) >").should("be.visible")
+        cy.get(".breadcrumbs > :nth-child(3) > a").should("have.text", "Process chains")
+        cy.get(".breadcrumbs > :nth-child(3) > a").should("be.visible")
+        cy.get(".breadcrumbs > :nth-child(3) > a").should("be.visible").invoke("attr", "href").should("include", `processchains/?submissionId=${res.body.id}`)
     })
 
     it("can access Start time", () => {
@@ -96,7 +167,7 @@ describe("Workflow Item Page Attributes are not hidden", () => {
     })
 
     it("can access Source", () => {
-        cy.get("h2").should("have.text", "Source")
+        cy.get("h2").should("have.text", "Executables")
         cy.get("h2").should("be.visible")
     })
 
@@ -123,32 +194,6 @@ describe("Workflow Item Page Successfully Done", () => {
     it("has correct running flags", () => {
         cy.get(".list-item-progress-box > div > strong").contains("Running")
         cy.get(".list-item-progress-box > div > strong").contains("Success", { timeout: (timeoutLength + timeoutOffset) * 1000 })
-    })
-})
-
-describe("Resubmission", ()=> {
-    let res
-    before(() => {
-        cy.request("POST", "/workflows", payload).then((response) => {
-            res = response
-            cy.visit(`/workflows/${response.body.id}/`)
-        })
-    })
-    it("can resubmit", () => {
-        cy.get(".list-item-progress-box > div > strong", { timeout: (timeoutLength + timeoutOffset) * 1000 }).should("have.text", "Success")
-        cy.get(".dropdown-btn").click()
-        cy.get("li").click()
-        cy.wait(1000)
-        cy.get(".buttons > .primary").click()
-
-        cy.get(".list-item-progress-box > div > strong").should("have.text", `${numOfActions} Running`)
-        cy.get(".list-item-progress-box > div > a").should("have.text", `0 of ${numOfActions} completed`)
-
-        cy.get(".list-item-progress-box > div > strong", { timeout: (timeoutLength + timeoutOffset) * 1000 }).should("have.text", "0 Running")
-        cy.get(".list-item-progress-box > div > a", { timeout: (timeoutLength + timeoutOffset) * 1000 }).should("have.text", `${numOfActions} of ${numOfActions} completed`)
-
-        cy.get(".list-item-progress-box > div > strong", { timeout: (timeoutLength + timeoutOffset) * 1000 }).should("have.text", "Success")
-        cy.get(".list-item-progress-box > div > a").should("have.text", `${numOfActions} completed`)
     })
 })
 
@@ -183,7 +228,7 @@ describe("Check Times elapsed", () => {
     })
 
     it("time elapsed features is working", async () => {
-        while(true){
+        while (true) {
             let running = true
             await cy.get(".list-item-progress-box > div > strong").contains("Running").then(() => {
                 cy.wait(1000)
