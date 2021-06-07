@@ -30,17 +30,17 @@ jobs:
 
       #- name: Run 
       #  run: ./gradlew run
-      - name: log docker
-        run: |
-          sleep 20
-          docker logs "${{job.services.steep.id}}"
+      # - name: log docker
+      #   run: |
+      #     sleep 20
+      #     docker logs "${{job.services.steep.id}}"
       - name: Cypress run
         uses: cypress-io/github-action@v2
         with:
           # start: npm start
           working-directory: ./ui
           browser: chrome
-          wait-on: 'http://localhost:8080'
+          wait-on: 'http://steep:8080'
           wait-on-timeout: 10
       - uses: actions/upload-artifact@v2
         if: failure()
