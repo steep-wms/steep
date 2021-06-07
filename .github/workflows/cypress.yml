@@ -14,7 +14,7 @@ jobs:
       steep:
         image: steep/steep:latest
         ports: 
-          - 8080:8080
+          - 8081:8080
         env: 
           STEEP_HTTP_HOST: 0.0.0.0
     steps:
@@ -40,7 +40,7 @@ jobs:
           # start: npm start
           working-directory: ./ui
           browser: chrome
-          wait-on: 'http://steep:8080'
+          wait-on: 'http://steep:8081'
           wait-on-timeout: 120
       - uses: actions/upload-artifact@v2
         if: failure()
