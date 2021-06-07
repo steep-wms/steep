@@ -43,3 +43,6 @@ jobs:
         with:
           name: cypress-screenshots
           path: ui/cypress/screenshots
+      - name: log docker
+        run: |
+          docker logs "${{job.services.steep.id}}"
