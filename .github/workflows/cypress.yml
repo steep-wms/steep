@@ -41,7 +41,7 @@ jobs:
           working-directory: ./ui
           browser: chrome
           wait-on: 'http://steep:8080'
-          wait-on-timeout: 10
+          wait-on-timeout: 120
       - uses: actions/upload-artifact@v2
         if: failure()
         with:
