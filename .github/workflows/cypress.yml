@@ -12,7 +12,7 @@ jobs:
     container: cypress/browsers:node12.13.0-chrome78-ff70
     services:
       mongo:
-        image: mongo/mongo:latest
+        image: mongo:latest
         ports: 
           - 27017:27017
       steep:
