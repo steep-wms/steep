@@ -27,7 +27,7 @@ describe("Workflow > Process", () => {
             cy.visit(`/workflows/${response.body.id}/`)
             cy.get('.list-item-progress-box > div > a').invoke('text').then((text) => {
                 processes = parseInt(text.substring(text.search("of") + 2, text.search("completed") - 1))
-                cy.get('div.jsx-1616887521 > div > a').click()
+                cy.get('.list-item-progress-box > div > a').click()
             })
         })
     })
@@ -124,7 +124,7 @@ describe("Check Process Chains", () => {
     })
 
     it("can access actual Start time", () => {
-        cy.get(".definition-list > :nth-child(2)").should("have.not.text", "–")
+        cy.get(".definition-list > :nth-child(2)").should("have.text", "–")
         cy.get(".definition-list > :nth-child(2)").should("be.visible")
     })
 
@@ -144,7 +144,7 @@ describe("Check Process Chains", () => {
     })
 
     it("can access actual Time elapsed", () => {
-        cy.get(".definition-list > :nth-child(6)").should("have.not.text", "–")
+        cy.get(".definition-list > :nth-child(6)").should("have.text", "–")
         cy.get(".definition-list > :nth-child(6)").should("be.visible")
     })
 
@@ -202,21 +202,39 @@ describe("Workflow Item Page Cancelling", () => {
     before(() => {
         cy.request("POST", "/workflows", payload).then((response) => {
             res = response
-            cy.visit(`/workflows/${response.body.id}/`)
+            cy.visit(`processchains/?submissionId=${res.body.id}`)
         })
     })
 
     it("cancels an exisiting workflow", () => {
+        cy.visit(`/workflows/${res.body.id}/`)
         cy.get(".dropdown-btn").should("have.text", "Actions ")
         cy.get(".dropdown-btn").click()
         cy.get("li").should("have.text", "Cancel")
         cy.get("li").click()
         cy.get(".btn-error").should("have.text", "Cancel it now")
         cy.get(".btn-error").click()
-        cy.get(".list-item-progress-box > div > a").should("have.text", `${numOfActions} of ${numOfActions} completed`)
-        cy.get(".list-item-progress-box > div > strong").should("have.text", "Cancelled")
-        cy.get(".list-item-progress-box > div > a").should("have.text", `${numOfActions} completed`)
+        cy.get('.list-item-progress-box > div > a').click()
+        cy.wait(1000)
+        cy.get(".list-page").children().each(($el, index, $list) => {
+            if (index > 1 && index !== ($list.length - 1)) {
+                cy.wrap($el).get('.list-item-right > .list-item-progress-box > div > strong').should('have.text', 'Cancelled')
+            }
+        })
     })
+
+    it("process item are cancelled", () => {
+        cy.wait(1000)
+        cy.get(".list-page").children().each(($el, index, $list) => {
+            if (index > 1 && index !== ($list.length - 1)) {
+                cy.wrap($el).get('.list-item-left > .list-item-title').should("be.visible").then(() => {
+                    cy.wrap($el).get('.list-item-left > .list-item-title > a').click()
+                    cy.get('.list-item-progress-box > div > strong').should('have.text', 'Cancelled')
+                })
+            }
+        })
+    })
+    
 })
 
 describe("Check Times elapsed", () => {

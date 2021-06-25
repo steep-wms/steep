@@ -11,6 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     container: cypress/browsers:node12.13.0-chrome78-ff70
     services:
+      mongo:
+        image: mongo/mongo:latest
+        ports: 
+          - 27017:27017
       steep:
         image: steep/steep:latest
         ports: 
@@ -18,6 +22,8 @@ jobs:
         env: 
           STEEP_HTTP_HOST: 0.0.0.0
           STEEP_HTTP_PORT: 8081
+          STEEP_DB_DRIVER: mongodb
+          STEEP_DB_URL: mongodb://mongo:27017/steep
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -35,6 +41,8 @@ jobs:
       #   run: |
       #     sleep 20
       #     docker logs "${{job.services.steep.id}}"
+      # - name: Config MongoDB
+      #   run: mongoimport --collection=userColl --db=appDB --file=userColl.json
       - name: Cypress run
         uses: cypress-io/github-action@v2
         with:
@@ -43,6 +51,7 @@ jobs:
           browser: chrome
           wait-on: 'http://steep:8081'
           wait-on-timeout: 120
+          config: baseUrl=http://steep:8081
       - uses: actions/upload-artifact@v2
         if: failure()
         with:
