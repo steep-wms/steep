@@ -16,7 +16,7 @@ jobs:
         ports: 
           - 27017:27017
         env:
-          - MONGODB_HOST: localhost
+          MONGODB_HOST: localhost
       steep:
         image: steep/steep:latest
         ports: 
