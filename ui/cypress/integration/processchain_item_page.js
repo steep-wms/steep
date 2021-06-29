@@ -24,7 +24,7 @@ describe("Workflow > Process", () => {
             res = response
             cy.visit(`/workflows/${response.body.id}/`)
             cy.get(".list-item-progress-box > div > a").invoke("text").then((text) => {
-                // processes = parseInt(text.substring(text.search("of") + 2, text.search("completed") - 1))
+                processes = parseInt(text.substring(text.search("of") + 2, text.search("completed") - 1))
                 cy.get(".list-item-progress-box > div > a").click()
             })
         })
@@ -239,7 +239,7 @@ describe("Check Times elapsed", () => {
         })
     })
 
-    it.only("time elapsed features is working", () => {
+    it("time elapsed features is working", () => {
         //unfortunately there is no way to conditionally test not settled dom elements
         //therefore, it is not possible to test the incrementing time feature
         //i recommend to test it via unit test on the backend

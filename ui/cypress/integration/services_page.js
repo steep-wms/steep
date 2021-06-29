@@ -10,7 +10,7 @@ describe("Services Main Page", () => {
         cy.get("h1").should("be.visible").should("have.text", "Services")
     })
 
-    it.only("Service Items", () => {
+    it("Service Items", () => {
         cy.get(".list-item").each(($el) => {
             cy.wrap($el).find(".list-item-left > .list-item-title > a").should("be.visible").invoke("text")
             cy.wrap($el).find(".list-item-left > .list-item-title > a").should("have.attr", "href")

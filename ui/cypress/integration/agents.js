@@ -87,7 +87,7 @@ describe("Agents Item Page", () => {
         cy.get(".definition-list > :nth-child(8)").should("be.visible").should("have.text", "–")
     })
 
-    it.only("has correct running flags", () => {
+    it("has correct running flags", () => {
         cy.get(".list-item-progress-box > div > strong").contains("Idle")
         cy.request("POST", "/workflows", payload)
         cy.get(".definition-list > :nth-child(8)").should("be.visible").should("have.not.text", "–")
