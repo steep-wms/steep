@@ -28,58 +28,45 @@ describe("Workflow Item Page Attributes are not hidden", () => {
     })
 
     it("has correct Header", () => {
-        cy.get(".detail-page-title > h1").should("have.text", res.body.id)
-        cy.get(".detail-page-title > h1").should("be.visible")
-        cy.get(".breadcrumbs > :nth-child(2)").should("have.text", res.body.id)
-        cy.get(".breadcrumbs > :nth-child(2)").should("be.visible")
-        cy.get(".breadcrumbs > :nth-child(1) > a").should("have.text", "Workflows")
-        cy.get(".breadcrumbs > :nth-child(1) > a").should("be.visible")
-        cy.get(".breadcrumbs > :nth-child(1) > a").should("be.visible").invoke("attr", "href").should("include", "/workflows/")
+        cy.get(".detail-page-title > h1").should("be.visible").should("have.text", res.body.id)
+        cy.get(".breadcrumbs > :nth-child(2)").should("be.visible").should("have.text", res.body.id)
+        cy.get(".breadcrumbs > :nth-child(1) > a").should("be.visible").should("have.text", "Workflows")
+        cy.get(".breadcrumbs > :nth-child(1) > a").invoke("attr", "href").should("include", "/workflows/")
     })
 
     it("can access Actions Combobox", () => {
-        cy.get(".dropdown-btn").should("have.text", "Actions ")
-        cy.get(".dropdown-btn").click()
-        cy.get("li").should("have.text", "Cancel")
-        cy.get("li").click()
-        cy.get(".cancel-modal-buttons > :nth-child(1)").should("have.text", "Keep it")
-        cy.get(".cancel-modal-buttons > :nth-child(1)").click()
+        cy.get(".dropdown-btn").should("have.text", "Actions ").click()
+        cy.get("li").should("have.text", "Cancel").click()
+        cy.get(".cancel-modal-buttons > :nth-child(1)").should("have.text", "Keep it").click()
         cy.get(".list-item-progress-box > div > strong").contains("Running")
     })
 
     it("can access Start time", () => {
-        cy.get(".definition-list > :nth-child(1)").should("have.text", "Start time")
-        cy.get(".definition-list > :nth-child(1)").should("be.visible")
+        cy.get(".definition-list > :nth-child(1)").should("be.visible").should("have.text", "Start time")
     })
 
     it("can access actual Start time", () => {
-        cy.get(".definition-list > :nth-child(2)").should("have.not.text", "–")
-        cy.get(".definition-list > :nth-child(2)").should("be.visible")
+        cy.get(".definition-list > :nth-child(2)").should("be.visible").should("have.not.text", "–")
     })
 
     it("can access End time", () => {
-        cy.get(".definition-list > :nth-child(3)").should("have.text", "End time")
-        cy.get(".definition-list > :nth-child(3)").should("be.visible")
+        cy.get(".definition-list > :nth-child(3)").should("be.visible").should("have.text", "End time")
     })
 
     it("can access actual End time", () => {
-        cy.get(".definition-list > :nth-child(4)").should("have.text", "–")
-        cy.get(".definition-list > :nth-child(4)").should("be.visible")
+        cy.get(".definition-list > :nth-child(4)").should("be.visible").should("have.text", "–")
     })
 
     it("can access Time elapsed", () => {
-        cy.get(".definition-list > :nth-child(5)").should("have.text", "Time elapsed")
-        cy.get(".definition-list > :nth-child(5)").should("be.visible")
+        cy.get(".definition-list > :nth-child(5)").should("be.visible").should("have.text", "Time elapsed")
     })
 
     it("can access actual Time elapsed", () => {
-        cy.get(".definition-list > :nth-child(6)").should("have.not.text", "–")
-        cy.get(".definition-list > :nth-child(6)").should("be.visible")
+        cy.get(".definition-list > :nth-child(6)").should("be.visible").should("have.not.text", "–")
     })
 
     it("can access Required capabilities", () => {
-        cy.get(".definition-list > :nth-child(7)").should("have.text", "Required capabilities")
-        cy.get(".definition-list > :nth-child(7)").should("be.visible")
+        cy.get(".definition-list > :nth-child(7)").should("be.visible").should("have.text", "Required capabilities")
     })
 
     it("can access actual Required capabilities", () => {
@@ -96,8 +83,7 @@ describe("Workflow Item Page Attributes are not hidden", () => {
     })
 
     it("can access Source", () => {
-        cy.get("h2").should("have.text", "Source")
-        cy.get("h2").should("be.visible")
+        cy.get("h2").should("be.visible").should("have.text", "Source")
     })
 
     it("can access Source Tab YAML", () => {
@@ -127,10 +113,8 @@ describe("Workflow Item Page Successfully Done", () => {
 })
 
 describe("Resubmission", ()=> {
-    let res
     before(() => {
         cy.request("POST", "/workflows", payload).then((response) => {
-            res = response
             cy.visit(`/workflows/${response.body.id}/`)
         })
     })
@@ -153,21 +137,16 @@ describe("Resubmission", ()=> {
 })
 
 describe("Workflow Item Page Cancelling", () => {
-    let res
     before(() => {
         cy.request("POST", "/workflows", payload).then((response) => {
-            res = response
             cy.visit(`/workflows/${response.body.id}/`)
         })
     })
 
     it("cancels an exisiting workflow", () => {
-        cy.get(".dropdown-btn").should("have.text", "Actions ")
-        cy.get(".dropdown-btn").click()
-        cy.get("li").should("have.text", "Cancel")
-        cy.get("li").click()
-        cy.get(".btn-error").should("have.text", "Cancel it now")
-        cy.get(".btn-error").click()
+        cy.get(".dropdown-btn").should("have.text", "Actions ").click()
+        cy.get("li").should("have.text", "Cancel").click()
+        cy.get(".btn-error").should("have.text", "Cancel it now").click()
         cy.get(".list-item-progress-box > div > a").should("have.text", `${numOfActions} of ${numOfActions} completed`)
         cy.get(".list-item-progress-box > div > strong").should("have.text", "Cancelled")
         cy.get(".list-item-progress-box > div > a").should("have.text", `${numOfActions} completed`)
@@ -182,23 +161,10 @@ describe("Check Times elapsed", () => {
         })
     })
 
-    it("time elapsed features is working", async () => {
-        while(true){
-            let running = true
-            await cy.get(".list-item-progress-box > div > strong").contains("Running").then(() => {
-                cy.wait(1000)
-                cy.log('Login successful')
-                running = true
-            })
-
-        }
-        // cy.get(".definition-list > :nth-child(6)").should("have.text", "1s")
-        // cy.wait(1000)
-        // cy.get(".definition-list > :nth-child(6)").should("have.text", "2s")
-        // cy.wait(1000)
-        // cy.get(".definition-list > :nth-child(6)").should("have.text", "3s")
-        // cy.wait(1000)
-        // cy.get(".definition-list > :nth-child(6)").should("have.text", "4s")
-        // cy.wait(1000)
+    it("time elapsed features is working", () => {
+        //unfortunately there is no way to conditionally test not settled dom elements
+        //therefore, it is not possible to test the incrementing time feature
+        //i recommend to test it via unit test on the backend
+        cy.get(".definition-list > :nth-child(6)").should("be.visible")
     })
 })

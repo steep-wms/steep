@@ -49,7 +49,7 @@ module.exports = {
     "react/react-in-jsx-scope": "off",
     "semi": ["error", "never"],
     "cypress/no-assigning-return-values": "error",
-    "cypress/no-unnecessary-waiting": "error",
+    "cypress/no-unnecessary-waiting": "off",
     "cypress/assertion-before-screenshot": "warn",
     "cypress/no-force": "warn",
     "cypress/no-async-tests": "error"

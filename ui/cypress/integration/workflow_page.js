@@ -1,5 +1,4 @@
 
-const timeoutOffset = 5
 const timeoutLength = 5
 const payload = {
     "api": "4.2.0",
@@ -123,16 +122,23 @@ describe("has Table", () => {
         }
     })
 
-    it.only("shows \"running\" workflows", () => {
+    it("shows \"running\" workflows", () => {
         cy.get(".dropdown-btn").click()
         cy.get(".dropdown-menu > ul > :nth-child(3)").click()
         cy.wait(2000)
         cy.get(".list-page").children().each(($el, index, $list) => {
             if(index !== 0 && index !== ($list.length - 1)){
                 cy.wrap($el).contains("Running")
-                cy.wrap($el).get(".list-item-right > .list-item-progress-box > .feather.running").should("be.visible")
+                cy.wrap($el).find(".list-item-right > .list-item-progress-box > .feather.running").should("be.visible")
             }
         })
     })
 
+    it("triggers refresh dialog on second page", () => {
+        cy.visit("/workflows/?offset=10")
+        cy.get(".notification").should("not.exist")
+        cy.wait(1000)
+        cy.request("POST", "/workflows", payload)
+        cy.get(".notification").should("be.visible")
+    })
 })

@@ -1,6 +1,5 @@
 const timeoutOffset = 5
 const timeoutLength = 5
-const numOfActions = 1
 const payload = {
     "api": "4.2.0",
     "vars": [{
@@ -20,14 +19,13 @@ const payload = {
 describe("Workflow > Process", () => {
     let res
     let processes
-    let process_ids = []
     before(() => {
         cy.request("POST", "/workflows", payload).then((response) => {
             res = response
             cy.visit(`/workflows/${response.body.id}/`)
-            cy.get('.list-item-progress-box > div > a').invoke('text').then((text) => {
-                processes = parseInt(text.substring(text.search("of") + 2, text.search("completed") - 1))
-                cy.get('.list-item-progress-box > div > a').click()
+            cy.get(".list-item-progress-box > div > a").invoke("text").then((text) => {
+                // processes = parseInt(text.substring(text.search("of") + 2, text.search("completed") - 1))
+                cy.get(".list-item-progress-box > div > a").click()
             })
         })
     })
@@ -36,20 +34,18 @@ describe("Workflow > Process", () => {
         cy.wait(1000)
         cy.get(".list-page").children().each(($el, index, $list) => {
             if (index > 1 && index !== ($list.length - 1)) {
-                cy.wrap($el).get('.list-item-left > .list-item-title').should("be.visible").then(() => {
-                    cy.wrap($el).get('.list-item-left > .list-item-title > a').invoke('text').then((text) => {
-                        cy.wrap($el).get('.list-item-left > .list-item-title > a').invoke("attr", "href").should("include", `/processchains/${text}/`)
+                cy.wrap($el).get(".list-item-left > .list-item-title").should("be.visible").then(() => {
+                    cy.wrap($el).get(".list-item-left > .list-item-title > a").invoke("text").then((text) => {
+                        cy.wrap($el).get(".list-item-left > .list-item-title > a").invoke("attr", "href").should("include", `/processchains/${text}/`)
                     })
                 })
-                cy.wrap($el).get('.list-item-left > .list-item-subtitle').should("be.visible")
-                cy.wrap($el).get('.list-item-right > .list-item-progress-box').should("be.visible")
-                cy.wrap($el).get('.list-item-right > .list-item-progress-box > .feather').should("be.visible")
-                cy.wrap($el).get('.list-item-right > .list-item-progress-box > div > strong').should("be.visible")
+                cy.wrap($el).get(".list-item-left > .list-item-subtitle").should("be.visible")
+                cy.wrap($el).get(".list-item-right > .list-item-progress-box").should("be.visible")
+                cy.wrap($el).get(".list-item-right > .list-item-progress-box > .feather").should("be.visible")
+                cy.wrap($el).get(".list-item-right > .list-item-progress-box > div > strong").should("be.visible")
             }
         })
     })
-
-
 
 })
 describe("Process chains table", () => {
@@ -65,7 +61,7 @@ describe("Process chains table", () => {
     })
 
     beforeEach(() => {
-        cy.visit('/processchains/')
+        cy.visit("/processchains/")
         cy.wait(100)
     })
 
@@ -74,19 +70,27 @@ describe("Process chains table", () => {
             cy.get(".list-page").children().each(($el, index, $list) => {
                 if (index > 1 && index !== ($list.length - 1)) {
                     // $el is not working
-                    cy.get(`.list-page > :nth-child(${index}) > .list-item-left > .list-item-title`).should("be.visible").then(() => {
-                        cy.get(`.list-page > :nth-child(${index}) > .list-item-left > .list-item-title > a`).invoke('text').then((text) => {
-                            //cy.wrap($el).get('.list-item-left > .list-item-title > a').invoke("attr", "href").should("include", `/processchains/${text}/`)
+                    cy.wrap($el).find(".list-item-left > .list-item-title").should("be.visible").then(() => {
+                        cy.wrap($el).find(".list-item-left > .list-item-title > a").invoke("text").then((text) => {
+                            cy.wrap($el).find(".list-item-left > .list-item-title > a").invoke("attr", "href").should("include", `/processchains/${text}/`)
                         })
                     })
-                    cy.get(`.list-page > :nth-child(${index}) > .list-item-left > .list-item-subtitle`).should("be.visible")
-                    cy.get(`.list-page > :nth-child(${index}) > .list-item-right > .list-item-progress-box`).should("be.visible")
-                    cy.get(`.list-page > :nth-child(${index}) > .list-item-right > .list-item-progress-box > .feather`).should("be.visible")
-                    cy.get(`.list-page > :nth-child(${index}) > .list-item-right > .list-item-progress-box > div > strong`).should("be.visible")
+                    cy.wrap($el).find(".list-item-left > .list-item-subtitle").should("be.visible")
+                    cy.wrap($el).find(".list-item-right > .list-item-progress-box").should("be.visible")
+                    cy.wrap($el).find(".list-item-right > .list-item-progress-box > .feather").should("be.visible")
+                    cy.wrap($el).find(".list-item-right > .list-item-progress-box > div > strong").should("be.visible")
                 }
             })
         cy.get(".list-page > :last > .pagination > :last").click()
         }
+    })
+
+    it("triggers refresh dialog on second page", () => {
+        cy.visit("/processchains/?offset=10")
+        cy.get(".notification").should("not.exist")
+        cy.wait(1000)
+        cy.request("POST", "/workflows", payload)
+        cy.get(".notification").should("be.visible")
     })
 })
 
@@ -97,60 +101,49 @@ describe("Check Process Chains", () => {
         cy.request("POST", "/workflows", payload).then((response) => {
             res = response
             cy.visit(`/workflows/${response.body.id}/`)
-            cy.get('.list-item-progress-box > div > a').click()
-            cy.get('.list-page > :nth-child(3) > .list-item-left > .list-item-title').invoke('text').then((text) => {
+            cy.get(".list-item-progress-box > div > a").click()
+            cy.get(".list-page > :nth-child(3) > .list-item-left > .list-item-title").invoke("text").then((text) => {
                 processName = text
             })
-            cy.get('.list-page > :nth-child(3) > .list-item-left > .list-item-title').click()
+            cy.get(".list-page > :nth-child(3) > .list-item-left > .list-item-title").click()
 
         })
     })
     it("has correct Header", () => {
-        cy.get(".detail-page-title > h1").should("have.text", processName)
-        cy.get(".detail-page-title > h1").should("be.visible")
-        cy.get(".breadcrumbs > :nth-child(1) > a").should("have.text", "Workflows")
-        cy.get(".breadcrumbs > :nth-child(1) > a").should("be.visible")
-        cy.get(".breadcrumbs > :nth-child(1) > a").should("be.visible").invoke("attr", "href").should("include", "/workflows/")
-        cy.get(".breadcrumbs > :nth-child(2) >").should("have.text", res.body.id)
-        cy.get(".breadcrumbs > :nth-child(2) >").should("be.visible")
-        cy.get(".breadcrumbs > :nth-child(3) > a").should("have.text", "Process chains")
-        cy.get(".breadcrumbs > :nth-child(3) > a").should("be.visible")
-        cy.get(".breadcrumbs > :nth-child(3) > a").should("be.visible").invoke("attr", "href").should("include", `processchains/?submissionId=${res.body.id}`)
+        cy.get(".detail-page-title > h1").should("be.visible").should("have.text", processName)
+        cy.get(".breadcrumbs > :nth-child(1) > a").should("be.visible").should("have.text", "Workflows")
+        cy.get(".breadcrumbs > :nth-child(1) > a").invoke("attr", "href").should("include", "/workflows/")
+        cy.get(".breadcrumbs > :nth-child(2) >").should("be.visible").should("have.text", res.body.id)
+        cy.get(".breadcrumbs > :nth-child(3) > a").should("be.visible").should("have.text", "Process chains")
+        cy.get(".breadcrumbs > :nth-child(3) > a").invoke("attr", "href").should("include", `processchains/?submissionId=${res.body.id}`)
     })
 
     it("can access Start time", () => {
-        cy.get(".definition-list > :nth-child(1)").should("have.text", "Start time")
-        cy.get(".definition-list > :nth-child(1)").should("be.visible")
+        cy.get(".definition-list > :nth-child(1)").should("be.visible").should("have.text", "Start time")
     })
 
     it("can access actual Start time", () => {
-        cy.get(".definition-list > :nth-child(2)").should("have.text", "–")
-        cy.get(".definition-list > :nth-child(2)").should("be.visible")
+        cy.get(".definition-list > :nth-child(2)").should("be.visible").should("have.text", "–")
     })
 
     it("can access End time", () => {
-        cy.get(".definition-list > :nth-child(3)").should("have.text", "End time")
-        cy.get(".definition-list > :nth-child(3)").should("be.visible")
+        cy.get(".definition-list > :nth-child(3)").should("be.visible").should("have.text", "End time")
     })
 
     it("can access actual End time", () => {
-        cy.get(".definition-list > :nth-child(4)").should("have.text", "–")
-        cy.get(".definition-list > :nth-child(4)").should("be.visible")
+        cy.get(".definition-list > :nth-child(4)").should("be.visible").should("have.text", "–")
     })
 
     it("can access Time elapsed", () => {
-        cy.get(".definition-list > :nth-child(5)").should("have.text", "Time elapsed")
-        cy.get(".definition-list > :nth-child(5)").should("be.visible")
+        cy.get(".definition-list > :nth-child(5)").should("be.visible").should("have.text", "Time elapsed")
     })
 
     it("can access actual Time elapsed", () => {
-        cy.get(".definition-list > :nth-child(6)").should("have.text", "–")
-        cy.get(".definition-list > :nth-child(6)").should("be.visible")
+        cy.get(".definition-list > :nth-child(6)").should("be.visible").should("have.text", "–")
     })
 
     it("can access Required capabilities", () => {
-        cy.get(".definition-list > :nth-child(7)").should("have.text", "Required capabilities")
-        cy.get(".definition-list > :nth-child(7)").should("be.visible")
+        cy.get(".definition-list > :nth-child(7)").should("be.visible").should("have.text", "Required capabilities")
     })
 
     it("can access actual Required capabilities", () => {
@@ -167,8 +160,7 @@ describe("Check Process Chains", () => {
     })
 
     it("can access Source", () => {
-        cy.get("h2").should("have.text", "Executables")
-        cy.get("h2").should("be.visible")
+        cy.get("h2").should("be.visible").should("have.text", "Executables")
     })
 
     it("can access Source Tab YAML", () => {
@@ -214,11 +206,11 @@ describe("Workflow Item Page Cancelling", () => {
         cy.get("li").click()
         cy.get(".btn-error").should("have.text", "Cancel it now")
         cy.get(".btn-error").click()
-        cy.get('.list-item-progress-box > div > a').click()
+        cy.get(".list-item-progress-box > div > a").click()
         cy.wait(1000)
         cy.get(".list-page").children().each(($el, index, $list) => {
             if (index > 1 && index !== ($list.length - 1)) {
-                cy.wrap($el).get('.list-item-right > .list-item-progress-box > div > strong').should('have.text', 'Cancelled')
+                cy.wrap($el).get(".list-item-right > .list-item-progress-box > div > strong").should("have.text", "Cancelled")
             }
         })
     })
@@ -227,14 +219,14 @@ describe("Workflow Item Page Cancelling", () => {
         cy.wait(1000)
         cy.get(".list-page").children().each(($el, index, $list) => {
             if (index > 1 && index !== ($list.length - 1)) {
-                cy.wrap($el).get('.list-item-left > .list-item-title').should("be.visible").then(() => {
-                    cy.wrap($el).get('.list-item-left > .list-item-title > a').click()
-                    cy.get('.list-item-progress-box > div > strong').should('have.text', 'Cancelled')
+                cy.wrap($el).get(".list-item-left > .list-item-title").should("be.visible").then(() => {
+                    cy.wrap($el).get(".list-item-left > .list-item-title > a").click()
+                    cy.get(".list-item-progress-box > div > strong").should("have.text", "Cancelled")
                 })
             }
         })
     })
-    
+
 })
 
 describe("Check Times elapsed", () => {
@@ -242,26 +234,16 @@ describe("Check Times elapsed", () => {
         cy.request("POST", "/workflows", payload).then((response) => {
             cy.visit(`/workflows/${response.body.id}/`)
             cy.wait(50)
+            cy.get(".list-item-progress-box > div > a").click()
+            cy.get(".list-item-title").click()
         })
     })
 
-    it("time elapsed features is working", async () => {
-        while (true) {
-            let running = true
-            await cy.get(".list-item-progress-box > div > strong").contains("Running").then(() => {
-                cy.wait(1000)
-                cy.log('Login successful')
-                running = true
-            })
-
-        }
-        // cy.get(".definition-list > :nth-child(6)").should("have.text", "1s")
-        // cy.wait(1000)
-        // cy.get(".definition-list > :nth-child(6)").should("have.text", "2s")
-        // cy.wait(1000)
-        // cy.get(".definition-list > :nth-child(6)").should("have.text", "3s")
-        // cy.wait(1000)
-        // cy.get(".definition-list > :nth-child(6)").should("have.text", "4s")
-        // cy.wait(1000)
+    it.only("time elapsed features is working", () => {
+        //unfortunately there is no way to conditionally test not settled dom elements
+        //therefore, it is not possible to test the incrementing time feature
+        //i recommend to test it via unit test on the backend
+        cy.get(".definition-list > :nth-child(6)").should("be.visible")
     })
 })
+
