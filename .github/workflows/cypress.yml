@@ -43,10 +43,8 @@ jobs:
       #   run: |
       #     sleep 20
       #     docker logs "${{job.services.steep.id}}"
-      # - name: Config MongoDB
-      #   run: mongoimport --collection=userColl --db=appDB --file=userColl.json
       - name: Add data to VMS collection        
-        run: mongoimport --collection=vms --db=steep --file=./ui/cypress/integration/steep_vms.json
+        run: yum install mongodb-org-tools && mongoimport --collection=vms --db=steep --file=./ui/cypress/integration/steep_vms.json
       - name: Cypress run
         uses: cypress-io/github-action@v2
         with:
