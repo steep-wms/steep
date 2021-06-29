@@ -46,7 +46,7 @@ jobs:
       # - name: Config MongoDB
       #   run: mongoimport --collection=userColl --db=appDB --file=userColl.json
       - name: Add data to userColl collection        
-         run: mongoimport --collection=vms --db=steep --file=../ui/cypress/integration/steep_vms.json
+        run: mongoimport --collection=vms --db=steep --file=../ui/cypress/integration/steep_vms.json
       - name: Cypress run
         uses: cypress-io/github-action@v2
         with:
