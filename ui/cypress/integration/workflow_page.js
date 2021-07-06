@@ -82,16 +82,17 @@ describe("Workflow Page Cancelling", () => {
         })
     })
 
-    it.only("Cancels an Exisiting Workflow", () => {
+    it("Cancels an Exisiting Workflow", () => {
         cy.visit(`/workflows/${res.body.id}/`)
         cy.contains(res.body.id).click()
         cy.get(".dropdown-btn").click()
         cy.get("li").click()
         cy.get(".btn-error").click()
         cy.visit("/workflows")
-        cy.get(".list-page").contains(res.body.id).parentsUntil(".list-page").contains("Cancelling")
-        cy.get(".list-page").contains(res.body.id).parentsUntil(".list-page").contains("1 of 1 completed")
-        cy.get(".list-page").contains(res.body.id).parentsUntil(".list-page").contains("Cancelled")
+        cy.get(".list-page").contains(res.body.id).parentsUntil(".list-page").find('.list-item-right > .list-item-progress-box > div > strong').then(($el) => {
+            cy.wrap($el).should('have.text', "Cancelling")
+            cy.wrap($el).should('have.text', "Cancelled")
+        })
     })
 })
 
