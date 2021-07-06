@@ -20,7 +20,7 @@ jobs:
         #- ${{github.workspace}}/ui/cypress/integration/steep_vms.json
         #- my_docker_volume:/volume_mount
         #- /ui/cypress/integration/steep_vms.json
-        - ${{github.workspace}}/ui/cypress/integration/steep_vms.json:/data
+        - ${{github.workspace}}/ui/cypress/integration/steep_vms.json":"/steep_vms.json"
 
       steep:
         image: steep/steep:latest
@@ -35,7 +35,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Add data to VMS collection        
-        run: mongoimport --collection=vms --db=steep --file=/data/steep_vms.json
+        run: mongoimport --collection=vms --db=steep --file=/steep_vms.json
       - name: Cypress run
         uses: cypress-io/github-action@v2
         with:
