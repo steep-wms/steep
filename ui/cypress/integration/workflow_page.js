@@ -116,7 +116,7 @@ describe("has Table", () => {
             cy.request("PUT", `/workflows/${ob.body.id}`, payload_cancelled)
         })
     })
-    
+
     it("shows all items", () => {
         for (let i = 2; i <= 11; i++) {
             cy.get(`.list-page > :nth-child(${i}) > .list-item-left > .list-item-title > a`, { timeout: 10000 }).should("have.text", res[i - 2].body.id)

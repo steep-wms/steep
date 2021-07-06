@@ -22,13 +22,11 @@ const payload_cancelled = {
 
 describe("Workflow > Process", () => {
     let res
-    let processes
     before(() => {
         cy.request("POST", "/workflows", payload).then((response) => {
             res = response
             cy.visit(`/workflows/${response.body.id}/`)
-            cy.get(".list-item-progress-box > div > a").invoke("text").then((text) => {
-                processes = parseInt(text.substring(text.search("of") + 2, text.search("completed") - 1))
+            cy.get(".list-item-progress-box > div > a").invoke("text").then(() => {
                 cy.get(".list-item-progress-box > div > a").click()
             })
         })
@@ -247,7 +245,7 @@ describe("Workflow Item Page Cancelling", () => {
 })
 
 describe("Check Times elapsed", () => {
-    var res
+    let res
     before(() => {
         cy.request("POST", "/workflows", payload).then((response) => {
             cy.visit(`/workflows/${response.body.id}/`)

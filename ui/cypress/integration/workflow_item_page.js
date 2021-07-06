@@ -125,7 +125,7 @@ describe("Workflow Item Page Successfully Done", () => {
 })
 
 describe("Resubmission", ()=> {
-    var res
+    let res
     before(() => {
         cy.request("POST", "/workflows", payload).then((response) => {
             cy.visit(`/workflows/${response.body.id}/`)
@@ -156,7 +156,7 @@ describe("Resubmission", ()=> {
 })
 
 describe("Workflow Item Page Cancelling", () => {
-    var res
+    let res
     before(() => {
         cy.request("POST", "/workflows", payload).then((response) => {
             cy.visit(`/workflows/${response.body.id}/`)
@@ -179,7 +179,7 @@ describe("Workflow Item Page Cancelling", () => {
 })
 
 describe("Check Times elapsed", () => {
-    var res
+    let res
     before(() => {
         cy.request("POST", "/workflows", payload).then((response) => {
             cy.visit(`/workflows/${response.body.id}/`)
