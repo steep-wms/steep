@@ -46,19 +46,19 @@ let sidebar = ".sidebar > nav"
             })
 
             it("can access Fraunhofer", () => {
-                cy.get(".footer-content").find(".logo").children("a").invoke("attr", "href").should("eq", "https://igd.fraunhofer.de")
+                cy.get(".footer-content").find(".logo").children("a").should("be.visible").invoke("attr", "href").should("eq", "https://igd.fraunhofer.de")
             })
 
             it("can access Home Page", () => {
-                cy.get(".footer-content").find("[href=\"https://steep-wms.github.io/\"]").invoke("attr", "href").should("eq", "https://steep-wms.github.io/")
+                cy.get(".footer-content").find("[href=\"https://steep-wms.github.io/\"]").should("be.visible").invoke("attr", "href").should("eq", "https://steep-wms.github.io/")
             })
 
             it("can access Documentation", () => {
-                cy.get(".footer-content").find("[href=\"https://steep-wms.github.io/#documentation\"]").invoke("attr", "href").should("eq", "https://steep-wms.github.io/#documentation")
+                cy.get(".footer-content").find("[href=\"https://steep-wms.github.io/#documentation\"]").should("be.visible").invoke("attr", "href").should("eq", "https://steep-wms.github.io/#documentation")
             })
 
             it("can access GitHub from", () => {
-                cy.get(".footer-content").find("[href=\"https://github.com/steep-wms/steep\"]").invoke("attr", "href").should("eq", "https://github.com/steep-wms/steep")
+                cy.get(".footer-content").find("[href=\"https://github.com/steep-wms/steep\"]").should("be.visible").invoke("attr", "href").should("eq", "https://github.com/steep-wms/steep")
             })
         })
     })
