@@ -46,8 +46,8 @@ describe("Workflow > Process", () => {
             }
         })
     })
-
 })
+
 describe("Process chains table", () => {
     let elements = 20
     let res = []
