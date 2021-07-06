@@ -35,8 +35,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Add data to VMS collection        
-        run: mongoimport --collection=vms --db=steep --file=/steep_vms.json
-        run: ls
+        run: mongoimport --collection=vms --db=steep --file=/steep_vms.json && ls
       - name: Cypress run
         uses: cypress-io/github-action@v2
         with:
