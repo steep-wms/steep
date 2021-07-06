@@ -17,7 +17,7 @@ jobs:
         env:
           MONGODB_HOST: localhost
         volumes:
-        - ${{GITHUB_WORKSPACE}}/ui/cypress/integration/steep_vms.json
+        - ${{github.workspace}}/ui/cypress/integration/steep_vms.json
         # - my_docker_volume:/volume_mount
         # - /ui/cypress/integration/steep_vms.json
         # - ${{GITHUB_WORKSPACE}}:/destination/directory
