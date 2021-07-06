@@ -91,7 +91,7 @@ describe("Workflow Page Cancelling", () => {
         cy.visit("/workflows")
         cy.get(".list-page").contains(res.body.id).parentsUntil(".list-page").contains("Cancelling")
         cy.get(".list-page").contains(res.body.id).parentsUntil(".list-page").contains("1 of 1 completed")
-        cy.get(".list-page").contains(res.body.id).parentsUntil(".list-page").contains("Cancelled", { timeout: 60 * 1000 })
+        cy.get(".list-page").contains(res.body.id).parentsUntil(".list-page").contains("Cancelled")
     })
 })
 
