@@ -136,7 +136,7 @@ describe("Check Process Chains", () => {
     })
 
     it("can access actual Start time", () => {
-        cy.get(".definition-list > :nth-child(2)").should("be.visible").should("have.text", "–")
+        cy.get(".definition-list > :nth-child(2)").should("be.visible").should("have.not.text", "–")
     })
 
     it("can access End time", () => {
@@ -152,7 +152,7 @@ describe("Check Process Chains", () => {
     })
 
     it("can access actual Time elapsed", () => {
-        cy.get(".definition-list > :nth-child(6)").should("be.visible").should("have.text", "–")
+        cy.get(".definition-list > :nth-child(6)").should("be.visible").should("have.not.text", "–")
     })
 
     it("can access Required capabilities", () => {
@@ -247,17 +247,19 @@ describe("Workflow Item Page Cancelling", () => {
 })
 
 describe("Check Times elapsed", () => {
+    var res
     before(() => {
         cy.request("POST", "/workflows", payload).then((response) => {
             cy.visit(`/workflows/${response.body.id}/`)
             cy.wait(50)
             cy.get(".list-item-progress-box > div > a").click()
             cy.get(".list-item-title").click()
+            res = response
         })
     })
 
     after(() => {
-        cy.request("PUT", `/workflows/${response.body.id}`, payload_cancelled)
+        cy.request("PUT", `/workflows/${res.body.id}`, payload_cancelled)
     })
 
     it("time elapsed features is working", () => {
