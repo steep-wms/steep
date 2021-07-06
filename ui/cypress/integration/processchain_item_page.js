@@ -16,6 +16,10 @@ const payload = {
     }]
 }
 
+const payload_cancelled = {
+    "status": "CANCELLED"
+}
+
 describe("Workflow > Process", () => {
     let res
     let processes
@@ -65,8 +69,13 @@ describe("Process chains table", () => {
         cy.wait(100)
     })
 
+    after(() => {
+        res.forEach((ob) => {
+            cy.request("PUT", `/workflows/${ob.body.id}`, payload_cancelled)
+        })
+    })
     it("Scheduled processes are accessible via process chains page", () => {
-        for(let i = 0; i < elements/10; i++){
+        for (let i = 0; i < elements / 10; i++) {
             cy.get(".list-page").children().each(($el, index, $list) => {
                 if (index > 1 && index !== ($list.length - 1)) {
                     // $el is not working
@@ -81,7 +90,7 @@ describe("Process chains table", () => {
                     cy.wrap($el).find(".list-item-right > .list-item-progress-box > div > strong").should("be.visible")
                 }
             })
-        cy.get(".list-page > :last > .pagination > :last").click()
+            cy.get(".list-page > :last > .pagination > :last").click()
         }
     })
 
@@ -108,6 +117,10 @@ describe("Check Process Chains", () => {
             cy.get(".list-page > :nth-child(3) > .list-item-left > .list-item-title").click()
 
         })
+    })
+
+    after(() => {
+        cy.request("PUT", `/workflows/${res.body.id}`, payload_cancelled)
     })
     it("has correct Header", () => {
         cy.get(".detail-page-title > h1").should("be.visible").should("have.text", processName)
@@ -179,6 +192,10 @@ describe("Workflow Item Page Successfully Done", () => {
         })
     })
 
+    after(() => {
+        cy.request("PUT", `/workflows/${res.body.id}`, payload_cancelled)
+    })
+
     it("has correct title", () => {
         cy.get(".detail-page-title > h1").contains(res.body.id)
     })
@@ -237,6 +254,10 @@ describe("Check Times elapsed", () => {
             cy.get(".list-item-progress-box > div > a").click()
             cy.get(".list-item-title").click()
         })
+    })
+
+    after(() => {
+        cy.request("PUT", `/workflows/${response.body.id}`, payload_cancelled)
     })
 
     it("time elapsed features is working", () => {

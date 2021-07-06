@@ -18,6 +18,10 @@ const payload = {
     }]
 }
 
+const payload_cancelled = {
+    "status": "CANCELLED"
+}
+
 describe("Workflow Item Page Attributes are not hidden", () => {
     let res
     before(() => {
@@ -25,6 +29,10 @@ describe("Workflow Item Page Attributes are not hidden", () => {
             res = response
             cy.visit(`/workflows/${response.body.id}/`)
         })
+    })
+
+    after(() => {
+        cy.request("PUT", `/workflows/${res.body.id}`, payload_cancelled)
     })
 
     it("has correct Header", () => {
@@ -102,6 +110,10 @@ describe("Workflow Item Page Successfully Done", () => {
         })
     })
 
+    after(() => {
+        cy.request("PUT", `/workflows/${res.body.id}`, payload_cancelled)
+    })
+
     it("has correct title", () => {
         cy.get(".detail-page-title > h1").contains(res.body.id)
     })
@@ -113,11 +125,18 @@ describe("Workflow Item Page Successfully Done", () => {
 })
 
 describe("Resubmission", ()=> {
+    var res
     before(() => {
         cy.request("POST", "/workflows", payload).then((response) => {
             cy.visit(`/workflows/${response.body.id}/`)
+            res = response
         })
     })
+
+    after(() => {
+        cy.request("PUT", `/workflows/${res.body.id}`, payload_cancelled)
+    })
+
     it("can resubmit", () => {
         cy.get(".list-item-progress-box > div > strong", { timeout: (timeoutLength + timeoutOffset) * 1000 }).should("have.text", "Success")
         cy.get(".dropdown-btn").click()
@@ -137,10 +156,16 @@ describe("Resubmission", ()=> {
 })
 
 describe("Workflow Item Page Cancelling", () => {
+    var res
     before(() => {
         cy.request("POST", "/workflows", payload).then((response) => {
             cy.visit(`/workflows/${response.body.id}/`)
+            res = response
         })
+    })
+
+    after(() => {
+        cy.request("PUT", `/workflows/${res.body.id}`, payload_cancelled)
     })
 
     it("cancels an exisiting workflow", () => {
@@ -154,11 +179,17 @@ describe("Workflow Item Page Cancelling", () => {
 })
 
 describe("Check Times elapsed", () => {
+    var res
     before(() => {
         cy.request("POST", "/workflows", payload).then((response) => {
             cy.visit(`/workflows/${response.body.id}/`)
             cy.wait(50)
+            res = response
         })
+    })
+
+    after(() => {
+        cy.request("PUT", `/workflows/${res.body.id}`, payload_cancelled)
     })
 
     it("time elapsed features is working", () => {

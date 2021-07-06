@@ -16,6 +16,10 @@ const payload = {
     }]
 }
 
+const payload_cancelled = {
+    "status": "CANCELLED"
+}
+
 describe("Generall UI", () => {
     before(() => {
         cy.visit("/workflows")
@@ -52,6 +56,10 @@ describe("Workflow Page Successfully Done", () => {
             res = response
             cy.visit("/workflows")
         })
+    })
+
+    after(() => {
+        cy.request("PUT", `/workflows/${res.body.id}`, payload_cancelled)
     })
 
     it("has Listitem with correct name", () => {
@@ -103,6 +111,12 @@ describe("has Table", () => {
         cy.visit("workflows")
     })
 
+    after(() => {
+        res.forEach((ob) => {
+            cy.request("PUT", `/workflows/${ob.body.id}`, payload_cancelled)
+        })
+    })
+    
     it("shows all items", () => {
         for (let i = 2; i <= 11; i++) {
             cy.get(`.list-page > :nth-child(${i}) > .list-item-left > .list-item-title > a`, { timeout: 10000 }).should("have.text", res[i - 2].body.id)
