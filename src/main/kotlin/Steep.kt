@@ -7,7 +7,6 @@ import agent.RemoteAgentRegistry
 import db.SubmissionRegistry
 import helper.JsonUtils
 import helper.Shell
-import helper.withRetry
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.Message
 import io.vertx.core.impl.NoStackTraceThrowable
@@ -29,7 +28,6 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.processchain.ProcessChain
-import model.retry.RetryPolicy
 import org.slf4j.LoggerFactory
 import java.nio.file.NoSuchFileException
 import java.nio.file.Paths
@@ -53,6 +51,7 @@ class Steep : CoroutineVerticle() {
   private val startTime = Instant.now()
   private var stateChangedTime = startTime
 
+  private lateinit var remoteAgentRegistry: RemoteAgentRegistry
   private lateinit var capabilities: Set<String>
   private var busy: BusyMarker? = null
   private lateinit var busyTimeout: Duration
@@ -92,7 +91,8 @@ class Steep : CoroutineVerticle() {
     // register remote agent
     capabilities = config.getJsonArray(ConfigConstants.AGENT_CAPABILTIIES,
         JsonArray()).map { it as String }.toSet()
-    RemoteAgentRegistry(vertx).register(agentId)
+    remoteAgentRegistry = RemoteAgentRegistry(vertx)
+    remoteAgentRegistry.register(agentId)
 
     // register consumer to provide process chain logs if we are the primary agent
     if (isPrimary) {
@@ -111,6 +111,11 @@ class Steep : CoroutineVerticle() {
       log.info("Remote agent `${agentId}' with capabilities " +
           "`$capabilities' successfully deployed")
     }
+  }
+
+  override suspend fun stop() {
+    log.info("Stopping remote agent $agentId ...")
+    remoteAgentRegistry.deregister(agentId)
   }
 
   /**
@@ -276,19 +281,15 @@ class Steep : CoroutineVerticle() {
 
       try {
         // We were able to open the file. Respond immediately and let the
-        // client know that we will send the file (use retry policy because
-        // the client might not be ready for our answer yet, i.e. the consumer
-        // has perhaps not been registered yet)
-        withRetry(RetryPolicy(5, 100, 2)) {
-          vertx.eventBus().requestAwait<Unit>(replyAddress, json {
-            obj(
-                "size" to size,
-                "start" to start,
-                "end" to (end - 1),
-                "length" to length
-            )
-          })
-        }
+        // client know that we will send the file
+        vertx.eventBus().requestAwait<Unit>(replyAddress, json {
+          obj(
+              "size" to size,
+              "start" to start,
+              "end" to (end - 1),
+              "length" to length
+          )
+        })
 
         if (!checkOnly) {
           // send the file to the reply address

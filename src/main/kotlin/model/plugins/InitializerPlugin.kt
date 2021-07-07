@@ -19,12 +19,13 @@ import kotlin.reflect.full.callSuspend
 data class InitializerPlugin(
     override val name: String,
     override val scriptFile: String,
+    override val dependsOn: List<String> = emptyList(),
 
     /**
      * The compiled plugin
      */
     override val compiledFunction: KFunction<Unit> = throwPluginNeedsCompile()
-) : Plugin
+) : DependentPlugin
 
 suspend fun InitializerPlugin.call(vertx: Vertx) {
   return if (this.compiledFunction.isSuspend) {

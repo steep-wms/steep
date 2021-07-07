@@ -98,6 +98,19 @@ class PluginRegistryTest {
   }
 
   /**
+   * Test if [PluginRegistry.getInitializers] works correctly if the plugins
+   * have dependencies
+   */
+  @Test
+  fun getInitializersWithDependencies() {
+    val init1 = InitializerPlugin("a", "file.kts", dependsOn = listOf("c"))
+    val init2 = InitializerPlugin("b", "file2.kts")
+    val init3 = InitializerPlugin("c", "file3.kts")
+    val pr = PluginRegistry(listOf(init1, init2, init3))
+    assertThat(pr.getInitializers()).isEqualTo(listOf(init2, init3, init1))
+  }
+
+  /**
    * Test if a simple output adapter can be compiled and executed
    */
   @Test
@@ -179,6 +192,19 @@ class PluginRegistryTest {
     val pr = PluginRegistry(expected)
     assertThat(pr.getProcessChainAdapters()).isEqualTo(expected)
     assertThat(pr.getProcessChainAdapters()).isNotSameAs(expected)
+  }
+
+  /**
+   * Test if [PluginRegistry.getProcessChainAdapters] returns plugins with
+   * dependencies in the correct order
+   */
+  @Test
+  fun getProcessChainAdaptersWithDependencies() {
+    val adapter1 = ProcessChainAdapterPlugin("a", "file.kts", dependsOn = listOf("c"))
+    val adapter2 = ProcessChainAdapterPlugin("b", "file2.kts")
+    val adapter3 = ProcessChainAdapterPlugin("c", "file3.kts")
+    val pr = PluginRegistry(listOf(adapter1, adapter2, adapter3))
+    assertThat(pr.getProcessChainAdapters()).isEqualTo(listOf(adapter2, adapter3, adapter1))
   }
 
   /**

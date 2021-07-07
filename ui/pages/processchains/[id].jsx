@@ -32,11 +32,34 @@ function ProcessChainDetails({ id }) {
   const [logAvailable, setLogAvailable] = useState(false)
   const [logCollapsed, setLogCollapsed] = useState()
   const [logError, setLogError] = useState()
+  const [waitForLog, setWaitForLog] = useState(false)
+
+  useEffect(() => {
+    if (!id) {
+      return
+    }
+
+    fetcher(`${process.env.baseUrl}/processchains/${id}`)
+      .then(pc => updateProcessChains({ action: "set", items: [pc] }))
+      .catch(err => {
+        console.log(err)
+        setError(<Alert error>Could not load process chain</Alert>)
+      })
+
+    // check if a log file is available
+    fetcher(`${process.env.baseUrl}/logs/processchains/${id}`, false, {
+      method: "HEAD"
+    }).then(() => setLogAvailable(true))
+      .catch(() => {
+        setLogAvailable(false)
+        setWaitForLog(true)
+      })
+  }, [id, updateProcessChains])
 
   useEffect(() => {
     let processChainLogConsumerAddress = LOGS_PROCESSCHAINS_PREFIX + id
 
-    function waitForLog() {
+    function doWaitForLog() {
       // register a handler that listens to log events, enables the log
       // section, and then unregisters itself
       if (eventBus !== undefined) {
@@ -55,28 +78,14 @@ function ProcessChainDetails({ id }) {
       }
     }
 
-    if (id) {
-      fetcher(`${process.env.baseUrl}/processchains/${id}`)
-        .then(pc => updateProcessChains({ action: "set", items: [pc] }))
-        .catch(err => {
-          console.log(err)
-          setError(<Alert error>Could not load process chain</Alert>)
-        })
-
-      // check if a log file is available
-      fetcher(`${process.env.baseUrl}/logs/processchains/${id}`, false, {
-        method: "HEAD"
-      }).then(() => setLogAvailable(true))
-        .catch(() => {
-          setLogAvailable(false)
-          waitForLog()
-        })
+    if (waitForLog) {
+      doWaitForLog()
     }
 
     return () => {
       unregisterLogConsumer()
     }
-  }, [id, updateProcessChains, eventBus])
+  }, [id, eventBus, waitForLog])
 
   function onCancel() {
     setCancelModalOpen(true)

@@ -13,10 +13,12 @@ import model.plugins.RuntimePlugin
  */
 class PluginRegistry(compiledPlugins: List<Plugin>) {
   private val initializers = compiledPlugins.filterIsInstance<InitializerPlugin>()
+      .toResolved()
   private val outputAdapters = compiledPlugins.filterIsInstance<OutputAdapterPlugin>()
       .associateBy { it.supportedDataType }
   private val processChainAdapters = compiledPlugins
       .filterIsInstance<ProcessChainAdapterPlugin>()
+      .toResolved()
   private val progressEstimators = compiledPlugins.filterIsInstance<ProgressEstimatorPlugin>()
       .flatMap { p -> p.supportedServiceIds.map { it to p } }
       .toMap()

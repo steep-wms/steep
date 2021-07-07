@@ -164,7 +164,7 @@ suspend fun main() {
 
   // start Steep's main verticle
   val deploymentOptions = deploymentOptionsOf(conf)
-  try {
+  val mainVerticleId = try {
     vertx.deployVerticleAwait(Main::class.qualifiedName!!, deploymentOptions)
   } catch (e: Exception) {
     e.printStackTrace()
@@ -173,11 +173,22 @@ suspend fun main() {
 
   // enable graceful shutdown
   Runtime.getRuntime().addShutdownHook(Thread {
-    val l = CountDownLatch(1)
-    vertx.close {
-      l.countDown()
+    // gracefully undeploy all verticles
+    val l1 = CountDownLatch(1)
+    vertx.undeploy(mainVerticleId) {
+      l1.countDown()
     }
-    l.await()
+    l1.await()
+
+    // gracefully wait for any remaining Hazelcast message to be sent
+    Thread.sleep(1000)
+
+    // shutdown Vert.x cluster
+    val l2 = CountDownLatch(1)
+    vertx.close {
+      l2.countDown()
+    }
+    l2.await()
   })
 }
 

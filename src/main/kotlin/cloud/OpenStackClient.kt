@@ -198,6 +198,11 @@ class OpenStackClient(endpoint: String, username: String, password: String,
 
     val response = blocking { os.blockStorage().volumes().delete(id) }
     if (!response.isSuccess) {
+      if (response.fault != null && response.fault.startsWith("VolumeNotFound")) {
+        // ignore error
+        log.info("Block device does not exist")
+        return
+      }
       log.error("Could not delete block device: " + response.fault)
       throw IllegalStateException(response.fault)
     }
