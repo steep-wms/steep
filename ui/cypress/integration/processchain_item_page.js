@@ -76,7 +76,6 @@ describe("Process chains table", () => {
         for (let i = 0; i < elements / 10; i++) {
             cy.get(".list-page").children().each(($el, index, $list) => {
                 if (index > 1 && index !== ($list.length - 1)) {
-                    // $el is not working
                     cy.wrap($el).find(".list-item-left > .list-item-title").should("be.visible").then(() => {
                         cy.wrap($el).find(".list-item-left > .list-item-title > a").invoke("text").then((text) => {
                             cy.wrap($el).find(".list-item-left > .list-item-title > a").invoke("attr", "href").should("include", `/processchains/${text}/`)
