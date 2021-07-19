@@ -44,6 +44,10 @@ class SetupSelectorTest {
         500000, maxVMs = 5, maxCreateConcurrent = 5, providedCapabilities = listOf(RQ1, RQ2))
     private val SETUP09 = Setup("setup9", "myFlavor", "myImage", "az-01",
         500000, minVMs = 2, maxVMs = 5, maxCreateConcurrent = 5, providedCapabilities = listOf(RQ2))
+    private val SETUP10 = Setup("setup10", "myFlavor", "myImage", "az-01",
+        500000, maxVMs = 100, maxCreateConcurrent = 3, providedCapabilities = listOf(RQ1))
+    private val SETUP11 = Setup("setup11", "myFlavor", "myImage", "az-01",
+        500000, maxVMs = 100, maxCreateConcurrent = 3, providedCapabilities = listOf(RQ1))
   }
 
   /**
@@ -422,6 +426,39 @@ class SetupSelectorTest {
             .containsExactly(SETUP07, SETUP08)
       }
 
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if the selector still works correctly even if there are too many
+   * VMs starting at the moment (the number of VMs starting is greater than
+   * `maxCreateConcurrent` for whatever reason)
+   */
+  @Test
+  fun selectWithTooManyStarting(vertx: Vertx, ctx: VertxTestContext) {
+    val vmRegistry = mockk<VMRegistry>()
+    val selector = SetupSelector(vmRegistry, listOf(
+        PoolAgentParams(listOf(RQ1), min = 0, max = 7)))
+
+    coEvery { vmRegistry.countNonTerminatedVMsBySetup(SETUP10.id) } returns 5
+    coEvery { vmRegistry.countNonTerminatedVMsBySetup(SETUP11.id) } returns 1
+    coEvery { vmRegistry.countStartingVMsBySetup(SETUP10.id) } returns 5
+    coEvery { vmRegistry.countStartingVMsBySetup(SETUP11.id) } returns 1
+    coEvery { vmRegistry.findNonTerminatedVMs() } returns listOf(
+        VM(setup = SETUP10), VM(setup = SETUP10), VM(setup = SETUP10),
+        VM(setup = SETUP10), VM(setup = SETUP10), VM(setup = SETUP11))
+
+    val setups = listOf(SETUP10, SETUP11)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        // 6 VMs are already running and the pool agent params define a
+        // maximum of 7 so the selector should only return one entry!
+        assertThat(selector.select(100, listOf(RQ1), setups))
+            .containsExactly(SETUP11)
+            .hasSize(1)
+      }
       ctx.completeNow()
     }
   }

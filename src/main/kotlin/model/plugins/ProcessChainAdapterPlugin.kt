@@ -20,12 +20,13 @@ import kotlin.reflect.full.callSuspend
 data class ProcessChainAdapterPlugin(
     override val name: String,
     override val scriptFile: String,
+    override val dependsOn: List<String> = emptyList(),
 
     /**
      * The compiled plugin
      */
     override val compiledFunction: KFunction<List<ProcessChain>> = throwPluginNeedsCompile()
-) : Plugin
+) : DependentPlugin
 
 suspend fun ProcessChainAdapterPlugin.call(processChains: List<ProcessChain>,
     vertx: Vertx): List<ProcessChain> {

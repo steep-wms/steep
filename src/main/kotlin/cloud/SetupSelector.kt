@@ -121,6 +121,13 @@ class SetupSelector(private val vmRegistry: VMRegistry,
       // limit the number of VMs to create concurrently
       toCreate = toCreate.coerceAtMost(setup.maxCreateConcurrent.toLong() - starting[i])
 
+      // Make sure toCreate is not negative! This can happen if there are more
+      // VMs starting than configured by maxCreateConcurrent (for whatever
+      // reason). A negative number leads to a wrong count in nCreatedPerSetup,
+      // which in turn may make countVMsWithCapabilities return incorrect
+      // results, which in turn may lead to too many VMs being created
+      toCreate = toCreate.coerceAtLeast(0)
+
       // add setup to result list and repeat it as many times as possible
       for (j in 0 until toCreate) {
         result.add(setup)

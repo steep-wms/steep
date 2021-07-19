@@ -55,6 +55,7 @@ import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.ReplyException
 import io.vertx.core.eventbus.ReplyFailure
 import io.vertx.core.http.HttpMethod
+import io.vertx.core.http.HttpServer
 import io.vertx.core.http.HttpServerOptions
 import io.vertx.core.http.HttpServerResponse
 import io.vertx.core.http.impl.HttpUtils
@@ -72,6 +73,7 @@ import io.vertx.ext.web.handler.sockjs.SockJSBridgeOptions
 import io.vertx.ext.web.handler.sockjs.SockJSHandler
 import io.vertx.ext.web.impl.ParsableMIMEValue
 import io.vertx.kotlin.core.eventbus.requestAwait
+import io.vertx.kotlin.core.http.closeAwait
 import io.vertx.kotlin.core.http.listenAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.jsonArrayOf
@@ -112,6 +114,7 @@ class HttpEndpoint : CoroutineVerticle() {
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var vmRegistry: VMRegistry
   private lateinit var basePath: String
+  private lateinit var server: HttpServer
 
   override suspend fun start() {
     metadataRegistry = MetadataRegistryFactory.create(vertx)
@@ -137,7 +140,7 @@ class HttpEndpoint : CoroutineVerticle() {
 
     val options = HttpServerOptions()
         .setCompressionSupported(true)
-    val server = vertx.createHttpServer(options)
+    server = vertx.createHttpServer(options)
     val router = Router.router(vertx)
 
     val bodyHandler = BodyHandler.create()
@@ -328,6 +331,8 @@ class HttpEndpoint : CoroutineVerticle() {
   }
 
   override suspend fun stop() {
+    log.info("Stopping HTTP endpoint ...")
+    server.closeAwait()
     submissionRegistry.close()
   }
 
@@ -607,8 +612,23 @@ class HttpEndpoint : CoroutineVerticle() {
               REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
           val replyAddress = "$address.reply.${UniqueID.next()}"
 
+          // register consumer to receive responses from agent
           val consumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
+          val consumerRegisteredPromise = Promise.promise<Unit>()
+          // completionHandler must be set before calling consumer.toChannel()
+          consumer.completionHandler { ar ->
+            if (ar.succeeded()) {
+              consumerRegisteredPromise.complete()
+            } else {
+              consumerRegisteredPromise.fail(ar.cause())
+            }
+          }
           val channel = consumer.toChannel(vertx)
+
+          // Important! Wait for consumer registration to be propagated across
+          // cluster before sending any request. Otherwise, responses might
+          // be sent too early!
+          consumerRegisteredPromise.future().await()
 
           // create periodic timer that cancels the channel on timeout
           val timeoutTimerId = vertx.setPeriodic(1000L * 30) { timerId ->
