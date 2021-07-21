@@ -6,9 +6,8 @@
   "scripts": {
     "dev": "next",
     "build": "npm run lint && rm -rf .next out && next build && next export -o out/ui",
-    "lint": "eslint --ext js,jsx components pages cypress",
-    "cypress:open": "cypress open",
-    "start": "cd .. && ./gradlew run"
+    "lint": "eslint --ext js,jsx components cypress pages",
+    "cypress:open": "cypress open"
   },
   "author": "Michel Kraemer",
   "license": "Apache-2.0",

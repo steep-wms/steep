@@ -1,26 +1,19 @@
-
 name: Cypress Tests
 
 on:
   push:
   schedule:
-  - cron: "0 0 * * *"
+    - cron: "0 5 * * *"
+
 jobs:
   cypress-run:
     runs-on: ubuntu-latest
-    # container: cypress/browsers:node12.13.0-chrome78-ff70
+
     services:
       mongo:
         image: mongo:latest
         ports: 
           - 27017:27017
-        env:
-          MONGODB_HOST: localhost
-        volumes:
-        #- ${{github.workspace}}/ui/cypress/integration/steep_vms.json
-        #- my_docker_volume:/volume_mount
-        #- /ui/cypress/integration/steep_vms.json
-        - ${{github.workspace}}/ui/cypress/steep_vms.json
 
       steep:
         image: steep/steep:latest
@@ -31,19 +24,23 @@ jobs:
           STEEP_HTTP_PORT: 8081
           STEEP_DB_DRIVER: mongodb
           STEEP_DB_URL: mongodb://mongo:27017/steep
+
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Add data to VMS collection        
-        run: mongoimport --collection=vms --db=steep --file=${{github.workspace}}/ui/cypress/steep_vms.json
+
+      - name: Add data to VMS collection
+        run: mongoimport --collection=vms --db=steep --file=${{ github.workspace }}/ui/cypress/fixtures/steep_vms.json
+
       - name: Cypress run
         uses: cypress-io/github-action@v2
         with:
           working-directory: ./ui
           browser: chrome
-          wait-on: 'http://localhost:8081'
+          wait-on: http://localhost:8081
           wait-on-timeout: 300
           config: baseUrl=http://localhost:8081
+
       - uses: actions/upload-artifact@v2
         if: failure()
         with:
