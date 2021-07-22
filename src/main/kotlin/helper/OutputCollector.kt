@@ -12,7 +12,7 @@ interface OutputCollector {
   fun collect(line: String)
 
   /**
-   * Return the collected lines
+   * Return a copy of the list of collected lines
    */
   fun lines(): List<String>
 

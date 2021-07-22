@@ -303,7 +303,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
       progressEstimator?.let { pe ->
         // make copy of lines because we are about to launch an asynchronous
         // task and need to avoid concurrent modification
-        val linesCopy = ArrayList(lines())
+        val linesCopy = lines()
 
         GlobalScope.launch(coroutineContext) {
           val progress = pe.call(exec, linesCopy, vertx)
