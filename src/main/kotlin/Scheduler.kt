@@ -130,7 +130,6 @@ class Scheduler : CoroutineVerticle() {
           lookup(updateRequiredCapabilities = true)
         } catch (t: Throwable) {
           log.error("Failed to look for process chains", t)
-          pendingLookups = 0 // Reset counter. In the case of an error, lookup() might not have done it.
         }
       }
     }
