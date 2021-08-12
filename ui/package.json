@@ -49,7 +49,7 @@
     "webpack": "^5.50.0"
   },
   "devDependencies": {
-    "cypress": "^7.2.0",
+    "cypress": "^8.2.0",
     "eslint": "^7.32.0",
     "eslint-plugin-cypress": "^2.11.3",
     "eslint-plugin-react": "^7.24.0",
