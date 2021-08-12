@@ -232,33 +232,42 @@ class Scheduler : CoroutineVerticle() {
       return
     }
 
-    if (updateRequiredCapabilities || !allRequiredCapabilitiesInitialized) {
-      val arcs = submissionRegistry.findProcessChainRequiredCapabilities(REGISTERED)
+    try {
+      if (updateRequiredCapabilities || !allRequiredCapabilitiesInitialized) {
+        val arcs = submissionRegistry.findProcessChainRequiredCapabilities(REGISTERED)
 
-      // count process chains for each required capability set
-      allRequiredCapabilities = arcs.map { rc ->
-        rc to submissionRegistry.countProcessChains(status = REGISTERED,
-            requiredCapabilities = rc)
-      }.toMutableList()
-      allRequiredCapabilitiesInitialized = true
-    }
-
-    while (pendingLookups > 0L) {
-      val start = System.currentTimeMillis()
-
-      val allocatedProcessChains = lookupStep()
-
-      if (allocatedProcessChains == 0) {
-        // all agents are busy
-        pendingLookups = 0
-        break
-      } else {
-        log.debug("Scheduling $allocatedProcessChains process " +
-            "chain${if (allocatedProcessChains > 1) "s" else ""} " +
-            "took ${System.currentTimeMillis() - start} ms")
+        // count process chains for each required capability set
+        allRequiredCapabilities = arcs.map { rc ->
+          rc to submissionRegistry.countProcessChains(status = REGISTERED,
+              requiredCapabilities = rc)
+        }.toMutableList()
+        allRequiredCapabilitiesInitialized = true
       }
 
-      pendingLookups--
+      while (pendingLookups > 0L) {
+        val start = System.currentTimeMillis()
+
+        val allocatedProcessChains = lookupStep()
+
+        if (allocatedProcessChains == 0) {
+          // all agents are busy
+          pendingLookups = 0
+          break
+        } else {
+          log.debug("Scheduling $allocatedProcessChains process " +
+              "chain${if (allocatedProcessChains > 1) "s" else ""} " +
+              "took ${System.currentTimeMillis() - start} ms")
+        }
+
+        pendingLookups--
+      }
+    } catch (e: Throwable) {
+      // Catch any errors during the calculation and reset the pending lookups.
+      // Otherwise, we would never enter this section again.
+      // However, throw the error to the parent, so it can be handled in a proper way.
+      log.error("Lookup of process chains failed. Reset pending lookups from $pendingLookups to zero", e)
+      pendingLookups = 0
+      throw e
     }
   }
 
