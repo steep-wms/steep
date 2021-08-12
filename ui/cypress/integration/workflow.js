@@ -139,7 +139,8 @@ describe("Resubmission", ()=> {
     cy.request("PUT", `/workflows/${res.body.id}`, payloadCancelled)
   })
 
-  it("can resubmit", () => {
+  // TODO this test has been disabled for the time being. It does not run reliably.
+  it.skip("can resubmit", () => {
     cy.get(".list-item-progress-box > div > strong", { timeout: (timeoutLength + timeoutOffset) * 1000 })
       .should("have.text", "Success")
     cy.get(".dropdown-btn").click()
