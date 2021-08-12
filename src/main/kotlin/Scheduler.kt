@@ -262,10 +262,7 @@ class Scheduler : CoroutineVerticle() {
         pendingLookups--
       }
     } catch (e: Throwable) {
-      // Catch any errors during the calculation and reset the pending lookups.
-      // Otherwise, we would never enter this section again.
-      // However, throw the error to the parent, so it can be handled in a proper way.
-      log.error("Lookup of process chains failed. Reset pending lookups from $pendingLookups to zero", e)
+      // reset pending lookups on error so we can re-enter this method
       pendingLookups = 0
       throw e
     }
