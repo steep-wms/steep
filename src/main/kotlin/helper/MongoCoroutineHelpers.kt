@@ -165,6 +165,13 @@ suspend fun <T, R> MongoCollection<T>.distinctAwait(fieldName: String,
   }
 }
 
+suspend fun <T> MongoCollection<T>.aggregateAwait(pipeline: List<JsonObject>): List<T> {
+  return suspendCancellableCoroutine { cont: CancellableContinuation<List<T>> ->
+    val f = aggregate(pipeline.map { wrap(it) }, documentClass)
+    f.subscribe(CollectionSubscriber(cont))
+  }
+}
+
 suspend fun <T> MongoCollection<T>.insertOneAwait(document: T) {
   wrapCoroutine {
     insertOne(document)
@@ -183,6 +190,12 @@ suspend fun <T> MongoCollection<T>.updateManyAwait(filter: JsonObject,
   return wrapCoroutine {
     updateMany(wrap(filter), wrap(update))
   } ?: throw IllegalStateException("Update operation did not produce a result")
+}
+
+suspend fun <T> MongoCollection<T>.deleteManyAwait(filter: JsonObject): DeleteResult {
+  return wrapCoroutine {
+    deleteMany(wrap(filter))
+  } ?: throw IllegalStateException("Delete operation did not produce a result")
 }
 
 suspend fun <T> MongoCollection<T>.deleteAllAwait(): DeleteResult {

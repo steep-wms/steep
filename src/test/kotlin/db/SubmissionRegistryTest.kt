@@ -538,6 +538,72 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun deleteSubmissionsFinishedBefore(vertx: Vertx, ctx: VertxTestContext) {
+    val now = Instant.now()
+
+    val s1 = Submission(workflow = Workflow())
+    val pc1 = ProcessChain()
+    val pc2 = ProcessChain()
+
+    val s2 = Submission(workflow = Workflow(),
+        startTime = now.minusSeconds(100))
+    val pc3 = ProcessChain()
+    val pc4 = ProcessChain()
+
+    val s3 = Submission(workflow = Workflow(),
+        startTime = now.minusSeconds(20),
+        endTime = now.minusSeconds(10))
+    val pc5 = ProcessChain()
+    val pc6 = ProcessChain()
+
+    val s4 = Submission(workflow = Workflow(),
+        startTime = now.minusSeconds(200),
+        endTime = now)
+    val pc7 = ProcessChain()
+
+    val s5 = Submission(workflow = Workflow(),
+        startTime = now.minusSeconds(200),
+        endTime = now.minusSeconds(100))
+    val pc8 = ProcessChain()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addSubmission(s3)
+      submissionRegistry.addSubmission(s4)
+      submissionRegistry.addSubmission(s5)
+      submissionRegistry.setSubmissionStatus(s1.id, Submission.Status.ACCEPTED)
+      submissionRegistry.setSubmissionStatus(s2.id, Submission.Status.RUNNING)
+      submissionRegistry.setSubmissionStatus(s3.id, Submission.Status.SUCCESS)
+      submissionRegistry.setSubmissionStatus(s4.id, Submission.Status.SUCCESS)
+      submissionRegistry.setSubmissionStatus(s5.id, Submission.Status.ERROR)
+      submissionRegistry.addProcessChains(listOf(pc1, pc2), s1.id,
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      submissionRegistry.addProcessChains(listOf(pc3, pc4), s2.id,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      submissionRegistry.addProcessChains(listOf(pc5, pc6), s3.id,
+          SubmissionRegistry.ProcessChainStatus.SUCCESS)
+      submissionRegistry.addProcessChains(listOf(pc7), s4.id,
+          SubmissionRegistry.ProcessChainStatus.SUCCESS)
+      submissionRegistry.addProcessChains(listOf(pc8), s5.id,
+          SubmissionRegistry.ProcessChainStatus.ERROR)
+
+      submissionRegistry.deleteSubmissionsFinishedBefore(now)
+
+      ctx.coVerify {
+        val r1 = submissionRegistry.findProcessChains()
+        assertThat(r1).containsExactlyInAnyOrder(Pair(pc1, s1.id), Pair(pc2, s1.id),
+            Pair(pc3, s2.id), Pair(pc4, s2.id), Pair(pc7, s4.id))
+
+        val r2 = submissionRegistry.findSubmissions()
+        assertThat(r2.map { it.id }).containsExactlyInAnyOrder(s1.id, s2.id, s4.id)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun addProcessChain(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()

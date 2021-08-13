@@ -170,6 +170,12 @@ interface SubmissionRegistry : Registry {
   suspend fun getSubmissionExecutionState(submissionId: String): JsonObject?
 
   /**
+   * Delete all submissions that have finished before the given [timestamp]
+   * (regardless of their status)
+   */
+  suspend fun deleteSubmissionsFinishedBefore(timestamp: Instant)
+
+  /**
    * Add multiple process chains to a submission
    * @param processChains the process chains to add
    * @param submissionId the submission ID

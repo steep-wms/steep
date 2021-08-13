@@ -307,6 +307,24 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       getSubmissionColumn(submissionId, EXECUTION_STATE) { rs ->
         rs.getString(0)?.let { JsonObject(it) } }
 
+  override suspend fun deleteSubmissionsFinishedBefore(timestamp: Instant) {
+    withLocks { connection ->
+      // delete process chains
+      val statement = "DELETE FROM $PROCESS_CHAINS pc USING $SUBMISSIONS s " +
+          "WHERE pc.$SUBMISSION_ID=s.$ID AND s.$DATA->'$END_TIME' < ?::jsonb"
+      val params = json {
+        array(
+            JsonUtils.writeValueAsString(timestamp)
+        )
+      }
+      connection.updateWithParamsAwait(statement, params)
+
+      // delete submissions
+      val statement2 = "DELETE FROM $SUBMISSIONS WHERE $DATA->'$END_TIME' < ?::jsonb"
+      connection.updateWithParamsAwait(statement2, params)
+    }
+  }
+
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,
       submissionId: String, status: ProcessChainStatus) {
     withLocks { connection ->

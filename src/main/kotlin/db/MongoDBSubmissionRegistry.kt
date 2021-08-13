@@ -11,9 +11,11 @@ import com.mongodb.reactivestreams.client.gridfs.GridFSBuckets
 import db.SubmissionRegistry.ProcessChainStatus
 import helper.DefaultSubscriber
 import helper.JsonUtils
+import helper.aggregateAwait
 import helper.bulkWriteAwait
 import helper.countDocumentsAwait
 import helper.deleteAwait
+import helper.deleteManyAwait
 import helper.distinctAwait
 import helper.download
 import helper.findAwait
@@ -319,6 +321,50 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   override suspend fun getSubmissionExecutionState(submissionId: String): JsonObject? {
     val buf = readGridFSDocument(bucketExecutionStates, submissionId)
     return buf?.let { JsonObject(String(it.array())) }
+  }
+
+  override suspend fun deleteSubmissionsFinishedBefore(timestamp: Instant) {
+    // find IDs of submissions to delete
+    val submissionIDs = collSubmissions.aggregateAwait(listOf(json {
+      obj(
+          "\$project" to obj(
+              END_TIME to obj(
+                  "\$toLong" to obj(
+                      "\$toDate" to "\$$END_TIME"
+                  )
+              )
+          )
+      )
+    }, json {
+      obj(
+          "\$match" to obj(
+              END_TIME to obj(
+                  "\$lt" to timestamp.toEpochMilli()
+              )
+          )
+      )
+    })).map { it.getString(INTERNAL_ID) }
+
+    // delete 1000 submissions at once
+    for (chunk in submissionIDs.chunked(1000)) {
+      // delete process chains first
+      collProcessChains.deleteManyAwait(json {
+        obj(
+            SUBMISSION_ID to obj(
+                "\$in" to chunk
+            )
+        )
+      })
+
+      // then delete submissions
+      collSubmissions.deleteManyAwait(json {
+        obj(
+            INTERNAL_ID to obj(
+                "\$in" to chunk
+            )
+        )
+      })
+    }
   }
 
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,

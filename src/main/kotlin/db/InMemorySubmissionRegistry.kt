@@ -241,6 +241,40 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     return executionStates.await().getAwait(submissionId)?.let { JsonObject(it) }
   }
 
+  override suspend fun deleteSubmissionsFinishedBefore(timestamp: Instant) {
+    val sharedData = vertx.sharedData()
+    val submissionLock = sharedData.getLockAwait(LOCK_SUBMISSIONS)
+    try {
+      val processChainLock = sharedData.getLockAwait(LOCK_PROCESS_CHAINS)
+      try {
+        // find IDs of submissions to delete
+        val submissionMap = submissions.await()
+        val submissionValues = awaitResult<List<String>> { submissionMap.values(it) }
+        val submissionIDs = submissionValues
+            .map { JsonUtils.readValue<SubmissionEntry>(it) }
+            .filter { it.submission.endTime?.isBefore(timestamp) ?: false }
+            .map { it.submission.id }
+            .toSet()
+
+        // find IDs of all process chains that belong to these submissions
+        val processChainMap = this.processChains.await()
+        val processChainValues = awaitResult<List<String>> { processChainMap.values(it) }
+        val processChainIDs = processChainValues
+            .map { JsonUtils.readValue<ProcessChainEntry>(it) }
+            .filter { submissionIDs.contains(it.submissionId) }
+            .map { it.processChain.id }
+
+        // delete process chains and then submissions
+        processChainIDs.forEach { processChainMap.removeAwait(it) }
+        submissionIDs.forEach { submissionMap.removeAwait(it) }
+      } finally {
+        processChainLock.release()
+      }
+    } finally {
+      submissionLock.release()
+    }
+  }
+
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,
       submissionId: String, status: ProcessChainStatus) {
     val sharedData = vertx.sharedData()
@@ -315,14 +349,14 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   override suspend fun countProcessChains(submissionId: String?,
       status: ProcessChainStatus?, requiredCapabilities: Collection<String>?): Long =
       findProcessChainEntries()
-          .filter {
+          .count {
             (submissionId == null || it.submissionId == submissionId) &&
                 (status == null || it.status == status) &&
                 (requiredCapabilities == null ||
                     (it.processChain.requiredCapabilities.size == requiredCapabilities.size &&
                         it.processChain.requiredCapabilities.containsAll(requiredCapabilities)))
           }
-          .count().toLong()
+          .toLong()
 
   override suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
       newStatus: ProcessChainStatus, requiredCapabilities: Collection<String>?): ProcessChain? {
