@@ -171,9 +171,9 @@ interface SubmissionRegistry : Registry {
 
   /**
    * Delete all submissions that have finished before the given [timestamp]
-   * (regardless of their status)
+   * (regardless of their status) and return their IDs
    */
-  suspend fun deleteSubmissionsFinishedBefore(timestamp: Instant)
+  suspend fun deleteSubmissionsFinishedBefore(timestamp: Instant): Collection<String>
 
   /**
    * Add multiple process chains to a submission

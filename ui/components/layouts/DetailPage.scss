@@ -4,6 +4,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+
+  &.deleted {
+    text-decoration: line-through;
+  }
 }
 
 .detail-page-subtitle {
@@ -50,5 +54,9 @@
     overflow-x: auto;
     margin-top: $spacer / 2;
     margin-bottom: $spacer / 2;
+  }
+
+  &.deleted {
+    opacity: 0.5;
   }
 }

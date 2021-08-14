@@ -241,7 +241,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     return executionStates.await().getAwait(submissionId)?.let { JsonObject(it) }
   }
 
-  override suspend fun deleteSubmissionsFinishedBefore(timestamp: Instant) {
+  override suspend fun deleteSubmissionsFinishedBefore(timestamp: Instant): Collection<String> {
     val sharedData = vertx.sharedData()
     val submissionLock = sharedData.getLockAwait(LOCK_SUBMISSIONS)
     try {
@@ -267,6 +267,8 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
         // delete process chains and then submissions
         processChainIDs.forEach { processChainMap.removeAwait(it) }
         submissionIDs.forEach { submissionMap.removeAwait(it) }
+
+        return submissionIDs
       } finally {
         processChainLock.release()
       }

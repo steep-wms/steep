@@ -588,9 +588,11 @@ abstract class SubmissionRegistryTest {
       submissionRegistry.addProcessChains(listOf(pc8), s5.id,
           SubmissionRegistry.ProcessChainStatus.ERROR)
 
-      submissionRegistry.deleteSubmissionsFinishedBefore(now)
+      val ids = submissionRegistry.deleteSubmissionsFinishedBefore(now)
 
       ctx.coVerify {
+        assertThat(ids).containsExactlyInAnyOrder(s3.id, s5.id)
+
         val r1 = submissionRegistry.findProcessChains()
         assertThat(r1).containsExactlyInAnyOrder(Pair(pc1, s1.id), Pair(pc2, s1.id),
             Pair(pc3, s2.id), Pair(pc4, s2.id), Pair(pc7, s4.id))

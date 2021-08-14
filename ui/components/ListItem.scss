@@ -72,4 +72,12 @@
   .list-item-subtitle {
     font-size: $font-size-sm;
   }
+
+  &.deleted {
+    opacity: 0.5;
+  }
+
+  &.deleted .list-item-title-link {
+    text-decoration: line-through;
+  }
 }

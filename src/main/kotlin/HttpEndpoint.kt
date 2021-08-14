@@ -15,6 +15,7 @@ import AddressConstants.REMOTE_AGENT_BUSY
 import AddressConstants.REMOTE_AGENT_IDLE
 import AddressConstants.REMOTE_AGENT_LEFT
 import AddressConstants.REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
+import AddressConstants.SUBMISSIONS_DELETED
 import AddressConstants.SUBMISSION_ADDED
 import AddressConstants.SUBMISSION_ENDTIME_CHANGED
 import AddressConstants.SUBMISSION_ERRORMESSAGE_CHANGED
@@ -281,6 +282,8 @@ class HttpEndpoint : CoroutineVerticle() {
             .setAddress(SUBMISSION_STATUS_CHANGED))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(SUBMISSION_ERRORMESSAGE_CHANGED))
+        .addOutboundPermitted(PermittedOptions()
+            .setAddress(SUBMISSIONS_DELETED))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(PROCESSCHAINS_ADDED))
         .addOutboundPermitted(PermittedOptions()

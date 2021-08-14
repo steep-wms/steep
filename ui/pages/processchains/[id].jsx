@@ -115,6 +115,7 @@ function ProcessChainDetails({ id }) {
   let title
   let processchain
   let menu
+  let deleted
 
   if (processChains.items !== undefined && processChains.items.length > 0) {
     let pc = processChains.items[0]
@@ -146,6 +147,8 @@ function ProcessChainDetails({ id }) {
     if (menuItems.length > 0) {
       menu = <ul>{menuItems}</ul>
     }
+
+    deleted = !!pc.deleted
 
     let reqcap
     if (pc.requiredCapabilities === undefined || pc.requiredCapabilities.length === 0) {
@@ -191,7 +194,7 @@ function ProcessChainDetails({ id }) {
           </DefinitionList>
         </div>
         <div className="detail-header-right">
-          <ListItemProgressBox progress={progress} />
+          <ListItemProgressBox progress={progress} deleted={deleted} />
         </div>
       </div>
       {pc.errorMessage && (<>
@@ -214,7 +217,7 @@ function ProcessChainDetails({ id }) {
   }
 
   return (
-    <DetailPage breadcrumbs={breadcrumbs} title={title} menu={menu}>
+    <DetailPage breadcrumbs={breadcrumbs} title={title} menu={menu} deleted={deleted}>
       {processchain}
       {error}
       <CancelModal isOpen={cancelModalOpen} contentLabel="Cancel modal"

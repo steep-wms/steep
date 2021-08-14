@@ -7,7 +7,8 @@ import {
   PROCESS_CHAIN_STATUS_CHANGED,
   PROCESS_CHAIN_ALL_STATUS_CHANGED,
   PROCESS_CHAIN_ERROR_MESSAGE_CHANGED,
-  PROCESS_CHAIN_PROGRESS_CHANGED
+  PROCESS_CHAIN_PROGRESS_CHANGED,
+  SUBMISSIONS_DELETED
 } from "../../components/lib/EventBusMessages"
 
 const ADD_MESSAGES = {
@@ -46,7 +47,11 @@ const UPDATE_MESSAGES = {
     currentStatus: body.currentStatus,
     status: body.newStatus,
     submissionId: body.submissionId
-  })
+  }),
+  [SUBMISSIONS_DELETED]: (body) => body.submissionIds.map(submissionId => ({
+    submissionId,
+    deleted: true
+  }))
 }
 
 function reducer(state, { action, items }, next) {
@@ -57,9 +62,13 @@ function reducer(state, { action, items }, next) {
       for (let item of items) {
         for (let i = 0; i < state.items.length; ++i) {
           let pc = state.items[i]
-          if (pc.submissionId === item.submissionId && pc.status === item.currentStatus) {
+          if (pc.submissionId === item.submissionId) {
             let newItems = [...state.items]
-            newItems[i] = { ...pc, status: item.status }
+            if (item.deleted) {
+              newItems[i] = { ...pc, deleted: item.deleted }
+            } else if (item.currentStatus !== undefined && pc.status === item.currentStatus) {
+              newItems[i] = { ...pc, status: item.status }
+            }
             state = { ...state, items: newItems }
           }
         }

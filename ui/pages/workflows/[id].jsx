@@ -71,6 +71,7 @@ function WorkflowDetails({ id }) {
   let startTime
   let endTime
   let requiredCapabilities
+  let deleted
   if (workflows.items !== undefined && workflows.items.length > 0) {
     let w = workflows.items[0]
     id = w.id
@@ -78,6 +79,7 @@ function WorkflowDetails({ id }) {
     endTime = w.endTime
     requiredCapabilities = w.requiredCapabilities
     workflowSource = w.workflow
+    deleted = !!w.deleted
   }
 
   const codeBox = useMemo(() => <CodeBox json={workflowSource} />, [workflowSource])
@@ -147,7 +149,7 @@ function WorkflowDetails({ id }) {
       <div className="detail-header">
         {detailHeaderLeft}
         <div className="detail-header-right">
-          <ListItemProgressBox progress={progress} />
+          <ListItemProgressBox progress={progress} deleted={deleted} />
         </div>
       </div>
       {w.errorMessage && (<>
@@ -160,7 +162,7 @@ function WorkflowDetails({ id }) {
   }
 
   return (
-    <DetailPage breadcrumbs={breadcrumbs} title={title} menu={menu}>
+    <DetailPage breadcrumbs={breadcrumbs} title={title} menu={menu} deleted={deleted}>
       {workflow}
       {error}
       <CancelModal isOpen={cancelModalOpen} contentLabel="Cancel modal"

@@ -12,7 +12,7 @@ function formatterToNow(value, unit, suffix, epochSeconds) {
   return formatDistanceToNow(epochSeconds, { addSuffix: true, includeSeconds: true })
 }
 
-const ListItem = ({ title, linkHref, linkAs, subtitle, justAdded, justLeft,
+const ListItem = ({ title, linkHref, linkAs, subtitle, deleted = false, justAdded, justLeft,
     startTime, endTime, labels = [], progress }) => {
   let defaultSubtitle
   if (progress !== undefined) {
@@ -50,17 +50,24 @@ const ListItem = ({ title, linkHref, linkAs, subtitle, justAdded, justLeft,
     )
   }
 
+  let titleLink
+  if (!deleted) {
+    titleLink = <Link href={linkHref} as={linkAs}><a className="list-item-title-link">{title}<style jsx>{styles}</style></a></Link>
+  } else {
+    titleLink = <span className="list-item-title-link">{title}<style jsx>{styles}</style></span>
+  }
+
   return (
-    <div className={classNames("list-item", { "just-added": justAdded && !justLeft, "just-left": justLeft })}>
+    <div className={classNames("list-item", { "just-added": justAdded && !justLeft, "just-left": justLeft, deleted })}>
       <div className="list-item-left">
         <div className="list-item-title">
-          <Link href={linkHref} as={linkAs}><a>{title}</a></Link>{labels.length > 0 && <>&ensp;</>}
+          {titleLink}{labels.length > 0 && <>&ensp;</>}
           {labels.map((l, i) => <Label key={i} small>{l}</Label>)}
         </div>
         <div className="list-item-subtitle">{subtitle || defaultSubtitle}</div>
       </div>
       <div className="list-item-right">
-        {progress && <ListItemProgressBox progress={progress} />}
+        {progress && <ListItemProgressBox progress={progress} deleted={deleted} />}
       </div>
       <style jsx>{styles}</style>
     </div>

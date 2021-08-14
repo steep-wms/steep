@@ -2,16 +2,18 @@ import Page from "./Page"
 import Breadcrumbs from "../Breadcrumbs"
 import styles from "./DetailPage.scss"
 import DropDown from "../DropDown"
+import classNames from "classnames"
 
-const DetailPage = ({ breadcrumbs, title, subtitle, menu, footerNoTopMargin = false, children }) => (
+const DetailPage = ({ breadcrumbs, title, subtitle, menu, deleted = false,
+    footerNoTopMargin = false, children }) => (
   <Page title={title} footerNoTopMargin={footerNoTopMargin}>
-    {title && <div className="detail-page-title">
+    {title && <div className={classNames("detail-page-title", { deleted })}>
       <h1 className="no-margin-bottom">{title}</h1>{menu && <DropDown title="Actions">{menu}</DropDown>}
     </div>}
     {subtitle && <p className="detail-page-subtitle">{subtitle}</p>}
     {breadcrumbs && <Breadcrumbs breadcrumbs={breadcrumbs} />}
     {(title || subtitle) && <hr className="detail-page-divider" />}
-    <div className="detail-page-main">
+    <div className={classNames("detail-page-main", { deleted })}>
       {children}
     </div>
     <style jsx>{styles}</style>

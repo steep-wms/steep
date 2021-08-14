@@ -2,9 +2,9 @@ import classNames from "classnames"
 import resolvedStyles from "./ListItemProgressBox.scss?type=resolve"
 import styles from "./ListItemProgressBox.scss"
 import { Activity, AlertCircle, CheckCircle, Coffee, Delete, Download, Loader,
-  Moon, PauseCircle, Power, RotateCw, XCircle } from "react-feather"
+  Moon, PauseCircle, Power, RotateCw, Trash2, XCircle } from "react-feather"
 
-const ListItemProgressBox = ({ progress }) => {
+const ListItemProgressBox = ({ progress, deleted = false }) => {
   let icon
   let defaultTitle
   switch (progress.status) {
@@ -90,12 +90,17 @@ const ListItemProgressBox = ({ progress }) => {
       break
   }
 
+  if (deleted) {
+    defaultTitle = "Deleted"
+    icon = <Trash2 className={classNames("feather", resolvedStyles.className)} />
+  }
+
   return (
     <div className="list-item-progress-box">
       {icon}
       <div>
         <strong>{progress.title || defaultTitle}</strong><br />
-        {progress.subtitle}
+        {deleted || progress.subtitle}
       </div>
       {resolvedStyles.styles}
       <style jsx>{styles}</style>

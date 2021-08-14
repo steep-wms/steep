@@ -323,7 +323,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     return buf?.let { JsonObject(String(it.array())) }
   }
 
-  override suspend fun deleteSubmissionsFinishedBefore(timestamp: Instant) {
+  override suspend fun deleteSubmissionsFinishedBefore(timestamp: Instant): Collection<String> {
     // find IDs of submissions to delete
     val submissionIDs = collSubmissions.aggregateAwait(listOf(json {
       obj(
@@ -365,6 +365,8 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         )
       })
     }
+
+    return submissionIDs
   }
 
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,

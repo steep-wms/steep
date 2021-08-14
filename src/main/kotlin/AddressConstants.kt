@@ -128,6 +128,11 @@ object AddressConstants {
   const val SUBMISSION_ERRORMESSAGE_CHANGED = "steep.submissionRegistry.submissionErrorMessageChanged"
 
   /**
+   * Will be published when submissions have been deleted
+   */
+  const val SUBMISSIONS_DELETED = "steep.submissionRegistry.submissionsDeleted"
+
+  /**
    * Will be published when process chains have been added to the registry
    */
   const val PROCESSCHAINS_ADDED = "steep.submissionRegistry.processChainsAdded"

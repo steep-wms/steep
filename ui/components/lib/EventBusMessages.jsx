@@ -4,6 +4,7 @@ module.exports = {
   SUBMISSION_END_TIME_CHANGED: "steep.submissionRegistry.submissionEndTimeChanged",
   SUBMISSION_STATUS_CHANGED: "steep.submissionRegistry.submissionStatusChanged",
   SUBMISSION_ERROR_MESSAGE_CHANGED: "steep.submissionRegistry.submissionErrorMessageChanged",
+  SUBMISSIONS_DELETED: "steep.submissionRegistry.submissionsDeleted",
 
   PROCESS_CHAINS_ADDED: "steep.submissionRegistry.processChainsAdded",
   PROCESS_CHAINS_ADDED_SIZE: "steep.submissionRegistry.processChainsAddedSize",

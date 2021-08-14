@@ -111,10 +111,19 @@ const Provider = ({ pageSize, allowAdd = true, shouldAddItem,
     if (eventBus !== undefined && updateMessages !== undefined) {
       for (let address in updateMessages) {
         let f = updateMessages[address]
-        let handler = (error, msg) => updateItems({
-          action: "update",
-          items: [f(msg.body)]
-        })
+        let handler = (error, msg) => {
+          let item = f(msg.body)
+          let newItems
+          if (Array.isArray(item)) {
+            newItems = item
+          } else {
+            newItems = [item]
+          }
+          updateItems({
+            action: "update",
+            items: newItems
+          })
+        }
         eventBus.registerHandler(address, handler)
         registeredHandlers[address] = handler
       }

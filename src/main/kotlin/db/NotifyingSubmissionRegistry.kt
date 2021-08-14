@@ -93,6 +93,16 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
     })
   }
 
+  override suspend fun deleteSubmissionsFinishedBefore(timestamp: Instant): Collection<String> {
+    val submissionIds = delegate.deleteSubmissionsFinishedBefore(timestamp)
+    vertx.eventBus().publish(AddressConstants.SUBMISSIONS_DELETED, json {
+      obj(
+          "submissionIds" to submissionIds.toList()
+      )
+    })
+    return submissionIds
+  }
+
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,
       submissionId: String, status: ProcessChainStatus) {
     delegate.addProcessChains(processChains, submissionId, status)

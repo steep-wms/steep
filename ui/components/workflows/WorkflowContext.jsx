@@ -6,6 +6,7 @@ import {
   SUBMISSION_END_TIME_CHANGED,
   SUBMISSION_STATUS_CHANGED,
   SUBMISSION_ERROR_MESSAGE_CHANGED,
+  SUBMISSIONS_DELETED,
   PROCESS_CHAINS_ADDED_SIZE,
   PROCESS_CHAIN_STATUS_CHANGED,
   PROCESS_CHAIN_ALL_STATUS_CHANGED
@@ -44,6 +45,10 @@ const UPDATE_MESSAGES = {
     id: body.submissionId,
     errorMessage: body.errorMessage
   }),
+  [SUBMISSIONS_DELETED]: (body) => body.submissionIds.map(submissionId => ({
+    id: submissionId,
+    deleted: true
+  })),
   [PROCESS_CHAINS_ADDED_SIZE]: (body) => {
     let pcsSize = body.processChainsSize
     let status = body.status
