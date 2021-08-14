@@ -436,5 +436,9 @@ class Main : CoroutineVerticle() {
     if (config.getBoolean(ConfigConstants.HTTP_ENABLED, true)) {
       vertx.deployVerticleAwait(HttpEndpoint::class.qualifiedName!!, options)
     }
+
+    if (config.getBoolean(ConfigConstants.GARBAGECOLLECTOR_ENABLED, false)) {
+      vertx.deployVerticleAwait(GarbageCollector::class.qualifiedName!!, options)
+    }
   }
 }

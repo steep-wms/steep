@@ -467,6 +467,27 @@ object ConfigConstants {
   const val LOGS_PROCESSCHAINS_GROUPBYPREFIX = "steep.logs.processChains.groupByPrefix"
 
   /**
+   * `true` if the garbage collector should be enabled. The garbage collector
+   * runs in the background and removes outdated objects from the registry
+   * at the interval specified with [GARBAGECOLLECTOR_CRON]
+   */
+  const val GARBAGECOLLECTOR_ENABLED = "steep.garbageCollector.enabled"
+
+  /**
+   * A unix-like cron expression specifying the interval at which the garbage
+   * collector should be executed. See [org.quartz.CronExpression] for more
+   * information about the format.
+   */
+  const val GARBAGECOLLECTOR_CRON = "steep.garbageCollector.cron"
+
+  /**
+   * The maximum time a [model.Submission] should be kept in the registry after
+   * it has finished (regardless of whether it was successful or not). The
+   * time can be specified as a human-readable duration (see [helper.toDuration]).
+   */
+  const val GARBAGECOLLECTOR_RETENTION_SUBMISSIONS = "steep.garbageCollector.retention.submissions"
+
+  /**
    * Get all configuration keys from this class
    * @return the list of configuration keys
    */

@@ -67,6 +67,10 @@ dependencies {
     implementation("org.mongodb:mongodb-driver-reactivestreams:1.13.1")
     implementation("org.pacesys:openstack4j:3.2.0")
     implementation("org.postgresql:postgresql:42.2.18")
+    implementation("org.quartz-scheduler:quartz:2.3.2") {
+        // we only need org.quartz.CronExpression, so we can exclude all dependencies
+        isTransitive = false
+    }
     implementation("org.yaml:snakeyaml:1.27")
 
     implementation(kotlin("reflect"))

@@ -128,6 +128,13 @@ steep:
       path: logs/processchains
       groupByPrefix: 0
 
+  garbageCollector:
+    enabled: false
+    # seconds minutes hours day-of-month month day-of-week [year]
+    cron: "0 0 0 * * ?"
+    retention:
+      submissions: 1y
+
 setups:
   default:
     docker:
