@@ -39,10 +39,10 @@ dependencies {
 
     implementation("io.vertx:vertx-core:$vertxVersion")
     implementation("io.vertx:vertx-hazelcast:$vertxVersion")
-    implementation("io.vertx:vertx-jdbc-client:$vertxVersion")
     implementation("io.vertx:vertx-lang-kotlin:$vertxVersion")
     implementation("io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion")
     implementation("io.vertx:vertx-mongo-client:$vertxVersion")
+    implementation("io.vertx:vertx-pg-client:$vertxVersion")
     implementation("io.vertx:vertx-shell:$vertxVersion")
     implementation("io.vertx:vertx-web:$vertxVersion")
     implementation("io.vertx:vertx-web-client:$vertxVersion")
@@ -86,6 +86,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.7.0")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.7.0")
     testImplementation("org.testcontainers:testcontainers:1.15.3")
+    testImplementation("org.testcontainers:junit-jupiter:1.15.3")
     testImplementation("org.testcontainers:postgresql:1.15.3")
 }
 

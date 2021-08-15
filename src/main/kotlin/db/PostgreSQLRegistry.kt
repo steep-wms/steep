@@ -1,17 +1,22 @@
 package db
 
 import io.vertx.core.Vertx
+import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
-import io.vertx.ext.jdbc.JDBCClient
-import io.vertx.ext.jdbc.spi.impl.HikariCPDataSourceProvider
-import io.vertx.ext.sql.SQLConnection
-import io.vertx.kotlin.core.json.array
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
-import io.vertx.kotlin.ext.sql.closeAwait
-import io.vertx.kotlin.ext.sql.getConnectionAwait
-import io.vertx.kotlin.ext.sql.updateWithParamsAwait
+import io.vertx.kotlin.sqlclient.executeAwait
+import io.vertx.kotlin.sqlclient.getConnectionAwait
+import io.vertx.pgclient.PgConnectOptions
+import io.vertx.pgclient.PgPool
+import io.vertx.pgclient.impl.PgConnectionUriParser
+import io.vertx.sqlclient.PoolOptions
+import io.vertx.sqlclient.Row
+import io.vertx.sqlclient.SqlConnection
+import io.vertx.sqlclient.Tuple
 import org.flywaydb.core.Flyway
+
+fun Row.getJsonObject(column: Int): JsonObject = get(JsonObject::class.java, column)
+fun Row.getJsonObjectOrNull(column: Int): JsonObject? = getValue(0) as JsonObject?
+fun Row.getJsonArray(column: Int): JsonArray = get(JsonArray::class.java, column)
 
 /**
  * Base class for registries that access a PostgreSQL database
@@ -58,47 +63,46 @@ open class PostgreSQLRegistry(vertx: Vertx, url: String, username: String,
     }
   }
 
-  private val client: JDBCClient
+  protected val client: PgPool
 
   init {
     migrate(url, username, password)
 
-    val jdbcConfig = json {
-      obj(
-          "provider_class" to HikariCPDataSourceProvider::class.java.name,
-          "jdbcUrl" to url,
-          "username" to username,
-          "password" to password,
-          "minimumIdle" to 0,
-          "maximumPoolSize" to 5
-      )
+    val uri = if (url.startsWith("jdbc:")) url.substring(5) else url
+    val parsedConfiguration = PgConnectionUriParser.parse(uri)
+    val connectOptions = PgConnectOptions(parsedConfiguration)
+        .setUser(username)
+        .setPassword(password)
+    if (!parsedConfiguration.containsKey("search_path") &&
+        parsedConfiguration.containsKey("currentschema")) {
+      connectOptions.addProperty("search_path",
+          parsedConfiguration.getString("currentschema"))
     }
-    client = JDBCClient.createShared(vertx, jdbcConfig)
+
+    val poolOptions = PoolOptions()
+        .setMaxSize(5)
+
+    client = PgPool.pool(vertx, connectOptions, poolOptions)
   }
 
   override suspend fun close() {
-    client.closeAwait()
+    client.close()
   }
 
-  protected suspend fun <T> withConnection(block: suspend (SQLConnection) -> T): T {
+  protected suspend fun <T> withConnection(block: suspend (SqlConnection) -> T): T {
     val connection = client.getConnectionAwait()
     try {
       return block(connection)
     } finally {
-      connection.closeAwait()
+      connection.close()
     }
   }
 
   protected suspend fun updateProperties(table: String, id: String, newObj: JsonObject,
-      connection: SQLConnection) {
-    val updateStatement = "UPDATE $table SET $DATA=$DATA || ?::jsonb WHERE $ID=?"
-    val updateParams = json {
-      array(
-          newObj.encode(),
-          id
-      )
-    }
-    connection.updateWithParamsAwait(updateStatement, updateParams)
+      connection: SqlConnection) {
+    val updateStatement = "UPDATE $table SET $DATA=$DATA || $1 WHERE $ID=$2"
+    val updateParams = Tuple.of(newObj, id)
+    connection.preparedQuery(updateStatement).executeAwait(updateParams)
   }
 
   protected suspend fun updateProperties(table: String, id: String, newObj: JsonObject) {
@@ -108,44 +112,17 @@ open class PostgreSQLRegistry(vertx: Vertx, url: String, username: String,
   }
 
   protected suspend fun updateColumn(table: String, id: String, column: String,
-      newValue: Any?, jsonb: Boolean, connection: SQLConnection) {
-    val jsonbStr = if (jsonb) "::jsonb" else ""
-    val updateStatement = "UPDATE $table SET $column=?$jsonbStr WHERE $ID=?"
-    val updateParams = json {
-      array(
-          newValue,
-          id
-      )
-    }
-    connection.updateWithParamsAwait(updateStatement, updateParams)
+      newValue: Any?) {
+    val updateStatement = "UPDATE $table SET $column=$1 WHERE $ID=$2"
+    val updateParams = Tuple.of(newValue, id)
+    client.preparedQuery(updateStatement).executeAwait(updateParams)
   }
 
   protected suspend fun updateColumn(table: String, id: String, column: String,
-      newValue: Any?, jsonb: Boolean) {
-    withConnection { connection ->
-      updateColumn(table, id, column, newValue, jsonb, connection)
-    }
-  }
-
-  protected suspend fun updateColumn(table: String, id: String, column: String,
-      currentValue: Any?, newValue: Any?, jsonb: Boolean, connection: SQLConnection) {
-    val jsonbStr = if (jsonb) "::jsonb" else ""
-    val updateStatement = "UPDATE $table SET $column=?$jsonbStr WHERE $ID=? " +
-        "AND $column=?$jsonbStr"
-    val updateParams = json {
-      array(
-          newValue,
-          id,
-          currentValue
-      )
-    }
-    connection.updateWithParamsAwait(updateStatement, updateParams)
-  }
-
-  protected suspend fun updateColumn(table: String, id: String, column: String,
-      currentValue: Any?, newValue: Any?, jsonb: Boolean) {
-    withConnection { connection ->
-      updateColumn(table, id, column, currentValue, newValue, jsonb, connection)
-    }
+      currentValue: Any?, newValue: Any?) {
+    val updateStatement = "UPDATE $table SET $column=$1 WHERE $ID=$2 " +
+        "AND $column=$3"
+    val updateParams = Tuple.of(newValue, id, currentValue)
+    client.preparedQuery(updateStatement).executeAwait(updateParams)
   }
 }

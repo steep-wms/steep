@@ -6,15 +6,12 @@ import helper.JsonUtils
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
-import io.vertx.kotlin.ext.sql.batchWithParamsAwait
-import io.vertx.kotlin.ext.sql.queryAwait
-import io.vertx.kotlin.ext.sql.querySingleAwait
-import io.vertx.kotlin.ext.sql.querySingleWithParamsAwait
-import io.vertx.kotlin.ext.sql.queryWithParamsAwait
-import io.vertx.kotlin.ext.sql.updateWithParamsAwait
+import io.vertx.kotlin.sqlclient.executeAwait
+import io.vertx.kotlin.sqlclient.executeBatchAwait
+import io.vertx.sqlclient.Row
+import io.vertx.sqlclient.Tuple
 import model.Submission
 import model.processchain.ProcessChain
 import java.time.Instant
@@ -58,16 +55,9 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       .build<String, String>()
 
   override suspend fun addSubmission(submission: Submission) {
-    withConnection { connection ->
-      val statement = "INSERT INTO $SUBMISSIONS ($ID, $DATA) VALUES (?, ?::jsonb)"
-      val params = json {
-        array(
-            submission.id,
-            JsonUtils.writeValueAsString(submission)
-        )
-      }
-      connection.updateWithParamsAwait(statement, params)
-    }
+    val statement = "INSERT INTO $SUBMISSIONS ($ID, $DATA) VALUES ($1, $2)"
+    val params = Tuple.of(submission.id, JsonUtils.toJson(submission))
+    client.preparedQuery(statement).executeAwait(params)
   }
 
   override suspend fun findSubmissions(status: Submission.Status?, size: Int,
@@ -79,103 +69,72 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     statement.append("SELECT $DATA FROM $SUBMISSIONS ")
 
     val params = if (status != null) {
-      statement.append("WHERE $DATA->'$STATUS'=?::jsonb ")
-      json {
-        array(
-            "\"$status\""
-        )
-      }
+      statement.append("WHERE $DATA->'$STATUS'=$1 ")
+      Tuple.of(status.toString())
     } else {
       null
     }
 
     statement.append("ORDER BY $SERIAL $asc LIMIT $limit OFFSET $offset")
 
-    return withConnection { connection ->
-      val rs = if (params != null) {
-        connection.queryWithParamsAwait(statement.toString(), params)
-      } else {
-        connection.queryAwait(statement.toString())
-      }
-      rs.results.map { JsonUtils.readValue(it.getString(0)) }
+    val rs = if (params != null) {
+      client.preparedQuery(statement.toString()).executeAwait(params)
+    } else {
+      client.query(statement.toString()).executeAwait()
     }
+    return rs.map { JsonUtils.fromJson(it.getJsonObject(0)) }
   }
 
   override suspend fun findSubmissionById(submissionId: String): Submission? {
-    return withConnection { connection ->
-      val statement = "SELECT $DATA FROM $SUBMISSIONS WHERE $ID=?"
-      val params = json {
-        array(
-            submissionId
-        )
-      }
-      val rs = connection.querySingleWithParamsAwait(statement, params)
-      rs?.let { JsonUtils.readValue<Submission>(it.getString(0)) }
-    }
+    val statement = "SELECT $DATA FROM $SUBMISSIONS WHERE $ID=$1"
+    val params = Tuple.of(submissionId)
+    val rs = client.preparedQuery(statement).executeAwait(params)
+    return rs?.firstOrNull()?.let { JsonUtils.fromJson<Submission>(it.getJsonObject(0)) }
   }
 
   override suspend fun findSubmissionIdsByStatus(status: Submission.Status): Collection<String> {
-    return withConnection { connection ->
-      val statement = "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$STATUS'=?::jsonb " +
-          "ORDER BY $SERIAL"
-      val params = json {
-        array(
-            "\"$status\""
-        )
-      }
-      val rs = connection.queryWithParamsAwait(statement, params)
-      rs.results.map { it.getString(0) }
-    }
+    val statement = "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$STATUS'=$1 " +
+        "ORDER BY $SERIAL"
+    val params = Tuple.of(status.toString())
+    val rs = client.preparedQuery(statement).executeAwait(params)
+    return rs.map { it.getString(0) }
   }
 
   override suspend fun countSubmissions(status: Submission.Status?): Long {
-    return withConnection { connection ->
-      val statement = StringBuilder()
-      statement.append("SELECT COUNT(*) FROM $SUBMISSIONS")
+    val statement = StringBuilder()
+    statement.append("SELECT COUNT(*) FROM $SUBMISSIONS")
 
-      val params = if (status != null) {
-        statement.append(" WHERE $DATA->'$STATUS'=?::jsonb")
-        json {
-          array(
-              "\"$status\""
-          )
-        }
-      } else {
-        null
-      }
-
-      val rs = if (params != null) {
-        connection.querySingleWithParamsAwait(statement.toString(), params)
-      } else {
-        connection.querySingleAwait(statement.toString())
-      }
-      rs?.getLong(0) ?: 0L
+    val params = if (status != null) {
+      statement.append(" WHERE $DATA->'$STATUS'=$1")
+      Tuple.of(status.toString())
+    } else {
+      null
     }
+
+    val rs = if (params != null) {
+      client.preparedQuery(statement.toString()).executeAwait(params)
+    } else {
+      client.query(statement.toString()).executeAwait()
+    }
+    return rs?.firstOrNull()?.getLong(0) ?: 0L
   }
 
   override suspend fun fetchNextSubmission(currentStatus: Submission.Status,
       newStatus: Submission.Status): Submission? {
-    return withConnection { connection ->
-      val updateStatement = "UPDATE $SUBMISSIONS SET $DATA=$DATA || ?::jsonb " +
-          "WHERE $ID = (" +
-            "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$STATUS'=?::jsonb LIMIT 1 " +
-            "FOR UPDATE SKIP LOCKED" + // prevent concurrent updates
-          ") RETURNING $DATA"
-      val newObj = json {
-        obj(
-            STATUS to newStatus.toString()
-        )
-      }
-      val updateParams = json {
-        array(
-            newObj.encode(),
-            "\"$currentStatus\""
-        )
-      }
-      val rs = connection.updateWithParamsAwait(updateStatement, updateParams)
-      rs.keys.firstOrNull()?.let { JsonUtils.readValue<Submission>(it.toString())
-          .copy(status = currentStatus) }
+    val updateStatement = "UPDATE $SUBMISSIONS SET $DATA=$DATA || $1 " +
+        "WHERE $ID = (" +
+          "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$STATUS'=$2 LIMIT 1 " +
+          "FOR UPDATE SKIP LOCKED" + // prevent concurrent updates
+        ") RETURNING $DATA"
+    val newObj = json {
+      obj(
+          STATUS to newStatus.toString()
+      )
     }
+    val updateParams = Tuple.of(newObj, currentStatus.toString())
+    val rs = client.preparedQuery(updateStatement).executeAwait(updateParams)
+    return rs?.firstOrNull()?.let { JsonUtils.fromJson<Submission>(it.getJsonObject(0))
+        .copy(status = currentStatus) }
   }
 
   override suspend fun setSubmissionStartTime(submissionId: String, startTime: Instant) {
@@ -206,54 +165,41 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun getSubmissionStatus(submissionId: String): Submission.Status {
-    return withConnection { connection ->
-      val statement = "SELECT $DATA->'$STATUS' FROM $SUBMISSIONS WHERE $ID=?"
-      val params = json {
-        array(
-            submissionId
-        )
-      }
-      val rs = connection.querySingleWithParamsAwait(statement, params) ?: throw NoSuchElementException(
-          "There is no submission with ID `$submissionId'")
-      Submission.Status.valueOf(JsonUtils.readValue(rs.getString(0)))
-    }
+    val statement = "SELECT $DATA->'$STATUS' FROM $SUBMISSIONS WHERE $ID=$1"
+    val params = Tuple.of(submissionId)
+    val rs = client.preparedQuery(statement).executeAwait(params)?.firstOrNull()
+        ?: throw NoSuchElementException("There is no submission with ID `$submissionId'")
+    return Submission.Status.valueOf(rs.getString(0))
   }
 
   private suspend fun <T> getSubmissionColumn(submissionId: String,
-      column: String, block: (JsonArray) -> T): T {
-    return withConnection { connection ->
-      val statement = "SELECT $column FROM $SUBMISSIONS WHERE $ID=?"
-      val params = json {
-        array(
-            submissionId
-        )
-      }
-      val r = connection.querySingleWithParamsAwait(statement, params) ?: throw NoSuchElementException(
-          "There is no submission with ID `$submissionId'")
-      block(r)
-    }
+      column: String, block: (Row) -> T): T {
+    val statement = "SELECT $column FROM $SUBMISSIONS WHERE $ID=$1"
+    val params = Tuple.of(submissionId)
+    val r = client.preparedQuery(statement).executeAwait(params)?.firstOrNull()
+        ?: throw NoSuchElementException("There is no submission with ID `$submissionId'")
+    return block(r)
   }
 
   override suspend fun setSubmissionResults(submissionId: String,
       results: Map<String, List<Any>>?) {
-    updateColumn(SUBMISSIONS, submissionId, RESULTS,
-        JsonUtils.writeValueAsString(results), true)
+    updateColumn(SUBMISSIONS, submissionId, RESULTS, results?.let { JsonUtils.toJson(it) })
   }
 
   override suspend fun getSubmissionResults(submissionId: String): Map<String, List<Any>>? =
       getSubmissionColumn(submissionId, RESULTS) { r ->
-        r.getString(0)?.let { JsonUtils.readValue<Map<String, List<Any>>>(it) } }
+        r.getJsonObjectOrNull(0)?.let { JsonUtils.fromJson<Map<String, List<Any>>>(it) } }
 
   override suspend fun setSubmissionErrorMessage(submissionId: String,
       errorMessage: String?) {
-    updateColumn(SUBMISSIONS, submissionId, ERROR_MESSAGE, errorMessage, false)
+    updateColumn(SUBMISSIONS, submissionId, ERROR_MESSAGE, errorMessage)
   }
 
   override suspend fun getSubmissionErrorMessage(submissionId: String): String? =
       getSubmissionColumn(submissionId, ERROR_MESSAGE) { it.getString(0) }
 
   override suspend fun setSubmissionExecutionState(submissionId: String, state: JsonObject?) {
-    updateColumn(SUBMISSIONS, submissionId, EXECUTION_STATE, state?.encode(), false)
+    updateColumn(SUBMISSIONS, submissionId, EXECUTION_STATE, state?.encode())
   }
 
   override suspend fun getSubmissionExecutionState(submissionId: String): JsonObject? =
@@ -263,27 +209,23 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   override suspend fun deleteSubmissionsFinishedBefore(timestamp: Instant): Collection<String> {
     return withConnection { connection ->
       // get IDs of submissions to delete
-      val statement = "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$END_TIME' < ?::jsonb"
-      val params = json {
-        array(
-            JsonUtils.writeValueAsString(timestamp)
-        )
-      }
-      val rs = connection.queryWithParamsAwait(statement, params)
-      val submissionIDs = rs.results.map { it.getString(0) }
+      val statement = "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$END_TIME' < $1"
+      val params = Tuple.of(timestamp.toString())
+      val rs = connection.preparedQuery(statement).executeAwait(params)
+      val submissionIDs = rs.map { it.getString(0) }
 
       // delete 1000 submissions at once
       for (chunk in submissionIDs.chunked(1000)) {
-        val deleteParams = JsonArray().add(submissionIDs.toTypedArray())
+        val deleteParams = Tuple.of(submissionIDs.toTypedArray())
 
         // delete process chains first
         val statement2 = "DELETE FROM $PROCESS_CHAINS " +
-            "WHERE $SUBMISSION_ID IN ?"
-        connection.updateWithParamsAwait(statement2, deleteParams)
+            "WHERE $SUBMISSION_ID=ANY($1)"
+        connection.preparedQuery(statement2).executeAwait(deleteParams)
 
         // then delete submissions
-        val statement3 = "DELETE FROM $SUBMISSIONS WHERE $ID IN ?"
-        connection.updateWithParamsAwait(statement3, deleteParams)
+        val statement3 = "DELETE FROM $SUBMISSIONS WHERE $ID=ANY($1)"
+        connection.preparedQuery(statement3).executeAwait(deleteParams)
       }
 
       submissionIDs
@@ -293,29 +235,18 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,
       submissionId: String, status: ProcessChainStatus) {
     withConnection { connection ->
-      val existsStatement = "SELECT 1 FROM $SUBMISSIONS WHERE $ID=?"
-      val existsParam = json {
-        array(
-            submissionId
-        )
-      }
-      if (connection.querySingleWithParamsAwait(existsStatement, existsParam) == null) {
+      val existsStatement = "SELECT 1 FROM $SUBMISSIONS WHERE $ID=$1"
+      val existsParam = Tuple.of(submissionId)
+      if (connection.preparedQuery(existsStatement).executeAwait(existsParam)?.firstOrNull() == null) {
         throw NoSuchElementException("There is no submission with ID `$submissionId'")
       }
 
       val insertStatement = "INSERT INTO $PROCESS_CHAINS ($ID, $SUBMISSION_ID, $STATUS, $DATA) " +
-          "VALUES (?, ?, ?, ?::jsonb)"
+          "VALUES ($1, $2, $3, $4)"
       val insertParams = processChains.map {
-        json {
-          array(
-              it.id,
-              submissionId,
-              status.toString(),
-              JsonUtils.writeValueAsString(it)
-          )
-        }
+        Tuple.of(it.id, submissionId, status.toString(), JsonUtils.toJson(it))
       }
-      connection.batchWithParamsAwait(insertStatement, insertParams)
+      connection.preparedQuery(insertStatement).executeBatchAwait(insertParams)
     }
   }
 
@@ -324,229 +255,161 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     val asc = if (order >= 0) "ASC" else "DESC"
     val limit = if (size < 0) "ALL" else size.toString()
 
-    return withConnection { connection ->
-      val statement = StringBuilder()
-      statement.append("SELECT $DATA, $SUBMISSION_ID FROM $PROCESS_CHAINS ")
+    val statement = StringBuilder()
+    statement.append("SELECT $DATA, $SUBMISSION_ID FROM $PROCESS_CHAINS ")
 
-      val params = if (submissionId != null && status != null) {
-        statement.append("WHERE $SUBMISSION_ID=? AND $STATUS=? ")
-        json {
-          array(
-              submissionId,
-              status.toString()
-          )
-        }
-      } else if (submissionId != null) {
-        statement.append("WHERE $SUBMISSION_ID=? ")
-        json {
-          array(
-              submissionId
-          )
-        }
-      } else if (status != null) {
-        statement.append("WHERE $STATUS=? ")
-        json {
-          array(
-              status.toString()
-          )
-        }
-      } else {
-        null
-      }
-
-      statement.append("ORDER BY $SERIAL $asc LIMIT $limit OFFSET $offset")
-
-      val rs = if (params != null) {
-        connection.queryWithParamsAwait(statement.toString(), params)
-      } else {
-        connection.queryAwait(statement.toString())
-      }
-
-      rs.results.map { Pair(JsonUtils.readValue(it.getString(0)), it.getString(1)) }
+    val params = if (submissionId != null && status != null) {
+      statement.append("WHERE $SUBMISSION_ID=$1 AND $STATUS=$2 ")
+      Tuple.of(submissionId, status.toString())
+    } else if (submissionId != null) {
+      statement.append("WHERE $SUBMISSION_ID=$1 ")
+      Tuple.of(submissionId)
+    } else if (status != null) {
+      statement.append("WHERE $STATUS=$1 ")
+      Tuple.of(status.toString())
+    } else {
+      null
     }
+
+    statement.append("ORDER BY $SERIAL $asc LIMIT $limit OFFSET $offset")
+
+    val rs = if (params != null) {
+      client.preparedQuery(statement.toString()).executeAwait(params)
+    } else {
+      client.query(statement.toString()).executeAwait()
+    }
+
+    return rs.map { Pair(JsonUtils.fromJson(it.getJsonObject(0)), it.getString(1)) }
   }
 
   override suspend fun findProcessChainIdsByStatus(
       status: ProcessChainStatus): List<String> {
-    return withConnection { connection ->
-      val statement = "SELECT $ID FROM $PROCESS_CHAINS " +
-          "WHERE $STATUS=? ORDER BY $SERIAL"
-      val params = json {
-        array(
-            status.toString()
-        )
-      }
-      val rs = connection.queryWithParamsAwait(statement, params)
-      rs.results.map { it.getString(0) }
-    }
+    val statement = "SELECT $ID FROM $PROCESS_CHAINS " +
+        "WHERE $STATUS=$1 ORDER BY $SERIAL"
+    val params = Tuple.of(status.toString())
+    val rs = client.preparedQuery(statement).executeAwait(params)
+    return rs.map { it.getString(0) }
   }
 
   override suspend fun findProcessChainIdsBySubmissionIdAndStatus(
       submissionId: String, status: ProcessChainStatus): List<String> {
-    return withConnection { connection ->
-      val statement = "SELECT $ID FROM $PROCESS_CHAINS " +
-          "WHERE $SUBMISSION_ID=? AND $STATUS=? ORDER BY $SERIAL"
-      val params = json {
-        array(
-            submissionId,
-            status.toString()
-        )
-      }
-      val rs = connection.queryWithParamsAwait(statement, params)
-      rs.results.map { it.getString(0) }
-    }
+    val statement = "SELECT $ID FROM $PROCESS_CHAINS " +
+        "WHERE $SUBMISSION_ID=$1 AND $STATUS=$2 ORDER BY $SERIAL"
+    val params = Tuple.of(submissionId, status.toString())
+    val rs = client.preparedQuery(statement).executeAwait(params)
+    return rs.map { it.getString(0) }
   }
 
   override suspend fun findProcessChainStatusesBySubmissionId(submissionId: String):
       Map<String, ProcessChainStatus> {
-    return withConnection { connection ->
-      val statement = "SELECT $ID, $STATUS FROM $PROCESS_CHAINS " +
-          "WHERE $SUBMISSION_ID=? ORDER BY $SERIAL"
-      val params = json {
-        array(
-            submissionId
-        )
-      }
-      val rs = connection.queryWithParamsAwait(statement, params)
-      rs.results.associate { Pair(it.getString(0), ProcessChainStatus.valueOf(it.getString(1))) }
-    }
+    val statement = "SELECT $ID, $STATUS FROM $PROCESS_CHAINS " +
+        "WHERE $SUBMISSION_ID=$1 ORDER BY $SERIAL"
+    val params = Tuple.of(submissionId)
+    val rs = client.preparedQuery(statement).executeAwait(params)
+    return rs.associate { Pair(it.getString(0), ProcessChainStatus.valueOf(it.getString(1))) }
   }
 
   override suspend fun findProcessChainRequiredCapabilities(
       status: ProcessChainStatus): List<Collection<String>> {
-    return withConnection { connection ->
-      val statement = "SELECT DISTINCT $DATA->'$REQUIRED_CAPABILITIES' " +
-          "FROM $PROCESS_CHAINS WHERE $STATUS=?"
-      val params = json {
-        array(
-            status.toString()
-        )
-      }
-      val rs = connection.queryWithParamsAwait(statement, params)
-      rs.results.map { JsonUtils.readValue<List<String>>(it.getString(0)) }
-    }
+    val statement = "SELECT DISTINCT $DATA->'$REQUIRED_CAPABILITIES' " +
+        "FROM $PROCESS_CHAINS WHERE $STATUS=$1"
+    val params = Tuple.of(status.toString())
+    val rs = client.preparedQuery(statement).executeAwait(params)
+    return rs.map { row -> row.getJsonArray(0).map { it.toString() } }
   }
 
   override suspend fun findProcessChainById(processChainId: String): ProcessChain? {
-    return withConnection { connection ->
-      val statement = "SELECT $DATA FROM $PROCESS_CHAINS WHERE $ID=?"
-      val params = json {
-        array(
-            processChainId
-        )
-      }
-      val rs = connection.querySingleWithParamsAwait(statement, params)
-      rs?.let { JsonUtils.readValue<ProcessChain>(it.getString(0)) }
-    }
+    val statement = "SELECT $DATA FROM $PROCESS_CHAINS WHERE $ID=$1"
+    val params = Tuple.of(processChainId)
+    val rs = client.preparedQuery(statement).executeAwait(params)
+    return rs?.firstOrNull()?.let { JsonUtils.fromJson<ProcessChain>(it.getJsonObject(0)) }
   }
 
   override suspend fun countProcessChains(submissionId: String?,
       status: ProcessChainStatus?, requiredCapabilities: Collection<String>?): Long {
-    return withConnection { connection ->
-      val statement = StringBuilder()
-      statement.append("SELECT COUNT(*) FROM $PROCESS_CHAINS")
+    val statement = StringBuilder()
+    statement.append("SELECT COUNT(*) FROM $PROCESS_CHAINS")
 
-      val conditions = mutableListOf<String>()
-      val params = JsonArray()
+    val conditions = mutableListOf<String>()
+    val params = Tuple.tuple()
 
-      if (submissionId != null) {
-        conditions.add("$SUBMISSION_ID=?")
-        params.add(submissionId)
-      }
-      if (status != null) {
-        conditions.add("$STATUS=?")
-        params.add(status.toString())
-      }
-      if (requiredCapabilities != null) {
-        conditions.add("$DATA->'$REQUIRED_CAPABILITIES'=?::jsonb")
-        params.add(JsonUtils.writeValueAsString(requiredCapabilities))
-      }
-
-      val rs = if (conditions.isNotEmpty()) {
-        statement.append(" WHERE ")
-        statement.append(conditions.joinToString(" AND "))
-        connection.querySingleWithParamsAwait(statement.toString(), params)
-      } else {
-        connection.querySingleAwait(statement.toString())
-      }
-
-      rs?.getLong(0) ?: 0L
+    var pos = 1
+    if (submissionId != null) {
+      conditions.add("$SUBMISSION_ID=$${pos++}")
+      params.addString(submissionId)
     }
+    if (status != null) {
+      conditions.add("$STATUS=$${pos++}")
+      params.addString(status.toString())
+    }
+    if (requiredCapabilities != null) {
+      conditions.add("$DATA->'$REQUIRED_CAPABILITIES'=$${pos}")
+      params.addValue(JsonArray(requiredCapabilities.toList()))
+    }
+
+    val rs = if (conditions.isNotEmpty()) {
+      statement.append(" WHERE ")
+      statement.append(conditions.joinToString(" AND "))
+      client.preparedQuery(statement.toString()).executeAwait(params)
+    } else {
+      client.query(statement.toString()).executeAwait()
+    }
+
+    return rs?.firstOrNull()?.getLong(0) ?: 0L
   }
 
   override suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
       newStatus: ProcessChainStatus, requiredCapabilities: Collection<String>?): ProcessChain? {
-    return withConnection { connection ->
-      val (selectStatement, params) = if (requiredCapabilities == null) {
-        "SELECT $ID FROM $PROCESS_CHAINS WHERE $STATUS=?" to json {
-          array(
-              newStatus.toString(),
-              currentStatus.toString()
-          )
-        }
-      } else {
-        "SELECT $ID FROM $PROCESS_CHAINS WHERE $STATUS=? " +
-            "AND $DATA->'$REQUIRED_CAPABILITIES'=?::jsonb" to json {
-          array(
-              newStatus.toString(),
-              currentStatus.toString(),
-              JsonUtils.writeValueAsString(requiredCapabilities)
-          )
-        }
+    val (selectStatement, params) = if (requiredCapabilities == null) {
+      "SELECT $ID FROM $PROCESS_CHAINS WHERE $STATUS=$2" to json {
+        Tuple.of(newStatus.toString(), currentStatus.toString())
       }
-
-      val updateStatement = "UPDATE $PROCESS_CHAINS SET $STATUS=? " +
-          "WHERE $ID = (" +
-            "$selectStatement " +
-            "ORDER BY $SERIAL LIMIT 1 " +
-            "FOR UPDATE SKIP LOCKED" + // prevent concurrent updates
-          ") RETURNING $DATA"
-      val rs = connection.updateWithParamsAwait(updateStatement, params)
-      rs.keys.firstOrNull()?.let { JsonUtils.readValue<ProcessChain>(it.toString()) }
+    } else {
+      "SELECT $ID FROM $PROCESS_CHAINS WHERE $STATUS=$2 " +
+          "AND $DATA->'$REQUIRED_CAPABILITIES'=$3" to json {
+        Tuple.of(newStatus.toString(), currentStatus.toString(),
+            JsonArray(requiredCapabilities.toList()))
+      }
     }
+
+    val updateStatement = "UPDATE $PROCESS_CHAINS SET $STATUS=$1 " +
+        "WHERE $ID = (" +
+          "$selectStatement " +
+          "ORDER BY $SERIAL LIMIT 1 " +
+          "FOR UPDATE SKIP LOCKED" + // prevent concurrent updates
+        ") RETURNING $DATA"
+    val rs = client.preparedQuery(updateStatement).executeAwait(params)
+    return rs?.firstOrNull()?.let { JsonUtils.fromJson<ProcessChain>(it.getJsonObject(0)) }
   }
 
   override suspend fun existsProcessChain(currentStatus: ProcessChainStatus,
       requiredCapabilities: Collection<String>?): Boolean {
-    return withConnection { connection ->
-      val (statement, params) = if (requiredCapabilities == null) {
-        "SELECT 1 FROM $PROCESS_CHAINS WHERE $STATUS=? LIMIT 1" to json {
-          array(
-              currentStatus.toString()
-          )
-        }
-      } else {
-        "SELECT 1 FROM $PROCESS_CHAINS WHERE $STATUS=? " +
-            "AND $DATA->'$REQUIRED_CAPABILITIES'=?::jsonb LIMIT 1" to json {
-          array(
-              currentStatus.toString(),
-              JsonUtils.writeValueAsString(requiredCapabilities)
-          )
-        }
+    val (statement, params) = if (requiredCapabilities == null) {
+      "SELECT 1 FROM $PROCESS_CHAINS WHERE $STATUS=$1 LIMIT 1" to json {
+        Tuple.of(currentStatus.toString())
       }
-
-      connection.querySingleWithParamsAwait(statement, params) != null
+    } else {
+      "SELECT 1 FROM $PROCESS_CHAINS WHERE $STATUS=$1 " +
+          "AND $DATA->'$REQUIRED_CAPABILITIES'=$2 LIMIT 1" to json {
+        Tuple.of(currentStatus.toString(), JsonArray(requiredCapabilities.toList()))
+      }
     }
+
+    return client.preparedQuery(statement).executeAwait(params)?.firstOrNull() != null
   }
 
   private suspend fun <T> getProcessChainColumn(processChainId: String,
-      column: String, block: (JsonArray) -> T): T {
-    return withConnection { connection ->
-      val statement = "SELECT $column FROM $PROCESS_CHAINS WHERE $ID=?"
-      val params = json {
-        array(
-            processChainId
-        )
-      }
-      val r = connection.querySingleWithParamsAwait(statement, params) ?: throw NoSuchElementException(
-          "There is no process chain with ID `$processChainId'")
-      block(r)
-    }
+      column: String, block: (Row) -> T): T {
+    val statement = "SELECT $column FROM $PROCESS_CHAINS WHERE $ID=$1"
+    val params = Tuple.of(processChainId)
+    val r = client.preparedQuery(statement).executeAwait(params).firstOrNull()
+        ?: throw NoSuchElementException("There is no process chain with ID `$processChainId'")
+    return block(r)
   }
 
   override suspend fun setProcessChainStartTime(processChainId: String, startTime: Instant?) {
     updateColumn(PROCESS_CHAINS, processChainId, START_TIME,
-        JsonUtils.writeValueAsString(startTime), false)
+        JsonUtils.writeValueAsString(startTime))
   }
 
   override suspend fun getProcessChainStartTime(processChainId: String): Instant? =
@@ -555,7 +418,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
   override suspend fun setProcessChainEndTime(processChainId: String, endTime: Instant?) {
     updateColumn(PROCESS_CHAINS, processChainId, END_TIME,
-        JsonUtils.writeValueAsString(endTime), false)
+        JsonUtils.writeValueAsString(endTime))
   }
 
   override suspend fun getProcessChainEndTime(processChainId: String): Instant? =
@@ -572,29 +435,21 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
   override suspend fun setProcessChainStatus(processChainId: String,
       status: ProcessChainStatus) {
-    updateColumn(PROCESS_CHAINS, processChainId, STATUS, status.toString(), false)
+    updateColumn(PROCESS_CHAINS, processChainId, STATUS, status.toString())
   }
 
   override suspend fun setProcessChainStatus(processChainId: String,
       currentStatus: ProcessChainStatus, newStatus: ProcessChainStatus) {
     updateColumn(PROCESS_CHAINS, processChainId, STATUS,
-        currentStatus.toString(), newStatus.toString(), false)
+        currentStatus.toString(), newStatus.toString())
   }
 
   override suspend fun setAllProcessChainsStatus(submissionId: String,
       currentStatus: ProcessChainStatus, newStatus: ProcessChainStatus) {
-    withConnection { connection ->
-      val updateStatement = "UPDATE $PROCESS_CHAINS SET $STATUS=? WHERE " +
-          "$SUBMISSION_ID=? AND $STATUS=?"
-      val updateParams = json {
-        array(
-            newStatus.toString(),
-            submissionId,
-            currentStatus.toString()
-        )
-      }
-      connection.updateWithParamsAwait(updateStatement, updateParams)
-    }
+    val updateStatement = "UPDATE $PROCESS_CHAINS SET $STATUS=$1 WHERE " +
+        "$SUBMISSION_ID=$2 AND $STATUS=$3"
+    val updateParams = Tuple.of(newStatus.toString(), submissionId, currentStatus.toString())
+    client.preparedQuery(updateStatement).executeAwait(updateParams)
   }
 
   override suspend fun getProcessChainStatus(processChainId: String): ProcessChainStatus =
@@ -603,17 +458,16 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
   override suspend fun setProcessChainResults(processChainId: String,
       results: Map<String, List<Any>>?) {
-    updateColumn(PROCESS_CHAINS, processChainId, RESULTS,
-        JsonUtils.writeValueAsString(results), true)
+    updateColumn(PROCESS_CHAINS, processChainId, RESULTS, results?.let{ JsonUtils.toJson(it) })
   }
 
   override suspend fun getProcessChainResults(processChainId: String): Map<String, List<Any>>? =
       getProcessChainColumn(processChainId, RESULTS) { r ->
-        r.getString(0)?.let { JsonUtils.readValue<Map<String, List<Any>>>(it) } }
+        r.getJsonObjectOrNull(0)?.let { JsonUtils.fromJson<Map<String, List<Any>>>(it) } }
 
   override suspend fun setProcessChainErrorMessage(processChainId: String,
       errorMessage: String?) {
-    updateColumn(PROCESS_CHAINS, processChainId, ERROR_MESSAGE, errorMessage, false)
+    updateColumn(PROCESS_CHAINS, processChainId, ERROR_MESSAGE, errorMessage)
   }
 
   override suspend fun getProcessChainErrorMessage(processChainId: String): String? =
