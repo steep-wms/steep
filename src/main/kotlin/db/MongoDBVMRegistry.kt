@@ -6,7 +6,9 @@ import com.mongodb.client.model.Indexes
 import com.mongodb.reactivestreams.client.MongoCollection
 import helper.DefaultSubscriber
 import helper.JsonUtils
+import helper.aggregateAwait
 import helper.countDocumentsAwait
+import helper.deleteManyAwait
 import helper.findAwait
 import helper.findOneAwait
 import helper.insertOneAwait
@@ -225,5 +227,41 @@ class MongoDBVMRegistry(private val vertx: Vertx,
 
   override suspend fun setVMReason(id: String, reason: String?) {
     updateField(collVMs, id, REASON, reason)
+  }
+
+  override suspend fun deleteVMsDestroyedBefore(timestamp: Instant): Collection<String> {
+    // find IDs of VMs to delete
+    val ids = collVMs.aggregateAwait(listOf(json {
+      obj(
+          "\$project" to obj(
+              DESTRUCTION_TIME to obj(
+                  "\$toLong" to obj(
+                      "\$toDate" to "\$$DESTRUCTION_TIME"
+                  )
+              )
+          )
+      )
+    }, json {
+      obj(
+          "\$match" to obj(
+              DESTRUCTION_TIME to obj(
+                  "\$lt" to timestamp.toEpochMilli()
+              )
+          )
+      )
+    })).map { it.getString(INTERNAL_ID) }
+
+    // delete 1000 VMs at once
+    for (chunk in ids.chunked(1000)) {
+      collVMs.deleteManyAwait(json {
+        obj(
+            INTERNAL_ID to obj(
+                "\$in" to chunk
+            )
+        )
+      })
+    }
+
+    return ids
   }
 }

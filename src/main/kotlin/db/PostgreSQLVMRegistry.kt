@@ -277,4 +277,18 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
     }
     updateProperties(VMS, id, newObj)
   }
+
+  override suspend fun deleteVMsDestroyedBefore(timestamp: Instant): Collection<String> {
+    return withConnection { connection ->
+      val statement = "DELETE FROM $VMS WHERE $DATA->'$DESTRUCTION_TIME' < ?::jsonb " +
+          "RETURNING $ID"
+      val params = json {
+        array(
+            JsonUtils.writeValueAsString(timestamp)
+        )
+      }
+      val rs = connection.updateWithParamsAwait(statement, params)
+      rs.keys.map { it.toString() }
+    }
+  }
 }

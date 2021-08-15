@@ -115,4 +115,10 @@ interface VMRegistry : Registry {
    * the [reason] is `null`, any existing value will be removed from the VM.
    */
   suspend fun setVMReason(id: String, reason: String?)
+
+  /**
+   * Delete all VMs that have been destroyed before the given [timestamp]
+   * (regardless of their status) and return their IDs
+   */
+  suspend fun deleteVMsDestroyedBefore(timestamp: Instant): Collection<String>
 }

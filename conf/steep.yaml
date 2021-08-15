@@ -134,6 +134,7 @@ steep:
     cron: "0 0 0 * * ?"
     retention:
       submissions: 1y
+      vms: 1y
 
 setups:
   default:

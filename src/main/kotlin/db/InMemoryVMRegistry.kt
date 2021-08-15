@@ -8,6 +8,7 @@ import io.vertx.core.shareddata.AsyncMap
 import io.vertx.kotlin.core.shareddata.getAwait
 import io.vertx.kotlin.core.shareddata.getLockAwait
 import io.vertx.kotlin.core.shareddata.putAwait
+import io.vertx.kotlin.core.shareddata.removeAwait
 import io.vertx.kotlin.core.shareddata.sizeAwait
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitResult
@@ -108,8 +109,8 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
       val values = awaitResult<List<String>> { map.values(it) }
       values
           .map { JsonUtils.readValue<VMEntry>(it) }
-          .filter { it.vm.status == status }
-          .count().toLong()
+          .count { it.vm.status == status }
+          .toLong()
     }
   }
 
@@ -196,5 +197,27 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
 
   override suspend fun setVMReason(id: String, reason: String?) {
     updateVM(id) { it.copy(reason = reason) }
+  }
+
+  override suspend fun deleteVMsDestroyedBefore(timestamp: Instant): Collection<String> {
+    val sharedData = vertx.sharedData()
+    val lock = sharedData.getLockAwait(LOCK_VMS)
+    try {
+      // find IDs of VMs to delete
+      val map = vms.await()
+      val values = awaitResult<List<String>> { map.values(it) }
+      val ids = values
+          .map { JsonUtils.readValue<VMEntry>(it) }
+          .filter { it.vm.destructionTime?.isBefore(timestamp) ?: false }
+          .map { it.vm.id }
+          .toSet()
+
+      // delete VMs
+      ids.forEach { map.removeAwait(it) }
+
+      return ids
+    } finally {
+      lock.release()
+    }
   }
 }

@@ -1,7 +1,10 @@
 import ConfigConstants.GARBAGECOLLECTOR_CRON
 import ConfigConstants.GARBAGECOLLECTOR_RETENTION_SUBMISSIONS
+import ConfigConstants.GARBAGECOLLECTOR_RETENTION_VMS
 import db.SubmissionRegistry
 import db.SubmissionRegistryFactory
+import db.VMRegistry
+import db.VMRegistryFactory
 import helper.toDuration
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import kotlinx.coroutines.CancellationException
@@ -28,7 +31,9 @@ class GarbageCollector : CoroutineVerticle() {
 
   private lateinit var job: Job
   private var retentionSubmissions: Duration? = null
+  private var retentionVMs: Duration? = null
   private lateinit var submissionRegistry: SubmissionRegistry
+  private lateinit var vmRegistry: VMRegistry
 
   override suspend fun start() {
     log.info("Launching garbage collector ...")
@@ -39,8 +44,11 @@ class GarbageCollector : CoroutineVerticle() {
     val cron = CronExpression(cronStr)
 
     retentionSubmissions = config.getString(GARBAGECOLLECTOR_RETENTION_SUBMISSIONS)?.toDuration()
+    retentionVMs = config.getString(GARBAGECOLLECTOR_RETENTION_VMS)?.toDuration()
 
+    // initialize registries
     submissionRegistry = SubmissionRegistryFactory.create(vertx)
+    vmRegistry = VMRegistryFactory.create(vertx)
 
     job = launch {
       try {
@@ -75,8 +83,13 @@ class GarbageCollector : CoroutineVerticle() {
   private suspend fun collect() {
     log.debug("Collecting garbage ...")
 
+    val now = Instant.now()
     if (retentionSubmissions != null) {
-      submissionRegistry.deleteSubmissionsFinishedBefore(Instant.now().minus(retentionSubmissions))
+      submissionRegistry.deleteSubmissionsFinishedBefore(now.minus(retentionSubmissions))
+    }
+
+    if (retentionVMs != null) {
+      vmRegistry.deleteVMsDestroyedBefore(now.minus(retentionVMs))
     }
   }
 }

@@ -581,4 +581,43 @@ abstract class VMRegistryTest {
       ctx.completeNow()
     }
   }
+
+  @Test
+  fun deleteVMsDestroyedBefore(vertx: Vertx, ctx: VertxTestContext) {
+    val vm1 = VM(setup = setup, status = VM.Status.CREATING)
+    val vm2 = VM(setup = setup, status = VM.Status.RUNNING)
+    val vm3 = VM(setup = setup, status = VM.Status.DESTROYED)
+    val vm4 = VM(setup = setup, status = VM.Status.DESTROYING)
+    val vm5 = VM(setup = setup, status = VM.Status.DESTROYED)
+    val vm6 = VM(setup = setup, status = VM.Status.ERROR)
+    val vm7 = VM(setup = setup, status = VM.Status.LEFT)
+    val vm8 = VM(setup = setup, status = VM.Status.DESTROYED)
+
+    val now = Instant.now()
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      vmRegistry.addVM(vm1)
+      vmRegistry.addVM(vm2)
+      vmRegistry.addVM(vm3)
+      vmRegistry.addVM(vm4)
+      vmRegistry.addVM(vm5)
+      vmRegistry.addVM(vm6)
+      vmRegistry.addVM(vm7)
+      vmRegistry.addVM(vm8)
+
+      vmRegistry.setVMDestructionTime(vm3.id, now)
+      vmRegistry.setVMDestructionTime(vm5.id, now.minusSeconds(100))
+      vmRegistry.setVMDestructionTime(vm6.id, now.minusSeconds(200))
+      vmRegistry.setVMDestructionTime(vm8.id, now.minusSeconds(50))
+
+      vmRegistry.deleteVMsDestroyedBefore(now.minusSeconds(50))
+
+      val r = vmRegistry.findVMs().map { it.id }
+      ctx.verify {
+        assertThat(r).containsExactlyInAnyOrder(vm1.id, vm2.id, vm3.id, vm4.id, vm7.id, vm8.id)
+      }
+
+      ctx.completeNow()
+    }
+  }
 }

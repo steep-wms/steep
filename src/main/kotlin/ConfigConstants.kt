@@ -488,6 +488,13 @@ object ConfigConstants {
   const val GARBAGECOLLECTOR_RETENTION_SUBMISSIONS = "steep.garbageCollector.retention.submissions"
 
   /**
+   * The maximum time a [model.cloud.VM] should be kept in the registry after
+   * it has been destroyed (regardless of its status). The time can be specified
+   * as a human-readable duration (see [helper.toDuration]).
+   */
+  const val GARBAGECOLLECTOR_RETENTION_VMS = "steep.garbageCollector.retention.vms"
+
+  /**
    * Get all configuration keys from this class
    * @return the list of configuration keys
    */
