@@ -133,8 +133,8 @@ steep:
     # seconds minutes hours day-of-month month day-of-week [year]
     cron: "0 0 0 * * ?"
     retention:
-      submissions: 1y
-      vms: 1y
+      submissions: 365d
+      vms: 365d
 
 setups:
   default:
