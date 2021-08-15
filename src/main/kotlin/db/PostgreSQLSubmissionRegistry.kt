@@ -6,13 +6,10 @@ import helper.JsonUtils
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
-import io.vertx.ext.sql.SQLConnection
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
-import io.vertx.kotlin.core.shareddata.getLockAwait
 import io.vertx.kotlin.ext.sql.batchWithParamsAwait
-import io.vertx.kotlin.ext.sql.executeAwait
 import io.vertx.kotlin.ext.sql.queryAwait
 import io.vertx.kotlin.ext.sql.querySingleAwait
 import io.vertx.kotlin.ext.sql.querySingleWithParamsAwait
@@ -20,7 +17,6 @@ import io.vertx.kotlin.ext.sql.queryWithParamsAwait
 import io.vertx.kotlin.ext.sql.updateWithParamsAwait
 import model.Submission
 import model.processchain.ProcessChain
-import java.lang.StringBuilder
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
@@ -50,24 +46,6 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     private const val ERROR_MESSAGE = "errorMessage"
     private const val EXECUTION_STATE = "executionState"
     private const val SERIAL = "serial"
-
-    /**
-     * Identifier of a PostgreSQL advisory lock used to make atomic operations
-     */
-    private const val ADVISORY_LOCK_ID =
-        ('J'.toLong() shl 56) +
-        ('o'.toLong() shl 48) +
-        ('b'.toLong() shl 40) +
-        ('M'.toLong() shl 32) +
-        ('a'.toLong() shl 24) +
-        ('n'.toLong() shl 16) +
-        ('a'.toLong() shl 8) +
-        ('g'.toLong())
-
-    /**
-     * Name of a cluster-wide lock used to make atomic operations
-     */
-    private const val LOCK = "PostgreSQLSubmissionRegistry.Lock"
   }
 
   /**
@@ -78,32 +56,6 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       .expireAfterAccess(60, TimeUnit.SECONDS)
       .maximumSize(10000)
       .build<String, String>()
-
-  /**
-   * Atomically executes the given block. We are using two locks: a cluster-wide
-   * one to protect against concurrent access from within the same cluster and
-   * a PostgreSQL advisory lock to protect against concurrent access from other
-   * processes outside the cluster. We need two locks because PostgreSQL
-   * advisory locks are re-entrant (within the same process).
-   * @param block the block to execute
-   * @return the block's result
-   */
-  private suspend fun <T> withLocks(block: suspend (SQLConnection) -> T): T {
-    return withConnection { connection ->
-      val sharedData = vertx.sharedData()
-      val lock = sharedData.getLockAwait(LOCK)
-      try {
-        connection.executeAwait("SELECT pg_advisory_lock($ADVISORY_LOCK_ID)")
-        try {
-          block(connection)
-        } finally {
-          connection.executeAwait("SELECT pg_advisory_unlock($ADVISORY_LOCK_ID)")
-        }
-      } finally {
-        lock.release()
-      }
-    }
-  }
 
   override suspend fun addSubmission(submission: Submission) {
     withConnection { connection ->
@@ -203,25 +155,26 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
   override suspend fun fetchNextSubmission(currentStatus: Submission.Status,
       newStatus: Submission.Status): Submission? {
-    return withLocks { connection ->
-      val statement = "SELECT $DATA FROM $SUBMISSIONS WHERE " +
-          "$DATA->'$STATUS'=?::jsonb LIMIT 1"
-      val params = json {
+    return withConnection { connection ->
+      val updateStatement = "UPDATE $SUBMISSIONS SET $DATA=$DATA || ?::jsonb " +
+          "WHERE $ID = (" +
+            "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$STATUS'=?::jsonb LIMIT 1 " +
+            "FOR UPDATE SKIP LOCKED" + // prevent concurrent updates
+          ") RETURNING $DATA"
+      val newObj = json {
+        obj(
+            STATUS to newStatus.toString()
+        )
+      }
+      val updateParams = json {
         array(
+            newObj.encode(),
             "\"$currentStatus\""
         )
       }
-      val rs = connection.querySingleWithParamsAwait(statement, params)
-      rs?.let { arr ->
-        JsonUtils.readValue<Submission>(arr.getString(0)).also {
-          val newObj = json {
-            obj(
-                STATUS to newStatus.toString()
-            )
-          }
-          updateProperties(SUBMISSIONS, it.id, newObj, connection)
-        }
-      }
+      val rs = connection.updateWithParamsAwait(updateStatement, updateParams)
+      rs.keys.firstOrNull()?.let { JsonUtils.readValue<Submission>(it.toString())
+          .copy(status = currentStatus) }
     }
   }
 
@@ -308,25 +261,30 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         rs.getString(0)?.let { JsonObject(it) } }
 
   override suspend fun deleteSubmissionsFinishedBefore(timestamp: Instant): Collection<String> {
-    return withLocks { connection ->
-      // delete process chains
-      val statement = "DELETE FROM $PROCESS_CHAINS pc USING $SUBMISSIONS s " +
-          "WHERE pc.$SUBMISSION_ID=s.$ID AND s.$DATA->'$END_TIME' < ?::jsonb"
+    return withConnection { connection ->
+      // get IDs of submissions to delete
+      val statement = "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$END_TIME' < ?::jsonb"
       val params = json {
         array(
             JsonUtils.writeValueAsString(timestamp)
         )
       }
-      connection.updateWithParamsAwait(statement, params)
-
-      // get IDs of submissions to delete
-      val statement2 = "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$END_TIME' < ?::jsonb"
-      val rs = connection.queryWithParamsAwait(statement2, params)
+      val rs = connection.queryWithParamsAwait(statement, params)
       val submissionIDs = rs.results.map { it.getString(0) }
 
-      // delete submissions
-      val statement3 = "DELETE FROM $SUBMISSIONS WHERE $DATA->'$END_TIME' < ?::jsonb"
-      connection.updateWithParamsAwait(statement3, params)
+      // delete 1000 submissions at once
+      for (chunk in submissionIDs.chunked(1000)) {
+        val deleteParams = JsonArray().add(submissionIDs.toTypedArray())
+
+        // delete process chains first
+        val statement2 = "DELETE FROM $PROCESS_CHAINS " +
+            "WHERE $SUBMISSION_ID IN ?"
+        connection.updateWithParamsAwait(statement2, deleteParams)
+
+        // then delete submissions
+        val statement3 = "DELETE FROM $SUBMISSIONS WHERE $ID IN ?"
+        connection.updateWithParamsAwait(statement3, deleteParams)
+      }
 
       submissionIDs
     }
@@ -334,7 +292,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,
       submissionId: String, status: ProcessChainStatus) {
-    withLocks { connection ->
+    withConnection { connection ->
       val existsStatement = "SELECT 1 FROM $SUBMISSIONS WHERE $ID=?"
       val existsParam = json {
         array(
@@ -518,38 +476,39 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
   override suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
       newStatus: ProcessChainStatus, requiredCapabilities: Collection<String>?): ProcessChain? {
-    return withLocks { connection ->
-      val (statement, params) = if (requiredCapabilities == null) {
-        "SELECT $DATA FROM $PROCESS_CHAINS WHERE $STATUS=? " +
-            "ORDER BY $SERIAL LIMIT 1" to json {
+    return withConnection { connection ->
+      val (selectStatement, params) = if (requiredCapabilities == null) {
+        "SELECT $ID FROM $PROCESS_CHAINS WHERE $STATUS=?" to json {
           array(
+              newStatus.toString(),
               currentStatus.toString()
           )
         }
       } else {
-        "SELECT $DATA FROM $PROCESS_CHAINS WHERE $STATUS=? " +
-            "AND $DATA->'$REQUIRED_CAPABILITIES'=?::jsonb " +
-            "ORDER BY $SERIAL LIMIT 1" to json {
+        "SELECT $ID FROM $PROCESS_CHAINS WHERE $STATUS=? " +
+            "AND $DATA->'$REQUIRED_CAPABILITIES'=?::jsonb" to json {
           array(
+              newStatus.toString(),
               currentStatus.toString(),
               JsonUtils.writeValueAsString(requiredCapabilities)
           )
         }
       }
 
-      val rs = connection.querySingleWithParamsAwait(statement, params)
-      rs?.let { arr ->
-        JsonUtils.readValue<ProcessChain>(arr.getString(0)).also {
-          updateColumn(PROCESS_CHAINS, it.id, STATUS, newStatus.toString(),
-              false, connection)
-        }
-      }
+      val updateStatement = "UPDATE $PROCESS_CHAINS SET $STATUS=? " +
+          "WHERE $ID = (" +
+            "$selectStatement " +
+            "ORDER BY $SERIAL LIMIT 1 " +
+            "FOR UPDATE SKIP LOCKED" + // prevent concurrent updates
+          ") RETURNING $DATA"
+      val rs = connection.updateWithParamsAwait(updateStatement, params)
+      rs.keys.firstOrNull()?.let { JsonUtils.readValue<ProcessChain>(it.toString()) }
     }
   }
 
   override suspend fun existsProcessChain(currentStatus: ProcessChainStatus,
       requiredCapabilities: Collection<String>?): Boolean {
-    return withLocks { connection ->
+    return withConnection { connection ->
       val (statement, params) = if (requiredCapabilities == null) {
         "SELECT 1 FROM $PROCESS_CHAINS WHERE $STATUS=? LIMIT 1" to json {
           array(
