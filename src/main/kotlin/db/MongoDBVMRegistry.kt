@@ -6,6 +6,7 @@ import com.mongodb.client.model.Indexes
 import com.mongodb.reactivestreams.client.MongoCollection
 import helper.DefaultSubscriber
 import helper.JsonUtils
+import helper.UniqueID
 import helper.aggregateAwait
 import helper.countDocumentsAwait
 import helper.deleteManyAwait
@@ -230,8 +231,8 @@ class MongoDBVMRegistry(private val vertx: Vertx,
   }
 
   override suspend fun deleteVMsDestroyedBefore(timestamp: Instant): Collection<String> {
-    // find IDs of VMs to delete
-    val ids = collVMs.aggregateAwait(listOf(json {
+    // find IDs of VMs whose destruction time is before the given timestamp
+    val ids1 = collVMs.aggregateAwait(listOf(json {
       obj(
           "\$project" to obj(
               DESTRUCTION_TIME to obj(
@@ -250,6 +251,30 @@ class MongoDBVMRegistry(private val vertx: Vertx,
           )
       )
     })).map { it.getString(INTERNAL_ID) }
+
+    // find IDs of terminated VMs that do not have a destructionTime but
+    // whose ID was created before the given timestamp (this will also
+    // include VMs without a creationTime)
+    val ids2 = collVMs.findAwait(json {
+      obj(
+        "\$or" to array(
+          obj(
+            STATUS to VM.Status.DESTROYED.toString()
+          ),
+          obj(
+            STATUS to VM.Status.ERROR.toString()
+          )
+        ),
+        DESTRUCTION_TIME to null
+      )
+    }, projection = json {
+      obj(
+        INTERNAL_ID to 1
+      )
+    }).map { it.getString(INTERNAL_ID) }
+      .filter { Instant.ofEpochMilli(UniqueID.toMillis(it)).isBefore(timestamp) }
+
+    val ids = ids1 + ids2
 
     // delete 1000 VMs at once
     for (chunk in ids.chunked(1000)) {

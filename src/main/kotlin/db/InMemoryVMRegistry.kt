@@ -1,6 +1,7 @@
 package db
 
 import helper.JsonUtils
+import helper.UniqueID
 import io.vertx.core.Future
 import io.vertx.core.Promise
 import io.vertx.core.Vertx
@@ -203,14 +204,27 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
     val sharedData = vertx.sharedData()
     val lock = sharedData.getLockAwait(LOCK_VMS)
     try {
-      // find IDs of VMs to delete
+      // find IDs of VMs whose destruction time is before the given timestamp
       val map = vms.await()
       val values = awaitResult<List<String>> { map.values(it) }
-      val ids = values
+      val ids1 = values
           .map { JsonUtils.readValue<VMEntry>(it) }
           .filter { it.vm.destructionTime?.isBefore(timestamp) ?: false }
           .map { it.vm.id }
           .toSet()
+
+      // find IDs of terminated VMs that do not have a destructionTime but
+      // whose ID was created before the given timestamp (this will also
+      // include VMs without a creationTime)
+      val ids2 = values
+        .map { JsonUtils.readValue<VMEntry>(it) }
+        .filter { (it.vm.status == VM.Status.DESTROYED || it.vm.status == VM.Status.ERROR) &&
+            it.vm.destructionTime == null &&
+            Instant.ofEpochMilli(UniqueID.toMillis(it.vm.id)).isBefore(timestamp) }
+        .map { it.vm.id }
+        .toSet()
+
+      val ids = ids1 + ids2
 
       // delete VMs
       ids.forEach { map.removeAwait(it) }

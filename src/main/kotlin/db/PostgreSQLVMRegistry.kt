@@ -1,6 +1,7 @@
 package db
 
 import helper.JsonUtils
+import helper.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
@@ -208,10 +209,29 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun deleteVMsDestroyedBefore(timestamp: Instant): Collection<String> {
-    val statement = "DELETE FROM $VMS WHERE $DATA->'$DESTRUCTION_TIME' < $1 " +
-        "RETURNING $ID"
-    val params = Tuple.of(timestamp.toString())
-    val rs = client.preparedQuery(statement).executeAwait(params)
-    return rs.map { it.getString(0) }
+    return withConnection { connection ->
+      val statement1 = "DELETE FROM $VMS WHERE $DATA->'$DESTRUCTION_TIME' < $1 " +
+          "RETURNING $ID"
+      val params1 = Tuple.of(timestamp.toString())
+      val rs1 = connection.preparedQuery(statement1).executeAwait(params1)
+      val ids1 = rs1.map { it.getString(0) }
+
+      // find IDs of terminated VMs that do not have a destructionTime but
+      // whose ID was created before the given timestamp (this will also
+      // include VMs without a creationTime)
+      val statement2 = "SELECT $ID FROM $VMS WHERE $DATA->'$DESTRUCTION_TIME' IS NULL " +
+          "AND ($DATA->'$STATUS'=$1 OR $DATA->'$STATUS'=$2)"
+      val params2 = Tuple.of(VM.Status.DESTROYED.toString(), VM.Status.ERROR.toString())
+      val rs2 = connection.preparedQuery(statement2).executeAwait(params2)
+      val ids2 = rs2.map { it.getString(0) }
+        .filter { Instant.ofEpochMilli(UniqueID.toMillis(it)).isBefore(timestamp) }
+
+      // then delete those VMs
+      val statement3 = "DELETE FROM $VMS WHERE $ID=ANY($1)"
+      val params3 = Tuple.of(ids2.toTypedArray())
+      connection.preparedQuery(statement3).executeAwait(params3)
+
+      ids1 + ids2
+    }
   }
 }

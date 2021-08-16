@@ -593,6 +593,17 @@ abstract class VMRegistryTest {
     val vm7 = VM(setup = setup, status = VM.Status.LEFT)
     val vm8 = VM(setup = setup, status = VM.Status.DESTROYED)
 
+    // three very old VMs without creationTime or destructionTime
+    val vm9 = VM(id = "aksdfswmgo5qwwfiun4a", setup = setup, status = VM.Status.DESTROYED)
+    val vm10 = VM(id = "aksdm2tuvtjdgosg24oq", setup = setup, status = VM.Status.ERROR)
+    val vm11 = VM(id = "akq473fjlpzf3nlipksa", setup = setup, status = VM.Status.CREATING)
+
+    // a new VM without creationTime or destructionTime
+    val vm12 = VM(setup = setup, status = VM.Status.DESTROYED)
+
+    // a very old VM that has a destructionTime and should not be deleted
+    val vm13 = VM(id = "aksdw2skyqggec673iyq", setup = setup, status = VM.Status.DESTROYED)
+
     val now = Instant.now()
 
     GlobalScope.launch(vertx.dispatcher()) {
@@ -604,17 +615,37 @@ abstract class VMRegistryTest {
       vmRegistry.addVM(vm6)
       vmRegistry.addVM(vm7)
       vmRegistry.addVM(vm8)
+      vmRegistry.addVM(vm9)
+      vmRegistry.addVM(vm10)
+      vmRegistry.addVM(vm11)
+      vmRegistry.addVM(vm12)
+      vmRegistry.addVM(vm13)
+
+      vmRegistry.setVMCreationTime(vm1.id, now.minusSeconds(1100))
+      vmRegistry.setVMCreationTime(vm2.id, now.minusSeconds(1099))
+      vmRegistry.setVMCreationTime(vm3.id, now.minusSeconds(1098))
+      vmRegistry.setVMCreationTime(vm4.id, now.minusSeconds(1097))
+      vmRegistry.setVMCreationTime(vm5.id, now.minusSeconds(1096))
+      vmRegistry.setVMCreationTime(vm6.id, now.minusSeconds(1095))
+      vmRegistry.setVMCreationTime(vm7.id, now.minusSeconds(1094))
+      vmRegistry.setVMCreationTime(vm8.id, now.minusSeconds(1093))
+      // do not set a creation time for vm9, vm10, vm11, vm12
+      vmRegistry.setVMCreationTime(vm13.id, now.minusSeconds(10000))
 
       vmRegistry.setVMDestructionTime(vm3.id, now)
       vmRegistry.setVMDestructionTime(vm5.id, now.minusSeconds(100))
       vmRegistry.setVMDestructionTime(vm6.id, now.minusSeconds(200))
       vmRegistry.setVMDestructionTime(vm8.id, now.minusSeconds(50))
+      // do not set a destruction time for vm9, vm10, vm11, vm12
+      vmRegistry.setVMDestructionTime(vm13.id, now)
 
-      vmRegistry.deleteVMsDestroyedBefore(now.minusSeconds(50))
+      val deletedIds = vmRegistry.deleteVMsDestroyedBefore(now.minusSeconds(50))
 
-      val r = vmRegistry.findVMs().map { it.id }
+      val remainingIds = vmRegistry.findVMs().map { it.id }
       ctx.verify {
-        assertThat(r).containsExactlyInAnyOrder(vm1.id, vm2.id, vm3.id, vm4.id, vm7.id, vm8.id)
+        assertThat(deletedIds).containsExactlyInAnyOrder(vm5.id, vm6.id, vm9.id, vm10.id)
+        assertThat(remainingIds).containsExactlyInAnyOrder(vm1.id, vm2.id,
+          vm3.id, vm4.id, vm7.id, vm8.id, vm11.id, vm12.id, vm13.id)
       }
 
       ctx.completeNow()
