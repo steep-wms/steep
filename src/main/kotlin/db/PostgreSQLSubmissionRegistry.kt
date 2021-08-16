@@ -3,6 +3,7 @@ package db
 import com.google.common.cache.CacheBuilder
 import db.SubmissionRegistry.ProcessChainStatus
 import helper.JsonUtils
+import helper.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -208,24 +209,37 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
   override suspend fun deleteSubmissionsFinishedBefore(timestamp: Instant): Collection<String> {
     return withConnection { connection ->
-      // get IDs of submissions to delete
-      val statement = "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$END_TIME' < $1"
-      val params = Tuple.of(timestamp.toString())
-      val rs = connection.preparedQuery(statement).executeAwait(params)
-      val submissionIDs = rs.map { it.getString(0) }
+      // find IDs of submissions whose end time is before the given timestamp
+      val statement1 = "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$END_TIME' < $1"
+      val params1 = Tuple.of(timestamp.toString())
+      val rs1 = connection.preparedQuery(statement1).executeAwait(params1)
+      val submissionIDs1 = rs1.map { it.getString(0) }
+
+      // find IDs of finished submissions that do not have an endTime but
+      // whose ID was created before the given timestamp (this will also
+      // include submissions without a startTime)
+      val statement2 = "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$END_TIME' IS NULL " +
+          "AND $DATA->'$STATUS'!=$1 AND $DATA->'$STATUS'!=$2"
+      val params2 = Tuple.of(Submission.Status.ACCEPTED.toString(),
+        Submission.Status.RUNNING.toString())
+      val rs2 = connection.preparedQuery(statement2).executeAwait(params2)
+      val submissionIDs2 = rs2.map { it.getString(0) }
+        .filter { Instant.ofEpochMilli(UniqueID.toMillis(it)).isBefore(timestamp) }
+
+      val submissionIDs = submissionIDs1 + submissionIDs2
 
       // delete 1000 submissions at once
       for (chunk in submissionIDs.chunked(1000)) {
         val deleteParams = Tuple.of(submissionIDs.toTypedArray())
 
         // delete process chains first
-        val statement2 = "DELETE FROM $PROCESS_CHAINS " +
+        val statement3 = "DELETE FROM $PROCESS_CHAINS " +
             "WHERE $SUBMISSION_ID=ANY($1)"
-        connection.preparedQuery(statement2).executeAwait(deleteParams)
+        connection.preparedQuery(statement3).executeAwait(deleteParams)
 
         // then delete submissions
-        val statement3 = "DELETE FROM $SUBMISSIONS WHERE $ID=ANY($1)"
-        connection.preparedQuery(statement3).executeAwait(deleteParams)
+        val statement4 = "DELETE FROM $SUBMISSIONS WHERE $ID=ANY($1)"
+        connection.preparedQuery(statement4).executeAwait(deleteParams)
       }
 
       submissionIDs

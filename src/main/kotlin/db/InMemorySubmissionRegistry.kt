@@ -2,6 +2,7 @@ package db
 
 import db.SubmissionRegistry.ProcessChainStatus
 import helper.JsonUtils
+import helper.UniqueID
 import io.vertx.core.Future
 import io.vertx.core.Promise
 import io.vertx.core.Vertx
@@ -247,14 +248,28 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     try {
       val processChainLock = sharedData.getLockAwait(LOCK_PROCESS_CHAINS)
       try {
-        // find IDs of submissions to delete
+        // find IDs of submissions whose end time is before the given timestamp
         val submissionMap = submissions.await()
         val submissionValues = awaitResult<List<String>> { submissionMap.values(it) }
-        val submissionIDs = submissionValues
+        val submissionIDs1 = submissionValues
             .map { JsonUtils.readValue<SubmissionEntry>(it) }
             .filter { it.submission.endTime?.isBefore(timestamp) ?: false }
             .map { it.submission.id }
             .toSet()
+
+        // find IDs of finished submissions that do not have an endTime but
+        // whose ID was created before the given timestamp (this will also
+        // include submissions without a startTime)
+        val submissionIDs2 = submissionValues
+          .map { JsonUtils.readValue<SubmissionEntry>(it) }
+          .filter { it.submission.status != Submission.Status.ACCEPTED &&
+              it.submission.status != Submission.Status.RUNNING &&
+              it.submission.endTime == null &&
+              Instant.ofEpochMilli(UniqueID.toMillis(it.submission.id)).isBefore(timestamp) }
+          .map { it.submission.id }
+          .toSet()
+
+        val submissionIDs = submissionIDs1 + submissionIDs2
 
         // find IDs of all process chains that belong to these submissions
         val processChainMap = this.processChains.await()

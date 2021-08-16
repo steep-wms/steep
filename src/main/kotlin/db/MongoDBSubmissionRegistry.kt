@@ -11,6 +11,7 @@ import com.mongodb.reactivestreams.client.gridfs.GridFSBuckets
 import db.SubmissionRegistry.ProcessChainStatus
 import helper.DefaultSubscriber
 import helper.JsonUtils
+import helper.UniqueID
 import helper.aggregateAwait
 import helper.bulkWriteAwait
 import helper.countDocumentsAwait
@@ -27,6 +28,7 @@ import helper.upload
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
+import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import model.Submission
@@ -324,8 +326,8 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   }
 
   override suspend fun deleteSubmissionsFinishedBefore(timestamp: Instant): Collection<String> {
-    // find IDs of submissions to delete
-    val submissionIDs = collSubmissions.aggregateAwait(listOf(json {
+    // find IDs of submissions whose end time is before the given timestamp
+    val submissionIDs1 = collSubmissions.aggregateAwait(listOf(json {
       obj(
           "\$project" to obj(
               END_TIME to obj(
@@ -344,6 +346,36 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
           )
       )
     })).map { it.getString(INTERNAL_ID) }
+
+    // find IDs of finished submissions that do not have an endTime but
+    // whose ID was created before the given timestamp (this will also
+    // include submissions without a startTime)
+    val submissionIDs2 = collSubmissions.findAwait(json {
+      obj(
+        "\$and" to array(
+          obj(
+            STATUS to obj(
+              "\$ne" to Submission.Status.ACCEPTED.toString()
+            )
+          ),
+          obj(
+            STATUS to obj(
+              "\$ne" to Submission.Status.RUNNING.toString()
+            )
+          ),
+          obj(
+            END_TIME to null
+          )
+        )
+      )
+    }, projection = json {
+      obj(
+        INTERNAL_ID to 1
+      )
+    }).map { it.getString(INTERNAL_ID) }
+      .filter { Instant.ofEpochMilli(UniqueID.toMillis(it)).isBefore(timestamp) }
+
+    val submissionIDs = submissionIDs1 + submissionIDs2
 
     // delete 1000 submissions at once
     for (chunk in submissionIDs.chunked(1000)) {
