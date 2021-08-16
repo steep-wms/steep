@@ -29,6 +29,7 @@ module.exports = {
   VM_EXTERNALID_CHANGED: "steep.vmRegistry.vmExternalIdChanged",
   VM_IPADDRESS_CHANGED: "steep.vmRegistry.vmIpAddressChanged",
   VM_REASON_CHANGED: "steep.vmRegistry.vmReasonChanged",
+  VMS_DELETED: "steep.vmRegistry.vmsDeleted",
 
   LOGS_PROCESSCHAINS_PREFIX: "steep.logs.processchains."
 }

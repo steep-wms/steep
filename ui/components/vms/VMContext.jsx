@@ -8,7 +8,8 @@ import {
   VM_STATUS_CHANGED,
   VM_EXTERNALID_CHANGED,
   VM_IPADDRESS_CHANGED,
-  VM_REASON_CHANGED
+  VM_REASON_CHANGED,
+  VMS_DELETED
 } from "../lib/EventBusMessages"
 
 const ADD_MESSAGES = {
@@ -43,7 +44,11 @@ const UPDATE_MESSAGES = {
   [VM_REASON_CHANGED]: (body) => ({
     id: body.id,
     reason: body.reason
-  })
+  }),
+  [VMS_DELETED]: (body) => body.vmIds.map(vmId => ({
+    id: vmId,
+    deleted: true
+  }))
 }
 
 const Provider = (props) => (

@@ -33,6 +33,7 @@ function VMDetails({ id }) {
   let breadcrumbs
   let title
   let result
+  let deleted
 
   if (vms.items !== undefined && vms.items.length > 0) {
     let vm = vms.items[0]
@@ -51,6 +52,8 @@ function VMDetails({ id }) {
     }
 
     let progress = vmToProgress(vm)
+
+    deleted = !!vm.deleted
 
     result = (<>
       <div className="detail-header">
@@ -76,7 +79,7 @@ function VMDetails({ id }) {
           </DefinitionList>
         </div>
         <div className="detail-header-right">
-          <ListItemProgressBox progress={progress} />
+          <ListItemProgressBox progress={progress} deleted={deleted} />
         </div>
       </div>
       {vm.reason && vm.status === "ERROR" && (<>
@@ -169,7 +172,7 @@ function VMDetails({ id }) {
   }
 
   return (
-    <DetailPage breadcrumbs={breadcrumbs} title={title}>
+    <DetailPage breadcrumbs={breadcrumbs} title={title} deleted={deleted}>
       {result}
       {error}
     </DetailPage>

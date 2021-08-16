@@ -46,7 +46,7 @@ function VMListItem({ item: vm }) {
         formatter={formatterToNow(false)} title={agoTitle} /></>
     }
 
-    return <ListItem key={vm.id} justAdded={vm.justAdded}
+    return <ListItem key={vm.id} justAdded={vm.justAdded} deleted={vm.deleted}
         linkHref={href} linkAs={as} title={vm.id} subtitle={subtitle}
         startTime={vm.creationTime} endTime={vm.destructionTime} progress={progress}
         labels={vm.setup.providedCapabilities} />

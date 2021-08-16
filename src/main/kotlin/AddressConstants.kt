@@ -218,4 +218,9 @@ object AddressConstants {
    * Will be published when the reason for the status of a VM's has changed
    */
   const val VM_REASON_CHANGED = "steep.vmRegistry.vmReasonChanged"
+
+  /**
+   * Will be published when VMs have been deleted
+   */
+  const val VMS_DELETED = "steep.vmRegistry.vmsDeleted"
 }

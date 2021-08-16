@@ -110,4 +110,14 @@ class NotifyingVMRegistry(private val delegate: VMRegistry, private val vertx: V
       )
     })
   }
+
+  override suspend fun deleteVMsDestroyedBefore(timestamp: Instant): Collection<String> {
+    val vmIds = delegate.deleteVMsDestroyedBefore(timestamp)
+    vertx.eventBus().publish(AddressConstants.VMS_DELETED, json {
+      obj(
+        "vmIds" to vmIds.toList()
+      )
+    })
+    return vmIds
+  }
 }

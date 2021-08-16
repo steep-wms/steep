@@ -21,6 +21,7 @@ import AddressConstants.SUBMISSION_ENDTIME_CHANGED
 import AddressConstants.SUBMISSION_ERRORMESSAGE_CHANGED
 import AddressConstants.SUBMISSION_STARTTIME_CHANGED
 import AddressConstants.SUBMISSION_STATUS_CHANGED
+import AddressConstants.VMS_DELETED
 import AddressConstants.VM_ADDED
 import AddressConstants.VM_AGENTJOINTIME_CHANGED
 import AddressConstants.VM_CREATIONTIME_CHANGED
@@ -323,7 +324,9 @@ class HttpEndpoint : CoroutineVerticle() {
         .addOutboundPermitted(PermittedOptions()
             .setAddress(VM_IPADDRESS_CHANGED))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(VM_REASON_CHANGED)))
+            .setAddress(VM_REASON_CHANGED))
+        .addOutboundPermitted(PermittedOptions()
+            .setAddress(VMS_DELETED)))
     router.route("/eventbus/*").handler(sockJSHandler)
 
     val baseRouter = Router.router(vertx)
