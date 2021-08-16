@@ -125,7 +125,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     val updateStatement = "UPDATE $SUBMISSIONS SET $DATA=$DATA || $1 " +
         "WHERE $ID = (" +
           "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$STATUS'=$2 LIMIT 1 " +
-          "FOR UPDATE SKIP LOCKED" + // prevent concurrent updates
+          "FOR UPDATE SKIP LOCKED" + // skip rows being updated concurrently
         ") RETURNING $DATA"
     val newObj = json {
       obj(
@@ -390,7 +390,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         "WHERE $ID = (" +
           "$selectStatement " +
           "ORDER BY $SERIAL LIMIT 1 " +
-          "FOR UPDATE SKIP LOCKED" + // prevent concurrent updates
+          "FOR UPDATE SKIP LOCKED" + // skip rows being updated concurrently
         ") RETURNING $DATA"
     val rs = client.preparedQuery(updateStatement).executeAwait(params)
     return rs?.firstOrNull()?.let { JsonUtils.fromJson<ProcessChain>(it.getJsonObject(0)) }
