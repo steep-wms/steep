@@ -65,7 +65,7 @@ dependencies {
     implementation("org.apache.commons:commons-text:1.9")
     implementation("org.flywaydb:flyway-core:7.3.1")
     implementation("org.mongodb:mongodb-driver-reactivestreams:1.13.1")
-    implementation("org.pacesys:openstack4j:3.2.0")
+    implementation("com.github.openstack4j.core:openstack4j:3.10")
     implementation("org.postgresql:postgresql:42.2.18")
     implementation("org.quartz-scheduler:quartz:2.3.2") {
         // we only need org.quartz.CronExpression, so we can exclude all dependencies
