@@ -44,6 +44,7 @@ import org.yaml.snakeyaml.Yaml
 import java.io.File
 import java.io.IOException
 import java.io.StringWriter
+import java.time.Duration
 import java.time.Instant
 import kotlin.math.max
 import kotlin.math.min
@@ -283,7 +284,8 @@ class CloudManager : CoroutineVerticle() {
       log.info("Destroying VM of left agent `${vm.id}' ...")
       vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYING)
       if (vm.externalId != null) {
-        cloudClient.destroyVM(vm.externalId)
+        // TODO make timeout configurable
+        cloudClient.destroyVM(vm.externalId, Duration.ofMinutes(5))
       }
       vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYED)
       vmRegistry.setVMReason(vm.id, "Agent has left the cluster")
@@ -323,7 +325,8 @@ class CloudManager : CoroutineVerticle() {
         if (active) {
           deleteDeferreds.add(async {
             log.info("Found orphaned VM `$externalId' ...")
-            cloudClient.destroyVM(externalId)
+            // TODO make timeout configurable
+            cloudClient.destroyVM(externalId, Duration.ofMinutes(5))
             if (id != null) {
               vmRegistry.forceSetVMStatus(id, VM.Status.DESTROYED)
               vmRegistry.setVMReason(id, "VM was orphaned")
@@ -528,7 +531,8 @@ class CloudManager : CoroutineVerticle() {
               provisionVM(ipAddress, vm.id, externalId, setup)
             } catch (e: Throwable) {
               vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYING)
-              cloudClient.destroyVM(externalId)
+              // TODO make timeout configurable
+              cloudClient.destroyVM(externalId, Duration.ofMinutes(5))
               for (vd in volumeDeferreds) {
                 val volumeId = try {
                   vd.await()

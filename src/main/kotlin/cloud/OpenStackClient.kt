@@ -17,6 +17,8 @@ import org.openstack4j.model.compute.Server
 import org.openstack4j.model.storage.block.Volume
 import org.openstack4j.openstack.OSFactory
 import org.slf4j.LoggerFactory
+import java.time.Duration
+import java.time.Instant
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -279,7 +281,7 @@ class OpenStackClient(endpoint: String, username: String, password: String,
     }
   }
 
-  override suspend fun destroyVM(id: String) {
+  override suspend fun destroyVM(id: String, timeout: Duration?) {
     val os = this.os.await()
 
     val server = blocking { os.compute().servers().get(id) }
@@ -320,9 +322,21 @@ class OpenStackClient(endpoint: String, username: String, password: String,
       throw IllegalStateException(response.fault)
     }
 
+    val deadline = timeout?.let { Instant.now().plus(it) }
     do {
       log.info("Waiting for VM `${server.id}' to be destroyed")
-      delay(2000)
+
+      val d = (if (deadline != null)
+        deadline.toEpochMilli() - Instant.now().toEpochMilli()
+      else
+        2000).coerceAtMost(2000)
+      delay(d)
+
+      val now = Instant.now()
+      if (deadline != null && (now.isAfter(deadline) || now == deadline)) {
+        log.error("Timed out waiting for VM ${server.id} to be destroyed")
+        throw IllegalStateException("Timed out waiting for VM ${server.id} to be destroyed")
+      }
     } while (blocking { os.compute().servers().get(server.id) } != null)
 
     log.info("VM successfully destroyed")

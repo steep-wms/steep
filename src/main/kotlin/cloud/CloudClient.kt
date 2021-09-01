@@ -1,5 +1,7 @@
 package cloud
 
+import java.time.Duration
+
 /**
  * Provides methods to access different Cloud APIs
  * @author Michel Kraemer
@@ -88,8 +90,9 @@ interface CloudClient {
   /**
    * Destroy a virtual machine
    * @param id the ID of the virtual machine
+   * @param timeout the maximum time to wait for the VM to be destroyed
    */
-  suspend fun destroyVM(id: String)
+  suspend fun destroyVM(id: String, timeout: Duration? = null)
 
   /**
    * Get the IP address of a virtual machine
