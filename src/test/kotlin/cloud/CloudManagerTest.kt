@@ -633,7 +633,7 @@ class CloudManagerTest {
       coEvery { client.listVMs(any()) } returns listOf(MY_OLD_VM)
       coEvery { client.listAvailableBlockDevices(any()) } returns listOf(MY_OLD_VOLUME)
       coEvery { client.isVMActive(MY_OLD_VM) } returns true
-      coEvery { client.destroyVM(MY_OLD_VM) } just Runs
+      coEvery { client.destroyVM(MY_OLD_VM, any()) } just Runs
       coEvery { client.destroyBlockDevice(MY_OLD_VOLUME) } just Runs
 
       GlobalScope.launch(vertx.dispatcher()) {
@@ -653,7 +653,7 @@ class CloudManagerTest {
       GlobalScope.launch(vertx.dispatcher()) {
         ctx.coVerify {
           coVerify(exactly = 1) {
-            client.destroyVM(MY_OLD_VM)
+            client.destroyVM(MY_OLD_VM, any())
           }
         }
         ctx.completeNow()
