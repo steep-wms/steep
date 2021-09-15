@@ -93,7 +93,6 @@ describe("Workflow page cancelling", () => {
     cy.visit("/workflows")
     cy.get(".list-page").contains(res.body.id).parentsUntil(".list-page")
       .find(".list-item-right > .list-item-progress-box > div > strong").then(($el) => {
-        cy.wrap($el).should("have.text", "Cancelling")
         cy.wrap($el).should("have.text", "Cancelled", { timeout: 60 * 10 * 1000 })
       })
   })
