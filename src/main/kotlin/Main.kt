@@ -61,6 +61,12 @@ suspend fun main() {
   // load hazelcast config
   val hazelcastConfig = ConfigUtil.loadConfig()
 
+  // set hazelcast cluster name
+  val clusterName = conf.getString(ConfigConstants.CLUSTER_HAZELCAST_CLUSTER_NAME)
+  if (clusterName != null) {
+    hazelcastConfig.groupConfig.name = clusterName
+  }
+
   // set hazelcast public address
   val publicAddress = conf.getString(ConfigConstants.CLUSTER_HAZELCAST_PUBLIC_ADDRESS)
   if (publicAddress != null) {

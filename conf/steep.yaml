@@ -12,6 +12,7 @@ steep:
       port: 41187
       publicPort: 41187
     hazelcast:
+      # clusterName: development
       # publicAddress: localhost:5701
       # port: 5701
       # interfaces:

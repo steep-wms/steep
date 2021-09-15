@@ -56,6 +56,20 @@ object ConfigConstants {
   const val CLUSTER_EVENTBUS_PUBLIC_PORT = "steep.cluster.eventBus.publicPort"
 
   /**
+   * An optional cluster name that can be used to separate clusters of Steep
+   * instances. Two instances from different clusters (with different names)
+   * cannot connect to each other. By default, no cluster name is set, which
+   * means all instances can connect to each other. However, a Steep instance
+   * without a cluster name cannot connect to a named cluster.
+   *
+   * **Heads up:** if have a cluster name set and you're using the
+   * [cloud.CloudManager] to deploy remote agents on demand, make sure these
+   * Steep instances use the same cluster name. Otherwise, you won't be able to
+   * connect to them.
+   */
+  const val CLUSTER_HAZELCAST_CLUSTER_NAME = "steep.cluster.hazelcast.clusterName"
+
+  /**
    * The IP address (or hostname) and port Hazelcast uses to announce itself
    * within in the cluster
    */
