@@ -186,10 +186,12 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
       } else if(config.getBoolean(ConfigConstants.ONLYTRAVERSEDIRECTORYOUTPUTS, false)) {
         listOf(it.variable.value)
       } else { // This is not a directory, and we cannot apply the new behavior.
-        log.warn("Your Steep configuration does not include the property " +
-                "`${ConfigConstants.ONLYTRAVERSEDIRECTORYOUTPUTS}'. Its default value " +
-                "will change in Steep 6.0.0 from `false' to `true'. Please " +
-                "specify the property in your configuration.")
+        if (!config.containsKey(ConfigConstants.ONLYTRAVERSEDIRECTORYOUTPUTS)) {
+          log.warn("Your Steep configuration does not include the property " +
+                  "`${ConfigConstants.ONLYTRAVERSEDIRECTORYOUTPUTS}'. Its default value " +
+                  "will change in Steep 6.0.0 from `false' to `true'. Please " +
+                  "specify the property in your configuration.")
+        }
         readRecursive(it.variable.value, fs)
       })
     }
