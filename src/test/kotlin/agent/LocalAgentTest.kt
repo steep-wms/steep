@@ -10,7 +10,14 @@ import helper.FileSystemUtils
 import helper.OutputCollector
 import helper.Shell
 import helper.UniqueID
-import io.mockk.*
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkConstructor
+import io.mockk.mockkObject
+import io.mockk.spyk
+import io.mockk.verify
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxTestContext
@@ -529,7 +536,7 @@ class LocalAgentTest : AgentTest() {
 
       // Old behavior, config set.
       val invocationsFalse = 2
-      config.put(ConfigConstants.TRAVERSEONLYDIRECTORYOUTPUTS, false)
+      config.put(ConfigConstants.ONLYTRAVERSEDIRECTORYOUTPUTS, false)
       LocalAgent(vertx, localAgentDispatcher, config).execute(processChain)
       coVerify(exactly = invocationsNoConfig + invocationsFalse) {
         FileSystemUtils.readRecursive(any(), any())
@@ -537,7 +544,7 @@ class LocalAgentTest : AgentTest() {
 
       // New behavior, config set.
       val invocationsTrue = 1
-      config.put(ConfigConstants.TRAVERSEONLYDIRECTORYOUTPUTS, true)
+      config.put(ConfigConstants.ONLYTRAVERSEDIRECTORYOUTPUTS, true)
       LocalAgent(vertx, localAgentDispatcher, config).execute(processChain)
       coVerify(exactly = invocationsNoConfig + invocationsFalse + invocationsTrue) {
         FileSystemUtils.readRecursive(any(), any())

@@ -516,7 +516,7 @@ object ConfigConstants {
    * This flag is an opt-in before the change will be enabled by default in the
    * next major version.
    */
-  const val TRAVERSEONLYDIRECTORYOUTPUTS = "steep.traverseOnlyDirectoryOutputs"
+  const val ONLYTRAVERSEDIRECTORYOUTPUTS = "steep.onlyTraverseDirectoryOutputs"
 
   /**
    * Get all configuration keys from this class

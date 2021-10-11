@@ -137,10 +137,10 @@ steep:
       submissions: 365d
       vms: 365d
 
-  # In the next major version this will be set to true by default.
+  # In Steep 6.0.0 this will be set to true by default.
   # If enabled, Steep only collects the files in output directories whose data_type is 'directory'.
   # All other data types will no longer be traversed and directly passed to the successor service.
-  traverseOnlyDirectoryOutputs: false
+  onlyTraverseDirectoryOutputs: false
 
 setups:
   default:

@@ -183,11 +183,13 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
       it.variable.id to (outputAdapter?.call(it, processChain, vertx) ?:
       if (it.dataType == Argument.DATA_TYPE_DIRECTORY) {
         readRecursive(it.variable.value, fs)
-      } else if(config.getBoolean(ConfigConstants.TRAVERSEONLYDIRECTORYOUTPUTS, false)) {
+      } else if(config.getBoolean(ConfigConstants.ONLYTRAVERSEDIRECTORYOUTPUTS, false)) {
         listOf(it.variable.value)
       } else { // This is not a directory, and we cannot apply the new behavior.
-        log.warn("DEPRECATED: In the next major version of Steep, " +
-                "${ConfigConstants.TRAVERSEONLYDIRECTORYOUTPUTS} will be enabled by default.")
+        log.warn("Your Steep configuration does not include the property " +
+                "`${ConfigConstants.ONLYTRAVERSEDIRECTORYOUTPUTS}'. Its default value " +
+                "will change in Steep 6.0.0 from `false' to `true'. Please " +
+                "specify the property in your configuration.")
         readRecursive(it.variable.value, fs)
       })
     }
