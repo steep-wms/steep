@@ -80,6 +80,8 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
      * The process chain ID will be appended.
      */
     val PROCESSCHAIN_LOG_PREFIX = "${LocalAgent::class.java.name}.processChain."
+
+    private val log = LoggerFactory.getLogger(LocalAgent::class.java)
   }
 
   override val id: String = UniqueID.next()
@@ -179,7 +181,15 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
     return outputs.associate {
       val outputAdapter = pluginRegistry.findOutputAdapter(it.dataType)
       it.variable.id to (outputAdapter?.call(it, processChain, vertx) ?:
-          readRecursive(it.variable.value, fs))
+      if (it.dataType == Argument.DATA_TYPE_DIRECTORY) {
+        readRecursive(it.variable.value, fs)
+      } else if(config.getBoolean(ConfigConstants.TRAVERSEONLYDIRECTORYOUTPUTS, false)) {
+        listOf(it.variable.value)
+      } else { // This is not a directory, and we cannot apply the new behavior.
+        log.warn("DEPRECATED: In the next major version of Steep, " +
+                "${ConfigConstants.TRAVERSEONLYDIRECTORYOUTPUTS} will be enabled by default.")
+        readRecursive(it.variable.value, fs)
+      })
     }
   }
 

@@ -6,16 +6,13 @@ import assertThatThrownBy
 import coVerify
 import db.PluginRegistry
 import db.PluginRegistryFactory
+import helper.FileSystemUtils
 import helper.OutputCollector
 import helper.Shell
 import helper.UniqueID
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkConstructor
-import io.mockk.mockkObject
-import io.mockk.spyk
-import io.mockk.verify
+import io.mockk.*
 import io.vertx.core.Vertx
+import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.eventbus.requestAwait
 import io.vertx.kotlin.core.json.json
@@ -36,6 +33,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import runtime.OtherRuntime
+import java.io.File
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
 import java.util.concurrent.Executors
@@ -488,6 +486,61 @@ class LocalAgentTest : AgentTest() {
       ctx.coVerify {
         assertThatThrownBy { agent.execute(processChain) }
             .isInstanceOf(CancellationException::class.java)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if output directories are traversed.
+   */
+  @Test
+  fun traverseOutputDirectory(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
+    val outputFile = File(tempDir.toRealPath().toFile(), "file")
+    val outputDir = File(tempDir.toRealPath().toFile(), "dir")
+    val processChain = ProcessChain(executables = listOf(
+      Executable(path = "echo", arguments = listOf(
+        Argument(variable = ArgumentVariable(UniqueID.next(), outputFile.absolutePath),
+          type = Argument.Type.OUTPUT,
+          dataType = "file"),
+        Argument(variable = ArgumentVariable(UniqueID.next(), outputDir.absolutePath),
+          type = Argument.Type.OUTPUT,
+          dataType = Argument.DATA_TYPE_DIRECTORY)
+      ))
+    ))
+
+    // Since the filesystem will not be available just return an empty list.
+    mockkObject(FileSystemUtils)
+    coEvery {
+      FileSystemUtils.readRecursive(any(), any())
+    } answers {
+      listOf()
+    }
+
+    val config = JsonObject()
+    GlobalScope.launch(vertx.dispatcher()) {
+      // Old behavior, no config set.
+      val invocationsNoConfig = 2
+      LocalAgent(vertx, localAgentDispatcher, config).execute(processChain)
+      coVerify(exactly = invocationsNoConfig) {
+        FileSystemUtils.readRecursive(any(), any())
+      }
+
+      // Old behavior, config set.
+      val invocationsFalse = 2
+      config.put(ConfigConstants.TRAVERSEONLYDIRECTORYOUTPUTS, false)
+      LocalAgent(vertx, localAgentDispatcher, config).execute(processChain)
+      coVerify(exactly = invocationsNoConfig + invocationsFalse) {
+        FileSystemUtils.readRecursive(any(), any())
+      }
+
+      // New behavior, config set.
+      val invocationsTrue = 1
+      config.put(ConfigConstants.TRAVERSEONLYDIRECTORYOUTPUTS, true)
+      LocalAgent(vertx, localAgentDispatcher, config).execute(processChain)
+      coVerify(exactly = invocationsNoConfig + invocationsFalse + invocationsTrue) {
+        FileSystemUtils.readRecursive(any(), any())
       }
 
       ctx.completeNow()
