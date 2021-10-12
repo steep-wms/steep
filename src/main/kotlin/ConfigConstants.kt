@@ -509,6 +509,16 @@ object ConfigConstants {
   const val GARBAGECOLLECTOR_RETENTION_VMS = "steep.garbageCollector.retention.vms"
 
   /**
+   * If enabled the [agent.LocalAgent] will only collect the files in output
+   * directories whose data_type is 'directory'.
+   * All other data types will no longer be traversed and directly passed to the
+   * successor service.
+   * This flag is an opt-in before the change will be enabled by default in the
+   * next major version.
+   */
+  const val ONLYTRAVERSEDIRECTORYOUTPUTS = "steep.onlyTraverseDirectoryOutputs"
+
+  /**
    * Get all configuration keys from this class
    * @return the list of configuration keys
    */
