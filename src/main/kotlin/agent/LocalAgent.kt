@@ -56,6 +56,8 @@ import kotlin.reflect.full.callSuspend
 class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
     private val config: JsonObject = vertx.orCreateContext.config()) : Agent, CoroutineScope {
   companion object {
+    private val log = LoggerFactory.getLogger(LocalAgent::class.java)
+
     /**
      * A cache that tracks which directories we already created
      */
@@ -80,8 +82,6 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
      * The process chain ID will be appended.
      */
     val PROCESSCHAIN_LOG_PREFIX = "${LocalAgent::class.java.name}.processChain."
-
-    private val log = LoggerFactory.getLogger(LocalAgent::class.java)
   }
 
   override val id: String = UniqueID.next()
@@ -180,20 +180,21 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
     val fs = vertx.fileSystem()
     return outputs.associate {
       val outputAdapter = pluginRegistry.findOutputAdapter(it.dataType)
-      it.variable.id to (outputAdapter?.call(it, processChain, vertx) ?:
-      if (it.dataType == Argument.DATA_TYPE_DIRECTORY) {
-        readRecursive(it.variable.value, fs)
-      } else if(config.getBoolean(ConfigConstants.ONLYTRAVERSEDIRECTORYOUTPUTS, false)) {
-        listOf(it.variable.value)
-      } else { // This is not a directory, and we cannot apply the new behavior.
-        if (!config.containsKey(ConfigConstants.ONLYTRAVERSEDIRECTORYOUTPUTS)) {
-          log.warn("Your Steep configuration does not include the property " +
-                  "`${ConfigConstants.ONLYTRAVERSEDIRECTORYOUTPUTS}'. Its default value " +
-                  "will change in Steep 6.0.0 from `false' to `true'. Please " +
-                  "specify the property in your configuration.")
-        }
-        readRecursive(it.variable.value, fs)
-      })
+      it.variable.id to (outputAdapter?.call(it, processChain, vertx) ?: (
+        if (it.dataType == Argument.DATA_TYPE_DIRECTORY) {
+          readRecursive(it.variable.value, fs)
+        } else if (config.getBoolean(ConfigConstants.ONLYTRAVERSEDIRECTORYOUTPUTS, false)) {
+          listOf(it.variable.value)
+        } else {
+          // this is not a directory and we cannot apply the new behavior
+          if (!config.containsKey(ConfigConstants.ONLYTRAVERSEDIRECTORYOUTPUTS)) {
+            log.warn("Your configuration does not include the property " +
+                "`${ConfigConstants.ONLYTRAVERSEDIRECTORYOUTPUTS}'. Its " +
+                "default value will change in Steep 6.0.0 from `false' to " +
+                "`true'. Please specify the property in your configuration.")
+          }
+          readRecursive(it.variable.value, fs)
+        }))
     }
   }
 
