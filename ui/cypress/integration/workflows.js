@@ -84,7 +84,7 @@ describe("Workflow page cancelling", () => {
     })
   })
 
-  it("Cancels an exisiting workflow", () => {
+  it("Cancels an exisiting workflow", { retries: { runMode: 3, openMode: 0 } }, () => {
     cy.visit(`/workflows/${res.body.id}/`)
     cy.contains(res.body.id).click()
     cy.get(".dropdown-btn").click()
