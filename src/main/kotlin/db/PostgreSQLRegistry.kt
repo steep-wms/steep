@@ -15,7 +15,7 @@ import io.vertx.sqlclient.Tuple
 import org.flywaydb.core.Flyway
 
 fun Row.getJsonObject(column: Int): JsonObject = get(JsonObject::class.java, column)
-fun Row.getJsonObjectOrNull(column: Int): JsonObject? = getValue(0) as JsonObject?
+fun Row.getJsonObjectOrNull(column: Int): JsonObject? = getValue(column) as JsonObject?
 fun Row.getJsonArray(column: Int): JsonArray = get(JsonArray::class.java, column)
 
 /**
