@@ -1,3 +1,4 @@
+import agent.RemoteAgentRegistry
 import ch.qos.logback.classic.LoggerContext
 import ch.qos.logback.classic.joran.JoranConfigurator
 import cloud.CloudManager
@@ -19,6 +20,9 @@ import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.spi.cluster.hazelcast.ConfigUtil
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import model.plugins.call
 import org.apache.commons.text.StringEscapeUtils
 import org.slf4j.LoggerFactory
@@ -167,6 +171,30 @@ suspend fun main() {
       }
     }
   })
+
+  // Look for orphaned entries in the remote agent registry from time to time.
+  // Such entries may happen if there is a network failure during degistration
+  // of an agent.
+  val lookupOrphansInterval = conf.getLong(ConfigConstants.CLUSTER_LOOKUP_ORPHANS_INTERVAL, 300_000L) // 5 minutes
+  val remoteAgentRegistry = RemoteAgentRegistry(vertx)
+  GlobalScope.launch {
+    while (true) {
+      try {
+        delay(lookupOrphansInterval)
+        val remoteAgentIds = remoteAgentRegistry.getAgentIds()
+        val memberIds = mgr.hazelcastInstance.cluster.members.map { it.getStringAttribute(ATTR_AGENT_ID) }.toSet()
+        for (rid in remoteAgentIds) {
+          val mainId = rid.indexOf('[').let { i -> if (i < 0) rid else rid.substring(0, i) }
+          if (!memberIds.contains(mainId)) {
+            log.warn("Found orphaned remote agent `$rid'. Forcing removal ...")
+            remoteAgentRegistry.deregister(rid)
+          }
+        }
+      } catch (t: Throwable) {
+        log.warn("Could not sync remote agents with cluster members", t)
+      }
+    }
+  }
 
   // start Steep's main verticle
   val deploymentOptions = deploymentOptionsOf(conf)

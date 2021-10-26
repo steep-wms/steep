@@ -115,6 +115,13 @@ object ConfigConstants {
       "steep.cluster.hazelcast.restoreMembersOnStartup.defaultPort"
 
   /**
+   * The interval at which the [Main] thread looks for orphaned entries in the
+   * remote agent registry. Such entries may happen if there is a network
+   * failure during deregistration of an agent.
+   */
+  const val CLUSTER_LOOKUP_ORPHANS_INTERVAL = "steep.cluster.lookupOrphansIntervalMilliseconds"
+
+  /**
    * `true` if an HTTP server should be deployed
    */
   const val HTTP_ENABLED = "steep.http.enabled"
