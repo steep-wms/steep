@@ -147,7 +147,7 @@ class HttpEndpoint : CoroutineVerticle() {
 
     val bodyHandler = BodyHandler.create()
         .setHandleFileUploads(false)
-        .setBodyLimit(config.getLong(ConfigConstants.HTTP_POST_MAX_SIZE, 1024 * 1024))
+        .setBodyLimit(config.getLong(ConfigConstants.HTTP_POST_MAX_SIZE, 1024L * 1024L))
 
     val corsEnable = config.getBoolean(ConfigConstants.HTTP_CORS_ENABLE, false)
     if (corsEnable) {

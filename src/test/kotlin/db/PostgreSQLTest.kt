@@ -10,8 +10,6 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.junit.jupiter.api.AfterEach
 import org.testcontainers.containers.JdbcDatabaseContainer
-import org.testcontainers.containers.PostgreSQLContainerProvider
-import org.testcontainers.junit.jupiter.Container
 
 /**
  * Common code for all tests that need a PostgreSQL database
@@ -19,7 +17,7 @@ import org.testcontainers.junit.jupiter.Container
  */
 interface PostgreSQLTest {
   companion object {
-    val TAG = "10.5"
+    const val TAG = "10.5"
   }
 
   val postgresql: JdbcDatabaseContainer<*>

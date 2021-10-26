@@ -15,7 +15,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
 class PostgreSQLVMRegistryTest : PostgreSQLTest, VMRegistryTest() {
   companion object {
     @Container
-    val _postgresql = PostgreSQLContainerProvider().newInstance(PostgreSQLTest.TAG)
+    val _postgresql = PostgreSQLContainerProvider().newInstance(PostgreSQLTest.TAG)!!
   }
 
   override val postgresql = _postgresql

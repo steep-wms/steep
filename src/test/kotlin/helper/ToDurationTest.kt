@@ -86,16 +86,16 @@ class ToDurationTest {
    */
   @Test
   fun mixed() {
-    assertThat("10h 30 minutes".toDuration()).isEqualTo(Duration.ofMinutes(10 * 60 + 30))
+    assertThat("10h 30 minutes".toDuration()).isEqualTo(Duration.ofMinutes(10L * 60 + 30))
     assertThat("1 hour 10minutes 5s".toDuration()).isEqualTo(
-        Duration.ofSeconds(1 * 60 * 60 + 10 * 60 + 5))
-    assertThat("1d 5h".toDuration()).isEqualTo(Duration.ofHours(24 + 5))
-    assertThat("5h 1d".toDuration()).isEqualTo(Duration.ofHours(24 + 5))
-    assertThat("  1d     5h ".toDuration()).isEqualTo(Duration.ofHours(24 + 5))
+        Duration.ofSeconds(1L * 60 * 60 + 10 * 60 + 5))
+    assertThat("1d 5h".toDuration()).isEqualTo(Duration.ofHours(24L + 5))
+    assertThat("5h 1d".toDuration()).isEqualTo(Duration.ofHours(24L + 5))
+    assertThat("  1d     5h ".toDuration()).isEqualTo(Duration.ofHours(24L + 5))
     assertThat("10 days 1hrs 30m 15 secs".toDuration()).isEqualTo(
-        Duration.ofSeconds(10 * 24 * 60 * 60 + 1 * 60 * 60 + 30 * 60 + 15))
+        Duration.ofSeconds(10L * 24 * 60 * 60 + 1 * 60 * 60 + 30 * 60 + 15))
     assertThat("10days1hrs30m15secs".toDuration()).isEqualTo(
-        Duration.ofSeconds(10 * 24 * 60 * 60 + 1 * 60 * 60 + 30 * 60 + 15))
+        Duration.ofSeconds(10L * 24 * 60 * 60 + 1 * 60 * 60 + 30 * 60 + 15))
   }
 
   /**

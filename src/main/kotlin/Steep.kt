@@ -102,7 +102,7 @@ class Steep : CoroutineVerticle() {
 
     // setup automatic shutdown
     if (autoShutdownTimeout.toMinutes() > 0) {
-      vertx.setPeriodic(1000 * 30) { checkAutoShutdown() }
+      vertx.setPeriodic(1000L * 30L) { checkAutoShutdown() }
     }
 
     if (capabilities.isEmpty()) {

@@ -32,9 +32,9 @@ class RetryPolicyTest {
 
     assertThat(JsonUtils.fromJson<RetryPolicy>(JsonObject(s1))).isEqualTo(RetryPolicy(
         maxAttempts = 5,
-        delay = (5 * 60 + 30) * 1000,
+        delay = (5L * 60 + 30) * 1000,
         exponentialBackoff = 2,
-        maxDelay = 1 * 24 * 60 * 60 * 1000
+        maxDelay = 1L * 24 * 60 * 60 * 1000
     ))
 
     assertThat(JsonUtils.fromJson<RetryPolicy>(JsonObject(s2))).isEqualTo(RetryPolicy(
