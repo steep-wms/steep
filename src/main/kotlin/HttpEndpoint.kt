@@ -517,14 +517,28 @@ class HttpEndpoint : CoroutineVerticle() {
               "action" to "info"
           )
         }
-        val agents = agentIds.map { vertx.eventBus().requestAwait<JsonObject>(
-            REMOTE_AGENT_ADDRESS_PREFIX + it, msg) }.map { it.body() }
 
-        val result = JsonArray(agents).encode()
+        try {
+          val agents = agentIds.map { vertx.eventBus().requestAwait<JsonObject>(
+              REMOTE_AGENT_ADDRESS_PREFIX + it, msg) }.map { it.body() }
 
-        ctx.response()
-            .putHeader("content-type", "application/json")
-            .end(result)
+          val result = JsonArray(agents).encode()
+
+          ctx.response()
+              .putHeader("content-type", "application/json")
+              .end(result)
+        } catch (t: Throwable) {
+          if (t is ReplyException && t.failureType() == ReplyFailure.NO_HANDLERS) {
+            ctx.response()
+              .setStatusCode(503)
+              .end("Could not request agent information. At least one agent is not available.")
+          } else {
+            log.error("Could not request agent information", t)
+            ctx.response()
+              .setStatusCode(500)
+              .end("Could not request agent information")
+          }
+        }
       }
     }
   }

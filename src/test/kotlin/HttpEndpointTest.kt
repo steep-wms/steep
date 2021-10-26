@@ -36,6 +36,8 @@ import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.eventbus.requestAwait
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.jsonArrayOf
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
 import io.vertx.kotlin.ext.web.client.sendAwait
@@ -2034,6 +2036,70 @@ class HttpEndpointTest {
 
         assertThat(agent1Asked.get()).isEqualTo(1)
         assertThat(agent2Asked.get()).isEqualTo(0)
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if we can get information about agents
+   */
+  @Test
+  fun getAgents(vertx: Vertx, ctx: VertxTestContext) {
+    val agentId1 = UniqueID.next()
+    val agentId2 = UniqueID.next()
+    val agents = setOf(agentId1, agentId2)
+    coEvery { agentRegistry.getAgentIds() } returns agents
+
+    for (a in agents) {
+      val address1 = REMOTE_AGENT_ADDRESS_PREFIX + a
+      vertx.eventBus().consumer<JsonObject>(address1) { msg ->
+        ctx.verify {
+          assertThat(msg.body().getString("action")).isEqualTo("info")
+        }
+        msg.reply(jsonObjectOf("id" to a))
+      }
+    }
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val client = WebClient.create(vertx)
+        val response = client.get(port, "localhost", "/agents")
+          .`as`(BodyCodec.jsonArray())
+          .expect(ResponsePredicate.SC_OK)
+          .expect(ResponsePredicate.JSON)
+          .sendAwait()
+        assertThat(response.body()).isEqualTo(jsonArrayOf(
+          jsonObjectOf("id" to agentId1), jsonObjectOf("id" to agentId2)))
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if we get a 503 response if an agent is not available
+   */
+  @Test
+  fun getAgentsNotAvailable(vertx: Vertx, ctx: VertxTestContext) {
+    val agentId1 = UniqueID.next()
+    val agentId2 = UniqueID.next()
+    val agents = setOf(agentId1, agentId2)
+    coEvery { agentRegistry.getAgentIds() } returns agents
+
+    val address1 = REMOTE_AGENT_ADDRESS_PREFIX + agentId1
+    vertx.eventBus().consumer<JsonObject>(address1) { msg ->
+      ctx.verify {
+        assertThat(msg.body().getString("action")).isEqualTo("info")
+      }
+      msg.reply(jsonObjectOf("id" to agentId1))
+    }
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val client = WebClient.create(vertx)
+        client.get(port, "localhost", "/agents")
+          .expect(ResponsePredicate.SC_SERVICE_UNAVAILABLE)
+          .sendAwait()
       }
       ctx.completeNow()
     }
