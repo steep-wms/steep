@@ -4,6 +4,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonTypeRef
 import helper.JsonUtils
 import helper.YamlUtils
 import helper.glob
+import helper.loadTemplate
 import io.vertx.core.Vertx
 import io.vertx.kotlin.core.executeBlockingAwait
 import io.vertx.kotlin.core.file.readFileAwait
@@ -45,7 +46,10 @@ abstract class AbstractFileRegistry {
         // object. This is a workaround for jackson-dataformats-text bug #98:
         // https://github.com/FasterXML/jackson-dataformats-text/issues/98
         val yaml = Yaml()
-        val l = yaml.load<List<Any>>(content)
+        val l = yaml.loadTemplate<List<Any>>(content, mapOf(
+          "config" to vertx.orCreateContext.config().map,
+          "env" to System.getenv(),
+        ))
         YamlUtils.mapper.convertValue(l, tr)
       }
     }

@@ -19,6 +19,7 @@ import db.VMRegistry
 import db.VMRegistryFactory
 import helper.JsonUtils
 import helper.YamlUtils
+import helper.loadTemplate
 import io.vertx.core.Promise
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -168,7 +169,10 @@ class CloudManager : CoroutineVerticle() {
     // object. This is a workaround for jackson-dataformats-text bug #98:
     // https://github.com/FasterXML/jackson-dataformats-text/issues/98
     val yaml = Yaml()
-    val l = yaml.load<List<Any>>(File(setupsFile).readText())
+    val l = yaml.loadTemplate<List<Any>>(File(setupsFile).readText(), mapOf(
+      "config" to config.map,
+      "env" to System.getenv()
+    ))
     setups = YamlUtils.mapper.convertValue(l)
 
     // if sshUsername is null, check if all setups have an sshUsername

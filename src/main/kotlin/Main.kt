@@ -9,6 +9,7 @@ import db.VMRegistryFactory
 import helper.JsonUtils
 import helper.LazyJsonObjectMessageCodec
 import helper.UniqueID
+import helper.loadTemplate
 import io.vertx.core.VertxOptions
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.Vertx
@@ -44,7 +45,7 @@ suspend fun main() {
   // load configuration
   val confFileStr = File("conf/steep.yaml").readText()
   val yaml = Yaml()
-  val m = yaml.load<Map<String, Any>>(confFileStr)
+  val m = yaml.loadTemplate<Map<String, Any>>(confFileStr, mapOf("env" to System.getenv()))
   val conf = JsonUtils.flatten(JsonObject(m))
   overwriteWithEnvironmentVariables(conf, System.getenv())
 
