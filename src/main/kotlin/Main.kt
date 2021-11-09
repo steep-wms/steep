@@ -53,7 +53,8 @@ suspend fun main() {
   val overrideConfigFile = conf.getString(ConfigConstants.OVERRIDE_CONFIG_FILE)
   if (overrideConfigFile != null) {
     val overrideConfFileStr = File(overrideConfigFile).readText()
-    val overrideMap = yaml.load<Map<String, Any>>(overrideConfFileStr)
+    val overrideMap = yaml.loadTemplate<Map<String, Any>>(overrideConfFileStr,
+      mapOf("env" to System.getenv()))
     val overrideConf = JsonUtils.flatten(JsonObject(overrideMap))
     overwriteWithEnvironmentVariables(overrideConf, System.getenv())
     overrideConf.forEach { (k, v) -> conf.put(k, v) }
