@@ -48,6 +48,11 @@ object AddressConstants {
   const val CLUSTER_NODE_LEFT = "steep.cluster.nodeLeft"
 
   /**
+   * Will be published when the application is ready to handle requests.
+   */
+  const val HTTP_ENDPOINT_APPLICATION_READY = "steep.httpEndpoint.applicationReady"
+
+  /**
    * Will be published when a remote agent has been added
    */
   const val REMOTE_AGENT_ADDED = "steep.remoteAgentRegistry.agentAdded"

@@ -1,4 +1,5 @@
 import AddressConstants.CONTROLLER_LOOKUP_NOW
+import AddressConstants.HTTP_ENDPOINT_APPLICATION_READY
 import AddressConstants.LOCAL_AGENT_ADDRESS_PREFIX
 import AddressConstants.LOGS_PROCESSCHAINS_PREFIX
 import AddressConstants.PROCESSCHAINS_ADDED
@@ -50,6 +51,7 @@ import helper.UniqueID
 import helper.WorkflowValidator
 import helper.YamlUtils
 import io.netty.handler.codec.http.HttpHeaderNames
+import io.netty.handler.codec.http.HttpResponseStatus
 import io.prometheus.client.hotspot.DefaultExports
 import io.prometheus.client.vertx.MetricsHandler
 import io.vertx.core.Promise
@@ -118,11 +120,20 @@ class HttpEndpoint : CoroutineVerticle() {
   private lateinit var basePath: String
   private lateinit var server: HttpServer
 
+  /**
+   * Whether Steep is ready to handle requests.
+   */
+  private var ready = false
+
   override suspend fun start() {
     metadataRegistry = MetadataRegistryFactory.create(vertx)
     agentRegistry = AgentRegistryFactory.create(vertx)
     submissionRegistry = SubmissionRegistryFactory.create(vertx)
     vmRegistry = VMRegistryFactory.create(vertx)
+
+    vertx.eventBus().localConsumer<JsonObject?>(HTTP_ENDPOINT_APPLICATION_READY) { msg ->
+      ready = msg.body()?.getBoolean("ready") ?: false
+    }
 
     val host = config.getString(ConfigConstants.HTTP_HOST, "localhost")
     val port = config.getInteger(ConfigConstants.HTTP_PORT, 8080)
@@ -170,6 +181,10 @@ class HttpEndpoint : CoroutineVerticle() {
         .produces("application/json")
         .produces("text/html")
         .handler(this::onGetAgentById)
+
+    router.get("/health")
+      .produces("application/json")
+      .handler(this::onGetHealth)
 
     router.head("/logs/processchains/:id/?")
         .handler { ctx -> onGetProcessChainLogById(ctx, true) }
@@ -809,6 +824,43 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onNewWorkflow(ctx: RoutingContext) {
     renderAsset("ui/new/workflow/index.html", ctx.response())
+  }
+
+  /**
+   * Check if Steep is healthy.
+   * @param ctx the routing context
+   */
+  private fun onGetHealth(ctx: RoutingContext) = launch {
+    val errorResponse: () -> Unit = {
+      ctx.response()
+        .putHeader("content-type", "application/json")
+        .setStatusCode(HttpResponseStatus.SERVICE_UNAVAILABLE.code())
+        .end(json { obj("health" to false) }.encode())
+    }
+
+    if (!ready) errorResponse()
+
+    val result = try {
+      json {
+        obj(
+          "services" to metadataRegistry.findServices().size,
+          "agents" to agentRegistry.getAgentIds().size,
+          "submissions" to submissionRegistry.countSubmissions(),
+          "vms" to vmRegistry.countVMs(),
+          "health" to true
+        )
+      }
+    } catch (t: Throwable) {
+      null
+    }
+
+    if (result != null) {
+      ctx.response()
+        .putHeader("content-type", "application/json")
+        .end(result.encode())
+    } else {
+      errorResponse()
+    }
   }
 
   /**

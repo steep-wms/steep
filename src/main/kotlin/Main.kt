@@ -1,3 +1,4 @@
+import AddressConstants.HTTP_ENDPOINT_APPLICATION_READY
 import agent.RemoteAgentRegistry
 import ch.qos.logback.classic.LoggerContext
 import ch.qos.logback.classic.joran.JoranConfigurator
@@ -476,5 +477,9 @@ class Main : CoroutineVerticle() {
     if (config.getBoolean(ConfigConstants.GARBAGECOLLECTOR_ENABLED, false)) {
       vertx.deployVerticleAwait(GarbageCollector::class.qualifiedName!!, options)
     }
+
+    vertx.eventBus().send(HTTP_ENDPOINT_APPLICATION_READY, json {
+      obj("ready" to true)
+    })
   }
 }
