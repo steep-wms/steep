@@ -831,17 +831,11 @@ class HttpEndpoint : CoroutineVerticle() {
    * @param ctx the routing context
    */
   private fun onGetHealth(ctx: RoutingContext) = launch {
-    val errorResponse: () -> Unit = {
-      ctx.response()
-        .putHeader("content-type", "application/json")
-        .setStatusCode(HttpResponseStatus.SERVICE_UNAVAILABLE.code())
-        .end(json { obj("health" to false) }.encode())
-    }
-
-    if (!ready) errorResponse()
-
-    val result = try {
-      json {
+    try {
+      if (!ready) {
+        throw RuntimeException("Steep is not ready yet")
+      }
+      val result = json {
         obj(
           "services" to metadataRegistry.findServices().size,
           "agents" to agentRegistry.getAgentIds().size,
@@ -850,16 +844,14 @@ class HttpEndpoint : CoroutineVerticle() {
           "health" to true
         )
       }
-    } catch (t: Throwable) {
-      null
-    }
-
-    if (result != null) {
       ctx.response()
         .putHeader("content-type", "application/json")
         .end(result.encode())
-    } else {
-      errorResponse()
+    } catch (t: Throwable) {
+      ctx.response()
+        .putHeader("content-type", "application/json")
+        .setStatusCode(HttpResponseStatus.SERVICE_UNAVAILABLE.code())
+        .end(json { obj("health" to false) }.encode())
     }
   }
 
