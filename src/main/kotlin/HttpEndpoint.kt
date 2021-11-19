@@ -120,20 +120,11 @@ class HttpEndpoint : CoroutineVerticle() {
   private lateinit var basePath: String
   private lateinit var server: HttpServer
 
-  /**
-   * Whether Steep is ready to handle requests.
-   */
-  private var ready = false
-
   override suspend fun start() {
     metadataRegistry = MetadataRegistryFactory.create(vertx)
     agentRegistry = AgentRegistryFactory.create(vertx)
     submissionRegistry = SubmissionRegistryFactory.create(vertx)
     vmRegistry = VMRegistryFactory.create(vertx)
-
-    vertx.eventBus().localConsumer<JsonObject?>(HTTP_ENDPOINT_APPLICATION_READY) { msg ->
-      ready = msg.body()?.getBoolean("ready") ?: false
-    }
 
     val host = config.getString(ConfigConstants.HTTP_HOST, "localhost")
     val port = config.getInteger(ConfigConstants.HTTP_PORT, 8080)
@@ -831,28 +822,32 @@ class HttpEndpoint : CoroutineVerticle() {
    * @param ctx the routing context
    */
   private fun onGetHealth(ctx: RoutingContext) = launch {
-    try {
-      if (!ready) {
-        throw RuntimeException("Steep is not ready yet")
-      }
-      val result = json {
-        obj(
-          "services" to metadataRegistry.findServices().size,
-          "agents" to agentRegistry.getAgentIds().size,
-          "submissions" to submissionRegistry.countSubmissions(),
-          "vms" to vmRegistry.countVMs(),
-          "health" to true
-        )
-      }
-      ctx.response()
-        .putHeader("content-type", "application/json")
-        .end(result.encode())
+    var allComponentsHealthy = true
+
+    suspend fun <T> checkComponent(block: suspend () -> T) = try {
+      block()
     } catch (t: Throwable) {
-      ctx.response()
-        .putHeader("content-type", "application/json")
-        .setStatusCode(HttpResponseStatus.SERVICE_UNAVAILABLE.code())
-        .end(json { obj("health" to false) }.encode())
+      allComponentsHealthy = false
+      false
     }
+
+    val result = json {
+      obj(
+        "services" to checkComponent { metadataRegistry.findServices().size },
+        "agents" to checkComponent { agentRegistry.getAgentIds().size },
+        "submissions" to checkComponent { submissionRegistry.countSubmissions() },
+        "vms" to checkComponent { vmRegistry.countVMs() }
+      )
+    }
+    val statusCode = if (allComponentsHealthy) {
+      HttpResponseStatus.OK
+    } else {
+      HttpResponseStatus.SERVICE_UNAVAILABLE
+    }
+    ctx.response()
+      .putHeader("content-type", "application/json")
+      .setStatusCode(statusCode.code())
+      .end(result.put("health", allComponentsHealthy).encode())
   }
 
   /**
