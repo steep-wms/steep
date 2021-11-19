@@ -1,5 +1,4 @@
 import AddressConstants.CONTROLLER_LOOKUP_NOW
-import AddressConstants.HTTP_ENDPOINT_APPLICATION_READY
 import AddressConstants.LOCAL_AGENT_ADDRESS_PREFIX
 import AddressConstants.LOGS_PROCESSCHAINS_PREFIX
 import AddressConstants.PROCESSCHAINS_ADDED

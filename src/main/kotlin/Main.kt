@@ -1,4 +1,3 @@
-import AddressConstants.HTTP_ENDPOINT_APPLICATION_READY
 import agent.RemoteAgentRegistry
 import ch.qos.logback.classic.LoggerContext
 import ch.qos.logback.classic.joran.JoranConfigurator
