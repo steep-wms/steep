@@ -10,9 +10,11 @@ import helper.FileSystemUtils
 import helper.OutputCollector
 import helper.Shell
 import helper.UniqueID
+import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkConstructor
 import io.mockk.mockkObject
@@ -36,6 +38,7 @@ import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import model.processchain.ProcessChain
 import model.retry.RetryPolicy
+import model.timeout.TimeoutPolicy
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -552,5 +555,128 @@ class LocalAgentTest : AgentTest() {
 
       ctx.completeNow()
     }
+  }
+
+  /**
+   * Test if a process chain can be executed successfully even if there is a
+   * maximum runtime that does not apply
+   */
+  @Test
+  private fun maxRuntimeNoTimeout(vertx: Vertx, ctx: VertxTestContext) {
+    val exec = Executable(path = "dummy", arguments = emptyList(),
+      serviceId = "dummy", maxRuntime = TimeoutPolicy(2000))
+    val processChain = ProcessChain(executables = listOf(exec))
+
+    // return immediately before the timeout can apply
+    mockkConstructor(OtherRuntime::class)
+    every { anyConstructed<OtherRuntime>().execute(exec, any() as OutputCollector) } just Runs
+
+    val agent = LocalAgent(vertx, localAgentDispatcher)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        // should succeed
+        agent.execute(processChain)
+
+        // the executable should have been executed once
+        verify(exactly = 1) {
+          anyConstructed<OtherRuntime>().execute(exec, any() as OutputCollector)
+        }
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  private fun doMaxRuntime(vertx: Vertx, ctx: VertxTestContext,
+      errorOnTimeout: Boolean, exceptionClass: Class<out Exception>) {
+    val processChain = ProcessChain(executables = listOf(
+      Executable(path = "sleep",
+        arguments = listOf(
+          // sleep for a long time so we run into a junit timeout if our
+          // timeout does not work
+          Argument(variable = ArgumentVariable(UniqueID.next(), "2000"),
+            type = Argument.Type.INPUT)
+        ),
+        serviceId = "dummy",
+        maxRuntime = TimeoutPolicy(timeout = 200, errorOnTimeout = errorOnTimeout)
+      )
+    ))
+
+    val agent = LocalAgent(vertx, localAgentDispatcher)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        assertThatThrownBy { agent.execute(processChain) }
+          .isInstanceOf(exceptionClass)
+          .hasMessage("Execution of service `dummy' timed out after 200 ms (maximum runtime)")
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if a process chain is cancelled due to a maximum runtime
+   */
+  @Test
+  fun maxRuntime(vertx: Vertx, ctx: VertxTestContext) {
+    doMaxRuntime(vertx, ctx, false, LocalAgent.TimeoutCancellationException::class.java)
+  }
+
+  /**
+   * Test if a process chain is aborted (with an error) due to a maximum runtime
+   */
+  @Test
+  fun maxRuntimeError(vertx: Vertx, ctx: VertxTestContext) {
+    doMaxRuntime(vertx, ctx, true, LocalAgent.TimeoutException::class.java)
+  }
+
+  private fun doMaxRuntimeRetry(vertx: Vertx, ctx: VertxTestContext,
+      errorOnTimeout: Boolean, exceptionClass: Class<out Exception>) {
+    val exec = Executable(path = "dummy", arguments = emptyList(),
+      maxRuntime = TimeoutPolicy(200, errorOnTimeout = errorOnTimeout),
+      retries = RetryPolicy(3), serviceId = "dummy")
+    val processChain = ProcessChain(executables = listOf(exec))
+
+    mockkConstructor(OtherRuntime::class)
+    every { anyConstructed<OtherRuntime>().execute(exec, any() as OutputCollector) } answers {
+      Thread.sleep(2000)
+    }
+
+    val agent = LocalAgent(vertx, localAgentDispatcher)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        assertThatThrownBy { agent.execute(processChain) }
+          .isInstanceOf(exceptionClass)
+          .hasMessage("Execution of service `dummy' timed out after 200 ms (maximum runtime)")
+
+        // execution should have been tried three times
+        verify(exactly = 3) {
+          anyConstructed<OtherRuntime>().execute(exec, any() as OutputCollector)
+        }
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if the local agent still retries an executable even it is cancelled
+   * due to a maximum runtime
+   */
+  @Test
+  fun maxRuntimeRetry(vertx: Vertx, ctx: VertxTestContext) {
+    doMaxRuntimeRetry(vertx, ctx, false, LocalAgent.TimeoutCancellationException::class.java)
+  }
+
+  /**
+   * Test if the local agent still retries an executable even it is aborted
+   * (with an error) due to a maximum runtime
+   */
+  @Test
+  fun maxRuntimeRetryError(vertx: Vertx, ctx: VertxTestContext) {
+    doMaxRuntimeRetry(vertx, ctx, true, LocalAgent.TimeoutException::class.java)
   }
 }

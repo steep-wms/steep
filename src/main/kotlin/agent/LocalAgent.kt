@@ -17,11 +17,14 @@ import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.eventbus.unregisterAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -31,11 +34,11 @@ import model.processchain.Argument
 import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import model.processchain.ProcessChain
+import model.timeout.TimeoutPolicy
 import org.slf4j.LoggerFactory
 import runtime.DockerRuntime
 import runtime.OtherRuntime
 import java.io.File
-import java.util.concurrent.CancellationException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -152,20 +155,30 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
       // run executables and track progress
       // use `coroutineContext` so we are able to [cancel] the execution
       withContext(coroutineContext) {
-        for ((index, exec) in processChain.executables.withIndex()) {
-          withRetry(exec.retries) { attempt ->
-            if (attempt > 1) {
-              gaugeRetries.labels(exec.serviceId ?: "<unknown>").inc()
+        try {
+          for ((index, exec) in processChain.executables.withIndex()) {
+            withRetry(exec.retries) { attempt ->
+              val serviceId = exec.serviceId ?: "<unknown>"
+              if (attempt > 1) {
+                gaugeRetries.labels(serviceId).inc()
+              }
+              withTimeout(exec.maxRuntime, "maximum runtime", serviceId) {
+                execute(exec, processChain.id, executor, contextWrapper) { p ->
+                  val step = 1.0 / processChain.executables.size
+                  setProgress(step * index + step * p)
+                }
+              }
             }
-            execute(exec, processChain.id, executor, contextWrapper) { p ->
-              val step = 1.0 / processChain.executables.size
-              setProgress(step * index + step * p)
-            }
-          }
 
-          if ((index + 1) < processChain.executables.size || progress != null) {
-            setProgress((index + 1).toDouble() / processChain.executables.size)
+            if ((index + 1) < processChain.executables.size || progress != null) {
+              setProgress((index + 1).toDouble() / processChain.executables.size)
+            }
           }
+        } catch (te: TimeoutException) {
+          if (te.policy.errorOnTimeout) {
+            throw te
+          }
+          cancel(TimeoutCancellationException(te.policy, te.type, te.serviceId))
         }
       }
     } finally {
@@ -306,6 +319,69 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
       )
     }
   }
+
+  /**
+   * Executes the given [block] with a timeout [policy] of a certain [type],
+   * which has been defined for an executable with a given [serviceId]
+   */
+  private suspend fun <T> withTimeout(policy: TimeoutPolicy?, type: String,
+      serviceId: String, block: suspend () -> T): T {
+    // shortcut
+    if (policy == null) {
+      return block()
+    }
+
+    return coroutineScope {
+      var timeout: Long? = null
+      var ex: TimeoutCancellationException? = null
+      try {
+        val job = async {
+          block()
+        }
+
+        timeout = vertx.setTimer(policy.timeout) {
+          ex = TimeoutCancellationException(policy, type, serviceId)
+          job.cancel(ex)
+        }
+
+        job.await()
+      } catch (t: TimeoutCancellationException) {
+        if (t === ex) {
+          // if this is our exception (and not one from a child job), convert
+          // it to an exception that is not derived from CancellationException
+          // so we don't automatically cancel the parent job and can handle the
+          // exception upstream
+          throw TimeoutException(t.policy, t.type, t.serviceId)
+        }
+        // otherwise, just forward the exception - a child job may have timed out
+        throw t
+      } finally {
+        timeout?.let { vertx.cancelTimer(it) }
+      }
+    }
+  }
+
+  /**
+   * An exception that will be thrown if the execution of a process chain was
+   * cancelled due to a timeout
+   * @param policy the timeout policy that led to the cancellation
+   * @param type the type of the timeout policy
+   * @param serviceId the ID of the service whose execution took too long
+   */
+  class TimeoutCancellationException(val policy: TimeoutPolicy, val type: String,
+      val serviceId: String) :
+    CancellationException("Execution of service `$serviceId' timed out after ${policy.timeout} ms ($type)")
+
+  /**
+   * An exception that will be thrown if the execution of a process chain was
+   * aborted (with an error) due to a timeout
+   * @param policy the timeout policy that led to the abortion
+   * @param type the type of the timeout policy
+   * @param serviceId the ID of the service whose execution took too long
+   */
+  class TimeoutException(val policy: TimeoutPolicy, val type: String,
+      val serviceId: String) :
+    RuntimeException("Execution of service `$serviceId' timed out after ${policy.timeout} ms ($type)")
 
   private inner class ProgressReportingOutputCollector(maxLines: Int,
       private val exec: Executable, private val progressUpdater: (Double) -> Unit) :

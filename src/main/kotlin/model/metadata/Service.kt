@@ -1,7 +1,9 @@
 package model.metadata
 
+import com.fasterxml.jackson.annotation.JsonAlias
 import com.fasterxml.jackson.annotation.JsonProperty
 import model.retry.RetryPolicy
+import model.timeout.TimeoutPolicy
 
 /**
  * Service metadata
@@ -17,6 +19,10 @@ import model.retry.RetryPolicy
  * @param retries optional rules that define when and how often the execution
  * of this service should be retried in case an error has occurred. Can be
  * overridden in the workflow (see [model.workflow.ExecuteAction.retries]).
+ * @param maxRuntime an optional timeout policy that defines how long the
+ * execution of this service can take before it is automatically aborted, even
+ * if the service regularly writes to the standard output and error streams. Can
+ * be overridden in the workflow (see [model.workflow.ExecuteAction.maxRuntime]).
  * @author Michel Kraemer
  */
 data class Service(
@@ -28,7 +34,8 @@ data class Service(
     val parameters: List<ServiceParameter>,
     @JsonProperty("runtime_args") val runtimeArgs: List<RuntimeArgument> = emptyList(),
     @JsonProperty("required_capabilities") val requiredCapabilities: Set<String> = emptySet(),
-    val retries: RetryPolicy? = null
+    val retries: RetryPolicy? = null,
+    @JsonAlias("max_runtime") val maxRuntime: TimeoutPolicy? = null
 ) {
   companion object {
     /**
