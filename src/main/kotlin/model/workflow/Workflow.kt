@@ -8,7 +8,7 @@ package model.workflow
  * @author Michel Kraemer
  */
 data class Workflow(
-    val api: String = "4.2.0",
+    val api: String = "4.3.0",
     val name: String? = null,
     val vars: List<Variable> = emptyList(),
     val actions: List<Action> = emptyList()
