@@ -85,6 +85,13 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
      * The process chain ID will be appended.
      */
     val PROCESSCHAIN_LOG_PREFIX = "${LocalAgent::class.java.name}.processChain."
+
+    /**
+     * Create a message for [TimeoutCancellationException] and [TimeoutException]
+     */
+    private fun makeTimeoutMessage(policy: TimeoutPolicy, type: String,
+      serviceId: String?) = "Execution ${if (serviceId != null)
+        "of service `$serviceId'" else ""} timed out after ${policy.timeout} ms ($type)"
   }
 
   override val id: String = UniqueID.next()
@@ -157,15 +164,16 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
       withContext(coroutineContext) {
         try {
           for ((index, exec) in processChain.executables.withIndex()) {
-            withRetry(exec.retries) { attempt ->
-              val serviceId = exec.serviceId ?: "<unknown>"
-              if (attempt > 1) {
-                gaugeRetries.labels(serviceId).inc()
-              }
-              withTimeout(exec.maxRuntime, "maximum runtime", serviceId) {
-                execute(exec, processChain.id, executor, contextWrapper) { p ->
-                  val step = 1.0 / processChain.executables.size
-                  setProgress(step * index + step * p)
+            withTimeout(exec.deadline, "deadline", exec.serviceId) {
+              withRetry(exec.retries) { attempt ->
+                if (attempt > 1) {
+                  gaugeRetries.labels(exec.serviceId ?: "<unknown>").inc()
+                }
+                withTimeout(exec.maxRuntime, "maximum runtime", exec.serviceId) {
+                  execute(exec, processChain.id, executor, contextWrapper) { p ->
+                    val step = 1.0 / processChain.executables.size
+                    setProgress(step * index + step * p)
+                  }
                 }
               }
             }
@@ -325,7 +333,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
    * which has been defined for an executable with a given [serviceId]
    */
   private suspend fun <T> withTimeout(policy: TimeoutPolicy?, type: String,
-      serviceId: String, block: suspend () -> T): T {
+      serviceId: String?, block: suspend () -> T): T {
     // shortcut
     if (policy == null) {
       return block()
@@ -369,8 +377,8 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
    * @param serviceId the ID of the service whose execution took too long
    */
   class TimeoutCancellationException(val policy: TimeoutPolicy, val type: String,
-      val serviceId: String) :
-    CancellationException("Execution of service `$serviceId' timed out after ${policy.timeout} ms ($type)")
+      val serviceId: String?) :
+    CancellationException(makeTimeoutMessage(policy, type, serviceId))
 
   /**
    * An exception that will be thrown if the execution of a process chain was
@@ -380,8 +388,8 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
    * @param serviceId the ID of the service whose execution took too long
    */
   class TimeoutException(val policy: TimeoutPolicy, val type: String,
-      val serviceId: String) :
-    RuntimeException("Execution of service `$serviceId' timed out after ${policy.timeout} ms ($type)")
+      val serviceId: String?) :
+    RuntimeException(makeTimeoutMessage(policy, type, serviceId))
 
   private inner class ProgressReportingOutputCollector(maxLines: Int,
       private val exec: Executable, private val progressUpdater: (Double) -> Unit) :

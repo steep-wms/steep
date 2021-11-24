@@ -16,6 +16,11 @@ import model.timeout.TimeoutPolicy
  * if the service regularly writes to the standard output and error streams. Can
  * be overridden in the workflow (see [model.workflow.ExecuteAction.maxRuntime]).
  * This value overrides any maximum runtime rule defined in the service metadata.
+ * @param deadline an optional timeout policy that defines how long the
+ * execution of the service can take at all (including all retries and their
+ * associated delays) until it is aborted. Can be overridden in the workflow
+ * (see [model.workflow.ExecuteAction.deadline]). This value overrides any
+ * deadline defined in the service metadata.
  * @author Michel Kraemer
  */
 data class ExecuteAction(
@@ -23,5 +28,6 @@ data class ExecuteAction(
     val inputs: List<GenericParameter> = emptyList(),
     val outputs: List<OutputParameter> = emptyList(),
     val retries: RetryPolicy? = null,
-    val maxRuntime: TimeoutPolicy? = null
+    val maxRuntime: TimeoutPolicy? = null,
+    val deadline: TimeoutPolicy? = null
 ) : Action

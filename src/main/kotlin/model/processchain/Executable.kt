@@ -20,6 +20,9 @@ import model.timeout.TimeoutPolicy
  * @param maxRuntime an optional timeout policy that defines how long the
  * executable can run before it is automatically aborted, even if it regularly
  * writes to the standard output and error streams
+ * @param deadline an optional timeout policy that defines how long the
+ * execution can take at all (including all retries and their associated
+ * delays) until it is aborted
  * @author Michel Kraemer
  */
 data class Executable(
@@ -30,5 +33,6 @@ data class Executable(
     val runtimeArgs: List<Argument> = emptyList(),
     val serviceId: String? = null,
     val retries: RetryPolicy? = null,
-    val maxRuntime: TimeoutPolicy? = null
+    val maxRuntime: TimeoutPolicy? = null,
+    val deadline: TimeoutPolicy? = null
 )
