@@ -358,6 +358,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
 
         timeout.startTimeout {
           ex = TimeoutCancellationException(policy, type, serviceId)
+          log.warn(ex!!.message)
           job.cancel(ex)
         }
 
