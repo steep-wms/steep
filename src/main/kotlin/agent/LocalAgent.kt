@@ -401,16 +401,29 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
       val serviceId: String?) :
     RuntimeException(makeTimeoutMessage(policy, type, serviceId))
 
+  /**
+   * A resettable timer that cancels the current job on timeout
+   */
   private interface TimeoutTimer {
+    /**
+     * Reset the timer
+     */
     fun resetTimeout()
   }
 
+  /**
+   * An implementation of [TimeoutTimer] that does no cancel the job
+   */
   private class NoopTimeoutTimer : TimeoutTimer {
     override fun resetTimeout() {
       // nothing to do here
     }
   }
 
+  /**
+   * An implementation of [TimeoutTimer] that follows a given timeout [policy]
+   * and runs a given block on timeout.
+   */
   private inner class DefaultTimeoutTimer(private val policy: TimeoutPolicy) : TimeoutTimer {
     private var timerId: Long? = null
     private var block: ((Long) -> Unit)? = null
@@ -426,17 +439,26 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
       }
     }
 
+    /**
+     * Start timer and call the given [block] on timeout
+     */
     fun startTimeout(block: (Long) -> Unit) {
       this.block = block
       startTimeout()
     }
 
+    /**
+     * Cancel the timer
+     */
     fun cancelTimeout() {
       timerId?.let { vertx.cancelTimer(it) }
       timerId = null
     }
   }
 
+  /**
+   * An [OutputCollector] that resets the given [timeout] on every line received
+   */
   private class TimeoutOutputCollector(private val delegate: OutputCollector,
       private val timeout: TimeoutTimer) : OutputCollector by delegate {
     override fun collect(line: String) {
