@@ -18,6 +18,7 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkConstructor
 import io.mockk.mockkObject
+import io.mockk.slot
 import io.mockk.spyk
 import io.mockk.verify
 import io.vertx.core.Vertx
@@ -757,5 +758,92 @@ class LocalAgentTest : AgentTest() {
   fun maxRuntimeAndDeadline(vertx: Vertx, ctx: VertxTestContext) {
     doTimeout(vertx, ctx, TimeoutPolicy(200), TimeoutPolicy(1000, errorOnTimeout = true),
       null, "maximum runtime", LocalAgent.TimeoutCancellationException::class.java, 1)
+  }
+
+  /**
+   * Test that no timeout is triggered if the service produces output from time to time
+   */
+  @Test
+  fun maxInactivityNoTimeout(vertx: Vertx, ctx: VertxTestContext) {
+    val exec = Executable(path = "dummy", arguments = emptyList(),
+      maxInactivity = TimeoutPolicy(200), serviceId = "dummy")
+    val processChain = ProcessChain(executables = listOf(exec))
+
+    mockkConstructor(OtherRuntime::class)
+    val outputCollectorSlot = slot<OutputCollector>()
+    every { anyConstructed<OtherRuntime>().execute(exec, capture(outputCollectorSlot)) } answers {
+      for (i in 1..5) {
+        Thread.sleep(100)
+        outputCollectorSlot.captured.collect("$i")
+      }
+    }
+
+    val agent = LocalAgent(vertx, localAgentDispatcher)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        // should succeed
+        agent.execute(processChain)
+
+        verify(exactly = 1) {
+          anyConstructed<OtherRuntime>().execute(exec, any() as OutputCollector)
+        }
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  private fun doMaxInactivity(vertx: Vertx, ctx: VertxTestContext,
+      retries: RetryPolicy?, expectedCalls: Int) {
+    val exec = Executable(path = "dummy", arguments = emptyList(),
+      maxInactivity = TimeoutPolicy(200), serviceId = "dummy", retries = retries)
+    val processChain = ProcessChain(executables = listOf(exec))
+
+    mockkConstructor(OtherRuntime::class)
+    val outputCollectorSlot = slot<OutputCollector>()
+    every { anyConstructed<OtherRuntime>().execute(exec, capture(outputCollectorSlot)) } answers {
+      // be active
+      for (i in 1..5) {
+        Thread.sleep(100)
+        outputCollectorSlot.captured.collect("$i")
+      }
+      // now be inactive
+      Thread.sleep(1000)
+    }
+
+    val agent = LocalAgent(vertx, localAgentDispatcher)
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        // should succeed
+        assertThatThrownBy { agent.execute(processChain) }
+          .isInstanceOf(LocalAgent.TimeoutCancellationException::class.java)
+          .hasMessage("Execution of service `dummy' timed out after 200 ms (maximum inactivity)")
+
+        verify(exactly = expectedCalls) {
+          anyConstructed<OtherRuntime>().execute(exec, any() as OutputCollector)
+        }
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that the local agent cancels an executable if it was inactive for too long
+   */
+  @Test
+  fun maxInactivity(vertx: Vertx, ctx: VertxTestContext) {
+    doMaxInactivity(vertx, ctx, null, 1)
+  }
+
+  /**
+   * Test that the local agent cancels an executable if it was inactive for too long
+   * even after a few retries
+   */
+  @Test
+  fun maxInactivityRetry(vertx: Vertx, ctx: VertxTestContext) {
+    doMaxInactivity(vertx, ctx, RetryPolicy(3), 3)
   }
 }

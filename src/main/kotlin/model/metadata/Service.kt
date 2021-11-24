@@ -19,6 +19,11 @@ import model.timeout.TimeoutPolicy
  * @param retries optional rules that define when and how often the execution
  * of this service should be retried in case an error has occurred. Can be
  * overridden in the workflow (see [model.workflow.ExecuteAction.retries]).
+ * @param maxInactivity an optional timeout policy that defines how long the
+ * execution of this service can take without producing any output (i.e.
+ * without writing anything to the standard output and error streams) before it
+ * is automatically aborted. Can be overridden in the workflow (see
+ * [model.workflow.ExecuteAction.maxInactivity]).
  * @param maxRuntime an optional timeout policy that defines how long the
  * execution of this service can take before it is automatically aborted, even
  * if the service regularly writes to the standard output and error streams. Can
@@ -39,6 +44,7 @@ data class Service(
     @JsonProperty("runtime_args") val runtimeArgs: List<RuntimeArgument> = emptyList(),
     @JsonProperty("required_capabilities") val requiredCapabilities: Set<String> = emptySet(),
     val retries: RetryPolicy? = null,
+    @JsonAlias("max_inactivity") val maxInactivity: TimeoutPolicy? = null,
     @JsonAlias("max_runtime") val maxRuntime: TimeoutPolicy? = null,
     val deadline: TimeoutPolicy? = null
 ) {
