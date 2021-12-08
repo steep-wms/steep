@@ -8,7 +8,7 @@ const Footer = ({ noTopMargin = false }) => (
       <div className="container">
         <div className="footer-row">
           <div className="logo">
-            <a href="https://igd.fraunhofer.de"><img src={require("../assets/fraunhofer.svg")} className="img-fluid" /></a>
+            <a href="https://igd.fraunhofer.de"><img src={require("../assets/fraunhofer.svg")} className="img-fluid" alt="Fraunhofer IGD logo" /></a>
           </div>
           <div className="social-icons">
             <a className="nav-item" href="https://steep-wms.github.io/" target="_blank" rel="noopener noreferrer">

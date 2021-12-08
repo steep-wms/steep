@@ -27,8 +27,13 @@ const config = {
     autoPrerender: false
   },
 
-  future: {
-    webpack5: true
+  eslint: {
+    dirs: ["components", "cypress", "pages"]
+  },
+
+  images: {
+    // make build compatible with next-optimized-images
+    disableStaticImages: true
   },
 
   // list pages to export

@@ -56,10 +56,12 @@ const Provider = (props) => (
       updateMessages={UPDATE_MESSAGES} />
 )
 
-export default {
+const VMContext = {
   Items: ListContext.Items,
   UpdateItems: ListContext.UpdateItems,
   AddedItems: ListContext.AddedItems,
   UpdateAddedItems: ListContext.UpdateAddedItems,
   Provider
 }
+
+export default VMContext

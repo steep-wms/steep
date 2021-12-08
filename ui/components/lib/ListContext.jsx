@@ -147,10 +147,12 @@ const Provider = ({ pageSize, allowAdd = true, shouldAddItem,
   )
 }
 
-export default {
+const ListContext = {
   Items,
   UpdateItems,
   AddedItems,
   UpdateAddedItems,
   Provider
 }
+
+export default ListContext

@@ -31,8 +31,8 @@ const Sidebar = () => {
       <div className="sidebar">
         <Link href="/">
           <a className="sidebar-logo">
-            <img src={require("../assets/steep-logo.svg")} width="160" className="steep-logo" />
-            <img src={require("../assets/steep-icon.svg")} width="1000" className="steep-icon" />
+            <img src={require("../assets/steep-logo.svg")} width="160" className="steep-logo" alt="Steep logo" />
+            <img src={require("../assets/steep-icon.svg")} width="1000" className="steep-icon" alt="Steep logo (icon only)" />
           </a>
         </Link>
         <nav>

@@ -35,7 +35,7 @@ tasks {
                 .withPathSensitivity(PathSensitivity.RELATIVE)
         }
 
-        for (f in listOf(".eslintrc.js", "next.config.js")) {
+        for (f in listOf(".eslintrc.json", "next.config.js")) {
             inputs.file(file(f))
                 .withPropertyName(f)
                 .withPathSensitivity(PathSensitivity.RELATIVE)
