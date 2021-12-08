@@ -65,7 +65,8 @@ const config = {
           options: {
             type: (fileName, options) => options.query.type || "scoped"
           }
-        }
+        },
+        "sass-loader"
       ]
     })
 

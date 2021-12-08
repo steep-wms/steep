@@ -22,7 +22,7 @@
     &.has-enabled-filters {
       :global(li):not(.enabled) {
         &:before {
-          content: ${'"\00a0"'};
+          content: "\00a0";
           padding-left: 24px;
         }
       }
