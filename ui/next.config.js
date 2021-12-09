@@ -18,6 +18,9 @@ const config = {
   // Magic string will be replaced by Steep's HttpEndpoint verticle
   basePath: isProd ? "/$$MYBASEPATH$$" : "",
 
+  // create a folder for each page
+  trailingSlash: true,
+
   // do not display static optimization indicator
   // it gets in the way of notifications
   devIndicators: {
@@ -37,18 +40,18 @@ const config = {
   exportPathMap() {
     return {
       "/": { page: "/" },
-      "/agents/index": { page: "/agents" },
-      "/agents/[id]": { page: "/agents/[id]" },
-      "/logs/processchains/[id]": { page: "/logs/processchains/[id]" },
-      "/new/workflow/index": { page: "/new/workflow" },
-      "/processchains/index": { page: "/processchains" },
-      "/processchains/[id]": { page: "/processchains/[id]" },
-      "/services/index": { page: "/services" },
-      "/services/[id]": { page: "/services/[id]" },
-      "/vms/index": { page: "/vms" },
-      "/vms/[id]": { page: "/vms/[id]" },
-      "/workflows/index": { page: "/workflows" },
-      "/workflows/[id]": { page: "/workflows/[id]" }
+      "/agents": { page: "/agents" },
+      "/agents/[id].html": { page: "/agents/[id]" },
+      "/logs/processchains/[id].html": { page: "/logs/processchains/[id]" },
+      "/new/workflow": { page: "/new/workflow" },
+      "/processchains": { page: "/processchains" },
+      "/processchains/[id].html": { page: "/processchains/[id]" },
+      "/services": { page: "/services" },
+      "/services/[id].html": { page: "/services/[id]" },
+      "/vms": { page: "/vms" },
+      "/vms/[id].html": { page: "/vms/[id]" },
+      "/workflows": { page: "/workflows" },
+      "/workflows/[id].html": { page: "/workflows/[id]" }
     }
   },
 
