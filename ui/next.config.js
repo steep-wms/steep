@@ -1,4 +1,4 @@
-const ImageMinimizerPlugin = require("image-minimizer-webpack-plugin")
+const svgToMiniDataURI = require("mini-svg-data-uri")
 
 const isProd = process.env.NODE_ENV === "production"
 
@@ -67,26 +67,15 @@ module.exports = {
 
     config.module.rules.push({
       test: /\.svg$/,
-      use: [
-        {
-          loader: "file-loader",
-          options: {
-            name: "static/chunks/[path][name].[ext]"
-          }
+      type: "asset",
+      use: "svgo-loader",
+      generator: {
+        dataUrl: content => {
+          content = content.toString()
+          return svgToMiniDataURI(content)
         }
-      ]
+      }
     })
-
-    // optimize images in production mode
-    if (!dev) {
-      config.optimization.minimizer.push(new ImageMinimizerPlugin({
-        minimizerOptions: {
-          plugins: [
-            "svgo"
-          ]
-        }
-      }))
-    }
 
     if (dev) {
       config.module.rules.push({
