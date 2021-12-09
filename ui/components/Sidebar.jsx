@@ -3,6 +3,8 @@ import Link from "next/link"
 import styles from "./Sidebar.scss"
 import { Grid, Link as LinkIcon, Pocket, Send, Server } from "react-feather"
 import { useState } from "react"
+import SteepLogo from "../assets/steep-logo.svg"
+import SteepIcon from "../assets/steep-icon.svg"
 
 function NavItem({ href, icon, text }) {
   // On small screens, the sidebar shows icons only. "nav-item-text" will be
@@ -31,8 +33,8 @@ const Sidebar = () => {
       <div className="sidebar">
         <Link href="/">
           <a className="sidebar-logo">
-            <img src={require("../assets/steep-logo.svg")} width="160" className="steep-logo" alt="Steep logo" />
-            <img src={require("../assets/steep-icon.svg")} width="1000" className="steep-icon" alt="Steep logo (icon only)" />
+            <img src={SteepLogo} width="160" className="steep-logo" alt="Steep logo" />
+            <img src={SteepIcon} width="1000" className="steep-icon" alt="Steep logo (icon only)" />
           </a>
         </Link>
         <nav>

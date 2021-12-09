@@ -1,10 +1,8 @@
-const optimizedImages = require("next-optimized-images")
-
-const withPlugins = require("next-compose-plugins")
+const ImageMinimizerPlugin = require("image-minimizer-webpack-plugin")
 
 const isProd = process.env.NODE_ENV === "production"
 
-const config = {
+module.exports = {
   env: {
     // URL to Steep. Used to connect to the event bus.
     // Magic string will be replaced by Steep's HttpEndpoint verticle
@@ -67,6 +65,29 @@ const config = {
       ]
     })
 
+    config.module.rules.push({
+      test: /\.svg$/,
+      use: [
+        {
+          loader: "file-loader",
+          options: {
+            name: "static/chunks/[path][name].[ext]"
+          }
+        }
+      ]
+    })
+
+    // optimize images in production mode
+    if (!dev) {
+      config.optimization.minimizer.push(new ImageMinimizerPlugin({
+        minimizerOptions: {
+          plugins: [
+            "svgo"
+          ]
+        }
+      }))
+    }
+
     if (dev) {
       config.module.rules.push({
         test: /\.jsx?$/,
@@ -82,7 +103,3 @@ const config = {
     return config
   }
 }
-
-module.exports = withPlugins([
-  [optimizedImages]
-], config)
