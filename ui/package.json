@@ -15,6 +15,7 @@
   "dependencies": {
     "@monaco-editor/react": "^4.3.1",
     "@popperjs/core": "^2.11.0",
+    "@vertx/eventbus-bridge-client.js": "^1.0.0",
     "body-scroll-lock": "^3.1.5",
     "classnames": "^2.3.1",
     "clipboard": "^2.0.8",
@@ -44,7 +45,6 @@
     "spinkit": "^2.0.1",
     "svgo-loader": "^3.0.0",
     "unfetch": "^4.2.0",
-    "vertx3-eventbus-client": "^3.9.4",
     "webpack": "^5.65.0"
   },
   "devDependencies": {

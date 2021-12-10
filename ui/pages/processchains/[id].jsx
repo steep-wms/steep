@@ -19,7 +19,7 @@ import Tooltip from "../../components/Tooltip"
 import { formatDate, formatDurationTitle } from "../../components/lib/date-time-utils"
 import fetcher from "../../components/lib/json-fetcher"
 import { disableBodyScroll, enableBodyScroll } from "body-scroll-lock"
-import EventBus from "vertx3-eventbus-client"
+import EventBus from "@vertx/eventbus-bridge-client.js"
 import classNames from "classnames"
 import styles from "./[id].scss"
 
