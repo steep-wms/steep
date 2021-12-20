@@ -17,6 +17,7 @@ import model.retry.RetryPolicy
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import java.util.function.Consumer
 
 /**
  * Tests for [withRetry]
@@ -79,7 +80,7 @@ class WithRetryTest {
         val end = System.currentTimeMillis()
 
         assertThat(o.attempts).isEqualTo(1)
-        assertThat(o.timestamps).allSatisfy { assertThat(it).isLessThan(start + 10) }
+        assertThat(o.timestamps).allSatisfy(Consumer { assertThat(it).isLessThan(start + 10) })
         assertThat(end).isLessThan(o.timestamps.last() + 10)
       }
       ctx.completeNow()
@@ -101,7 +102,7 @@ class WithRetryTest {
         val end = System.currentTimeMillis()
 
         assertThat(o.attempts).isEqualTo(1)
-        assertThat(o.timestamps).allSatisfy { assertThat(it).isLessThan(start + 10) }
+        assertThat(o.timestamps).allSatisfy(Consumer { assertThat(it).isLessThan(start + 10) })
         assertThat(end).isLessThan(o.timestamps.last() + 10)
       }
       ctx.completeNow()
@@ -121,7 +122,7 @@ class WithRetryTest {
         val end = System.currentTimeMillis()
 
         assertThat(o.attempts).isEqualTo(3)
-        assertThat(o.timestamps).allSatisfy { assertThat(it).isLessThan(start + 10) }
+        assertThat(o.timestamps).allSatisfy(Consumer { assertThat(it).isLessThan(start + 10) })
         assertThat(end).isLessThan(o.timestamps.last() + 10)
       }
       ctx.completeNow()
@@ -143,7 +144,7 @@ class WithRetryTest {
         val end = System.currentTimeMillis()
 
         assertThat(o.attempts).isEqualTo(3)
-        assertThat(o.timestamps).allSatisfy { assertThat(it).isLessThan(start + 10) }
+        assertThat(o.timestamps).allSatisfy(Consumer { assertThat(it).isLessThan(start + 10) })
         assertThat(end).isLessThan(o.timestamps.last() + 10)
       }
       ctx.completeNow()
@@ -163,7 +164,7 @@ class WithRetryTest {
         val end = System.currentTimeMillis()
 
         assertThat(o.attempts).isEqualTo(2)
-        assertThat(o.timestamps).allSatisfy { assertThat(it).isLessThan(start + 10) }
+        assertThat(o.timestamps).allSatisfy(Consumer  { assertThat(it).isLessThan(start + 10) })
         assertThat(end).isLessThan(o.timestamps.last() + 10)
       }
       ctx.completeNow()
@@ -331,7 +332,7 @@ class WithRetryTest {
         val end = System.currentTimeMillis()
 
         assertThat(o.attempts).isEqualTo(2)
-        assertThat(o.timestamps).allSatisfy { assertThat(it).isLessThan(start + 10) }
+        assertThat(o.timestamps).allSatisfy(Consumer { assertThat(it).isLessThan(start + 10) })
         // operation should be cancelled immediately
         assertThat(end).isLessThan(o.timestamps.last() + 10)
       }
