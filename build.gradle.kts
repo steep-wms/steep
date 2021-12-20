@@ -60,7 +60,7 @@ dependencies {
     implementation("io.prometheus:simpleclient:$prometheusClientVersion")
     implementation("io.prometheus:simpleclient_hotspot:$prometheusClientVersion")
     implementation("io.prometheus:simpleclient_vertx:$prometheusClientVersion")
-    implementation("org.apache.ant:ant:1.10.9")
+    implementation("org.apache.ant:ant:1.10.12")
     implementation("org.apache.commons:commons-lang3:3.11")
     implementation("org.apache.commons:commons-text:1.9")
     implementation("org.flywaydb:flyway-core:7.3.1")
