@@ -330,8 +330,7 @@ abstract class SubmissionRegistryTest {
 
       ctx.verify {
         assertThat(submissions)
-            .hasSize(1)
-            .contains(s)
+            .containsExactly(s)
         assertThat(acceptedSubmission1)
             .isEqualTo(s)
         assertThat(runningSubmission1)
@@ -649,8 +648,7 @@ abstract class SubmissionRegistryTest {
 
       ctx.verify {
         assertThat(pcs)
-            .hasSize(1)
-            .contains(pc to s.id)
+            .containsExactly(pc to s.id)
         assertThat(registeredPc)
             .isEqualTo(pc)
       }
@@ -1398,8 +1396,7 @@ abstract class SubmissionRegistryTest {
 
       ctx.verify {
         assertThat(pcs)
-            .hasSize(1)
-            .contains(pc to s.id)
+            .containsExactly(pc to s.id)
         assertThat(registeredPc1)
             .isEqualTo(pc)
         assertThat(runningPc1)
