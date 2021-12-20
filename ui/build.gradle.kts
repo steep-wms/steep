@@ -1,5 +1,5 @@
-import com.moowork.gradle.node.npm.NpmInstallTask
-import com.moowork.gradle.node.npm.NpmTask
+import com.github.gradle.node.npm.task.NpmInstallTask
+import com.github.gradle.node.npm.task.NpmTask
 
 plugins {
     java
@@ -7,8 +7,8 @@ plugins {
 }
 
 node {
-    version = file(".tool-versions").readText().split(" ")[1].trim()
-    download = true
+    version.set(file(".tool-versions").readText().split(" ")[1].trim())
+    download.set(true)
 }
 
 tasks {
@@ -25,7 +25,7 @@ tasks {
 
     val buildUi by creating(NpmTask::class) {
         dependsOn(installUi)
-        setArgs(listOf("run", "build"))
+        args.set(listOf("run", "build"))
 
         outputs.cacheIf { true }
 
