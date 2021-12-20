@@ -60,7 +60,7 @@ dependencies {
     implementation("io.prometheus:simpleclient:$prometheusClientVersion")
     implementation("io.prometheus:simpleclient_hotspot:$prometheusClientVersion")
     implementation("io.prometheus:simpleclient_vertx:$prometheusClientVersion")
-    implementation("org.apache.ant:ant:1.10.9")
+    implementation("org.apache.ant:ant:1.10.12")
     implementation("org.apache.commons:commons-lang3:3.11")
     implementation("org.apache.commons:commons-text:1.9")
     implementation("org.flywaydb:flyway-core:7.3.1")
@@ -71,19 +71,19 @@ dependencies {
         // we only need org.quartz.CronExpression, so we can exclude all dependencies
         isTransitive = false
     }
-    implementation("org.yaml:snakeyaml:1.27")
+    implementation("org.yaml:snakeyaml:1.30")
 
     implementation(kotlin("reflect"))
     implementation(kotlin("scripting-jsr223"))
     implementation(kotlin("stdlib-jdk8"))
     implementation(kotlin("script-runtime"))
 
-    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.0.0")
+    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.2.4")
     testImplementation("io.mockk:mockk:1.10.3")
     testImplementation("io.vertx:vertx-junit5:$vertxVersion")
     testImplementation("org.assertj:assertj-core:3.18.1")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.7.0")
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.7.0")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.8.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.7.0")
     testImplementation("org.testcontainers:testcontainers:1.15.3")
     testImplementation("org.testcontainers:junit-jupiter:1.15.3")
@@ -95,7 +95,7 @@ application {
 }
 
 jacoco {
-    toolVersion = "0.8.5"
+    toolVersion = "0.8.7"
 }
 
 tasks {
