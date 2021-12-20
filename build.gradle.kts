@@ -6,7 +6,6 @@ plugins {
     application
     jacoco
     kotlin("jvm") version "1.6.10"
-    id("com.github.ben-manes.versions") version "0.36.0"
 }
 
 buildscript {
@@ -29,7 +28,7 @@ repositories {
 dependencies {
     implementation("org.slf4j:jul-to-slf4j:1.7.30")
     implementation("org.slf4j:log4j-over-slf4j:1.7.30")
-    implementation("org.slf4j:slf4j-api:1.7.30")
+    implementation("org.slf4j:slf4j-api:1.7.32")
 
     implementation("ch.qos.logback:logback-classic:1.2.3")
     implementation("ch.qos.logback:logback-core:1.2.3")
@@ -63,7 +62,7 @@ dependencies {
     implementation("org.apache.ant:ant:1.10.12")
     implementation("org.apache.commons:commons-lang3:3.11")
     implementation("org.apache.commons:commons-text:1.9")
-    implementation("org.flywaydb:flyway-core:7.3.1")
+    implementation("org.flywaydb:flyway-core:8.2.2")
     implementation("org.mongodb:mongodb-driver-reactivestreams:1.13.1")
     implementation("com.github.openstack4j.core:openstack4j:3.10")
     implementation("org.postgresql:postgresql:42.2.18")
@@ -85,7 +84,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.7.0")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.8.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.2")
-    testImplementation("org.testcontainers:testcontainers:1.15.3")
+    testImplementation("org.testcontainers:testcontainers:1.16.2")
     testImplementation("org.testcontainers:junit-jupiter:1.15.3")
     testImplementation("org.testcontainers:postgresql:1.15.3")
 }
