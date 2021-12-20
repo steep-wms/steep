@@ -53,7 +53,7 @@ dependencies {
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.0")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.12.0")
     implementation("com.github.zafarkhaja:java-semver:0.9.0")
-    implementation("com.google.guava:guava:30.0-jre")
+    implementation("com.google.guava:guava:31.0.1-jre")
     implementation("com.zaxxer:HikariCP:3.4.5")
     implementation("io.pebbletemplates:pebble:3.1.4")
     implementation("io.projectreactor:reactor-core:3.4.2") // necessary for reactive MongoDB driver
