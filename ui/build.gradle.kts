@@ -3,7 +3,7 @@ import com.moowork.gradle.node.npm.NpmTask
 
 plugins {
     java
-    id("com.github.node-gradle.node") version "2.2.3"
+    id("com.github.node-gradle.node") version "3.1.1"
 }
 
 node {
