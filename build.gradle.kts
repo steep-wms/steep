@@ -54,7 +54,7 @@ dependencies {
     implementation("com.github.zafarkhaja:java-semver:0.9.0")
     implementation("com.google.guava:guava:31.0.1-jre")
     implementation("com.zaxxer:HikariCP:5.0.0")
-    implementation("io.pebbletemplates:pebble:3.1.4")
+    implementation("io.pebbletemplates:pebble:3.1.5")
     implementation("io.projectreactor:reactor-core:3.4.13") // necessary for reactive MongoDB driver
     implementation("io.prometheus:simpleclient:$prometheusClientVersion")
     implementation("io.prometheus:simpleclient_hotspot:$prometheusClientVersion")
