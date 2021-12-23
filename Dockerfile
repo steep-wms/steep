@@ -1,4 +1,4 @@
-FROM openjdk:11-jdk
+FROM openjdk:14-jdk
 
 # prepare
 RUN apt-get update && \
