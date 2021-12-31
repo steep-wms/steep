@@ -39,7 +39,7 @@
     "react-timeago": "^6.2.1",
     "react-virtualized-auto-sizer": "^1.0.6",
     "react-window": "^1.8.6",
-    "sass": "^1.45.1",
+    "sass": "^1.45.2",
     "sass-loader": "^12.4.0",
     "serve": "^13.0.2",
     "spinkit": "^2.0.1",
