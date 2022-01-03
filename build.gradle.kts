@@ -80,7 +80,7 @@ dependencies {
     testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.2.5")
     testImplementation("io.mockk:mockk:1.12.2")
     testImplementation("io.vertx:vertx-junit5:$vertxVersion")
-    testImplementation("org.assertj:assertj-core:3.21.0")
+    testImplementation("org.assertj:assertj-core:3.22.0")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.8.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.2")
