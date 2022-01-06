@@ -5,8 +5,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     application
     jacoco
-    kotlin("jvm") version "1.4.30"
-    id("com.github.ben-manes.versions") version "0.36.0"
+    kotlin("jvm") version "1.6.10"
 }
 
 buildscript {
@@ -27,15 +26,15 @@ repositories {
 }
 
 dependencies {
-    implementation("org.slf4j:jul-to-slf4j:1.7.30")
-    implementation("org.slf4j:log4j-over-slf4j:1.7.30")
-    implementation("org.slf4j:slf4j-api:1.7.30")
+    implementation("org.slf4j:jul-to-slf4j:1.7.32")
+    implementation("org.slf4j:log4j-over-slf4j:1.7.32")
+    implementation("org.slf4j:slf4j-api:1.7.32")
 
-    implementation("ch.qos.logback:logback-classic:1.2.3")
-    implementation("ch.qos.logback:logback-core:1.2.3")
+    implementation("ch.qos.logback:logback-classic:1.2.10")
+    implementation("ch.qos.logback:logback-core:1.2.10")
     implementation("ch.qos.logback.contrib:logback-jackson:0.1.5")
     implementation("ch.qos.logback.contrib:logback-json-classic:0.1.5")
-    implementation("org.codehaus.janino:janino:3.1.2") // for conditionals in logback.xml
+    implementation("org.codehaus.janino:janino:3.1.6") // for conditionals in logback.xml
 
     implementation("io.vertx:vertx-core:$vertxVersion")
     implementation("io.vertx:vertx-hazelcast:$vertxVersion")
@@ -49,45 +48,45 @@ dependencies {
     implementation("com.hazelcast:hazelcast:$hazelcastVersion")
 
     implementation("commons-codec:commons-codec:1.15")
-    implementation("commons-io:commons-io:2.8.0")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.0")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.12.0")
+    implementation("commons-io:commons-io:2.11.0")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.1")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.1")
     implementation("com.github.zafarkhaja:java-semver:0.9.0")
-    implementation("com.google.guava:guava:30.0-jre")
-    implementation("com.zaxxer:HikariCP:3.4.5")
-    implementation("io.pebbletemplates:pebble:3.1.4")
-    implementation("io.projectreactor:reactor-core:3.4.2") // necessary for reactive MongoDB driver
+    implementation("com.google.guava:guava:31.0.1-jre")
+    implementation("com.zaxxer:HikariCP:5.0.0")
+    implementation("io.pebbletemplates:pebble:3.1.5")
+    implementation("io.projectreactor:reactor-core:3.4.13") // necessary for reactive MongoDB driver
     implementation("io.prometheus:simpleclient:$prometheusClientVersion")
     implementation("io.prometheus:simpleclient_hotspot:$prometheusClientVersion")
     implementation("io.prometheus:simpleclient_vertx:$prometheusClientVersion")
-    implementation("org.apache.ant:ant:1.10.9")
-    implementation("org.apache.commons:commons-lang3:3.11")
+    implementation("org.apache.ant:ant:1.10.12")
+    implementation("org.apache.commons:commons-lang3:3.12.0")
     implementation("org.apache.commons:commons-text:1.9")
-    implementation("org.flywaydb:flyway-core:7.3.1")
-    implementation("org.mongodb:mongodb-driver-reactivestreams:1.13.1")
+    implementation("org.flywaydb:flyway-core:8.3.0")
+    implementation("org.mongodb:mongodb-driver-reactivestreams:4.4.0")
     implementation("com.github.openstack4j.core:openstack4j:3.10")
-    implementation("org.postgresql:postgresql:42.2.18")
+    implementation("org.postgresql:postgresql:42.3.1")
     implementation("org.quartz-scheduler:quartz:2.3.2") {
         // we only need org.quartz.CronExpression, so we can exclude all dependencies
         isTransitive = false
     }
-    implementation("org.yaml:snakeyaml:1.27")
+    implementation("org.yaml:snakeyaml:1.30")
 
     implementation(kotlin("reflect"))
     implementation(kotlin("scripting-jsr223"))
     implementation(kotlin("stdlib-jdk8"))
     implementation(kotlin("script-runtime"))
 
-    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.0.0")
-    testImplementation("io.mockk:mockk:1.10.3")
+    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.2.6")
+    testImplementation("io.mockk:mockk:1.12.2")
     testImplementation("io.vertx:vertx-junit5:$vertxVersion")
-    testImplementation("org.assertj:assertj-core:3.18.1")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.7.0")
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.7.0")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.7.0")
-    testImplementation("org.testcontainers:testcontainers:1.15.3")
-    testImplementation("org.testcontainers:junit-jupiter:1.15.3")
-    testImplementation("org.testcontainers:postgresql:1.15.3")
+    testImplementation("org.assertj:assertj-core:3.22.0")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.8.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.2")
+    testImplementation("org.testcontainers:testcontainers:1.16.2")
+    testImplementation("org.testcontainers:junit-jupiter:1.16.2")
+    testImplementation("org.testcontainers:postgresql:1.16.2")
 }
 
 application {
@@ -95,7 +94,7 @@ application {
 }
 
 jacoco {
-    toolVersion = "0.8.5"
+    toolVersion = "0.8.7"
 }
 
 tasks {

@@ -33,6 +33,7 @@ import java.net.Inet6Address
 import java.net.NetworkInterface
 import java.net.SocketException
 import java.util.Enumeration
+import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import kotlin.system.exitProcess
 
@@ -238,9 +239,9 @@ suspend fun main() {
 private fun overwriteWithEnvironmentVariables(conf: JsonObject,
     env: Map<String, String>) {
   val names = (ConfigConstants.getConfigKeys() + conf.fieldNames())
-      .associateBy { it.toUpperCase().replace(".", "_") }
+      .associateBy { it.uppercase(Locale.getDefault()).replace(".", "_") }
   env.forEach { (k, v) ->
-    val name = names[k.toUpperCase()]
+    val name = names[k.uppercase(Locale.getDefault())]
     if (name != null) {
       val yaml = Yaml()
       val newVal = yaml.load<Any>(v)

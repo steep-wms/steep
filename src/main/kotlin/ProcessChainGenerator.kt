@@ -407,7 +407,8 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
 
     return Executable(service.name, service.path, arguments, service.runtime,
         runtimeArgsToArguments(service.runtimeArgs), service.id,
-        action.retries ?: service.retries)
+        action.retries ?: service.retries, action.maxInactivity ?: service.maxInactivity,
+        action.maxRuntime ?: service.maxRuntime, action.deadline ?: service.deadline)
   }
 
   /**

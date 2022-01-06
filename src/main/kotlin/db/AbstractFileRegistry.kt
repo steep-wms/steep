@@ -9,6 +9,7 @@ import io.vertx.core.Vertx
 import io.vertx.kotlin.core.executeBlockingAwait
 import io.vertx.kotlin.core.file.readFileAwait
 import org.yaml.snakeyaml.Yaml
+import java.util.Locale
 
 /**
  * Abstract base class for registries that read information from JSON or YAML
@@ -39,7 +40,7 @@ abstract class AbstractFileRegistry {
 
     return files.flatMap { file ->
       val content = vertx.fileSystem().readFileAwait(file).toString()
-      if (file.toLowerCase().endsWith(".json")) {
+      if (file.lowercase(Locale.getDefault()).endsWith(".json")) {
         JsonUtils.mapper.readValue(content, tr)
       } else {
         // Use SnakeYAML to parse file and then Jackson to convert it to an

@@ -1,5 +1,5 @@
 import EventBusContext from "../components/lib/EventBusContext"
-import EventBus from "vertx3-eventbus-client"
+import EventBus from "@vertx/eventbus-bridge-client.js"
 import { useEffect, useState } from "react"
 import styles from "../css/main.scss?type=global"
 

@@ -1,13 +1,8 @@
-const bundleAnalyzer = require("@next/bundle-analyzer")({
-  enabled: process.env.ANALYZE === "true"
-})
-const optimizedImages = require("next-optimized-images")
-
-const withPlugins = require("next-compose-plugins")
+const svgToMiniDataURI = require("mini-svg-data-uri")
 
 const isProd = process.env.NODE_ENV === "production"
 
-const config = {
+module.exports = {
   env: {
     // URL to Steep. Used to connect to the event bus.
     // Magic string will be replaced by Steep's HttpEndpoint verticle
@@ -27,8 +22,13 @@ const config = {
     autoPrerender: false
   },
 
-  future: {
-    webpack5: true
+  eslint: {
+    dirs: ["components", "cypress", "pages"]
+  },
+
+  images: {
+    // make build compatible with next-optimized-images
+    disableStaticImages: true
   },
 
   // list pages to export
@@ -60,8 +60,21 @@ const config = {
           options: {
             type: (fileName, options) => options.query.type || "scoped"
           }
-        }
+        },
+        "sass-loader"
       ]
+    })
+
+    config.module.rules.push({
+      test: /\.svg$/,
+      type: "asset",
+      use: "svgo-loader",
+      generator: {
+        dataUrl: content => {
+          content = content.toString()
+          return svgToMiniDataURI(content)
+        }
+      }
     })
 
     if (dev) {
@@ -79,8 +92,3 @@ const config = {
     return config
   }
 }
-
-module.exports = withPlugins([
-  [optimizedImages],
-  [bundleAnalyzer]
-], config)

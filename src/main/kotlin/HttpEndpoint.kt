@@ -554,7 +554,7 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onGetAgentById(ctx: RoutingContext) {
     if (prefersHtml(ctx)) {
-      renderAsset("ui/agents/[id].html", ctx.response())
+      renderAsset("ui/agents/[id].html/index.html", ctx.response())
     } else {
       launch {
         val id = ctx.pathParam("id")
@@ -588,7 +588,7 @@ class HttpEndpoint : CoroutineVerticle() {
   private fun onGetProcessChainLogById(ctx: RoutingContext, headersOnly: Boolean = false) {
     val forceDownload = ctx.request().getParam("forceDownload").toBoolean()
     if (!forceDownload && prefersHtml(ctx)) {
-      renderAsset("ui/logs/processchains/[id].html", ctx.response())
+      renderAsset("ui/logs/processchains/[id].html/index.html", ctx.response())
       return
     }
 
@@ -873,7 +873,7 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onGetServiceById(ctx: RoutingContext) {
     if (prefersHtml(ctx)) {
-      renderAsset("ui/services/[id].html", ctx.response())
+      renderAsset("ui/services/[id].html/index.html", ctx.response())
     } else {
       launch {
         val id = ctx.pathParam("id")
@@ -988,7 +988,7 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onGetWorkflowById(ctx: RoutingContext) {
     if (prefersHtml(ctx)) {
-      renderAsset("ui/workflows/[id].html", ctx.response())
+      renderAsset("ui/workflows/[id].html/index.html", ctx.response())
     } else {
       launch {
         val id = ctx.pathParam("id")
@@ -1120,9 +1120,9 @@ class HttpEndpoint : CoroutineVerticle() {
       renderError(ctx, 400, "Invalid workflow api version: " + e.message)
       return
     }
-    if (!api.satisfies(gte("3.0.0").and(lte("4.2.0")))) {
+    if (!api.satisfies(gte("3.0.0").and(lte("4.3.0")))) {
       renderError(ctx, 400, "Invalid workflow api version: $api. " +
-          "Supported version range is [3.0.0, 4.2.0].")
+          "Supported version range is [3.0.0, 4.3.0].")
       return
     }
 
@@ -1231,7 +1231,7 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onGetVMById(ctx: RoutingContext) {
     if (prefersHtml(ctx)) {
-      renderAsset("ui/vms/[id].html", ctx.response())
+      renderAsset("ui/vms/[id].html/index.html", ctx.response())
     } else {
       launch {
         val id = ctx.pathParam("id")
@@ -1353,7 +1353,7 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onGetProcessChainById(ctx: RoutingContext) {
     if (prefersHtml(ctx)) {
-      renderAsset("ui/processchains/[id].html", ctx.response())
+      renderAsset("ui/processchains/[id].html/index.html", ctx.response())
     } else {
       launch {
         val id = ctx.pathParam("id")

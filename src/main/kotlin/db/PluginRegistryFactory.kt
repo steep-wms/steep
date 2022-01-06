@@ -61,7 +61,7 @@ object PluginRegistryFactory {
   private fun tryLoadPreCompiled(plugin: Plugin): KCallable<*>? {
     // check if there is a pre-compiled class file
     val scriptFile = File(plugin.scriptFile)
-    val className = "${scriptFile.nameWithoutExtension.capitalize()}Kt"
+    val className = "${scriptFile.nameWithoutExtension.replaceFirstChar { it.titlecaseChar() }}Kt"
     val classFileName = "$className.class"
     if (!File(scriptFile.parent, classFileName).exists()) {
       return null

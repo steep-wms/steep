@@ -1,5 +1,5 @@
 import EventBusContext from "./EventBusContext"
-import EventBus from "vertx3-eventbus-client"
+import EventBus from "@vertx/eventbus-bridge-client.js"
 import { createContext, useContext, useEffect, useReducer } from "react"
 
 const Items = createContext()
@@ -147,10 +147,12 @@ const Provider = ({ pageSize, allowAdd = true, shouldAddItem,
   )
 }
 
-export default {
+const ListContext = {
   Items,
   UpdateItems,
   AddedItems,
   UpdateAddedItems,
   Provider
 }
+
+export default ListContext

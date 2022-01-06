@@ -8,6 +8,7 @@ import db.PluginRegistryFactory
 import helper.DefaultOutputCollector
 import helper.FileSystemUtils.readRecursive
 import helper.LoggingOutputCollector
+import helper.OutputCollector
 import helper.UniqueID
 import helper.withRetry
 import io.prometheus.client.Gauge
@@ -17,11 +18,14 @@ import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.eventbus.unregisterAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -31,11 +35,11 @@ import model.processchain.Argument
 import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import model.processchain.ProcessChain
+import model.timeout.TimeoutPolicy
 import org.slf4j.LoggerFactory
 import runtime.DockerRuntime
 import runtime.OtherRuntime
 import java.io.File
-import java.util.concurrent.CancellationException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -82,6 +86,13 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
      * The process chain ID will be appended.
      */
     val PROCESSCHAIN_LOG_PREFIX = "${LocalAgent::class.java.name}.processChain."
+
+    /**
+     * Create a message for [TimeoutCancellationException] and [TimeoutException]
+     */
+    private fun makeTimeoutMessage(policy: TimeoutPolicy, type: String,
+      serviceId: String?) = "Execution ${if (serviceId != null)
+        "of service `$serviceId'" else ""} timed out after ${policy.timeout} ms ($type)"
   }
 
   override val id: String = UniqueID.next()
@@ -152,20 +163,31 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
       // run executables and track progress
       // use `coroutineContext` so we are able to [cancel] the execution
       withContext(coroutineContext) {
-        for ((index, exec) in processChain.executables.withIndex()) {
-          withRetry(exec.retries) { attempt ->
-            if (attempt > 1) {
-              gaugeRetries.labels(exec.serviceId ?: "<unknown>").inc()
+        try {
+          for ((index, exec) in processChain.executables.withIndex()) {
+            withTimeout(exec.deadline, "deadline", exec.serviceId) {
+              withRetry(exec.retries) { attempt ->
+                if (attempt > 1) {
+                  gaugeRetries.labels(exec.serviceId ?: "<unknown>").inc()
+                }
+                withTimeout(exec.maxRuntime, "maximum runtime", exec.serviceId) {
+                  execute(exec, processChain.id, executor, contextWrapper) { p ->
+                    val step = 1.0 / processChain.executables.size
+                    setProgress(step * index + step * p)
+                  }
+                }
+              }
             }
-            execute(exec, processChain.id, executor, contextWrapper) { p ->
-              val step = 1.0 / processChain.executables.size
-              setProgress(step * index + step * p)
-            }
-          }
 
-          if ((index + 1) < processChain.executables.size || progress != null) {
-            setProgress((index + 1).toDouble() / processChain.executables.size)
+            if ((index + 1) < processChain.executables.size || progress != null) {
+              setProgress((index + 1).toDouble() / processChain.executables.size)
+            }
           }
+        } catch (te: TimeoutException) {
+          if (te.policy.errorOnTimeout) {
+            throw te
+          }
+          cancel(TimeoutCancellationException(te.policy, te.type, te.serviceId))
         }
       }
     } finally {
@@ -209,35 +231,43 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
   private suspend fun execute(exec: Executable, processChainId: String,
       executor: ExecutorService, vertx: VertxContextWrapper,
       progressUpdater: ((Double) -> Unit)? = null) {
-    val collector = if (progressUpdater != null) {
-      ProgressReportingOutputCollector(outputLinesToCollect, exec, progressUpdater)
-    } else {
-      DefaultOutputCollector(outputLinesToCollect)
-    }.let {
-      if (processChainLogsEnabled) {
-        val logger = LoggerFactory.getLogger("${PROCESSCHAIN_LOG_PREFIX}${processChainId}")
-        LoggingOutputCollector(it, logger)
+    withTimeout(exec.maxInactivity, "maximum inactivity", exec.serviceId) {
+      val collector = if (progressUpdater != null) {
+        ProgressReportingOutputCollector(outputLinesToCollect, exec, progressUpdater)
       } else {
-        it
+        DefaultOutputCollector(outputLinesToCollect)
+      }.let {
+        if (processChainLogsEnabled) {
+          val logger = LoggerFactory.getLogger("${PROCESSCHAIN_LOG_PREFIX}${processChainId}")
+          LoggingOutputCollector(it, logger)
+        } else {
+          it
+        }
+      }.let {
+        if (exec.maxInactivity != null) {
+          TimeoutOutputCollector(it, this)
+        } else {
+          it
+        }
       }
-    }
 
-    if (exec.runtime == Service.RUNTIME_DOCKER) {
-      interruptable(executor) {
-        dockerRuntime.execute(exec, collector)
-      }
-    } else if (exec.runtime == Service.RUNTIME_OTHER) {
-      interruptable(executor) {
-        otherRuntime.execute(exec, collector)
-      }
-    } else {
-      val r = pluginRegistry.findRuntime(exec.runtime) ?:
-          throw IllegalStateException("Unknown runtime: `${exec.runtime}'")
-      if (r.compiledFunction.isSuspend) {
-        r.compiledFunction.callSuspend(exec, collector, vertx)
-      } else {
+      if (exec.runtime == Service.RUNTIME_DOCKER) {
         interruptable(executor) {
-          r.compiledFunction.call(exec, collector, vertx)
+          dockerRuntime.execute(exec, collector)
+        }
+      } else if (exec.runtime == Service.RUNTIME_OTHER) {
+        interruptable(executor) {
+          otherRuntime.execute(exec, collector)
+        }
+      } else {
+        val r = pluginRegistry.findRuntime(exec.runtime) ?:
+            throw IllegalStateException("Unknown runtime: `${exec.runtime}'")
+        if (r.compiledFunction.isSuspend) {
+          r.compiledFunction.callSuspend(exec, collector, vertx)
+        } else {
+          interruptable(executor) {
+            r.compiledFunction.call(exec, collector, vertx)
+          }
         }
       }
     }
@@ -304,6 +334,136 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
           )
         }
       )
+    }
+  }
+
+  /**
+   * Executes the given [block] with a timeout [policy] of a certain [type],
+   * which has been defined for an executable with a given [serviceId]
+   */
+  private suspend fun <T> withTimeout(policy: TimeoutPolicy?, type: String,
+      serviceId: String?, block: suspend TimeoutTimer.() -> T): T {
+    // shortcut
+    if (policy == null) {
+      return block(NoopTimeoutTimer())
+    }
+
+    return coroutineScope {
+      val timeout = DefaultTimeoutTimer(policy)
+      var ex: TimeoutCancellationException? = null
+      try {
+        val job = async {
+          block(timeout)
+        }
+
+        timeout.startTimeout {
+          ex = TimeoutCancellationException(policy, type, serviceId)
+          log.warn(ex!!.message)
+          job.cancel(ex)
+        }
+
+        job.await()
+      } catch (t: TimeoutCancellationException) {
+        if (t === ex) {
+          // if this is our exception (and not one from a child job), convert
+          // it to an exception that is not derived from CancellationException
+          // so we don't automatically cancel the parent job and can handle the
+          // exception upstream
+          throw TimeoutException(t.policy, t.type, t.serviceId)
+        }
+        // otherwise, just forward the exception - a child job may have timed out
+        throw t
+      } finally {
+        timeout.cancelTimeout()
+      }
+    }
+  }
+
+  /**
+   * An exception that will be thrown if the execution of a process chain was
+   * cancelled due to a timeout
+   * @param policy the timeout policy that led to the cancellation
+   * @param type the type of the timeout policy
+   * @param serviceId the ID of the service whose execution took too long
+   */
+  class TimeoutCancellationException(val policy: TimeoutPolicy, val type: String,
+      val serviceId: String?) :
+    CancellationException(makeTimeoutMessage(policy, type, serviceId))
+
+  /**
+   * An exception that will be thrown if the execution of a process chain was
+   * aborted (with an error) due to a timeout
+   * @param policy the timeout policy that led to the abortion
+   * @param type the type of the timeout policy
+   * @param serviceId the ID of the service whose execution took too long
+   */
+  class TimeoutException(val policy: TimeoutPolicy, val type: String,
+      val serviceId: String?) :
+    RuntimeException(makeTimeoutMessage(policy, type, serviceId))
+
+  /**
+   * A resettable timer that cancels the current job on timeout
+   */
+  private interface TimeoutTimer {
+    /**
+     * Reset the timer
+     */
+    fun resetTimeout()
+  }
+
+  /**
+   * An implementation of [TimeoutTimer] that does no cancel the job
+   */
+  private class NoopTimeoutTimer : TimeoutTimer {
+    override fun resetTimeout() {
+      // nothing to do here
+    }
+  }
+
+  /**
+   * An implementation of [TimeoutTimer] that follows a given timeout [policy]
+   * and runs a given block on timeout.
+   */
+  private inner class DefaultTimeoutTimer(private val policy: TimeoutPolicy) : TimeoutTimer {
+    private var timerId: Long? = null
+    private var block: ((Long) -> Unit)? = null
+
+    override fun resetTimeout() {
+      cancelTimeout()
+      startTimeout()
+    }
+
+    private fun startTimeout() {
+      if (block != null) {
+        timerId = vertx.setTimer(policy.timeout, block)
+      }
+    }
+
+    /**
+     * Start timer and call the given [block] on timeout
+     */
+    fun startTimeout(block: (Long) -> Unit) {
+      this.block = block
+      startTimeout()
+    }
+
+    /**
+     * Cancel the timer
+     */
+    fun cancelTimeout() {
+      timerId?.let { vertx.cancelTimer(it) }
+      timerId = null
+    }
+  }
+
+  /**
+   * An [OutputCollector] that resets the given [timeout] on every line received
+   */
+  private class TimeoutOutputCollector(private val delegate: OutputCollector,
+      private val timeout: TimeoutTimer) : OutputCollector by delegate {
+    override fun collect(line: String) {
+      timeout.resetTimeout()
+      delegate.collect(line)
     }
   }
 

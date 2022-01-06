@@ -219,10 +219,12 @@ const Provider = (props) => {
       updateMessages={UPDATE_MESSAGES} reducers={reducers} />
 }
 
-export default {
+const WorkflowContext = {
   Items: ListContext.Items,
   UpdateItems: ListContext.UpdateItems,
   AddedItems: ListContext.AddedItems,
   UpdateAddedItems: ListContext.UpdateAddedItems,
   Provider
 }
+
+export default WorkflowContext

@@ -42,10 +42,12 @@ const Provider = (props) => (
       updateMessages={UPDATE_MESSAGES} />
 )
 
-export default {
+const AgentContext = {
   Items: ListContext.Items,
   UpdateItems: ListContext.UpdateItems,
   AddedItems: ListContext.AddedItems,
   UpdateAddedItems: ListContext.UpdateAddedItems,
   Provider
 }
+
+export default AgentContext
