@@ -80,6 +80,7 @@ import io.vertx.kotlin.core.http.closeAwait
 import io.vertx.kotlin.core.http.listenAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.jsonArrayOf
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
@@ -824,10 +825,10 @@ class HttpEndpoint : CoroutineVerticle() {
     var allComponentsHealthy = true
 
     suspend fun <T> checkComponent(block: suspend () -> T) = try {
-      block()
+      jsonObjectOf("health" to true, "count" to block())
     } catch (t: Throwable) {
       allComponentsHealthy = false
-      false
+      jsonObjectOf("health" to false, "count" to -1, "error" to t.message)
     }
 
     val result = json {
