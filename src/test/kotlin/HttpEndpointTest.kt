@@ -2104,4 +2104,88 @@ class HttpEndpointTest {
       ctx.completeNow()
     }
   }
+
+  /**
+   * Test if we can get information about health
+   */
+  private fun getHealthWithEnabledRegistries(vertx: Vertx, ctx: VertxTestContext,
+      services: Boolean = true, agents: Boolean = true, submissions: Boolean = true, vms: Boolean = true) {
+
+    // Mock the registries and let them throw an error if they should not be available
+    val errorMessage = "Unhealthy"
+    coEvery { metadataRegistry.findServices() }.apply {
+      if (services) returns(listOf()) else throws(RuntimeException(errorMessage))
+    }
+    coEvery { agentRegistry.getAgentIds() }.apply {
+      if (agents) returns(setOf()) else throws(RuntimeException(errorMessage))
+    }
+    coEvery { submissionRegistry.countSubmissions() }.apply {
+      if (submissions) returns(0) else throws(RuntimeException(errorMessage))
+    }
+    coEvery { vmRegistry.countVMs() }.apply {
+      if (vms) returns(0) else throws(RuntimeException(errorMessage))
+    }
+
+    // The expected output for a registry in the response json
+    val expectedOutput = { healthy: Boolean ->
+      jsonObjectOf(
+        "health" to healthy,
+        "count" to if (healthy) 0 else -1
+      ).apply { if (!healthy) put("error", errorMessage) }
+    }
+
+    GlobalScope.launch(vertx.dispatcher()) {
+      ctx.coVerify {
+        val systemHealthy = services && agents && submissions && vms
+        val client = WebClient.create(vertx)
+        val response = client.get(port, "localhost", "/health")
+          .`as`(BodyCodec.jsonObject())
+          .expect(if (systemHealthy) ResponsePredicate.SC_OK else ResponsePredicate.SC_SERVICE_UNAVAILABLE)
+          .expect(ResponsePredicate.JSON)
+          .sendAwait()
+        assertThat(response.body()).isEqualTo(jsonObjectOf(
+          "services" to expectedOutput(services),
+          "agents" to expectedOutput(agents),
+          "submissions" to expectedOutput(submissions),
+          "vms" to expectedOutput(vms),
+          "health" to systemHealthy
+        ))
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if we can get information about health if all registries are working correctly
+   */
+  @Test
+  fun getHealth(vertx: Vertx, ctx: VertxTestContext) = getHealthWithEnabledRegistries(vertx, ctx)
+
+  /**
+   * Test if we can get information about health if services can not be fetched
+   */
+  @Test
+  fun getHealthFailingServices(vertx: Vertx, ctx: VertxTestContext) =
+    getHealthWithEnabledRegistries(vertx, ctx, services = false)
+
+  /**
+   * Test if we can get information about health if agents can not be fetched
+   */
+  @Test
+  fun getHealthFailingAgents(vertx: Vertx, ctx: VertxTestContext) =
+    getHealthWithEnabledRegistries(vertx, ctx, agents = false)
+
+  /**
+   * Test if we can get information about health if submissions can not be fetched
+   */
+  @Test
+  fun getHealthFailingSubmissions(vertx: Vertx, ctx: VertxTestContext) =
+    getHealthWithEnabledRegistries(vertx, ctx, submissions = false)
+
+  /**
+   * Test if we can get information about health if vms can not be fetched
+   */
+  @Test
+  fun getHealthFailingVms(vertx: Vertx, ctx: VertxTestContext) =
+    getHealthWithEnabledRegistries(vertx, ctx, vms = false)
 }

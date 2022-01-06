@@ -50,6 +50,7 @@ import helper.UniqueID
 import helper.WorkflowValidator
 import helper.YamlUtils
 import io.netty.handler.codec.http.HttpHeaderNames
+import io.netty.handler.codec.http.HttpResponseStatus
 import io.prometheus.client.hotspot.DefaultExports
 import io.prometheus.client.vertx.MetricsHandler
 import io.vertx.core.Promise
@@ -79,6 +80,7 @@ import io.vertx.kotlin.core.http.closeAwait
 import io.vertx.kotlin.core.http.listenAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.jsonArrayOf
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
@@ -170,6 +172,10 @@ class HttpEndpoint : CoroutineVerticle() {
         .produces("application/json")
         .produces("text/html")
         .handler(this::onGetAgentById)
+
+    router.get("/health")
+      .produces("application/json")
+      .handler(this::onGetHealth)
 
     router.head("/logs/processchains/:id/?")
         .handler { ctx -> onGetProcessChainLogById(ctx, true) }
@@ -809,6 +815,39 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onNewWorkflow(ctx: RoutingContext) {
     renderAsset("ui/new/workflow/index.html", ctx.response())
+  }
+
+  /**
+   * Check if Steep is healthy.
+   * @param ctx the routing context
+   */
+  private fun onGetHealth(ctx: RoutingContext) = launch {
+    var allComponentsHealthy = true
+
+    suspend fun <T> checkComponent(block: suspend () -> T) = try {
+      jsonObjectOf("health" to true, "count" to block())
+    } catch (t: Throwable) {
+      allComponentsHealthy = false
+      jsonObjectOf("health" to false, "count" to -1, "error" to t.message)
+    }
+
+    val result = json {
+      obj(
+        "services" to checkComponent { metadataRegistry.findServices().size },
+        "agents" to checkComponent { agentRegistry.getAgentIds().size },
+        "submissions" to checkComponent { submissionRegistry.countSubmissions() },
+        "vms" to checkComponent { vmRegistry.countVMs() }
+      )
+    }
+    val statusCode = if (allComponentsHealthy) {
+      HttpResponseStatus.OK
+    } else {
+      HttpResponseStatus.SERVICE_UNAVAILABLE
+    }
+    ctx.response()
+      .putHeader("content-type", "application/json")
+      .setStatusCode(statusCode.code())
+      .end(result.put("health", allComponentsHealthy).encode())
   }
 
   /**
