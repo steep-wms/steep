@@ -63,7 +63,7 @@ dependencies {
     implementation("org.apache.commons:commons-lang3:3.12.0")
     implementation("org.apache.commons:commons-text:1.9")
     implementation("org.flywaydb:flyway-core:8.4.0")
-    implementation("org.mongodb:mongodb-driver-reactivestreams:4.4.0")
+    implementation("org.mongodb:mongodb-driver-reactivestreams:4.4.1")
     implementation("com.github.openstack4j.core:openstack4j:3.10")
     implementation("org.postgresql:postgresql:42.3.1")
     implementation("org.quartz-scheduler:quartz:2.3.2") {
