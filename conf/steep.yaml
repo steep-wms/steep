@@ -91,6 +91,10 @@ steep:
     createdByTag: Steep
     syncIntervalSeconds: 120
     keepAliveIntervalSeconds: 30
+    timeouts:
+      sshReadySeconds: 300
+      agentReadySeconds: 300
+      destroyVMSeconds: 300
 
     # agentPool:
     #   - capabilities:

@@ -148,6 +148,24 @@ class CloudManager : CoroutineVerticle() {
    */
   private var backoffSeconds = 0
 
+  /**
+   * The maximum number of seconds the cloud manager should try to log in to a
+   * new VM via SSH
+   */
+  private var timeoutSshReady: Long = 300L
+
+  /**
+   * The maximum number of seconds the cloud manager should wait for a new
+   * agent to become available
+   */
+  private var timeoutAgentReady: Long = 300L
+
+  /**
+   * The maximum number of seconds that destroying a VM may take before it is
+   * aborted with an error
+   */
+  private var timeoutDestroyVM: Long = 300L
+
   override suspend fun start() {
     log.info("Launching cloud manager ...")
 
@@ -161,6 +179,10 @@ class CloudManager : CoroutineVerticle() {
         "Missing configuration item `$CLOUD_SSH_PRIVATE_KEY_LOCATION'")
     poolAgentParams = JsonUtils.mapper.convertValue(
         config.getJsonArray(CLOUD_AGENTPOOL, JsonArray()))
+
+    timeoutSshReady = config.getLong(ConfigConstants.CLOUD_TIMEOUTS_SSHREADY, timeoutSshReady)
+    timeoutAgentReady = config.getLong(ConfigConstants.CLOUD_TIMEOUTS_AGENTREADY, timeoutAgentReady)
+    timeoutDestroyVM = config.getLong(ConfigConstants.CLOUD_TIMEOUTS_DESTROYVM, timeoutDestroyVM)
 
     // load setups file
     val setupsFile = config.getString(CLOUD_SETUPS_FILE) ?: throw IllegalStateException(
@@ -288,8 +310,7 @@ class CloudManager : CoroutineVerticle() {
       log.info("Destroying VM of left agent `${vm.id}' ...")
       vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYING)
       if (vm.externalId != null) {
-        // TODO make timeout configurable
-        cloudClient.destroyVM(vm.externalId, Duration.ofMinutes(5))
+        cloudClient.destroyVM(vm.externalId, Duration.ofSeconds(timeoutDestroyVM))
       }
       vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYED)
       vmRegistry.setVMReason(vm.id, "Agent has left the cluster")
@@ -329,8 +350,7 @@ class CloudManager : CoroutineVerticle() {
         if (active) {
           deleteDeferreds.add(async {
             log.info("Found orphaned VM `$externalId' ...")
-            // TODO make timeout configurable
-            cloudClient.destroyVM(externalId, Duration.ofMinutes(5))
+            cloudClient.destroyVM(externalId, Duration.ofSeconds(timeoutDestroyVM))
             if (id != null) {
               vmRegistry.forceSetVMStatus(id, VM.Status.DESTROYED)
               vmRegistry.setVMReason(id, "VM was orphaned")
@@ -535,8 +555,7 @@ class CloudManager : CoroutineVerticle() {
               provisionVM(ipAddress, vm.id, externalId, setup)
             } catch (e: Throwable) {
               vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYING)
-              // TODO make timeout configurable
-              cloudClient.destroyVM(externalId, Duration.ofMinutes(5))
+              cloudClient.destroyVM(externalId, Duration.ofSeconds(timeoutDestroyVM))
               for (vd in volumeDeferreds) {
                 val volumeId = try {
                   vd.await()
@@ -684,8 +703,7 @@ class CloudManager : CoroutineVerticle() {
     }
 
     // throw if the agent does not become available after a set amount of time
-    // TODO make time configurable
-    val timeout = 1000 * 60 * 5L
+    val timeout = 1000L * timeoutAgentReady
     val timerId = vertx.setTimer(timeout) {
       promise.fail("Remote agent `$vmId' with IP address `$ipAddress' did " +
           "not become available after $timeout ms")
@@ -708,10 +726,10 @@ class CloudManager : CoroutineVerticle() {
    * @param ssh an SSH client
    */
   private suspend fun waitForSSH(ipAddress: String, externalId: String, ssh: SSHClient) {
-    val retries = 150
     val retrySeconds = 2
+    val retries = timeoutSshReady / retrySeconds
 
-    for (i in 1..retries) {
+    for (i in 1L..retries) {
       cloudClient.waitForVM(externalId)
 
       log.info("Waiting for SSH: $ipAddress")

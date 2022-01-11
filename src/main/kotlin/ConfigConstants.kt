@@ -350,6 +350,27 @@ object ConfigConstants {
   const val CLOUD_KEEP_ALIVE_INTERVAL = "steep.cloud.keepAliveIntervalSeconds"
 
   /**
+   * The maximum number of seconds the cloud manager should try to log in to a
+   * new VM via SSH. The cloud manager will make a login attempt every 2
+   * seconds until it is successful or until the maximum number of seconds have
+   * passed, in which case it will destroy the VM.
+   */
+  const val CLOUD_TIMEOUTS_SSHREADY = "steep.cloud.timeouts.sshReadySeconds"
+
+  /**
+   * The maximum number of seconds the cloud manager should wait for an agent
+   * on a new VM to become available (i.e. how long a new Steep instance may
+   * take to register with the cluster) before it destroys the VM again
+   */
+  const val CLOUD_TIMEOUTS_AGENTREADY = "steep.cloud.timeouts.agentReadySeconds"
+
+  /**
+   * The maximum number of seconds that destroying a VM may take before it is
+   * aborted with an error
+   */
+  const val CLOUD_TIMEOUTS_DESTROYVM = "steep.cloud.timeouts.destroyVMSeconds"
+
+  /**
    * Describes parameters of remote agents the CloudManager maintains in its pool
    */
   const val CLOUD_AGENTPOOL = "steep.cloud.agentPool"
