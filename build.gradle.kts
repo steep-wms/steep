@@ -20,18 +20,20 @@ version = "5.10.0"
 val vertxVersion by extra("3.9.4")
 val hazelcastVersion by extra("3.12.9")
 val prometheusClientVersion by extra("0.9.0")
+val slf4jVersion by extra("1.7.32")
+val logbackVersion by extra("1.2.10")
 
 repositories {
     jcenter()
 }
 
 dependencies {
-    implementation("org.slf4j:jul-to-slf4j:1.7.32")
-    implementation("org.slf4j:log4j-over-slf4j:1.7.32")
-    implementation("org.slf4j:slf4j-api:1.7.32")
+    implementation("org.slf4j:jul-to-slf4j:$slf4jVersion")
+    implementation("org.slf4j:log4j-over-slf4j:$slf4jVersion")
+    implementation("org.slf4j:slf4j-api:$slf4jVersion")
 
-    implementation("ch.qos.logback:logback-classic:1.2.10")
-    implementation("ch.qos.logback:logback-core:1.2.10")
+    implementation("ch.qos.logback:logback-classic:$logbackVersion")
+    implementation("ch.qos.logback:logback-core:$logbackVersion")
     implementation("ch.qos.logback.contrib:logback-jackson:0.1.5")
     implementation("ch.qos.logback.contrib:logback-json-classic:0.1.5")
     implementation("org.codehaus.janino:janino:3.1.6") // for conditionals in logback.xml
