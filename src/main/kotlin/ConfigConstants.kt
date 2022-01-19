@@ -545,6 +545,18 @@ object ConfigConstants {
   const val ONLYTRAVERSEDIRECTORYOUTPUTS = "steep.onlyTraverseDirectoryOutputs"
 
   /**
+   * `true` if Steep should cache compiled plugin scripts on disk so they do
+   * not have to be compiled again when Steep starts the next time.
+   */
+  const val CACHE_PLUGINS_ENABLED = "steep.cache.plugins.enabled"
+
+  /**
+   * A directory where Steep will keep cached compiled plugin scripts. The
+   * directory will be created if it does not exist.
+   */
+  const val CACHE_PLUGINS_PATH = "steep.cache.plugins.path"
+
+  /**
    * Get all configuration keys from this class
    * @return the list of configuration keys
    */

@@ -1,3 +1,4 @@
+.cache/
 .gradle/
 .idea/
 build/

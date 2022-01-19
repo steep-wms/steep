@@ -75,7 +75,8 @@ dependencies {
     implementation("org.yaml:snakeyaml:1.30")
 
     implementation(kotlin("reflect"))
-    implementation(kotlin("scripting-jsr223"))
+    implementation(kotlin("scripting-jvm"))
+    implementation(kotlin("scripting-jvm-host"))
     implementation(kotlin("stdlib-jdk8"))
     implementation(kotlin("script-runtime"))
 

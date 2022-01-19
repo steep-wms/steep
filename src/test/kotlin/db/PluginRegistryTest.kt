@@ -11,7 +11,7 @@ import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import model.plugins.InitializerPlugin
 import model.plugins.OutputAdapterPlugin
@@ -27,7 +27,8 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import javax.script.ScriptException
+import org.junit.jupiter.api.io.TempDir
+import java.io.File
 
 /**
  * Tests for [PluginRegistryFactory] and [PluginRegistry]
@@ -37,7 +38,7 @@ import javax.script.ScriptException
 class PluginRegistryTest {
   @AfterEach
   fun tearDown(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       // initialize the PluginRegistryFactory with an empty list of plugins
       // after each test, so we don't spill into other tests (from this class
       // as well as from other test classes!)
@@ -57,7 +58,7 @@ class PluginRegistryTest {
    */
   @Test
   fun compileDummyInitializer(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val config = json {
         obj(
             ConfigConstants.PLUGINS to "src/**/db/dummyInitializer.yaml"
@@ -115,7 +116,7 @@ class PluginRegistryTest {
    */
   @Test
   fun compileDummyOutputAdapter(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val config = json {
         obj(
             ConfigConstants.PLUGINS to "src/**/db/dummyOutputAdapter.yaml"
@@ -155,7 +156,7 @@ class PluginRegistryTest {
    */
   @Test
   fun compileDummyProcessChainAdapter(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val config = json {
         obj(
             ConfigConstants.PLUGINS to "src/**/db/dummyProcessChainAdapter.yaml"
@@ -212,7 +213,7 @@ class PluginRegistryTest {
    */
   @Test
   fun compileDummyProgressEstimator(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val config = json {
         obj(
             ConfigConstants.PLUGINS to "src/**/db/dummyProgressEstimator.yaml"
@@ -244,7 +245,7 @@ class PluginRegistryTest {
    */
   @Test
   fun compileDummyProgressEstimatorDeprecated(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val config = json {
         obj(
             ConfigConstants.PLUGINS to "src/**/db/dummyProgressEstimatorDeprecated.yaml"
@@ -296,7 +297,7 @@ class PluginRegistryTest {
    */
   @Test
   fun compileDummyRuntime(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val config = json {
         obj(
             ConfigConstants.PLUGINS to "src/**/db/dummyRuntime.yaml"
@@ -338,7 +339,7 @@ class PluginRegistryTest {
    */
   @Test
   fun invalidPluginDescriptor(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val config = json {
         obj(
             ConfigConstants.PLUGINS to "src/**/db/invalidPluginDescriptor.yaml"
@@ -358,7 +359,7 @@ class PluginRegistryTest {
    */
   @Test
   fun missingScriptFile(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val config = json {
         obj(
             ConfigConstants.PLUGINS to "src/**/db/missingScriptFile.yaml"
@@ -379,7 +380,7 @@ class PluginRegistryTest {
    */
   @Test
   fun compileError(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val config = json {
         obj(
             ConfigConstants.PLUGINS to "src/**/db/compileError.yaml"
@@ -388,8 +389,176 @@ class PluginRegistryTest {
       ctx.coVerify {
         assertThatThrownBy {
           PluginRegistryFactory.initialize(vertx, config)
-        }.isInstanceOf(ScriptException::class.java)
+        }.isInstanceOf(RuntimeException::class.java)
+          .hasMessageContaining("Unresolved reference")
       }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Make sure the cache directory is not created if caching is disabled
+   */
+  @Test
+  fun noCache(@TempDir tempDir: File, vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val cacheDir = File(tempDir, "cache")
+      val config = json {
+        obj(
+          ConfigConstants.PLUGINS to "src/**/db/dummyInitializer.yaml",
+          ConfigConstants.CACHE_PLUGINS_ENABLED to false,
+          ConfigConstants.CACHE_PLUGINS_PATH to cacheDir.absolutePath,
+        )
+      }
+      PluginRegistryFactory.initialize(vertx, config)
+
+      assertThat(cacheDir).doesNotExist()
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if the plugin cache can be used
+   */
+  @Test
+  fun useCache(@TempDir tempDir: File, vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val cacheDir = File(tempDir, "cache")
+      val config = json {
+        obj(
+          ConfigConstants.PLUGINS to "src/**/db/dummyInitializer.yaml",
+          ConfigConstants.CACHE_PLUGINS_ENABLED to true,
+          ConfigConstants.CACHE_PLUGINS_PATH to cacheDir.absolutePath,
+        )
+      }
+      PluginRegistryFactory.initialize(vertx, config)
+
+      assertThat(cacheDir).exists()
+      assertThat(cacheDir.listFiles()).hasSize(1)
+
+      // compile again
+      PluginRegistryFactory.initialize(vertx, config)
+
+      // there should still be only one file
+      assertThat(cacheDir.listFiles()).hasSize(1)
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if the plugin cache can be updated
+   */
+  @Test
+  @Suppress("RECEIVER_NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
+  fun updateCache(@TempDir tempDir: File, vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val script1 = PluginRegistryTest::class.java.getResource("dummyInitializer.kts").readBytes()
+      val script2 = PluginRegistryTest::class.java.getResource("dummyRuntime.kts").readBytes()
+
+      val scriptFile = File(tempDir, "script.kt")
+      scriptFile.writeBytes(script1)
+
+      val yamlFile = File(tempDir, "script.yaml")
+      yamlFile.writeText("""
+        - name: dummyInitializer
+          type: initializer
+          scriptFile: "${tempDir.absolutePath}/script.kt"
+      """.trimIndent())
+
+      val cacheDir = File(tempDir, "cache")
+      val config = json {
+        obj(
+          ConfigConstants.PLUGINS to yamlFile.absolutePath,
+          ConfigConstants.CACHE_PLUGINS_ENABLED to true,
+          ConfigConstants.CACHE_PLUGINS_PATH to cacheDir.absolutePath,
+        )
+      }
+      PluginRegistryFactory.initialize(vertx, config)
+
+      assertThat(cacheDir).exists()
+      assertThat(cacheDir.listFiles()).hasSize(1)
+
+      // compile again with modified script
+      scriptFile.writeBytes(script2)
+      yamlFile.writeText("""
+        - name: dummyRuntime
+          type: initializer
+          scriptFile: "${tempDir.absolutePath}/script.kt"
+      """.trimIndent())
+      PluginRegistryFactory.initialize(vertx, config)
+
+      // there should now be another cached script
+      assertThat(cacheDir).exists()
+      assertThat(cacheDir.listFiles()).hasSize(2)
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if an invalid cache entry is deleted and the script is recompiled
+   */
+  @Test
+  @Suppress("RECEIVER_NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
+  fun invalidCache(@TempDir tempDir: File, vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      // compile normally
+      val cacheDir = File(tempDir, "cache")
+      val config = json {
+        obj(
+          ConfigConstants.PLUGINS to "src/**/db/dummyInitializer.yaml",
+          ConfigConstants.CACHE_PLUGINS_ENABLED to true,
+          ConfigConstants.CACHE_PLUGINS_PATH to cacheDir.absolutePath,
+        )
+      }
+      PluginRegistryFactory.initialize(vertx, config)
+
+      assertThat(cacheDir).exists()
+      assertThat(cacheDir.listFiles()).hasSize(1)
+
+      // make cache corrupt
+      cacheDir.listFiles().first().writeText("")
+      assertThat(cacheDir.listFiles().first()).isEmpty
+
+      // compile again
+      PluginRegistryFactory.initialize(vertx, config)
+
+      // the cache entry should have been recreated
+      assertThat(cacheDir.listFiles()).hasSize(1)
+      assertThat(cacheDir.listFiles().first()).isNotEmpty
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Make sure that an invalid plugin script is not cached
+   */
+  @Test
+  fun compileErrorNoCache(@TempDir tempDir: File, vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val cacheDir = File(tempDir, "cache")
+      val config = json {
+        obj(
+          ConfigConstants.PLUGINS to "src/**/db/compileError.yaml",
+          ConfigConstants.CACHE_PLUGINS_ENABLED to true,
+          ConfigConstants.CACHE_PLUGINS_PATH to cacheDir.absolutePath,
+        )
+      }
+
+      ctx.coVerify {
+        assertThatThrownBy {
+          PluginRegistryFactory.initialize(vertx, config)
+        }.isInstanceOf(RuntimeException::class.java)
+          .hasMessageContaining("Unresolved reference")
+      }
+
+      // cache directory should exist but be empty
+      assertThat(cacheDir).exists()
+      assertThat(cacheDir).isEmptyDirectory
+
       ctx.completeNow()
     }
   }

@@ -147,6 +147,11 @@ steep:
   # In Steep 6.0.0, this property will be `true` by default
   onlyTraverseDirectoryOutputs: false
 
+  cache:
+    plugins:
+      enabled: true
+      path: .cache/plugins
+
 setups:
   default:
     docker:
