@@ -149,7 +149,7 @@ steep:
 
   cache:
     plugins:
-      enabled: true
+      enabled: false
       path: .cache/plugins
 
 setups:
