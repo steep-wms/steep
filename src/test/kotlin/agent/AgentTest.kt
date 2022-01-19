@@ -217,7 +217,7 @@ abstract class AgentTest {
     mockkConstructor(OtherRuntime::class)
     var called = false
     every { anyConstructed<OtherRuntime>().execute(any(), any() as OutputCollector) } throws
-      ExecutionException("", "", 1) andThenThrows ExecutionException("", "", 2) andThen {
+      ExecutionException("", "", 1) andThenThrows ExecutionException("", "", 2) andThenAnswer {
       called = true
     }
 
