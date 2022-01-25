@@ -45,7 +45,7 @@
     "spinkit": "^2.0.1",
     "svgo-loader": "^3.0.0",
     "unfetch": "^4.2.0",
-    "webpack": "^5.66.0"
+    "webpack": "^5.67.0"
   },
   "devDependencies": {
     "cypress": "^9.3.0",
