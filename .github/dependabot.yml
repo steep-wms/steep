@@ -19,3 +19,4 @@ updates:
     directory: "/ui"
     schedule:
       interval: "daily"
+    open-pull-requests-limit: 20
