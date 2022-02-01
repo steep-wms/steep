@@ -27,7 +27,7 @@
     "json2yaml": "^1.1.0",
     "lodash": "^4.17.21",
     "mini-svg-data-uri": "^1.4.3",
-    "next": "^12.0.9",
+    "next": "^12.0.10",
     "normalize.css": "^8.0.1",
     "nprogress": "^0.2.0",
     "parse-content-range-header": "^0.2.4",
