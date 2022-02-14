@@ -25,6 +25,7 @@ import kotlinx.coroutines.launch
 import model.Submission
 import model.plugins.call
 import model.processchain.ProcessChain
+import model.workflow.Workflow
 import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
 import java.time.Instant
@@ -212,11 +213,11 @@ class Controller : CoroutineVerticle() {
    * [processChains] and returns the modified list. If there are no plugins or
    * if they did no make any modifications, the method returns the original list.
    */
-  private suspend fun applyPlugins(processChains: List<ProcessChain>): List<ProcessChain> {
+  private suspend fun applyPlugins(processChains: List<ProcessChain>, workflow: Workflow): List<ProcessChain> {
     val adapters = pluginRegistry.getProcessChainAdapters()
     var result = processChains
     for (adapter in adapters) {
-      result = adapter.call(result, vertx)
+      result = adapter.call(result, workflow, vertx)
     }
     return result
   }
@@ -290,7 +291,7 @@ class Controller : CoroutineVerticle() {
           processChainsToResume = null
           pcs
         } else {
-          val pcs = applyPlugins(generator.generate(results))
+          val pcs = applyPlugins(generator.generate(results), submission.workflow)
           if (pcs.isEmpty()) {
             break
           }

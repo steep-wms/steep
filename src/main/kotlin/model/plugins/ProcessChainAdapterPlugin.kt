@@ -2,6 +2,7 @@ package model.plugins
 
 import io.vertx.core.Vertx
 import model.processchain.ProcessChain
+import model.workflow.Workflow
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.callSuspend
 
@@ -29,10 +30,16 @@ data class ProcessChainAdapterPlugin(
 ) : DependentPlugin
 
 suspend fun ProcessChainAdapterPlugin.call(processChains: List<ProcessChain>,
-    vertx: Vertx): List<ProcessChain> {
-  return if (this.compiledFunction.isSuspend) {
-    this.compiledFunction.callSuspend(processChains, vertx)
+    workflow: Workflow, vertx: Vertx): List<ProcessChain> {
+
+  val arguments = if (this.compiledFunction.parameters.size == 2) {
+    arrayOf(processChains, vertx)
   } else {
-    this.compiledFunction.call(processChains, vertx)
+    arrayOf(processChains, workflow, vertx)
+  }
+  return if (this.compiledFunction.isSuspend) {
+    this.compiledFunction.callSuspend(*arguments)
+  } else {
+    this.compiledFunction.call(*arguments)
   }
 }
