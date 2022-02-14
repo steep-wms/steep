@@ -23,6 +23,7 @@ import model.processchain.Argument
 import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import model.processchain.ProcessChain
+import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -167,10 +168,10 @@ class PluginRegistryTest {
       val pr = PluginRegistryFactory.create()
       val adapters = pr.getProcessChainAdapters()
       ctx.coVerify {
-        assertThat(adapters).hasSize(1)
+        assertThat(adapters).hasSize(2)
         val adapter = adapters[0]
         val pcs = listOf(ProcessChain())
-        val newPcs = adapter.call(pcs, vertx)
+        val newPcs = adapter.call(pcs, Workflow(), vertx)
         assertThat(newPcs).isNotSameAs(pcs)
         assertThat(newPcs).hasSize(2)
         assertThat(newPcs[0]).isSameAs(pcs[0])

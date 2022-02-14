@@ -2,3 +2,8 @@
 - name: dummyProcessChainAdapter
   type: processChainAdapter
   scriptFile: db/dummyProcessChainAdapter.kts
+
+# This process chain adapter does nothing. But it uses the workflow as a parameter.
+- name: dummyProcessChainAdapterWithWorkflow
+  type: processChainAdapter
+  scriptFile: db/dummyProcessChainAdapterWithWorkflow.kts
