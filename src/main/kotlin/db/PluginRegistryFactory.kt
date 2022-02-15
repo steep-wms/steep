@@ -15,6 +15,7 @@ import model.plugins.ProgressEstimatorPlugin
 import model.plugins.RuntimePlugin
 import model.processchain.Executable
 import model.processchain.ProcessChain
+import model.workflow.Workflow
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.net.URLClassLoader
@@ -211,7 +212,34 @@ object PluginRegistryFactory {
     return when (plugin) {
       is InitializerPlugin -> plugin.copy(compiledFunction = f as KFunction<Unit>)
       is OutputAdapterPlugin -> plugin.copy(compiledFunction = f as KFunction<List<String>>)
-      is ProcessChainAdapterPlugin -> plugin.copy(compiledFunction = f as KFunction<List<ProcessChain>>)
+      is ProcessChainAdapterPlugin -> {
+        if (isDeprecatedProcessChainAdapter(f as KFunction<*>)) {
+          log.warn("Process chain adapter plugin `${plugin.name}' uses a " +
+              "deprecated function signature, which will be removed in " +
+              "Steep 6.0.0. Please update the plugin as soon as possible!")
+          val kf = f as KFunction<List<ProcessChain>>
+          val nf = if (kf.isSuspend) {
+            object {
+              @Suppress("UNUSED_PARAMETER")
+              suspend fun i(processChains: List<ProcessChain>,
+                  workflow: Workflow, vertx: Vertx): List<ProcessChain> {
+                return kf.callSuspend(processChains, vertx)
+              }
+            }::i
+          } else {
+            object {
+              @Suppress("UNUSED_PARAMETER")
+              fun i(processChains: List<ProcessChain>,
+                  workflow: Workflow, vertx: Vertx): List<ProcessChain> {
+                return kf.call(processChains, vertx)
+              }
+            }::i
+          }
+          plugin.copy(compiledFunction = nf)
+        } else {
+          plugin.copy(compiledFunction = f as KFunction<List<ProcessChain>>)
+        }
+      }
       is ProgressEstimatorPlugin -> {
         if (plugin.supportedServiceId != null) {
           log.warn("Progress estimator plugin `${plugin.name}' uses the " +
@@ -269,6 +297,10 @@ object PluginRegistryFactory {
       return false
     }
     return true
+  }
+
+  private fun isDeprecatedProcessChainAdapter(f: KFunction<*>): Boolean {
+    return f.parameters.size != 3
   }
 
   /**

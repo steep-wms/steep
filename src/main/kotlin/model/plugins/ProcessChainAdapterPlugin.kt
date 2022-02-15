@@ -29,22 +29,11 @@ data class ProcessChainAdapterPlugin(
     override val compiledFunction: KFunction<List<ProcessChain>> = throwPluginNeedsCompile()
 ) : DependentPlugin
 
-@Deprecated("Please pass the workflow for the process chains too",
-  ReplaceWith("call(processChains, workflowForProcessChains, vertx)", "model.workflow.Workflow")
-)
-suspend fun ProcessChainAdapterPlugin.call(processChains: List<ProcessChain>,
-    vertx: Vertx): List<ProcessChain> = call(processChains, Workflow(), vertx)
-
 suspend fun ProcessChainAdapterPlugin.call(processChains: List<ProcessChain>,
     workflow: Workflow, vertx: Vertx): List<ProcessChain> {
-  val arguments = if (this.compiledFunction.parameters.size == 2) {
-    arrayOf(processChains, vertx)
-  } else {
-    arrayOf(processChains, workflow, vertx)
-  }
   return if (this.compiledFunction.isSuspend) {
-    this.compiledFunction.callSuspend(*arguments)
+    this.compiledFunction.callSuspend(processChains, workflow, vertx)
   } else {
-    this.compiledFunction.call(*arguments)
+    this.compiledFunction.call(processChains, workflow, vertx)
   }
 }
