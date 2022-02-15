@@ -4,6 +4,7 @@ import ConfigConstants
 import assertThatThrownBy
 import coVerify
 import helper.DefaultOutputCollector
+import helper.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.junit5.VertxExtension
@@ -153,6 +154,37 @@ class PluginRegistryTest {
   }
 
   /**
+   * Test if a simple process chain adapter with a deprecated function signature
+   * can be compiled and executed
+   */
+  @Test
+  fun compileDeprecatedProcessChainAdapter(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val config = json {
+        obj(
+            ConfigConstants.PLUGINS to "src/**/db/deprecatedProcessChainAdapter.yaml"
+        )
+      }
+      PluginRegistryFactory.initialize(vertx, config)
+
+      val pr = PluginRegistryFactory.create()
+      val adapters = pr.getProcessChainAdapters()
+      ctx.coVerify {
+        assertThat(adapters).hasSize(1)
+        val adapter = adapters[0]
+        val pcs = listOf(ProcessChain())
+        val newPcs = adapter.call(pcs, Workflow(), vertx)
+        assertThat(newPcs).isNotSameAs(pcs)
+        assertThat(newPcs).hasSize(2)
+        assertThat(newPcs[0]).isSameAs(pcs[0])
+        assertThat(newPcs[1]).isNotSameAs(pcs[0])
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
    * Test if a simple process chain adapter can be compiled and executed
    */
   @Test
@@ -165,17 +197,19 @@ class PluginRegistryTest {
       }
       PluginRegistryFactory.initialize(vertx, config)
 
+      val expectedId = UniqueID.next()
       val pr = PluginRegistryFactory.create()
       val adapters = pr.getProcessChainAdapters()
       ctx.coVerify {
-        assertThat(adapters).hasSize(2)
+        assertThat(adapters).hasSize(1)
         val adapter = adapters[0]
         val pcs = listOf(ProcessChain())
-        val newPcs = adapter.call(pcs, Workflow(), vertx)
+        val newPcs = adapter.call(pcs, Workflow(name = expectedId), vertx)
         assertThat(newPcs).isNotSameAs(pcs)
         assertThat(newPcs).hasSize(2)
         assertThat(newPcs[0]).isSameAs(pcs[0])
         assertThat(newPcs[1]).isNotSameAs(pcs[0])
+        assertThat(newPcs[1].id).isEqualTo(expectedId)
       }
 
       ctx.completeNow()

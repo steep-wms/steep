@@ -1,4 +1,4 @@
 # A process chain adapter that creates a dummy list of process chains
-- name: dummyProcessChainAdapter
+- name: deprecatedProcessChainAdapter
   type: processChainAdapter
-  scriptFile: db/dummyProcessChainAdapter.kts
+  scriptFile: db/deprecatedProcessChainAdapter.kts
