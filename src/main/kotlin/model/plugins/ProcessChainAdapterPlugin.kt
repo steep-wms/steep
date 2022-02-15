@@ -12,9 +12,10 @@ import kotlin.reflect.full.callSuspend
  * signature:
  *
  *     suspend fun myProcessChainAdapter(processChains: List<model.processchain.ProcessChain>,
- *       vertx: io.vertx.core.Vertx): List<model.processchain.ProcessChain>
+ *       workflow: model.workflow.Workflow, vertx: io.vertx.core.Vertx): List<model.processchain.ProcessChain>
  *
- * It takes a list of generated process chains and the Vert.x instance. It
+ * It takes a list of generated process chains, a reference to the workflow from
+ * which the process chains have been generated, and the Vert.x instance. It
  * returns a new list of process chains to execute or the given list if no
  * modification was made. If required, the function can be a suspend function.
  */
