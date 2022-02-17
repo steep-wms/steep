@@ -3,7 +3,7 @@ import com.github.gradle.node.npm.task.NpmTask
 
 plugins {
     java
-    id("com.github.node-gradle.node") version "3.1.1"
+    id("com.github.node-gradle.node") version "3.2.1"
 }
 
 node {
