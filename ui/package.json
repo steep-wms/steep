@@ -40,7 +40,7 @@
     "react-virtualized-auto-sizer": "^1.0.6",
     "react-window": "^1.8.6",
     "sass": "^1.49.7",
-    "sass-loader": "^12.4.0",
+    "sass-loader": "^12.6.0",
     "serve": "^13.0.2",
     "spinkit": "^2.0.1",
     "svgo-loader": "^3.0.0",
