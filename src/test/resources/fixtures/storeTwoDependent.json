@@ -8,6 +8,7 @@
     "id": "output_file2"
   }],
   "actions": [{
+    "id": "cp1",
     "type": "execute",
     "service": "cp",
     "inputs": [{
@@ -20,6 +21,7 @@
       "store": true
     }]
   }, {
+    "id": "cp2",
     "type": "execute",
     "service": "cp",
     "inputs": [{

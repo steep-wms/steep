@@ -31,7 +31,7 @@
   "chains": [{
     "id": "4",
     "executables": [{
-      "id": "joinFromDir",
+      "id": "joinFromDir1",
       "serviceId": "joinFromDir",
       "path": "joinFromDir.sh",
       "arguments": [{
@@ -52,7 +52,7 @@
         "dataType": "string"
       }]
     }, {
-      "id": "joinFromDir",
+      "id": "joinFromDir2",
       "serviceId": "joinFromDir",
       "path": "joinFromDir.sh",
       "arguments": [{

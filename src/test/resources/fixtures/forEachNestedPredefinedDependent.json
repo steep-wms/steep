@@ -19,6 +19,7 @@
     "input": "input_files",
     "enumerator": "i",
     "actions": [{
+      "id": "cp",
       "type": "execute",
       "service": "cp",
       "inputs": [{
@@ -34,6 +35,7 @@
       "input": "other_input_files",
       "enumerator": "j",
       "actions": [{
+        "id": "join",
         "type": "execute",
         "service": "join",
         "inputs": [{

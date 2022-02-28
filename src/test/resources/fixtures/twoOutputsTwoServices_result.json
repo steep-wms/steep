@@ -40,7 +40,7 @@
   "chains": [{
     "id": "4",
     "executables": [{
-      "id": "cp",
+      "id": "cp1",
       "serviceId": "cp",
       "path": "cp",
       "arguments": [{
@@ -64,7 +64,7 @@
   }, {
     "id": "6",
     "executables": [{
-      "id": "cp",
+      "id": "cp2",
       "serviceId": "cp",
       "path": "cp",
       "arguments": [{

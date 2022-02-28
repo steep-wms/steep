@@ -12,6 +12,7 @@
     "id": "output_file4"
   }],
   "actions": [{
+    "id": "cp1",
     "type": "execute",
     "service": "cp",
     "inputs": [{
@@ -23,6 +24,7 @@
       "var": "output_file1"
     }]
   }, {
+    "id": "cp2",
     "type": "execute",
     "service": "cp",
     "inputs": [{
@@ -34,6 +36,7 @@
       "var": "output_file2"
     }]
   }, {
+    "id": "cp3",
     "type": "execute",
     "service": "cp",
     "inputs": [{
@@ -45,6 +48,7 @@
       "var": "output_file3"
     }]
   }, {
+    "id": "join",
     "type": "execute",
     "service": "join",
     "inputs": [{

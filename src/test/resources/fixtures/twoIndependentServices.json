@@ -11,6 +11,7 @@
     "id": "output_file2"
   }],
   "actions": [{
+    "id": "cp1",
     "type": "execute",
     "service": "cp",
     "inputs": [{
@@ -22,6 +23,7 @@
       "var": "output_file1"
     }]
   }, {
+    "id": "cp2",
     "type": "execute",
     "service": "cp",
     "inputs": [{

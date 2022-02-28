@@ -921,6 +921,7 @@ class HttpEndpointTest {
           ),
           "actions" to array(
               obj(
+                  "id" to "cp1",
                   "type" to "execute",
                   "service" to "cp",
                   "inputs" to array(
@@ -941,6 +942,7 @@ class HttpEndpointTest {
                   "inputs" to array("output_file1")
               ),
               obj(
+                  "id" to "foreach1",
                   "type" to "for",
                   "input" to "input_file1",
                   "enumerator" to "i",
@@ -966,6 +968,7 @@ class HttpEndpointTest {
         ),
         actions = listOf(
             ExecuteAction(
+                id = "cp1",
                 service = "cp",
                 inputs = listOf(GenericParameter(
                     id = "input_file",
@@ -977,6 +980,7 @@ class HttpEndpointTest {
                 ))
             ),
             ForEachAction(
+                id = "foreach1",
                 input = inputFile1,
                 enumerator = enumerator1
             )
@@ -1017,6 +1021,7 @@ class HttpEndpointTest {
           ),
           "actions" to array(
               obj(
+                  "id" to "cp1",
                   "type" to "execute",
                   "service" to "cp",
                   "inputs" to array(
@@ -1039,11 +1044,13 @@ class HttpEndpointTest {
                   )
               ),
               obj(
+                  "id" to "foreach1",
                   "type" to "for",
                   "input" to "input_file1",
                   "enumerator" to "i",
                   "actions" to array(
                       obj(
+                          "id" to "cp2",
                           "type" to "execute",
                           "service" to "cp",
                           "inputs" to array(
@@ -1086,6 +1093,7 @@ class HttpEndpointTest {
         ),
         actions = listOf(
             ExecuteAction(
+                id = "cp1",
                 service = "cp",
                 inputs = listOf(GenericParameter(
                     id = "input_file",
@@ -1100,10 +1108,12 @@ class HttpEndpointTest {
                 ))
             ),
             ForEachAction(
+                id = "foreach1",
                 input = inputFile1,
                 enumerator = enumerator1,
                 actions = listOf(
                     ExecuteAction(
+                        id = "cp2",
                         service = "cp",
                         inputs = listOf(GenericParameter(
                             id = "input_file",

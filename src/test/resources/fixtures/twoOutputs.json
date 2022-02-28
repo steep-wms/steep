@@ -10,6 +10,7 @@
     "id": "output_file3"
   }],
   "actions": [{
+    "id": "split",
     "type": "execute",
     "service": "split",
     "inputs": [{
@@ -24,6 +25,7 @@
       "var": "output_file2"
     }]
   }, {
+    "id": "join",
     "type": "execute",
     "service": "join",
     "inputs": [{

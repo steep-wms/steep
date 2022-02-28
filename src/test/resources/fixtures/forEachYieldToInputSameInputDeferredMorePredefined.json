@@ -23,6 +23,7 @@
     "input": "files",
     "enumerator": "i",
     "actions": [{
+      "id": "cp1",
       "type": "execute",
       "service": "cp",
       "inputs": [{
@@ -36,6 +37,7 @@
     }],
     "yieldToInput": "o"
   }, {
+    "id": "cp2",
     "type": "execute",
     "service": "cp",
     "inputs": [{
@@ -47,6 +49,7 @@
       "var": "root_cp_output"
     }]
   }, {
+    "id": "cp3",
     "type": "execute",
     "service": "cp",
     "inputs": [{
@@ -58,6 +61,7 @@
       "var": "cp_output_1"
     }]
   }, {
+    "id": "cp4",
     "type": "execute",
     "service": "cp",
     "inputs": [{
@@ -69,6 +73,7 @@
       "var": "cp_output_2"
     }]
   }, {
+    "id": "join",
     "type": "execute",
     "service": "join",
     "inputs": [{

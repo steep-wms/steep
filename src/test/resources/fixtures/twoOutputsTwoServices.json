@@ -12,6 +12,7 @@
     "id": "output_file4"
   }],
   "actions": [{
+    "id": "split",
     "type": "execute",
     "service": "split",
     "inputs": [{
@@ -26,6 +27,7 @@
       "var": "output_file2"
     }]
   }, {
+    "id": "cp1",
     "type": "execute",
     "service": "cp",
     "inputs": [{
@@ -37,6 +39,7 @@
       "var": "output_file3"
     }]
   }, {
+    "id": "cp2",
     "type": "execute",
     "service": "cp",
     "inputs": [{

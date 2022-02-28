@@ -6,6 +6,7 @@
     "id": "output_file1"
   }],
   "actions": [{
+    "id": "serviceWithRetryPolicy",
     "type": "execute",
     "service": "retry",
     "inputs": [{

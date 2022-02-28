@@ -2,11 +2,11 @@
   "chains": [{
     "id": "1",
     "executables": [{
-      "id": "serviceWithDocker",
-      "serviceId": "serviceWithDocker",
-      "path": "service:latest",
+      "id": "my_service_id",
+      "serviceId": "cp",
+      "path": "cp",
       "arguments": [{
-        "id": "input",
+        "id": "input_file",
         "variable": {
           "id": "input_file1",
           "value": "input_file.txt"
@@ -14,15 +14,14 @@
         "type": "input",
         "dataType": "string"
       }, {
-        "id": "output",
+        "id": "output_file",
         "variable": {
           "id": "output_file1",
           "value": "/tmp/0"
         },
         "type": "output",
         "dataType": "string"
-      }],
-      "runtime": "docker"
+      }]
     }]
   }],
   "results": {

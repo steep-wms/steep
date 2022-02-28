@@ -10,6 +10,7 @@
     "id": "output_file1"
   }],
   "actions": [{
+    "id": "cp1",
     "type": "execute",
     "service": "cp",
     "inputs": [{
@@ -26,6 +27,7 @@
     "input": "output_directory",
     "enumerator": "i",
     "actions": [{
+      "id": "cp2",
       "type": "execute",
       "service": "cp",
       "inputs": [{

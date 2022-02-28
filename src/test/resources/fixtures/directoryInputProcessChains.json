@@ -10,6 +10,7 @@
     "id": "output_file2"
   }],
   "actions": [{
+    "id": "splitToDir",
     "type": "execute",
     "service": "splitToDir",
     "inputs": [{
@@ -21,6 +22,7 @@
       "var": "output_directory"
     }]
   }, {
+    "id": "joinFromDir1",
     "type": "execute",
     "service": "joinFromDir",
     "inputs": [{
@@ -32,6 +34,7 @@
       "var": "output_file1"
     }]
   }, {
+    "id": "joinFromDir2",
     "type": "execute",
     "service": "joinFromDir",
     "inputs": [{

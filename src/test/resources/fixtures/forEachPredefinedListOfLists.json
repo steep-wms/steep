@@ -12,6 +12,7 @@
     "input": "input_files",
     "enumerator": "i",
     "actions": [{
+      "id": "join",
       "type": "execute",
       "service": "join",
       "inputs": [{

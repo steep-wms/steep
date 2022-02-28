@@ -6,6 +6,7 @@
     "id": "output_file1"
   }],
   "actions": [{
+    "id": "serviceWithRuntimeArgs",
     "type": "execute",
     "service": "serviceWithRuntimeArgs",
     "inputs": [{

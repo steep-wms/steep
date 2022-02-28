@@ -8,6 +8,7 @@
     "id": "output_file2"
   }],
   "actions": [{
+    "id": "cp_custom",
     "type": "execute",
     "service": "cp_custom",
     "inputs": [{
@@ -19,6 +20,7 @@
       "var": "output_file1"
     }]
   }, {
+    "id": "cp",
     "type": "execute",
     "service": "cp",
     "inputs": [{

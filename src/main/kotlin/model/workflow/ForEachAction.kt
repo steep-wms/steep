@@ -1,5 +1,7 @@
 package model.workflow
 
+import helper.UniqueID
+
 /**
  * A workflow action that iterates over the value(s) of a given [input] variable
  * and passes the values on to its child [actions] through a given [enumerator].
@@ -19,5 +21,6 @@ data class ForEachAction(
     val output: Variable? = null,
     val actions: List<Action> = emptyList(),
     val yieldToOutput: Variable? = null,
-    val yieldToInput: Variable? = null
+    val yieldToInput: Variable? = null,
+    override val id: String = UniqueID.next()
 ) : Action

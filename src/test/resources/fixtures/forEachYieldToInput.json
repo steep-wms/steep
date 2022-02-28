@@ -12,6 +12,7 @@
     "input": "files",
     "enumerator": "i",
     "actions": [{
+      "id": "cp",
       "type": "execute",
       "service": "cp",
       "inputs": [{

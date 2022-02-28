@@ -14,6 +14,7 @@
     "id": "output_file2"
   }],
   "actions": [{
+    "id": "cp1",
     "type": "execute",
     "service": "cp",
     "inputs": [{
@@ -30,6 +31,7 @@
     "enumerator": "i",
     "output": "for_output",
     "actions": [{
+      "id": "cp2",
       "type": "execute",
       "service": "cp",
       "inputs": [{
@@ -43,6 +45,7 @@
     }],
     "yieldToOutput": "output_file1"
   }, {
+    "id": "join",
     "type": "execute",
     "service": "join",
     "inputs": [{

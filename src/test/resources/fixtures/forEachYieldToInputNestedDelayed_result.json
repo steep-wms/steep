@@ -85,7 +85,7 @@
   "chains": [{
     "id": 7,
     "executables": [{
-      "id": "join",
+      "id": "join1",
       "serviceId": "join",
       "path": "join.sh",
       "arguments": [{
@@ -205,7 +205,7 @@
   "chains": [{
     "id": 15,
     "executables": [{
-      "id": "join",
+      "id": "join1",
       "serviceId": "join",
       "path": "join.sh",
       "arguments": [{
@@ -242,7 +242,7 @@
   "chains": [{
     "id": 17,
     "executables": [{
-      "id": "join",
+      "id": "join2",
       "serviceId": "join",
       "path": "join.sh",
       "arguments": [{

@@ -2,7 +2,7 @@
   "chains": [{
     "id": "3",
     "executables": [{
-      "id": "cp",
+      "id": "cp1",
       "serviceId": "cp",
       "path": "cp",
       "arguments": [{
@@ -23,7 +23,7 @@
         "dataType": "string"
       }]
     }, {
-      "id": "cp",
+      "id": "cp2",
       "serviceId": "cp",
       "path": "cp",
       "arguments": [{
@@ -44,7 +44,7 @@
         "dataType": "string"
       }]
     }, {
-      "id": "cp",
+      "id": "cp3",
       "serviceId": "cp",
       "path": "cp",
       "arguments": [{

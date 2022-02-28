@@ -16,6 +16,7 @@
     "id": "output_file2"
   }],
   "actions": [{
+    "id": "cp1",
     "type": "execute",
     "service": "cp",
     "inputs": [{
@@ -32,6 +33,7 @@
     "enumerator": "i",
     "output": "for_output",
     "actions": [{
+      "id": "cp2",
       "type": "execute",
       "service": "cp",
       "inputs": [{
@@ -49,6 +51,7 @@
     "input": "for_output",
     "enumerator": "j",
     "actions": [{
+      "id": "cp3",
       "type": "execute",
       "service": "cp",
       "inputs": [{

@@ -17,6 +17,7 @@
     "enumerator": "i",
     "output": "for_output",
     "actions": [{
+      "id": "cp",
       "type": "execute",
       "service": "cp",
       "inputs": [{
@@ -31,6 +32,7 @@
     "yieldToInput": "o",
     "yieldToOutput": "o"
   }, {
+    "id": "join",
     "type": "execute",
     "service": "join",
     "inputs": [{

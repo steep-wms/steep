@@ -1,5 +1,6 @@
 package model.workflow
 
+import helper.UniqueID
 import model.retry.RetryPolicy
 import model.timeout.TimeoutPolicy
 
@@ -35,5 +36,6 @@ data class ExecuteAction(
     val retries: RetryPolicy? = null,
     val maxInactivity: TimeoutPolicy? = null,
     val maxRuntime: TimeoutPolicy? = null,
-    val deadline: TimeoutPolicy? = null
+    val deadline: TimeoutPolicy? = null,
+    override val id: String = UniqueID.next()
 ) : Action

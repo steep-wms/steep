@@ -224,7 +224,10 @@ class ProcessChainGeneratorTest {
 
         // Test that a retry policy from an executable action overrides the
         // one specified in the service metadata
-        T("retryActionServiceOverride")
+        T("retryActionServiceOverride"),
+
+        // Test if an action can have an id and that ID is forwarded to the executable
+        T("actionId")
 
 
         //  TODO test complex graph

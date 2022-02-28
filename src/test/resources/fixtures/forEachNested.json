@@ -16,6 +16,7 @@
     "input": "input_directories",
     "enumerator": "i",
     "actions": [{
+      "id": "cp1",
       "type": "execute",
       "service": "cp",
       "inputs": [{
@@ -31,6 +32,7 @@
       "input": "output_directory",
       "enumerator": "j",
       "actions": [{
+        "id": "cp2",
         "type": "execute",
         "service": "cp",
         "inputs": [{

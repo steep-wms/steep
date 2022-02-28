@@ -25,6 +25,7 @@
     "output": "alloutputs",
     "enumerator": "i",
     "actions": [{
+      "id": "split",
       "type": "execute",
       "service": "split",
       "inputs": [{
@@ -41,6 +42,7 @@
       "enumerator": "j",
       "output": "innero",
       "actions": [{
+        "id": "cp",
         "type": "execute",
         "service": "cp",
         "inputs": [{
@@ -54,6 +56,7 @@
       }],
       "yieldToOutput": "o"
     }, {
+      "id": "join1",
       "type": "execute",
       "service": "join",
       "inputs": [{
@@ -68,6 +71,7 @@
     "yieldToInput": "joinedo",
     "yieldToOutput": "splitFiles"
   }, {
+    "id": "join2",
     "type": "execute",
     "service": "join",
     "inputs": [{

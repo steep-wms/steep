@@ -21,6 +21,7 @@
       "enumerator": "j",
       "output": "innero",
       "actions": [{
+        "id": "cp",
         "type": "execute",
         "service": "cp",
         "inputs": [{
