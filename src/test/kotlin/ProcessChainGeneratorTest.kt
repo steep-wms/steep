@@ -227,7 +227,24 @@ class ProcessChainGeneratorTest {
         T("retryActionServiceOverride"),
 
         // Test if an action can have an id and that ID is forwarded to the executable
-        T("actionId")
+        T("actionId"),
+
+        // Test if we can specify a dependency between two services via
+        // `dependsOn` even if they are not connected through outputs and inputs
+        T("dependsOn"),
+
+        // Test if we can specify a dependency between two services via
+        // `dependsOn` even if the services are in reverse order in the workflow
+        T("dependsOnReverse", "dependsOn"),
+
+        // Test if an action can depend on two other independent actions
+        T("dependsOnJoin"),
+
+        // Test if two independent actions can depend on an action
+        T("dependsOnSplit"),
+
+        // Test if we can build a chain of three actions via `dependsOn`
+        T("dependsOnChain"),
 
 
         //  TODO test complex graph
@@ -257,7 +274,8 @@ class ProcessChainGeneratorTest {
 
   data class Expected(
       val chains: List<ProcessChain>,
-      val results: Map<String, List<Any>>
+      val results: Map<String, List<Any>>,
+      val executedExecutableIds: Set<String> = emptySet()
   )
 
   private fun readWorkflow(name: String): Workflow {
@@ -287,15 +305,17 @@ class ProcessChainGeneratorTest {
     }
 
     var results = mapOf<String, List<Any>>()
+    var executedExecutableIds = setOf<String>()
     for (expected in expectedChains) {
       if (persistState) {
         generator = ProcessChainGenerator(workflow, "/tmp/", "/out/", services, idgen)
         generator.loadState(json)
       }
 
-      val processChains = generator.generate(results)
+      val processChains = generator.generate(results, executedExecutableIds)
       assertThat(processChains).isEqualTo(expected.chains)
       results = expected.results
+      executedExecutableIds = expected.executedExecutableIds
 
       if (persistState) {
         json = generator.persistState()
@@ -307,7 +327,7 @@ class ProcessChainGeneratorTest {
       generator.loadState(json)
     }
 
-    val processChains = generator.generate(results)
+    val processChains = generator.generate(results, executedExecutableIds)
     assertThat(processChains).isEmpty()
     assertThat(generator.isFinished()).isTrue
   }

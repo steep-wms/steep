@@ -58,9 +58,11 @@ class Controller : CoroutineVerticle() {
    * @param results the results of succeeded process chains
    * @param failed the number of failed process chains
    * @param cancelled the number of cancelled process chains
+   * @param executedExecutableIds the IDs of all [model.processchain.Executable]s
+   * in all process chains that have been executed successfully
    */
   private data class WaitForProcessChainsResult(val results: Map<String, List<Any>>,
-      val failed: Int, val cancelled: Int)
+      val failed: Int, val cancelled: Int, val executedExecutableIds: Set<String>)
 
   private lateinit var tmpPath: String
   private lateinit var outPath: String
@@ -283,6 +285,7 @@ class Controller : CoroutineVerticle() {
       var failed = 0
       var cancelled = 0
       var results = mapOf<String, List<Any>>()
+      var executedExecutableIds = setOf<String>()
       val submissionResults = mutableMapOf<String, List<Any>>()
       while (true) {
         // generate process chains
@@ -291,7 +294,8 @@ class Controller : CoroutineVerticle() {
           processChainsToResume = null
           pcs
         } else {
-          val pcs = applyPlugins(generator.generate(results), submission.workflow)
+          val pcs = applyPlugins(generator.generate(results, executedExecutableIds),
+            submission.workflow)
           if (pcs.isEmpty()) {
             break
           }
@@ -338,6 +342,7 @@ class Controller : CoroutineVerticle() {
         results = w.results
         failed += w.failed
         cancelled += w.cancelled
+        executedExecutableIds = w.executedExecutableIds
 
         // collect submission results
         submissionResults.putAll(results.filter { (_, v) -> hasSubmissionResults(v) })
@@ -413,15 +418,16 @@ class Controller : CoroutineVerticle() {
     val results = mutableMapOf<String, List<Any>>()
     var failed = 0
     var cancelled = 0
+    val executedExecutableIds = mutableSetOf<String>()
 
-    val processChainsToCheck = processChains.map { it.id }.toMutableSet()
+    val processChainsToCheck = processChains.associateBy { it.id }.toMutableMap()
     gaugeProcessChains.inc(processChainsToCheck.size.toDouble())
     try {
       while (processChainsToCheck.isNotEmpty()) {
         delay(lookupInterval)
 
         val finishedProcessChains = mutableSetOf<String>()
-        loop@ for (processChainId in processChainsToCheck) {
+        loop@ for ((processChainId, processChain) in processChainsToCheck) {
           when (submissionRegistry.getProcessChainStatus(processChainId)) {
             ProcessChainStatus.SUCCESS -> {
               submissionRegistry.getProcessChainResults(processChainId)?.let { pcr ->
@@ -431,6 +437,7 @@ class Controller : CoroutineVerticle() {
                   results.putAll(pcr.filter { (_, v) -> hasSubmissionResults(v) })
                 }
               }
+              executedExecutableIds.addAll(processChain.executables.map { it.id })
               finishedProcessChains.add(processChainId)
             }
 
@@ -453,14 +460,14 @@ class Controller : CoroutineVerticle() {
           }
         }
 
-        processChainsToCheck.removeAll(finishedProcessChains)
+        processChainsToCheck.keys.removeAll(finishedProcessChains)
         gaugeProcessChains.dec(finishedProcessChains.size.toDouble())
       }
     } finally {
       gaugeProcessChains.dec(processChainsToCheck.size.toDouble())
     }
 
-    return WaitForProcessChainsResult(results, failed, cancelled)
+    return WaitForProcessChainsResult(results, failed, cancelled, executedExecutableIds)
   }
 
   /**

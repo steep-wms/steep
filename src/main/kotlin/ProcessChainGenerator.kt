@@ -41,6 +41,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
   private val vars = workflow.vars.toMutableList()
   private val actions = workflow.actions.toMutableSet()
   private val variableValues = mutableMapOf<String, Any>()
+  private val executedActionIds = mutableSetOf<String>()
   private val forEachOutputsToBeCollected = mutableMapOf<String, List<Variable>>()
   private val iterations = mutableMapOf<String, Int>()
   private val pluginRegistry = PluginRegistryFactory.create()
@@ -54,13 +55,19 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
    * Create the next set of process chains. Call this method until it returns
    * an empty list (i.e. until it does not produce more process chains).
    * Execute the process chains after each call to this method and pass their
-   * [results] to the next call.
+   * [results] to the next call. Also pass the [executedExecutableIds] of any
+   * [Executable] that was executed successfully so dependencies between
+   * [Action]s can be resolved correctly.
    */
-  fun generate(results: Map<String, List<Any>>? = null): List<ProcessChain> {
+  fun generate(results: Map<String, List<Any>>? = null,
+      executedExecutableIds: Set<String>? = null): List<ProcessChain> {
     // replace variable values with results
     results?.forEach { (key, value) ->
       variableValues[key] = if (value.size == 1) value[0] else value
     }
+
+    // save IDs of already executed actions
+    executedExecutableIds?.let { executedActionIds.addAll(it) }
 
     // collect for-each outputs
     do {
@@ -242,10 +249,14 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
   private fun createProcessChains(): List<ProcessChain> {
     // build an index from input variables to actions
     val inputsToActions = IdentityHashMap<Variable, MutableList<ExecuteAction>>()
+    val dependsOnToActions = mutableMapOf<String, MutableList<ExecuteAction>>()
     for (action in actions) {
       if (action is ExecuteAction) {
         for (param in action.inputs) {
           inputsToActions.getOrPut(param.variable, ::mutableListOf).add(action)
+        }
+        for (target in action.dependsOn) {
+          dependsOnToActions.getOrPut(target, ::mutableListOf).add(action)
         }
       }
     }
@@ -265,10 +276,17 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
 
       var nextAction: ExecuteAction = action
       while (!actionsVisited.contains(nextAction)) {
-        // check if all inputs are set (either because the variable has a value
-        // or because the value has been calculated earlier)
-        val isExecutable = nextAction.inputs.all { it.variable.value != null ||
+        // check if action is executable:
+        // (a) check if all actions that this action depends on have already
+        // been executed or are about to be executed in the process chain we
+        // are currently creating
+        // (b) check if all inputs are set (either because the variable has a
+        // value or because the value has been calculated earlier)
+        val allDependingExecuted = nextAction.dependsOn.all { target ->
+          executedActionIds.contains(target) || executables.any { it.id == target } }
+        val allInputsAvailable = nextAction.inputs.all { it.variable.value != null ||
             it.variable.id in variableValues || it.variable.id in argumentValues }
+        val isExecutable = allDependingExecuted && allInputsAvailable
         if (isExecutable) {
           val newExecutable = actionToExecutable(nextAction, capabilities, argumentValues)
           executables.add(newExecutable)
@@ -285,8 +303,10 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
           }
 
           // try to find next action
-          val moreActions = nextAction.outputs.map { it.variable }.flatMap {
-            inputsToActions[it] ?: mutableListOf() }.distinct()
+          val moreActionsByOutput = nextAction.outputs.map { it.variable }.flatMap {
+            inputsToActions[it] ?: mutableListOf() }
+          val moreActionsByDependsOn = dependsOnToActions[nextAction.id] ?: emptyList()
+          val moreActions = (moreActionsByOutput + moreActionsByDependsOn).distinct()
           if (moreActions.size != 1) {
             // leverage parallelization and stop if there are more than one
             // next actions (i.e. if the process chain would fork)

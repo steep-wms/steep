@@ -22,5 +22,6 @@ data class ForEachAction(
     val actions: List<Action> = emptyList(),
     val yieldToOutput: Variable? = null,
     val yieldToInput: Variable? = null,
-    override val id: String = UniqueID.next()
+    override val id: String = UniqueID.next(),
+    override val dependsOn: List<String> = emptyList()
 ) : Action

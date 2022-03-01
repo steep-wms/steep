@@ -37,5 +37,6 @@ data class ExecuteAction(
     val maxInactivity: TimeoutPolicy? = null,
     val maxRuntime: TimeoutPolicy? = null,
     val deadline: TimeoutPolicy? = null,
-    override val id: String = UniqueID.next()
+    override val id: String = UniqueID.next(),
+    override val dependsOn: List<String> = emptyList()
 ) : Action

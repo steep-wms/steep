@@ -17,5 +17,14 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
     Type(value = ForEachAction::class, name = "for")
 )
 interface Action {
+    /**
+     * The action's unique identifier
+     */
     val id: String
+
+    /**
+     * A list of identifiers of actions this action needs to finish first
+     * before it is ready to be executed
+     */
+    val dependsOn: List<String>
 }
