@@ -80,7 +80,7 @@
               dataType: string
     - id: 9
       executables:
-        - id: cp2
+        - id: cp2$0
           serviceId: cp
           path: cp
           arguments:
@@ -98,7 +98,7 @@
               dataType: string
     - id: 11
       executables:
-        - id: cp2
+        - id: cp2$1
           serviceId: cp
           path: cp
           arguments:
@@ -162,7 +162,7 @@
               dataType: string
     - id: 15
       executables:
-        - id: cp2
+        - id: cp2$2
           serviceId: cp
           path: cp
           arguments:
@@ -180,7 +180,7 @@
               dataType: string
     - id: 17
       executables:
-        - id: cp2
+        - id: cp2$3
           serviceId: cp
           path: cp
           arguments:
@@ -205,7 +205,7 @@
 - chains:
     - id: 19
       executables:
-        - id: cp2
+        - id: cp2$4
           serviceId: cp
           path: cp
           arguments:

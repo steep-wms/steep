@@ -1,7 +1,7 @@
 - chains:
     - id: "1"
       executables:
-        - id: join
+        - id: join$0
           serviceId: join
           path: join.sh
           arguments:
@@ -25,7 +25,7 @@
               dataType: string
     - id: "3"
       executables:
-        - id: join
+        - id: join$1
           serviceId: join
           path: join.sh
           arguments:

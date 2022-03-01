@@ -209,24 +209,41 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       iteration: Int): Action {
     return when (action) {
       is ExecuteAction -> {
-        action.copy(inputs = action.inputs.map {
-          it.copy(variable = substitutions[it.variable.id] ?: it.variable)
-        }, outputs = action.outputs.map {
-          it.copy(variable = unrollVariable(it.variable, substitutions, iteration))
-        })
+        action.copy(
+          id = unrollId(action.id, substitutions, iteration),
+          inputs = action.inputs.map {
+            it.copy(variable = substitutions[it.variable.id] ?: it.variable)
+          },
+          outputs = action.outputs.map {
+            it.copy(variable = unrollVariable(it.variable, substitutions, iteration))
+          },
+          dependsOn = action.dependsOn.map {
+            substitutions[it]?.id ?: it
+          }
+        )
       }
 
       is ForEachAction -> {
+        val newId = unrollId(action.id, substitutions, iteration)
         val newEnum = unrollVariable(action.enumerator, substitutions, iteration)
         val newOutput = action.output?.let { unrollVariable(it, substitutions, iteration) }
         val newActions = action.actions.map { unrollAction(it, substitutions, iteration) }
-        action.copy(input = substitutions[action.input.id] ?: action.input,
+        action.copy(id = newId, input = substitutions[action.input.id] ?: action.input,
             enumerator = newEnum, output = newOutput, actions = newActions,
             yieldToOutput = action.yieldToOutput?.let { substitutions[it.id] ?: it })
       }
 
       else -> throw RuntimeException("Unknown action type `${action.javaClass}'")
     }
+  }
+
+  /**
+   * Unroll an [id] for a given [iteration]. Renames the [id] and puts the old
+   * name and a variable with the new one into the given map of [substitutions].
+   */
+  private fun unrollId(id: String, substitutions: MutableMap<String, Variable>,
+    iteration: Int): String {
+    return unrollVariable(Variable(id), substitutions, iteration).id
   }
 
   /**

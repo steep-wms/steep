@@ -246,6 +246,14 @@ class ProcessChainGeneratorTest {
         // Test if we can build a chain of three actions via `dependsOn`
         T("dependsOnChain"),
 
+        // Test if an action inside a for-each action can depend on another
+        // action inside the same for-each action
+        T("dependsOnInsideForEach"),
+
+        // Test if two actions inside a for-each action can depend on another
+        // action inside the same for-each action
+        T("dependsOnInsideForEachSplit"),
+
 
         //  TODO test complex graph
 
@@ -313,7 +321,8 @@ class ProcessChainGeneratorTest {
       }
 
       val processChains = generator.generate(results, executedExecutableIds)
-      assertThat(processChains).isEqualTo(expected.chains)
+      assertThat(YamlUtils.mapper.writeValueAsString(processChains))
+        .isEqualTo(YamlUtils.mapper.writeValueAsString(expected.chains))
       results = expected.results
       executedExecutableIds = expected.executedExecutableIds
 

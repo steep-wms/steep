@@ -1,29 +1,22 @@
 - chains:
-    - id: 1
+    - id: "2"
       executables:
-        - id: cp1
+        - id: cp1$0
           serviceId: cp
           path: cp
           arguments:
             - id: input_file
               variable:
-                id: input_directory
-                value: input_dir
+                id: i$0
+                value: input_file1.txt
               type: input
               dataType: string
             - id: output_file
               variable:
-                id: output_directory
-                value: /data/out/0
+                id: output_file1$0
+                value: /tmp/0
               type: output
               dataType: string
-  results:
-    output_directory:
-      - /data/out/0/input_file1.txt
-      - /data/out/0/input_file2.txt
-- chains:
-    - id: "3"
-      executables:
         - id: cp2$0
           serviceId: cp
           path: cp
@@ -31,17 +24,33 @@
             - id: input_file
               variable:
                 id: i$0
-                value: /data/out/0/input_file1.txt
+                value: input_file1.txt
               type: input
               dataType: string
             - id: output_file
               variable:
-                id: output_file1$0
-                value: /tmp/mydirectory/prefix2
+                id: output_file2$0
+                value: /tmp/1
               type: output
               dataType: string
     - id: "5"
       executables:
+        - id: cp1$1
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: i$1
+                value: input_file2.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: output_file1$1
+                value: /tmp/3
+              type: output
+              dataType: string
         - id: cp2$1
           serviceId: cp
           path: cp
@@ -49,17 +58,21 @@
             - id: input_file
               variable:
                 id: i$1
-                value: /data/out/0/input_file2.txt
+                value: input_file2.txt
               type: input
               dataType: string
             - id: output_file
               variable:
-                id: output_file1$1
-                value: /tmp/mydirectory/prefix4
+                id: output_file2$1
+                value: /tmp/4
               type: output
               dataType: string
   results:
     output_file1$0:
-      - /tmp/mydirectory/prefix2
+      - /tmp/0
+    output_file2$0:
+      - /tmp/1
     output_file1$1:
-      - /tmp/mydirectory/prefix4
+      - /tmp/3
+    output_file2$1:
+      - /tmp/4

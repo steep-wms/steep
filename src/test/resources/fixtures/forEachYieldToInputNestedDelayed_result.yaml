@@ -1,7 +1,7 @@
 - chains:
     - id: 1
       executables:
-        - id: split
+        - id: split$0
           serviceId: split
           path: split.sh
           arguments:
@@ -24,7 +24,7 @@
 - chains:
     - id: 3
       executables:
-        - id: cp
+        - id: cp$0$0
           serviceId: cp
           path: cp
           arguments:
@@ -42,7 +42,7 @@
               dataType: string
     - id: 5
       executables:
-        - id: cp
+        - id: cp$0$1
           serviceId: cp
           path: cp
           arguments:
@@ -66,7 +66,7 @@
 - chains:
     - id: 7
       executables:
-        - id: join1
+        - id: join1$0
           serviceId: join
           path: join.sh
           arguments:
@@ -94,7 +94,7 @@
 - chains:
     - id: 9
       executables:
-        - id: split
+        - id: split$1
           serviceId: split
           path: split.sh
           arguments:
@@ -117,7 +117,7 @@
 - chains:
     - id: 11
       executables:
-        - id: cp
+        - id: cp$1$0
           serviceId: cp
           path: cp
           arguments:
@@ -135,7 +135,7 @@
               dataType: string
     - id: 13
       executables:
-        - id: cp
+        - id: cp$1$1
           serviceId: cp
           path: cp
           arguments:
@@ -159,7 +159,7 @@
 - chains:
     - id: 15
       executables:
-        - id: join1
+        - id: join1$1
           serviceId: join
           path: join.sh
           arguments:

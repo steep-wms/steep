@@ -1,7 +1,7 @@
 - chains:
     - id: "1"
       executables:
-        - id: cp
+        - id: cp$0
           serviceId: cp
           path: cp
           arguments:
@@ -19,7 +19,7 @@
               dataType: string
     - id: "3"
       executables:
-        - id: cp
+        - id: cp$1
           serviceId: cp
           path: cp
           arguments:
@@ -37,7 +37,7 @@
               dataType: string
     - id: "5"
       executables:
-        - id: join
+        - id: join$0$0
           serviceId: join
           path: join.sh
           arguments:
@@ -61,7 +61,7 @@
               dataType: string
     - id: "7"
       executables:
-        - id: join
+        - id: join$0$1
           serviceId: join
           path: join.sh
           arguments:
@@ -85,7 +85,7 @@
               dataType: string
     - id: "9"
       executables:
-        - id: join
+        - id: join$1$0
           serviceId: join
           path: join.sh
           arguments:
@@ -109,7 +109,7 @@
               dataType: string
     - id: "11"
       executables:
-        - id: join
+        - id: join$1$1
           serviceId: join
           path: join.sh
           arguments:

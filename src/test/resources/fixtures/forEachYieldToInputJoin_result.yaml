@@ -1,7 +1,7 @@
 - chains:
     - id: 1
       executables:
-        - id: cp
+        - id: cp$0
           serviceId: cp
           path: cp
           arguments:
@@ -19,7 +19,7 @@
               dataType: string
     - id: 3
       executables:
-        - id: cp
+        - id: cp$1
           serviceId: cp
           path: cp
           arguments:
@@ -43,7 +43,7 @@
 - chains:
     - id: 5
       executables:
-        - id: cp
+        - id: cp$2
           serviceId: cp
           path: cp
           arguments:
@@ -61,7 +61,7 @@
               dataType: string
     - id: 7
       executables:
-        - id: cp
+        - id: cp$3
           serviceId: cp
           path: cp
           arguments:
@@ -84,7 +84,7 @@
 - chains:
     - id: 9
       executables:
-        - id: cp
+        - id: cp$4
           serviceId: cp
           path: cp
           arguments:

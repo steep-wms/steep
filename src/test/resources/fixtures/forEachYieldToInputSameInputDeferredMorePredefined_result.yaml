@@ -19,7 +19,7 @@
               dataType: string
     - id: 3
       executables:
-        - id: cp1
+        - id: cp1$0
           serviceId: cp
           path: cp
           arguments:
@@ -37,7 +37,7 @@
               dataType: string
     - id: 5
       executables:
-        - id: cp1
+        - id: cp1$1
           serviceId: cp
           path: cp
           arguments:
@@ -99,7 +99,7 @@
               dataType: string
     - id: 11
       executables:
-        - id: cp1
+        - id: cp1$2
           serviceId: cp
           path: cp
           arguments:
@@ -117,7 +117,7 @@
               dataType: string
     - id: 13
       executables:
-        - id: cp1
+        - id: cp1$3
           serviceId: cp
           path: cp
           arguments:
@@ -180,7 +180,7 @@
               dataType: string
     - id: 17
       executables:
-        - id: cp1
+        - id: cp1$4
           serviceId: cp
           path: cp
           arguments:

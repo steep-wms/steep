@@ -26,12 +26,12 @@ actions:
   - id: cp3
     type: execute
     service: cp
+    dependsOn:
+      - cp1
+      - cp2
     inputs:
       - id: input_file
         var: input_file1
     outputs:
       - id: output_file
         var: output_file3
-    dependsOn:
-      - cp1
-      - cp2
