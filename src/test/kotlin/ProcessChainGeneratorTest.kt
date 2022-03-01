@@ -2,7 +2,7 @@ import TestMetadata.services
 import db.PluginRegistry
 import db.PluginRegistryFactory
 import helper.ConsecutiveID
-import helper.JsonUtils
+import helper.YamlUtils
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
@@ -279,13 +279,13 @@ class ProcessChainGeneratorTest {
   )
 
   private fun readWorkflow(name: String): Workflow {
-    val fixture = javaClass.getResource("fixtures/$name.json")!!.readText()
-    return JsonUtils.readValue(fixture)
+    val fixture = javaClass.getResource("fixtures/$name.yaml")!!.readText()
+    return YamlUtils.readValue(fixture)
   }
 
   private fun readProcessChains(name: String): List<Expected> {
-    val fixture = javaClass.getResource("fixtures/${name}_result.json")!!.readText()
-    return JsonUtils.readValue(fixture)
+    val fixture = javaClass.getResource("fixtures/${name}_result.yaml")!!.readText()
+    return YamlUtils.readValue(fixture)
   }
 
   @ParameterizedTest

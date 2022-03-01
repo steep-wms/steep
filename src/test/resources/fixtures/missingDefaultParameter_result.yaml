@@ -1,0 +1,29 @@
+- chains:
+    - id: "2"
+      executables:
+        - id: cp
+          serviceId: cpDefaultParam
+          path: cp
+          arguments:
+            - id: no_overwrite
+              label: -n
+              variable:
+                id: "0"
+                value: "true"
+              type: input
+              dataType: boolean
+            - id: input_file
+              variable:
+                id: input_file1
+                value: input_file.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: output_file1
+                value: /tmp/1
+              type: output
+              dataType: string
+  results:
+    output_file1:
+      - /tmp/0

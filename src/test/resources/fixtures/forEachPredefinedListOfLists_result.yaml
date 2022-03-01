@@ -1,0 +1,54 @@
+- chains:
+    - id: "1"
+      executables:
+        - id: join
+          serviceId: join
+          path: join.sh
+          arguments:
+            - id: i
+              variable:
+                id: i$0
+                value: input_file1.txt
+              type: input
+              dataType: string
+            - id: i
+              variable:
+                id: i$0
+                value: input_file2.txt
+              type: input
+              dataType: string
+            - id: o
+              variable:
+                id: output_file1$0
+                value: /tmp/0
+              type: output
+              dataType: string
+    - id: "3"
+      executables:
+        - id: join
+          serviceId: join
+          path: join.sh
+          arguments:
+            - id: i
+              variable:
+                id: i$1
+                value: input_file3.txt
+              type: input
+              dataType: string
+            - id: i
+              variable:
+                id: i$1
+                value: input_file4.txt
+              type: input
+              dataType: string
+            - id: o
+              variable:
+                id: output_file1$1
+                value: /tmp/2
+              type: output
+              dataType: string
+  results:
+    output_file1$0:
+      - /tmp/0
+    output_file1$1:
+      - /tmp/2

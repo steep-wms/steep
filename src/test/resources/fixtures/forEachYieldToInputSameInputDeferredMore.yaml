@@ -1,0 +1,76 @@
+vars:
+  - id: input_directory
+    value: /data
+  - id: files
+  - id: i
+  - id: o
+  - id: joined_output
+  - id: root_cp_input
+    value: input1.txt
+  - id: root_cp_output
+  - id: cp_output_1
+  - id: cp_output_2
+actions:
+  - id: cp1
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: input_directory
+    outputs:
+      - id: output_file
+        var: files
+  - type: for
+    input: files
+    enumerator: i
+    actions:
+      - id: cp2
+        type: execute
+        service: cp
+        inputs:
+          - id: input_file
+            var: i
+        outputs:
+          - id: output_file
+            var: o
+    yieldToInput: o
+  - id: cp3
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: root_cp_input
+    outputs:
+      - id: output_file
+        var: root_cp_output
+  - id: cp4
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: root_cp_output
+    outputs:
+      - id: output_file
+        var: cp_output_1
+  - id: cp5
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: root_cp_output
+    outputs:
+      - id: output_file
+        var: cp_output_2
+  - id: join
+    type: execute
+    service: join
+    inputs:
+      - id: i
+        var: files
+      - id: i
+        var: cp_output_1
+      - id: i
+        var: cp_output_2
+    outputs:
+      - id: o
+        var: joined_output

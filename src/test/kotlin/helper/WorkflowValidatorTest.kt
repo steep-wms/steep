@@ -13,8 +13,8 @@ class WorkflowValidatorTest {
    * Read a workflow from a test fixture
    */
   private fun readWorkflow(name: String): Workflow {
-    val text = javaClass.getResource("/fixtures/$name.json")!!.readText()
-    return JsonUtils.readValue(text)
+    val text = javaClass.getResource("/fixtures/$name.yaml")!!.readText()
+    return YamlUtils.readValue(text)
   }
 
   /**

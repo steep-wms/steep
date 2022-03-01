@@ -6,6 +6,7 @@ import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus
 import db.SubmissionRegistryFactory
 import helper.JsonUtils
+import helper.YamlUtils
 import io.mockk.MockKVerificationScope
 import io.mockk.Runs
 import io.mockk.coEvery
@@ -100,8 +101,8 @@ class ControllerTest {
   }
 
   private fun readWorkflow(name: String): Workflow {
-    val fixture = javaClass.getResource("fixtures/$name.json")!!.readText()
-    return JsonUtils.readValue(fixture)
+    val fixture = javaClass.getResource("fixtures/$name.yaml")!!.readText()
+    return YamlUtils.readValue(fixture)
   }
 
   private fun doSimple(vertx: Vertx, ctx: VertxTestContext,

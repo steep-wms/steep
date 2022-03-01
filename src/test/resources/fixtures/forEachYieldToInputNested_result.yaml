@@ -1,0 +1,184 @@
+- chains:
+    - id: 1
+      executables:
+        - id: cp
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: j$0$0
+                value: test1.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: o$0$0
+                value: /tmp/0
+              type: output
+              dataType: string
+    - id: 3
+      executables:
+        - id: cp
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: j$0$1
+                value: test2.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: o$0$1
+                value: /tmp/2
+              type: output
+              dataType: string
+    - id: 5
+      executables:
+        - id: cp
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: j$1$0
+                value: test3.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: o$1$0
+                value: /tmp/4
+              type: output
+              dataType: string
+    - id: 7
+      executables:
+        - id: cp
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: j$1$1
+                value: test4.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: o$1$1
+                value: /tmp/6
+              type: output
+              dataType: string
+  results:
+    o$0$0:
+      - copy1.txt
+      - copy2.txt
+    o$0$1:
+      - copy3.txt
+    o$1$0: []
+    o$1$1:
+      - copy4.txt
+- chains:
+    - id: 9
+      executables:
+        - id: cp
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: j$2$0
+                value: copy1.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: o$2$0
+                value: /tmp/8
+              type: output
+              dataType: string
+    - id: 11
+      executables:
+        - id: cp
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: j$3$0
+                value: copy2.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: o$3$0
+                value: /tmp/10
+              type: output
+              dataType: string
+    - id: 13
+      executables:
+        - id: cp
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: j$4$0
+                value: copy3.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: o$4$0
+                value: /tmp/12
+              type: output
+              dataType: string
+    - id: 15
+      executables:
+        - id: cp
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: j$5$0
+                value: copy4.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: o$5$0
+                value: /tmp/14
+              type: output
+              dataType: string
+  results:
+    o$2$0: []
+    o$3$0: []
+    o$4$0:
+      - dummy2.txt
+    o$5$0: []
+- chains:
+    - id: 17
+      executables:
+        - id: cp
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: j$6$0
+                value: dummy2.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: o$6$0
+                value: /tmp/16
+              type: output
+              dataType: string
+  results:
+    o$6$0: []
+- chains: []
+  results: {}

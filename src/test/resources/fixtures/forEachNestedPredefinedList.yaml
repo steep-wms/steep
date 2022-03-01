@@ -1,0 +1,40 @@
+vars:
+  - id: input_directories
+    value:
+      - input_dir1
+      - input_dir2
+  - id: output_directory
+  - id: other_input_files
+    value:
+      - input_file1
+      - input_file2
+  - id: i
+  - id: j
+  - id: output_file
+actions:
+  - type: for
+    input: input_directories
+    enumerator: i
+    actions:
+      - id: cp1
+        type: execute
+        service: cp
+        inputs:
+          - id: input_file
+            var: i
+        outputs:
+          - id: output_file
+            var: output_directory
+      - type: for
+        input: other_input_files
+        enumerator: j
+        actions:
+          - id: cp2
+            type: execute
+            service: cp
+            inputs:
+              - id: input_file
+                var: j
+            outputs:
+              - id: output_file
+                var: output_file

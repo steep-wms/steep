@@ -1,0 +1,54 @@
+- chains:
+    - id: "3"
+      executables:
+        - id: split
+          serviceId: split
+          path: split.sh
+          arguments:
+            - id: input
+              variable:
+                id: input_file1
+                value: input_file1.txt
+              type: input
+              dataType: string
+            - id: output
+              variable:
+                id: output_file1
+                value: /tmp/0
+              type: output
+              dataType: string
+            - id: output
+              variable:
+                id: output_file2
+                value: /tmp/1
+              type: output
+              dataType: string
+        - id: join
+          serviceId: join
+          path: join.sh
+          arguments:
+            - id: i
+              variable:
+                id: output_file1
+                value: /tmp/0
+              type: input
+              dataType: string
+            - id: i
+              variable:
+                id: output_file2
+                value: /tmp/1
+              type: input
+              dataType: string
+            - id: o
+              variable:
+                id: output_file3
+                value: /tmp/2
+              type: output
+              dataType: string
+  results:
+    output_file1:
+      - /tmp/0
+    output_file2:
+      - /tmp/1
+    output_file3:
+      - /tmp/2

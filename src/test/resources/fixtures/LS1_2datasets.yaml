@@ -1,0 +1,127 @@
+name: Land showcase 1.1
+vars:
+  - id: PointCloudParent
+    value:
+      - /CNR_IMATI/Liguria-LAS/LiDAR-145/20100902_E_3/S1C1_strip003.las
+      - /CNR_IMATI/Liguria-LAS/LiDAR-145/20100902_E_3/S1C1_strip002.las
+  - id: boundaries
+    value: /CNR_IMATI/Liguria_Basin_map/Regione_Liguria_July_2015/BACINI_IDR.shp
+  - id: PointCloudParent0
+    value: /CNR_IMATI/Liguria-LAS/LiDAR-145/20100902_E_3/S1C1_strip003.las
+  - id: resolution
+    value: 10
+  - id: K
+    value: 15
+  - id: standardDeviation
+    value: 3
+  - id: Resampling0
+  - id: OutlierFiltering0
+  - id: las0
+  - id: metadata0
+  - id: result0
+  - id: MultiResolutionTriangulation0
+  - id: PointCloudParent1
+    value: hdfs://CNR_IMATI/Liguria-LAS/LiDAR-145/20100902_E_3/S1C1_strip002.las
+  - id: Resampling1
+  - id: OutlierFiltering1
+  - id: las1
+  - id: metadata1
+  - id: result1
+  - id: MultiResolutionTriangulation1
+actions:
+  - type: execute
+    service: ResamplingOfPointCloud
+    inputs:
+      - id: resampling_resolution
+        var: resolution
+      - id: input_file_name
+        var: PointCloudParent0
+    outputs:
+      - id: output_file_name
+        var: Resampling0
+  - type: execute
+    service: OutlierClassificationInPointCloud
+    inputs:
+      - id: outlier_filtering_K
+        var: K
+      - id: outlier_filtering_stddev
+        var: standardDeviation
+      - id: input_file_name
+        var: Resampling0
+    outputs:
+      - id: output_file_name
+        var: OutlierFiltering0
+        store: true
+  - type: execute
+    service: VectorLayerPointCloudPartitioning
+    inputs:
+      - id: las
+        var: OutlierFiltering0
+      - id: shp
+        var: boundaries
+    outputs:
+      - id: outputPath
+        var: las0
+      - id: metadataPath
+        var: metadata0
+  - type: for
+    enumerator: result0
+    input: metadata0
+    actions:
+      - type: execute
+        service: MultiresolutionTriangulation
+        inputs:
+          - id: inputjsfile
+            var: result0
+        outputs:
+          - id: outputjsfile
+            var: MultiResolutionTriangulation0
+            store: true
+  - type: execute
+    service: ResamplingOfPointCloud
+    inputs:
+      - id: resampling_resolution
+        var: resolution
+      - id: input_file_name
+        var: PointCloudParent1
+    outputs:
+      - id: output_file_name
+        var: Resampling1
+  - type: execute
+    service: OutlierClassificationInPointCloud
+    inputs:
+      - id: outlier_filtering_K
+        var: K
+      - id: outlier_filtering_stddev
+        var: standardDeviation
+      - id: input_file_name
+        var: Resampling1
+    outputs:
+      - id: output_file_name
+        var: OutlierFiltering1
+        store: true
+  - type: execute
+    service: VectorLayerPointCloudPartitioning
+    inputs:
+      - id: las
+        var: OutlierFiltering1
+      - id: shp
+        var: boundaries
+    outputs:
+      - id: outputPath
+        var: las1
+      - id: metadataPath
+        var: metadata1
+  - type: for
+    enumerator: result1
+    input: metadata1
+    actions:
+      - type: execute
+        service: MultiresolutionTriangulation
+        inputs:
+          - id: inputjsfile
+            var: result1
+        outputs:
+          - id: outputjsfile
+            var: MultiResolutionTriangulation1
+            store: true

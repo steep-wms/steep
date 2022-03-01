@@ -1,0 +1,23 @@
+- chains:
+    - id: "1"
+      executables:
+        - id: serviceWithDocker
+          serviceId: serviceWithDocker
+          path: service:latest
+          arguments:
+            - id: input
+              variable:
+                id: input_file1
+                value: input_file.txt
+              type: input
+              dataType: string
+            - id: output
+              variable:
+                id: output_file1
+                value: /tmp/0
+              type: output
+              dataType: string
+          runtime: docker
+  results:
+    output_file1:
+      - /tmp/0

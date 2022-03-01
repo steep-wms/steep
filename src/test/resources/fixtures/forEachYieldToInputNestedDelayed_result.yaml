@@ -1,0 +1,227 @@
+- chains:
+    - id: 1
+      executables:
+        - id: split
+          serviceId: split
+          path: split.sh
+          arguments:
+            - id: input
+              variable:
+                id: i$0
+                value: test1.txt
+              type: input
+              dataType: string
+            - id: output
+              variable:
+                id: splitFiles$0
+                value: /tmp/0
+              type: output
+              dataType: string
+  results:
+    splitFiles$0:
+      - test2.txt
+      - test3.txt
+- chains:
+    - id: 3
+      executables:
+        - id: cp
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: j$0$0
+                value: test2.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: o$0$0
+                value: /tmp/2
+              type: output
+              dataType: string
+    - id: 5
+      executables:
+        - id: cp
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: j$0$1
+                value: test3.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: o$0$1
+                value: /tmp/4
+              type: output
+              dataType: string
+  results:
+    o$0$0:
+      - copy2.txt
+    o$0$1:
+      - copy3.txt
+- chains:
+    - id: 7
+      executables:
+        - id: join1
+          serviceId: join
+          path: join.sh
+          arguments:
+            - id: i
+              variable:
+                id: innero$0
+                value: copy2.txt
+              type: input
+              dataType: string
+            - id: i
+              variable:
+                id: innero$0
+                value: copy3.txt
+              type: input
+              dataType: string
+            - id: o
+              variable:
+                id: joinedo$0
+                value: /tmp/6
+              type: output
+              dataType: string
+  results:
+    joinedo$0:
+      - joined23.txt
+- chains:
+    - id: 9
+      executables:
+        - id: split
+          serviceId: split
+          path: split.sh
+          arguments:
+            - id: input
+              variable:
+                id: i$1
+                value: joined23.txt
+              type: input
+              dataType: string
+            - id: output
+              variable:
+                id: splitFiles$1
+                value: /tmp/8
+              type: output
+              dataType: string
+  results:
+    splitFiles$1:
+      - test5.txt
+      - test6.txt
+- chains:
+    - id: 11
+      executables:
+        - id: cp
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: j$1$0
+                value: test5.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: o$1$0
+                value: /tmp/10
+              type: output
+              dataType: string
+    - id: 13
+      executables:
+        - id: cp
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: j$1$1
+                value: test6.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: o$1$1
+                value: /tmp/12
+              type: output
+              dataType: string
+  results:
+    o$1$0:
+      - copy5.txt
+    o$1$1:
+      - copy6.txt
+- chains:
+    - id: 15
+      executables:
+        - id: join1
+          serviceId: join
+          path: join.sh
+          arguments:
+            - id: i
+              variable:
+                id: innero$1
+                value: copy5.txt
+              type: input
+              dataType: string
+            - id: i
+              variable:
+                id: innero$1
+                value: copy6.txt
+              type: input
+              dataType: string
+            - id: o
+              variable:
+                id: joinedo$1
+                value: /tmp/14
+              type: output
+              dataType: string
+  results:
+    joinedo$1: []
+- chains:
+    - id: 17
+      executables:
+        - id: join2
+          serviceId: join
+          path: join.sh
+          arguments:
+            - id: i
+              variable:
+                id: alloutputs
+                value: test2.txt
+              type: input
+              dataType: string
+            - id: i
+              variable:
+                id: alloutputs
+                value: test3.txt
+              type: input
+              dataType: string
+            - id: i
+              variable:
+                id: alloutputs
+                value: test5.txt
+              type: input
+              dataType: string
+            - id: i
+              variable:
+                id: alloutputs
+                value: test6.txt
+              type: input
+              dataType: string
+            - id: o
+              variable:
+                id: lastoutput
+                value: /tmp/16
+              type: output
+              dataType: string
+  results:
+    lastoutput:
+      - /tmp/16
+- chains: []
+  results: {}

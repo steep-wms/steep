@@ -1,0 +1,24 @@
+vars:
+  - id: output_file1
+  - id: output_file2
+actions:
+  - type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var:
+          id: input_file1
+          value: test.txt
+    outputs:
+      - id: output_file
+        var: output_file1
+  - type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var:
+          id: input_file1
+          value: test.txt
+    outputs:
+      - id: output_file
+        var: output_file2

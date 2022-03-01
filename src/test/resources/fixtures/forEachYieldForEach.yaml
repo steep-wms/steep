@@ -1,0 +1,50 @@
+vars:
+  - id: input_directory
+    value: input_dir
+  - id: output_directory
+  - id: i
+  - id: output_file1
+  - id: for_output
+  - id: for_output2
+  - id: j
+  - id: output_file2
+actions:
+  - id: cp1
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: input_directory
+    outputs:
+      - id: output_file
+        var: output_directory
+  - type: for
+    input: output_directory
+    enumerator: i
+    output: for_output
+    actions:
+      - type: for
+        input: i
+        enumerator: j
+        output: for_output2
+        actions:
+          - id: cp2
+            type: execute
+            service: cp
+            inputs:
+              - id: input_file
+                var: j
+            outputs:
+              - id: output_file
+                var: output_file1
+        yieldToOutput: output_file1
+    yieldToOutput: for_output2
+  - id: join
+    type: execute
+    service: join
+    inputs:
+      - id: i
+        var: for_output
+    outputs:
+      - id: o
+        var: output_file2

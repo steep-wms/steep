@@ -1,0 +1,27 @@
+- chains:
+    - id: "1"
+      executables:
+        - id: serviceWithRetryPolicy
+          serviceId: retry
+          path: retry
+          arguments:
+            - id: input_file
+              variable:
+                id: input_file1
+                value: input_file.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: output_file1
+                value: /tmp/0
+              type: output
+              dataType: string
+          retries:
+            maxAttempts: 5
+            delay: 1000
+            exponentialBackoff: 2
+            maxDelay: 10000
+  results:
+    output_file1:
+      - /tmp/0
