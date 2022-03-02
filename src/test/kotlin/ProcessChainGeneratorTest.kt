@@ -2,6 +2,7 @@ import TestMetadata.services
 import db.PluginRegistry
 import db.PluginRegistryFactory
 import helper.ConsecutiveID
+import helper.WorkflowValidator
 import helper.YamlUtils
 import io.mockk.every
 import io.mockk.mockk
@@ -314,6 +315,9 @@ class ProcessChainGeneratorTest {
       persistState: Boolean = false) {
     val workflow = readWorkflow(workflowName)
     val expectedChains = readProcessChains(resultsName)
+
+    // validate workflow - just to be on the safe side
+    assertThat(WorkflowValidator.validate(workflow)).isEmpty()
 
     var json = JsonObject()
     val idgen = ConsecutiveID()

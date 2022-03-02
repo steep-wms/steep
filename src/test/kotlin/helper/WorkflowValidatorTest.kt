@@ -36,7 +36,7 @@ class WorkflowValidatorTest {
   }
 
   /**
-   * Validate a simple workflow with a output variable that has a value
+   * Validate a simple workflow with an output variable that has a value
    */
   @Test
   fun outputsWithValues() {
@@ -46,7 +46,7 @@ class WorkflowValidatorTest {
   }
 
   /**
-   * Validate a simple workflow with a output variable that has a value. The
+   * Validate a simple workflow with an output variable that has a value. The
    * output variable is also used multiple times.
    */
   @Test
@@ -77,5 +77,18 @@ class WorkflowValidatorTest {
     assertThat(result).hasSize(2)
     assertThat(result[0].message).contains(listOf("Output variable", "for_output"))
     assertThat(result[1].message).contains(listOf("Output variable", "output_file"))
+  }
+
+  /**
+   * Validate a workflow with some actions with duplicate IDs
+   */
+  @Test
+  fun duplicateId() {
+    val result = WorkflowValidator.validate(readWorkflow("duplicateIds"))
+    assertThat(result).hasSize(4)
+    assertThat(result[0].message).contains(listOf("Duplicate identifier", "input_file1"))
+    assertThat(result[1].message).contains(listOf("Duplicate identifier", "cp1"))
+    assertThat(result[2].message).contains(listOf("Duplicate identifier", "cp2"))
+    assertThat(result[3].message).contains(listOf("Duplicate identifier", "cp2"))
   }
 }

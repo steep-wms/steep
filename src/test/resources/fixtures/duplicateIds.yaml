@@ -1,0 +1,64 @@
+vars:
+  - id: input_file1
+    value: input_file.txt
+  - id: output_file1
+  - id: input_files
+    value:
+      - input_file1
+      - input_file2
+  - id: i
+actions:
+  - id: input_file1 # !!! same ID as variable
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: input_file1
+    outputs:
+      - id: output_file
+        var: output_file1
+
+  - id: cp1
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: input_file1
+    outputs:
+      - id: output_file
+        var: output_file1
+
+  - id: cp1 # !!! same ID as other action
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: input_file1
+    outputs:
+      - id: output_file
+        var: output_file1
+
+  - id: cp2
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: input_file1
+    outputs:
+      - id: output_file
+        var: output_file1
+
+  - id: cp2 # !!! same ID as other action
+    type: for
+    input: input_files
+    enumerator: i
+    actions:
+      - id: cp2 # !!! same ID as other action
+        type: execute
+        service: cp
+        inputs:
+          - id: input_file
+            var: i
+        outputs:
+          - id: output_file
+            var: output_file1

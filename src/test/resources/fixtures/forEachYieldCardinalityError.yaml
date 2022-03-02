@@ -7,7 +7,7 @@ vars:
   - id: for_output
   - id: output_directory2
 actions:
-  - id: cp
+  - id: cp1
     type: execute
     service: cp
     inputs:
@@ -21,7 +21,7 @@ actions:
     enumerator: i
     output: for_output
     actions:
-      - id: cp
+      - id: cp2
         type: execute
         service: cp
         inputs:
@@ -31,7 +31,7 @@ actions:
           - id: output_file
             var: output_file1
     yieldToOutput: output_file1
-  - id: cp
+  - id: cp3
     type: execute
     service: cp
     inputs:
