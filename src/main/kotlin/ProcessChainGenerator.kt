@@ -43,6 +43,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
   private val variableValues = mutableMapOf<String, Any>()
   private val executedActionIds = mutableSetOf<String>()
   private val forEachOutputsToBeCollected = mutableMapOf<String, List<Variable>>()
+  private val forEachSubActionsToWaitFor = mutableMapOf<String, Set<String>>()
   private val iterations = mutableMapOf<String, Int>()
   private val pluginRegistry = PluginRegistryFactory.create()
 
@@ -93,6 +94,22 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       }
     } while (didCollectOutputs)
 
+    // mark for-each actions as executed when all sub-actions have been executed
+    do {
+      var didMark = false
+      val i = forEachSubActionsToWaitFor.iterator()
+      for ((forEachActionId, actionsToWaitFor) in i) {
+        if (executedActionIds.containsAll(actionsToWaitFor)) {
+          // mark for-each action as executed
+          executedActionIds.add(forEachActionId)
+          i.remove()
+
+          // repeat until no for-each actions have been marked anymore
+          didMark = true
+        }
+      }
+    } while (didMark)
+
     unrollForEachActions()
     return createProcessChains()
   }
@@ -110,6 +127,11 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       val action = foreachActions.removeFirst()
       val enumId = action.enumerator.id
 
+      // only unroll if dependencies are met
+      if (action.dependsOn.any { !executedActionIds.contains(it) }) {
+        continue
+      }
+
       // get inputs of for-each actions if they are available, otherwise continue
       val recursiveInput = "${action.input.id}$$enumId" // unique for this action
       val input = variableValues[recursiveInput] ?:
@@ -119,6 +141,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       // unroll for-each action
       val yieldToOutputs = mutableListOf<Variable>()
       val yieldToInputs = mutableListOf<Variable>()
+      val unrolledSubActionIds = mutableSetOf<String>()
       for (enumValue in inputCollection) {
         // since the for-each action might be recursive, we must calculate a
         // global index of all iterations instead of just using
@@ -138,6 +161,8 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
           if (unrolledSubAction is ForEachAction) {
             foreachActions.add(unrolledSubAction)
           }
+
+          unrolledSubActionIds.add(unrolledSubAction.id)
         }
 
         // collect yielded output
@@ -160,6 +185,16 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
         val outputId = action.output.id + "$$"
         val oldList = forEachOutputsToBeCollected[outputId] ?: emptyList()
         forEachOutputsToBeCollected[outputId] = oldList + yieldToOutputs
+      }
+
+      // keep track of IDs of unrolled sub-actions so we can later mark the
+      // for-each action as executed when all sub-actions have been executed
+      forEachSubActionsToWaitFor.compute(action.id) { _, oldIds ->
+        if (oldIds == null) {
+          unrolledSubActionIds
+        } else {
+          oldIds + unrolledSubActionIds
+        }
       }
 
       if (yieldToInputs.isEmpty()) {
@@ -557,7 +592,9 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       val vars: List<Variable>,
       val actions: List<Action>,
       val variableValues: Map<String, Any>,
+      val executedActionIds: Set<String> = emptySet(),
       val forEachOutputsToBeCollected: Map<String, List<Variable>>,
+      val forEachActionsToWaitFor: Map<String, Set<String>> = emptyMap(),
       val iterations: Map<String, Int>
   )
 
@@ -565,8 +602,8 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
    * Persist the generator's internal state to a JSON object
    */
   fun persistState(): JsonObject {
-    val s = State(vars, actions.toList(), variableValues,
-        forEachOutputsToBeCollected, iterations)
+    val s = State(vars, actions.toList(), variableValues, executedActionIds,
+        forEachOutputsToBeCollected, forEachSubActionsToWaitFor, iterations)
     return JsonUtils.toJson(s)
   }
 
@@ -578,14 +615,18 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
     vars.clear()
     actions.clear()
     variableValues.clear()
+    executedActionIds.clear()
     forEachOutputsToBeCollected.clear()
+    forEachSubActionsToWaitFor.clear()
     iterations.clear()
 
     val s: State = JsonUtils.fromJson(state)
     vars.addAll(s.vars)
     actions.addAll(s.actions)
     variableValues.putAll(s.variableValues)
+    executedActionIds.addAll(s.executedActionIds)
     forEachOutputsToBeCollected.putAll(s.forEachOutputsToBeCollected)
+    forEachSubActionsToWaitFor.putAll(s.forEachActionsToWaitFor)
     iterations.putAll(s.iterations)
   }
 }

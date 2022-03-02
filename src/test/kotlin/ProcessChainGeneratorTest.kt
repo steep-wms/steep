@@ -254,6 +254,18 @@ class ProcessChainGeneratorTest {
         // action inside the same for-each action
         T("dependsOnInsideForEachSplit"),
 
+        // Test if a for-each action can depend on an execute action
+        T("dependsOnByForEach"),
+
+        // Test if an execute action can depend on a for-each action
+        T("dependsOnForEach"),
+
+        // Test if a for-each action can depend on another for-each action
+        T("dependsOnForEachForEach"),
+
+        // Test if `dependsOn` works correctly with nested for-each actions
+        T("dependsOnForEachNested"),
+
 
         //  TODO test complex graph
 

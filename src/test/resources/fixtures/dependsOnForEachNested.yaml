@@ -1,0 +1,58 @@
+vars:
+  - id: input_files1
+    value:
+      - input_file1.txt
+      - input_file2.txt
+  - id: i
+  - id: input_files2
+    value:
+      - input_file3.txt
+      - input_file4.txt
+  - id: j
+  - id: output_file1
+  - id: output_file2
+  - id: input_file3
+    value: input_file5.txt
+  - id: output_file3
+actions:
+  - id: foreach1
+    type: for
+    input: input_files1
+    enumerator: i
+    actions:
+      - id: foreach2
+        type: for
+        input: input_files2
+        enumerator: j
+        actions:
+          - id: cp1
+            type: execute
+            service: cp
+            inputs:
+              - id: input_file
+                var: j
+            outputs:
+              - id: output_file
+                var: output_file1
+      - id: cp2
+        type: execute
+        service: cp
+        dependsOn:
+          - foreach2
+        inputs:
+          - id: input_file
+            var: i
+        outputs:
+          - id: output_file
+            var: output_file2
+  - id: cp3
+    type: execute
+    service: cp
+    dependsOn:
+      - foreach1
+    inputs:
+      - id: input_file
+        var: input_file3
+    outputs:
+      - id: output_file
+        var: output_file3

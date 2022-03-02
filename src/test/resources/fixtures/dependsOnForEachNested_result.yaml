@@ -1,0 +1,154 @@
+- chains:
+    - id: "1"
+      executables:
+        - id: cp1$0$0
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: j$0$0
+                value: input_file3.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: output_file1$0$0
+                value: /tmp/0
+              type: output
+              dataType: string
+    - id: "3"
+      executables:
+        - id: cp1$0$1
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: j$0$1
+                value: input_file4.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: output_file1$0$1
+                value: /tmp/2
+              type: output
+              dataType: string
+    - id: "5"
+      executables:
+        - id: cp1$1$0
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: j$1$0
+                value: input_file3.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: output_file1$1$0
+                value: /tmp/4
+              type: output
+              dataType: string
+    - id: "7"
+      executables:
+        - id: cp1$1$1
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: j$1$1
+                value: input_file4.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: output_file1$1$1
+                value: /tmp/6
+              type: output
+              dataType: string
+  results:
+    output_file1$0$0:
+      - /tmp/0
+    output_file1$0$1:
+      - /tmp/2
+    output_file1$1$0:
+      - /tmp/4
+    output_file1$1$1:
+      - /tmp/6
+  executedExecutableIds:
+    - cp1$0$0
+    - cp1$0$1
+    - cp1$1$0
+    - cp1$1$1
+- chains:
+    - id: "9"
+      executables:
+        - id: cp2$0
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: i$0
+                value: input_file1.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: output_file2$0
+                value: /tmp/8
+              type: output
+              dataType: string
+    - id: "11"
+      executables:
+        - id: cp2$1
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: i$1
+                value: input_file2.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: output_file2$1
+                value: /tmp/10
+              type: output
+              dataType: string
+  results:
+    output_file2$0:
+      - /tmp/8
+    output_file2$1:
+      - /tmp/10
+  executedExecutableIds:
+    - cp2$0
+    - cp2$1
+- chains:
+    - id: "13"
+      executables:
+        - id: cp3
+          serviceId: cp
+          path: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: input_file3
+                value: input_file5.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: output_file3
+                value: /tmp/12
+              type: output
+              dataType: string
+  results:
+    output_file3:
+      - /tmp/13
