@@ -1,5 +1,6 @@
 package model.workflow
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import helper.UniqueID
 
 /**
@@ -23,5 +24,6 @@ data class ForEachAction(
     val yieldToOutput: Variable? = null,
     val yieldToInput: Variable? = null,
     override val id: String = UniqueID.next(),
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT)
     override val dependsOn: List<String> = emptyList()
 ) : Action

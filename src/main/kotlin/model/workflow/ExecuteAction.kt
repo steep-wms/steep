@@ -1,5 +1,6 @@
 package model.workflow
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import helper.UniqueID
 import model.retry.RetryPolicy
 import model.timeout.TimeoutPolicy
@@ -38,5 +39,6 @@ data class ExecuteAction(
     val maxRuntime: TimeoutPolicy? = null,
     val deadline: TimeoutPolicy? = null,
     override val id: String = UniqueID.next(),
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT)
     override val dependsOn: List<String> = emptyList()
 ) : Action
