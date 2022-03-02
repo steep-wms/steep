@@ -1,0 +1,31 @@
+vars:
+  - id: input_files
+    value:
+      - input_file1.txt
+      - input_file2.txt
+  - id: i
+  - id: output_file1
+  - id: output_file2
+actions:
+  - type: for
+    input: input_files
+    enumerator: i
+    actions:
+      - id: cp2
+        type: execute
+        service: cp
+        inputs:
+          - id: input_file
+            var: output_file1
+        outputs:
+          - id: output_file
+            var: output_file2
+      - id: cp1
+        type: execute
+        service: cp
+        inputs:
+          - id: input_file
+            var: i
+        outputs:
+          - id: output_file
+            var: output_file1

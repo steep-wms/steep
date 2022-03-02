@@ -153,8 +153,11 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
         val substitutions = mutableMapOf(enumId to Variable(iid, enumValue))
 
         // copy sub-actions and append them to `actions`
-        for (subAction in action.actions) {
-          val unrolledSubAction = unrollAction(subAction, substitutions, iteration)
+        // do this in two passes so we can handle dependencies between
+        // actions in reverse order
+        val firstPassActions = action.actions.map { unrollAction(it, substitutions, iteration, true) }
+        for (subAction in firstPassActions) {
+          val unrolledSubAction = unrollAction(subAction, substitutions, iteration, false)
           actions.add(unrolledSubAction)
 
           // recursively unroll for-each actions
@@ -237,35 +240,54 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
 
   /**
    * Recursively unroll a given [action] by appending the current [iteration] to
-   * its outputs (or enumerator if it's a for-each action) and replacing
-   * variables with the given [substitutions].
+   * its ID and outputs (or enumerator if it's a for-each action) and replacing
+   * variables and `dependsOn` targets with the given [substitutions]. If
+   * [firstPass] is `true`, only replaces IDs, outputs, and enumerators. If
+   * [firstPass] is `false`, only replaces inputs and `dependsOn` targets.
    */
   private fun unrollAction(action: Action, substitutions: MutableMap<String, Variable>,
-      iteration: Int): Action {
+      iteration: Int, firstPass: Boolean): Action {
     return when (action) {
       is ExecuteAction -> {
-        action.copy(
-          id = unrollId(action.id, substitutions, iteration),
-          inputs = action.inputs.map {
-            it.copy(variable = substitutions[it.variable.id] ?: it.variable)
-          },
-          outputs = action.outputs.map {
-            it.copy(variable = unrollVariable(it.variable, substitutions, iteration))
-          },
-          dependsOn = action.dependsOn.map {
-            substitutions[it]?.id ?: it
-          }
-        )
+        if (firstPass) {
+          action.copy(
+            id = unrollId(action.id, substitutions, iteration),
+            outputs = action.outputs.map {
+              it.copy(variable = unrollVariable(it.variable, substitutions, iteration))
+            }
+          )
+        } else {
+          action.copy(
+            inputs = action.inputs.map {
+              it.copy(variable = substitutions[it.variable.id] ?: it.variable)
+            },
+            dependsOn = action.dependsOn.map {
+              substitutions[it]?.id ?: it
+            }
+          )
+        }
       }
 
       is ForEachAction -> {
-        val newId = unrollId(action.id, substitutions, iteration)
-        val newEnum = unrollVariable(action.enumerator, substitutions, iteration)
-        val newOutput = action.output?.let { unrollVariable(it, substitutions, iteration) }
-        val newActions = action.actions.map { unrollAction(it, substitutions, iteration) }
-        action.copy(id = newId, input = substitutions[action.input.id] ?: action.input,
-            enumerator = newEnum, output = newOutput, actions = newActions,
-            yieldToOutput = action.yieldToOutput?.let { substitutions[it.id] ?: it })
+        if (firstPass) {
+          val newId = unrollId(action.id, substitutions, iteration)
+          val newEnum = unrollVariable(action.enumerator, substitutions, iteration)
+          val newOutput = action.output?.let { unrollVariable(it, substitutions, iteration) }
+          val newActions = action.actions.map { unrollAction(it, substitutions, iteration, true) }
+          action.copy(
+            id = newId,
+            enumerator = newEnum,
+            output = newOutput,
+            actions = newActions
+          )
+        } else {
+          val newActions = action.actions.map { unrollAction(it, substitutions, iteration, false) }
+          action.copy(
+            input = substitutions[action.input.id] ?: action.input,
+            actions = newActions,
+            yieldToOutput = action.yieldToOutput?.let { substitutions[it.id] ?: it }
+          )
+        }
       }
 
       else -> throw RuntimeException("Unknown action type `${action.javaClass}'")

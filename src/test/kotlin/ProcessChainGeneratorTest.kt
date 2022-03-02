@@ -116,6 +116,11 @@ class ProcessChainGeneratorTest {
         // sub-actions can be unrolled correctly
         T("forEachPredefinedListTwoServices"),
 
+        // Test if a for-each action with a pre-defined list of inputs and two
+        // sub-actions can be unrolled correctly even if the sub-actions are
+        // in reverse order
+        T("forEachPredefinedListTwoServicesReverse", "forEachPredefinedListTwoServices"),
+
         // Test if nested for-each actions can be unrolled correctly
         T("forEachNested"),
 
@@ -234,8 +239,8 @@ class ProcessChainGeneratorTest {
         // `dependsOn` even if they are not connected through outputs and inputs
         T("dependsOn"),
 
-        // Test if we can specify a dependency between two services via
-        // `dependsOn` even if the services are in reverse order in the workflow
+        // Test if we can specify a dependency between two actions via
+        // `dependsOn` even if the actions are in reverse order in the workflow
         T("dependsOnReverse", "dependsOn"),
 
         // Test if an action can depend on two other independent actions
@@ -250,6 +255,11 @@ class ProcessChainGeneratorTest {
         // Test if an action inside a for-each action can depend on another
         // action inside the same for-each action
         T("dependsOnInsideForEach"),
+
+        // Test if an action inside a for-each action can depend on another
+        // action inside the same for-each action even if the actions are in
+        // reverse order
+        T("dependsOnInsideForEachReverse", "dependsOnInsideForEach"),
 
         // Test if two actions inside a for-each action can depend on another
         // action inside the same for-each action
