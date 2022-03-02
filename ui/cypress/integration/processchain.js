@@ -1,7 +1,7 @@
 const timeoutOffset = 5
 const timeoutLength = 5
 const payload = {
-  "api": "4.3.0",
+  "api": "4.4.0",
   "vars": [{
     "id": "sleep_seconds",
     "value": timeoutLength

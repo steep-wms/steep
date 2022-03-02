@@ -1,4 +1,4 @@
-api: 4.3.0
+api: 4.4.0
 vars:
   - id: sleep_seconds
     value: 30

@@ -906,7 +906,7 @@ class HttpEndpointTest {
   fun postWorkflowWithStore(vertx: Vertx, ctx: VertxTestContext) {
     val body = json {
       obj(
-          "api" to "4.3.0",
+          "api" to "4.4.0",
           "vars" to array(
               obj(
                   "id" to "input_file1",
@@ -998,7 +998,7 @@ class HttpEndpointTest {
   fun postWorkflowWithActionParameters(vertx: Vertx, ctx: VertxTestContext) {
     val body = json {
       obj(
-          "api" to "4.3.0",
+          "api" to "4.4.0",
           "vars" to array(
               obj(
                   "id" to "input_file1",
