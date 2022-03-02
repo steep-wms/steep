@@ -91,4 +91,16 @@ class WorkflowValidatorTest {
     assertThat(result[2].message).contains(listOf("Duplicate identifier", "cp2"))
     assertThat(result[3].message).contains(listOf("Duplicate identifier", "cp2"))
   }
+
+  /**
+   * Validate a workflow with an action that specifies a dependency to an
+   * action that does not exist
+   */
+  @Test
+  fun missingDependsOnTarget() {
+    val result = WorkflowValidator.validate(readWorkflow("missingDependsOnTarget"))
+    assertThat(result).hasSize(1)
+    assertThat(result[0].message).containsSubsequence(listOf(
+      "Unable to resolve action dependency", "cp2", "cp1"))
+  }
 }

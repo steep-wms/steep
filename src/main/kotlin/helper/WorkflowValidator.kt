@@ -25,6 +25,7 @@ object WorkflowValidator {
     val results = mutableListOf<ValidationError>()
     outputsWithValues(workflow, results)
     duplicateIds(workflow, results)
+    missingDependsOnTargets(workflow, results)
     return results
   }
 
@@ -96,6 +97,32 @@ object WorkflowValidator {
     })
   }
 
+  private fun missingDependsOnTargets(workflow: Workflow,
+      results: MutableList<ValidationError>) {
+    // collect all action IDs
+    val ids = mutableSetOf<String>()
+    visit(workflow.actions, results, executeActionVisitor = { action ->
+      ids.add(action.id)
+    }, forEachActionVisitor = { action ->
+      ids.add(action.id)
+    })
+
+    fun checkDependencies(actionId: String, deps: List<String>) {
+      for (d in deps) {
+        if (!ids.contains(d)) {
+          results.add(makeMissingDependsOnTargetError(actionId, d))
+        }
+      }
+    }
+
+    // check dependencies
+    visit(workflow.actions, results, executeActionVisitor = { action ->
+      checkDependencies(action.id, action.dependsOn)
+    }, forEachActionVisitor = { action ->
+      checkDependencies(action.id, action.dependsOn)
+    })
+  }
+
   private fun makeOutputWithValueError(v: Variable) = ValidationError(
       "Output variable `${v.id}' has a value.", "Output variables should " +
       "always be undefined as their value will be generated during runtime. " +
@@ -105,4 +132,10 @@ object WorkflowValidator {
   private fun makeDuplicateIdError(id: String) = ValidationError(
       "Duplicate identifier `$id'.", "Identifiers of both variables and " +
       "actions must be unique and cannot overlap.")
+
+  private fun makeMissingDependsOnTargetError(actionId: String, target: String) = ValidationError(
+      "Unable to resolve action dependency `$actionId'->`$target'.", "Action " +
+      "`$actionId' depends on an action with ID `$target' but this action does " +
+      "not exist the workflow."
+  )
 }
