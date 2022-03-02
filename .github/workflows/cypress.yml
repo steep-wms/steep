@@ -26,12 +26,12 @@ jobs:
           STEEP_DB_URL: mongodb://mongo:27017/steep
 
     steps:
-      - uses: actions/setup-node@v2.5.1
+      - uses: actions/setup-node@v3
         with:
           node-version: 12
 
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Add data to VMS collection
         run: mongoimport --collection=vms --db=steep --file=${{ github.workspace }}/ui/cypress/fixtures/steep_vms.json
