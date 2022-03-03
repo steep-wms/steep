@@ -37,6 +37,7 @@ import model.processchain.Executable
 import model.processchain.ProcessChain
 import model.timeout.TimeoutPolicy
 import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 import runtime.DockerRuntime
 import runtime.OtherRuntime
 import java.io.File
@@ -253,20 +254,28 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
 
       if (exec.runtime == Service.RUNTIME_DOCKER) {
         interruptable(executor) {
-          dockerRuntime.execute(exec, collector)
+          withMDC(exec, processChainId) {
+            dockerRuntime.execute(exec, collector)
+          }
         }
       } else if (exec.runtime == Service.RUNTIME_OTHER) {
         interruptable(executor) {
-          otherRuntime.execute(exec, collector)
+          withMDC(exec, processChainId) {
+            otherRuntime.execute(exec, collector)
+          }
         }
       } else {
         val r = pluginRegistry.findRuntime(exec.runtime) ?:
             throw IllegalStateException("Unknown runtime: `${exec.runtime}'")
         if (r.compiledFunction.isSuspend) {
-          r.compiledFunction.callSuspend(exec, collector, vertx)
+          withMDCSuspend(exec, processChainId) {
+            r.compiledFunction.callSuspend(exec, collector, vertx)
+          }
         } else {
           interruptable(executor) {
-            r.compiledFunction.call(exec, collector, vertx)
+            withMDC(exec, processChainId) {
+              r.compiledFunction.call(exec, collector, vertx)
+            }
           }
         }
       }
@@ -293,6 +302,50 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
       cont.invokeOnCancellation {
         f.cancel(true)
       }
+    }
+  }
+
+  /**
+   * Populates the slf4j [MDC] with information about the [executable] and
+   * the [processChainId] currently being executed
+   */
+  private fun populateMDC(executable: Executable, processChainId: String) {
+    MDC.put("processChainId", processChainId)
+    MDC.put("executableId", executable.id)
+  }
+
+  /**
+   * Clears the slf4j [MDC] and removes the attributes added by [populateMDC]
+   */
+  private fun unpopulateMDC() {
+    MDC.remove("executableId")
+    MDC.remove("processChainId")
+  }
+
+  /**
+   * Populates the slf4j [MDC] via [populateMDC], calls the given [block] and
+   * then safely clears the [MDC] again
+   */
+  private fun withMDC(executable: Executable, processChainId: String, block: () -> Unit) {
+    populateMDC(executable, processChainId)
+    try {
+      block()
+    } finally {
+      unpopulateMDC()
+    }
+  }
+
+  /**
+   * Populates the slf4j [MDC] via [populateMDC], calls the given [block] and
+   * then safely clears the [MDC] again
+   */
+  private suspend fun withMDCSuspend(executable: Executable, processChainId: String,
+      block: suspend () -> Unit) {
+    populateMDC(executable, processChainId)
+    try {
+      block()
+    } finally {
+      unpopulateMDC()
     }
   }
 
