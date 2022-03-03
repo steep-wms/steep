@@ -103,9 +103,9 @@ object Shell {
   private class StreamGobbler(private val pid: Long,
       private val inputStream: InputStream,
       private val outputCollector: OutputCollector,
-      private val mdc: Map<String, String>) : Runnable {
+      private val mdc: Map<String, String>?) : Runnable {
     override fun run() {
-      MDC.setContextMap(mdc)
+      mdc?.let { MDC.setContextMap(it) }
       inputStream.bufferedReader().forEachLine { line ->
         log.info("[$pid] $line")
         outputCollector.collect(line)
