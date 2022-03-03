@@ -1,6 +1,7 @@
 package helper
 
 import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -47,7 +48,7 @@ object Shell {
         .start()
 
     val streamGobbler = StreamGobbler(process.pid(), process.inputStream,
-        outputCollector)
+        outputCollector, MDC.getCopyOfContextMap())
     val readerThread = Thread(streamGobbler)
     readerThread.start()
 
@@ -101,8 +102,10 @@ object Shell {
    */
   private class StreamGobbler(private val pid: Long,
       private val inputStream: InputStream,
-      private val outputCollector: OutputCollector) : Runnable {
+      private val outputCollector: OutputCollector,
+      private val mdc: Map<String, String>) : Runnable {
     override fun run() {
+      MDC.setContextMap(mdc)
       inputStream.bufferedReader().forEachLine { line ->
         log.info("[$pid] $line")
         outputCollector.collect(line)
