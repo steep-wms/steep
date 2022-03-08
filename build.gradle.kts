@@ -66,8 +66,8 @@ dependencies {
     implementation("org.apache.ant:ant:1.10.12")
     implementation("org.apache.commons:commons-lang3:3.12.0")
     implementation("org.apache.commons:commons-text:1.9")
-    implementation("org.flywaydb:flyway-core:8.5.1")
-    implementation("org.mongodb:mongodb-driver-reactivestreams:4.4.1")
+    implementation("org.flywaydb:flyway-core:8.5.2")
+    implementation("org.mongodb:mongodb-driver-reactivestreams:4.5.0")
     implementation("com.github.openstack4j.core:openstack4j:3.10")
     implementation("org.postgresql:postgresql:42.3.3")
     implementation("org.quartz-scheduler:quartz:2.3.2") {
@@ -82,7 +82,7 @@ dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation(kotlin("script-runtime"))
 
-    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.3.1")
+    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.4.3")
     testImplementation("io.mockk:mockk:1.12.3")
     testImplementation("io.vertx:vertx-junit5:$vertxVersion")
     testImplementation("org.assertj:assertj-core:3.22.0")

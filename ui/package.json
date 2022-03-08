@@ -31,7 +31,7 @@
     "normalize.css": "^8.0.1",
     "nprogress": "^0.2.0",
     "parse-content-range-header": "^0.2.4",
-    "postcss": "^8.4.7",
+    "postcss": "^8.4.8",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "react-feather": "^2.0.9",
@@ -39,17 +39,17 @@
     "react-timeago": "^6.2.1",
     "react-virtualized-auto-sizer": "^1.0.6",
     "react-window": "^1.8.6",
-    "sass": "^1.49.7",
+    "sass": "^1.49.9",
     "sass-loader": "^12.6.0",
     "serve": "^13.0.2",
     "spinkit": "^2.0.1",
     "svgo-loader": "^3.0.0",
     "unfetch": "^4.2.0",
-    "webpack": "^5.69.1"
+    "webpack": "^5.70.0"
   },
   "devDependencies": {
     "cypress": "^9.5.1",
-    "eslint": "^8.8.0",
+    "eslint": "^8.10.0",
     "eslint-config-next": "^12.1.0",
     "eslint-plugin-cypress": "^2.12.1"
   }
