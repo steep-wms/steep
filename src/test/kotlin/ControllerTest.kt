@@ -1,3 +1,4 @@
+import AddressConstants.LOCAL_AGENT_ADDRESS_PREFIX
 import TestMetadata.services
 import db.MetadataRegistry
 import db.MetadataRegistryFactory
@@ -18,6 +19,7 @@ import io.mockk.mockkObject
 import io.mockk.slot
 import io.mockk.unmockkAll
 import io.vertx.core.Vertx
+import io.vertx.core.impl.ConcurrentHashSet
 import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -27,7 +29,9 @@ import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import model.Submission
 import model.Submission.Status
@@ -87,7 +91,8 @@ class ControllerTest {
       val config = json {
         obj(
             ConfigConstants.TMP_PATH to "/tmp",
-            ConfigConstants.OUT_PATH to "/out"
+            ConfigConstants.OUT_PATH to "/out",
+            ConfigConstants.CONTROLLER_LOOKUP_MAXERRORS to 2L
         )
       }
       val options = deploymentOptionsOf(config)
@@ -115,6 +120,7 @@ class ControllerTest {
           it.type == Argument.Type.OUTPUT }.associate { (it.variable.id to listOf(it.variable.value)) }
       },
       expectedSubmissionStatus: Status = Status.SUCCESS,
+      completer: (ctx: VertxTestContext) -> Unit = { ctx.completeNow() },
       verify: (suspend MockKVerificationScope.(Submission) -> Unit)? = null) {
     val workflow = readWorkflow(workflowName)
     val submission = Submission(workflow = workflow)
@@ -154,7 +160,7 @@ class ControllerTest {
 
     coEvery { submissionRegistry.setSubmissionEndTime(submission.id, any()) } answers {
       ctx.verify {
-        // verify that the submission was set to SUCCESS
+        // verify that the submission was set to `expectedSubmissionStatus`
         coVerify(exactly = 1) {
           submissionRegistry.setSubmissionStatus(submission.id, expectedSubmissionStatus)
           submissionRegistry.setSubmissionStartTime(submission.id, any())
@@ -162,7 +168,7 @@ class ControllerTest {
           verify?.let { it(submission) }
         }
       }
-      ctx.completeNow()
+      completer(ctx)
     }
 
     // execute submissions
@@ -467,5 +473,90 @@ class ControllerTest {
           }
         },
         expectedSubmissionStatus = Status.CANCELLED)
+  }
+
+  /**
+   * Checks if a temporary database connection error can be ignored
+   * @param vertx the Vert.x instance
+   * @param ctx the test context
+   */
+  @Test
+  fun ignoreDatabaseConnectionError(vertx: Vertx, ctx: VertxTestContext) {
+    var statusRequested = 0
+    doSimple(vertx, ctx,
+        processChainStatusSupplier = {
+          statusRequested++
+          when (statusRequested) {
+            1 -> ProcessChainStatus.RUNNING
+            2 -> throw IllegalStateException("Temporary fault")
+            else -> ProcessChainStatus.SUCCESS
+          }
+        },
+        expectedSubmissionStatus = Status.SUCCESS) {
+      assertThat(statusRequested).isEqualTo(3)
+    }
+  }
+
+  /**
+   * Checks if a permanent database connection error leads to a submission error
+   * @param vertx the Vert.x instance
+   * @param ctx the test context
+   */
+  @Test
+  fun failOnDatabaseConnectionError(vertx: Vertx, ctx: VertxTestContext) {
+    val expectedMessage = "Permanent fault"
+
+    val errorMessageSubmissionIdSlot = slot<String>()
+    val errorMessageMessageSlot = slot<String>()
+    coEvery { submissionRegistry.setSubmissionErrorMessage(
+      capture(errorMessageSubmissionIdSlot), capture(errorMessageMessageSlot)) } just Runs
+    coEvery { submissionRegistry.setAllProcessChainsStatus(any(), any(), any()) } just Runs
+
+    val processChainIds = ConcurrentHashSet<String>()
+    coEvery { submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(any(), any()) } returns processChainIds
+
+    var statusRequested = 0
+    var consumerRegistered = false
+    val processChainCancelled = Channel<Boolean>()
+    doSimple(vertx, ctx,
+      processChainStatusSupplier = { processChain ->
+        processChainIds.add(processChain.id)
+
+        if (!consumerRegistered) {
+          val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
+          vertx.eventBus().consumer<JsonObject>(address).handler { msg ->
+            if (msg.body().getString("action") == "cancel") {
+              CoroutineScope(vertx.dispatcher()).launch {
+                processChainCancelled.send(true)
+              }
+            }
+          }
+          consumerRegistered = true
+        }
+
+        statusRequested++
+        when (statusRequested) {
+          1 -> ProcessChainStatus.RUNNING
+          else -> throw IllegalStateException(expectedMessage)
+        }
+      },
+      expectedSubmissionStatus = Status.ERROR,
+      completer = {
+        CoroutineScope(vertx.dispatcher()).launch {
+          ctx.coVerify {
+            // check that the process chain has been cancelled
+            assertThat(processChainCancelled.receive()).isTrue
+          }
+          ctx.completeNow()
+        }
+      }) { submission ->
+      // submission should fail after two faults (see ConfigConstants.CONTROLLER_LOOKUP_MAX_ERRORS
+      // set in this test's setUp method above)
+      assertThat(statusRequested).isEqualTo(3)
+
+      // check that the error message was correctly set
+      assertThat(errorMessageSubmissionIdSlot.captured).isEqualTo(submission.id)
+      assertThat(errorMessageMessageSlot.captured).isEqualTo(expectedMessage)
+    }
   }
 }

@@ -198,6 +198,12 @@ object ConfigConstants {
   const val CONTROLLER_LOOKUP_INTERVAL = "steep.controller.lookupIntervalMilliseconds"
 
   /**
+   * The maximum number of errors to tolerate when looking up the status
+   * of process chains of running submissions
+   */
+  const val CONTROLLER_LOOKUP_MAXERRORS = "steep.controller.lookupMaxErrors"
+
+  /**
    * The interval at which the controller looks for orphaned running
    * submissions (i.e. submissions that are in the status `RUNNING' but that
    * are currently not being processed by any [Controller])

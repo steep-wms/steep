@@ -2,6 +2,7 @@ import AddressConstants.CONTROLLER_LOOKUP_NOW
 import AddressConstants.CONTROLLER_LOOKUP_ORPHANS_NOW
 import AddressConstants.LOCAL_AGENT_ADDRESS_PREFIX
 import ConfigConstants.CONTROLLER_LOOKUP_INTERVAL
+import ConfigConstants.CONTROLLER_LOOKUP_MAXERRORS
 import ConfigConstants.CONTROLLER_LOOKUP_ORPHANS_INITIAL_DELAY
 import ConfigConstants.CONTROLLER_LOOKUP_ORPHANS_INTERVAL
 import ConfigConstants.OUT_PATH
@@ -42,6 +43,7 @@ class Controller : CoroutineVerticle() {
   companion object {
     private val log = LoggerFactory.getLogger(Controller::class.java)
     private const val DEFAULT_LOOKUP_INTERVAL = 2000L
+    private const val DEFAULT_LOOKUP_MAX_ERRORS = 5L
     private const val DEFAULT_LOOKUP_ORPHANS_INITIAL_DELAY = 0L
     private const val DEFAULT_LOOKUP_ORPHANS_INTERVAL = 300_000L
     private const val PROCESSING_SUBMISSION_LOCK_PREFIX = "Controller.ProcessingSubmission."
@@ -73,6 +75,7 @@ class Controller : CoroutineVerticle() {
   private val pluginRegistry: PluginRegistry = PluginRegistryFactory.create()
 
   private var lookupInterval: Long = DEFAULT_LOOKUP_INTERVAL
+  private var lookupMaxErrors: Long = DEFAULT_LOOKUP_MAX_ERRORS
   private lateinit var periodicLookupJob: Job
   private var lookupOrphansInterval: Long = DEFAULT_LOOKUP_ORPHANS_INTERVAL
   private var periodicLookupOrphansJob: Job? = null
@@ -95,6 +98,7 @@ class Controller : CoroutineVerticle() {
     }
 
     lookupInterval = config.getLong(CONTROLLER_LOOKUP_INTERVAL, lookupInterval)
+    lookupMaxErrors = config.getLong(CONTROLLER_LOOKUP_MAXERRORS, lookupMaxErrors)
     lookupOrphansInterval = config.getLong(CONTROLLER_LOOKUP_ORPHANS_INTERVAL,
         lookupOrphansInterval)
     val lookupOrphansInitialDelay = config.getLong(CONTROLLER_LOOKUP_ORPHANS_INITIAL_DELAY,
@@ -422,6 +426,7 @@ class Controller : CoroutineVerticle() {
     val results = mutableMapOf<String, List<Any>>()
     var failed = 0
     var cancelled = 0
+    var lookupErrors = 0L
     val executedExecutableIds = mutableSetOf<String>()
 
     val processChainsToCheck = processChains.associateBy { it.id }.toMutableMap()
@@ -431,36 +436,46 @@ class Controller : CoroutineVerticle() {
         delay(lookupInterval)
 
         val finishedProcessChains = mutableSetOf<String>()
-        loop@ for ((processChainId, processChain) in processChainsToCheck) {
-          when (submissionRegistry.getProcessChainStatus(processChainId)) {
-            ProcessChainStatus.SUCCESS -> {
-              submissionRegistry.getProcessChainResults(processChainId)?.let { pcr ->
-                if (collectTemporaryResults) {
-                  results.putAll(pcr)
-                } else {
-                  results.putAll(pcr.filter { (_, v) -> hasSubmissionResults(v) })
+        try {
+          loop@ for ((processChainId, processChain) in processChainsToCheck) {
+            when (submissionRegistry.getProcessChainStatus(processChainId)) {
+              ProcessChainStatus.SUCCESS -> {
+                submissionRegistry.getProcessChainResults(processChainId)?.let { pcr ->
+                  if (collectTemporaryResults) {
+                    results.putAll(pcr)
+                  } else {
+                    results.putAll(pcr.filter { (_, v) -> hasSubmissionResults(v) })
+                  }
                 }
+                executedExecutableIds.addAll(processChain.executables.map { it.id })
+                finishedProcessChains.add(processChainId)
               }
-              executedExecutableIds.addAll(processChain.executables.map { it.id })
-              finishedProcessChains.add(processChainId)
-            }
 
-            ProcessChainStatus.ERROR -> {
-              failed++
-              finishedProcessChains.add(processChainId)
-            }
+              ProcessChainStatus.ERROR -> {
+                failed++
+                finishedProcessChains.add(processChainId)
+              }
 
-            ProcessChainStatus.CANCELLED -> {
-              cancelled++
-              finishedProcessChains.add(processChainId)
-            }
+              ProcessChainStatus.CANCELLED -> {
+                cancelled++
+                finishedProcessChains.add(processChainId)
+              }
 
-            else -> {
-              // since we're waiting for all process chains to finish anyhow, we
-              // can stop looking as soon as we find a process chain that has not
-              // finished yet and wait for the next interval
-              break@loop
+              else -> {
+                // since we're waiting for all process chains to finish anyhow, we
+                // can stop looking as soon as we find a process chain that has not
+                // finished yet and wait for the next interval
+                break@loop
+              }
             }
+          }
+
+          lookupErrors = 0
+        } catch (t: Throwable) {
+          log.warn("Could not look up process chain status", t)
+          lookupErrors++
+          if (lookupErrors == lookupMaxErrors) {
+            throw t
           }
         }
 
