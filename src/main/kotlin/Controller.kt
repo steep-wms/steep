@@ -395,6 +395,7 @@ class Controller : CoroutineVerticle() {
       log.error("Could not execute submission", t)
       submissionRegistry.setSubmissionStatus(submission.id, Submission.Status.ERROR)
       submissionRegistry.setSubmissionErrorMessage(submission.id, t.message)
+      submissionRegistry.setSubmissionEndTime(submission.id, Instant.now())
     } finally {
       // the submission was either successful or it failed - remove the current
       // execution state so it won't be repeated/resumed
