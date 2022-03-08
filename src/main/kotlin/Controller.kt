@@ -1,5 +1,6 @@
 import AddressConstants.CONTROLLER_LOOKUP_NOW
 import AddressConstants.CONTROLLER_LOOKUP_ORPHANS_NOW
+import AddressConstants.LOCAL_AGENT_ADDRESS_PREFIX
 import ConfigConstants.CONTROLLER_LOOKUP_INTERVAL
 import ConfigConstants.CONTROLLER_LOOKUP_ORPHANS_INITIAL_DELAY
 import ConfigConstants.CONTROLLER_LOOKUP_ORPHANS_INTERVAL
@@ -16,6 +17,7 @@ import db.SubmissionRegistryFactory
 import helper.JsonUtils
 import io.prometheus.client.Gauge
 import io.vertx.core.shareddata.Lock
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.shareddata.getLockWithTimeoutAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import kotlinx.coroutines.Job
@@ -396,6 +398,7 @@ class Controller : CoroutineVerticle() {
       submissionRegistry.setSubmissionStatus(submission.id, Submission.Status.ERROR)
       submissionRegistry.setSubmissionErrorMessage(submission.id, t.message)
       submissionRegistry.setSubmissionEndTime(submission.id, Instant.now())
+      cancelProcessChainsOfSubmission(submission.id)
     } finally {
       // the submission was either successful or it failed - remove the current
       // execution state so it won't be repeated/resumed
@@ -479,6 +482,24 @@ class Controller : CoroutineVerticle() {
       is String -> it.startsWith(outPath)
       is Iterable<*> -> hasSubmissionResults(it)
       else -> false
+    }
+  }
+
+  /**
+   * Cancel all process chains of the submission with the given [id]
+   */
+  private suspend fun cancelProcessChainsOfSubmission(id: String) {
+    // first, atomically cancel all process chains that are currently
+    // registered but not running yet
+    submissionRegistry.setAllProcessChainsStatus(id, ProcessChainStatus.REGISTERED,
+      ProcessChainStatus.CANCELLED)
+
+    // now cancel running process chains
+    val pcIds = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
+      id, ProcessChainStatus.RUNNING)
+    val cancelMsg = jsonObjectOf("action" to "cancel")
+    for (pcId in pcIds) {
+      vertx.eventBus().send(LOCAL_AGENT_ADDRESS_PREFIX + pcId, cancelMsg)
     }
   }
 }

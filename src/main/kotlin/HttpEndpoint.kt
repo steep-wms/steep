@@ -1065,11 +1065,7 @@ class HttpEndpoint : CoroutineVerticle() {
           val pcIds = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
               id, SubmissionRegistry.ProcessChainStatus.RUNNING)
           // request cancellation (see also onPutProcessChainById())
-          val cancelMsg = json {
-            obj(
-                "action" to "cancel"
-            )
-          }
+          val cancelMsg = jsonObjectOf("action" to "cancel")
           for (pcId in pcIds) {
             vertx.eventBus().send(LOCAL_AGENT_ADDRESS_PREFIX + pcId, cancelMsg)
           }
