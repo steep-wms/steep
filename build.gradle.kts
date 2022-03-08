@@ -26,7 +26,7 @@ val junitVersion by extra("5.8.2")
 val testcontainersVersion by extra("1.16.3")
 
 repositories {
-    jcenter()
+    mavenCentral()
 }
 
 dependencies {
