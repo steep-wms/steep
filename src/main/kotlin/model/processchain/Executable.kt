@@ -7,8 +7,11 @@ import model.timeout.TimeoutPolicy
 
 /**
  * An executable in a process chain
- * @param id the executable's identifier (typically the name of the
- * processing service that should be called)
+ * @param id an identifier (does not have to be unique). Typically refers to
+ * the `id` of the [model.workflow.ExecuteAction] from which the executable was
+ * derived. Possibly suffixed with a dollar sign `$` and a number denoting the
+ * iteration of an enclosing [model.workflow.ForEachAction] (e.g. `myaction$1`)
+ * or nested [model.workflow.ForEachAction]s (e.g. `myaction$2$1`).
  * @param path the path to the program to execute
  * @param arguments the program arguments
  * @param runtime the runtime environment for this executable
