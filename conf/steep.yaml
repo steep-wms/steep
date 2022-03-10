@@ -66,6 +66,7 @@ steep:
 
   controller:
     lookupIntervalMilliseconds: 2000
+    lookupMaxErrors: 5
     lookupOrphansIntervalMilliseconds: 300000
     lookupOrphansInitialDelayMilliseconds: 0
 
