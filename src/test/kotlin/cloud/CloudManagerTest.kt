@@ -34,7 +34,7 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -110,7 +110,7 @@ class CloudManagerTest {
     val setupFile = File(tempDirFile, "test_setups.yaml")
     YamlUtils.mapper.writeValue(setupFile, setups)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       // deploy verticle under test
       val config = json {
         obj(
@@ -212,7 +212,7 @@ class CloudManagerTest {
     coEvery { client.listVMs(any()) } returns emptyList()
     coEvery { client.listAvailableBlockDevices(any()) } returns emptyList()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       // deploy verticle under test
       val config = json {
         obj(
@@ -370,7 +370,7 @@ class CloudManagerTest {
      */
     @Test
     fun createVMOnDemand(vertx: Vertx, ctx: VertxTestContext) {
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         doCreateOnDemand(testSetup, vertx, ctx, 1)
 
         ctx.coVerify {
@@ -393,7 +393,7 @@ class CloudManagerTest {
      */
     @Test
     fun tryCreateTwoAsync(vertx: Vertx, ctx: VertxTestContext) {
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         val d1 = async { doCreateOnDemand(testSetup, vertx, ctx, 1) }
         val d2 = async { doCreateOnDemand(testSetup, vertx, ctx, 1) }
 
@@ -420,7 +420,7 @@ class CloudManagerTest {
      */
     @Test
     fun tryCreateTwoSync(vertx: Vertx, ctx: VertxTestContext) {
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         doCreateOnDemand(testSetup, vertx, ctx, 2)
 
         ctx.coVerify {
@@ -443,7 +443,7 @@ class CloudManagerTest {
      */
     @Test
     fun tryCreateFiveSync(vertx: Vertx, ctx: VertxTestContext) {
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         doCreateOnDemand(testSetupLarge, vertx, ctx, 1)
         doCreateOnDemand(testSetupLarge, vertx, ctx, 1)
         doCreateOnDemand(testSetupLarge, vertx, ctx, 1)
@@ -470,7 +470,7 @@ class CloudManagerTest {
      */
     @Test
     fun createVMAlternativeSetup(vertx: Vertx, ctx: VertxTestContext) {
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         // let the first setup throw an exception and the second succeed
         coEvery { client.createVM(any(), testSetup.flavor, any(),
             testSetup.availabilityZone, any()) } throws IllegalStateException()
@@ -520,7 +520,7 @@ class CloudManagerTest {
      */
     @Test
     fun tryCreateThreeOfTwoAsync(vertx: Vertx, ctx: VertxTestContext) {
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         val d1 = async { doCreateOnDemand(testSetupTwo, vertx, ctx, 5) }
         val d2 = async { doCreateOnDemand(testSetupTwo, vertx, ctx, 5) }
         val d3 = async { doCreateOnDemand(testSetupTwo, vertx, ctx, 5) }
@@ -549,7 +549,7 @@ class CloudManagerTest {
      */
     @Test
     fun tryCreateThreeOfTwoSync(vertx: Vertx, ctx: VertxTestContext) {
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         doCreateOnDemand(testSetupTwo, vertx, ctx, 5)
         doCreateOnDemand(testSetupTwo, vertx, ctx, 5)
 
@@ -587,7 +587,7 @@ class CloudManagerTest {
       coEvery { client.attachVolume(any(), volumeId2) } just Runs
       coEvery { client.attachVolume(any(), volumeId3) } just Runs
 
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         doCreateOnDemand(testSetupWithVolumes, vertx, ctx, 1)
 
         ctx.coVerify {
@@ -636,7 +636,7 @@ class CloudManagerTest {
       coEvery { client.destroyVM(MY_OLD_VM, any()) } just Runs
       coEvery { client.destroyBlockDevice(MY_OLD_VOLUME) } just Runs
 
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         // pretend we already created a VM
         vmRegistry = VMRegistryFactory.create(vertx)
         vmRegistry.addVM(VM(setup = testSetup, status = VM.Status.RUNNING))
@@ -650,7 +650,7 @@ class CloudManagerTest {
      */
     @Test
     fun destroyExistingVM(vertx: Vertx, ctx: VertxTestContext) {
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         ctx.coVerify {
           coVerify(exactly = 1) {
             client.destroyVM(MY_OLD_VM, any())
@@ -665,7 +665,7 @@ class CloudManagerTest {
      */
     @Test
     fun destroyExistingVolume(vertx: Vertx, ctx: VertxTestContext) {
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         ctx.coVerify {
           coVerify(exactly = 1) {
             client.destroyBlockDevice(MY_OLD_VOLUME)
@@ -680,7 +680,7 @@ class CloudManagerTest {
      */
     @Test
     fun removeNonExistingVM(vertx: Vertx, ctx: VertxTestContext) {
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         ctx.coVerify {
           val vms = vmRegistry.findVMs().toList()
           assertThat(vms).hasSize(1)
@@ -765,7 +765,7 @@ class CloudManagerTest {
      */
     @Test
     fun tryCreateMin(vertx: Vertx, ctx: VertxTestContext) {
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         // give the CloudManager enough time to call sync() at least two times
         delay(SYNC_INTERVAL * 2 * 1000L)
 
@@ -914,7 +914,7 @@ class CloudManagerTest {
      */
     @Test
     fun tryCreateMin(vertx: Vertx, ctx: VertxTestContext) {
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         // give the CloudManager enough time to call sync() at least once
         delay(SYNC_INTERVAL * 2 * 1000L)
 
@@ -953,7 +953,7 @@ class CloudManagerTest {
     }
 
     private fun tryCreateMax(setup: Setup, max: Int, vertx: Vertx, ctx: VertxTestContext) {
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         doCreateOnDemand(setup, vertx, ctx, max.toLong())
 
         ctx.coVerify {
@@ -1002,7 +1002,7 @@ class CloudManagerTest {
      */
     @Test
     fun tryCreateMaxFooBar(vertx: Vertx, ctx: VertxTestContext) {
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         doCreateOnDemand(testSetup, vertx, ctx, 4)
 
         ctx.coVerify {

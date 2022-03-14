@@ -5,7 +5,7 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -25,7 +25,7 @@ class GlobTest {
    */
   @Test
   fun emptyDirectoryAbsolute(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val r = glob(tempDir.toFile().absolutePath + "/**")
         assertThat(r).isEmpty()
@@ -41,7 +41,7 @@ class GlobTest {
   fun singleFileAbsolute(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
     val f = File(tempDir.toFile(), "test.txt")
     f.writeText("Hello world!")
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val r = glob(f.absolutePath)
         assertThat(r).hasSize(1)
@@ -57,7 +57,7 @@ class GlobTest {
   @Test
   fun singleFileRelative(vertx: Vertx, ctx: VertxTestContext) {
     val file1 = "src/test/resources/helper/glob/dummy.txt"
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val r = glob(file1)
         assertThat(r).hasSize(1)
@@ -74,7 +74,7 @@ class GlobTest {
   fun twoFilesRelative(vertx: Vertx, ctx: VertxTestContext) {
     val path = "src/test/resources/helper/glob"
     val pattern = "$path/*"
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val r = glob(pattern)
         assertThat(r).hasSize(1)
@@ -101,7 +101,7 @@ class GlobTest {
     val path = "src/test/resources/helper/glob"
     val pattern = "$path/*"
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val r = glob("${tempDir.toFile().absolutePath}/**/*", pattern)
         assertThat(r).hasSize(2)

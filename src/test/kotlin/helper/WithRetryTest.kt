@@ -7,7 +7,7 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
@@ -72,7 +72,7 @@ class WithRetryTest {
    */
   @Test
   fun noPolicy(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       verifyUntilOK(ctx) {
         val o = Obj(0)
         val start = System.currentTimeMillis()
@@ -92,7 +92,7 @@ class WithRetryTest {
    */
   @Test
   fun noPolicyFault(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       verifyUntilOK(ctx) {
         val o = Obj(1)
         val start = System.currentTimeMillis()
@@ -114,7 +114,7 @@ class WithRetryTest {
    */
   @Test
   fun noDelay(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       verifyUntilOK(ctx) {
         val o = Obj(2)
         val start = System.currentTimeMillis()
@@ -134,7 +134,7 @@ class WithRetryTest {
    */
   @Test
   fun noDelayFault(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       verifyUntilOK(ctx) {
         val o = Obj(3)
         val start = System.currentTimeMillis()
@@ -156,7 +156,7 @@ class WithRetryTest {
    */
   @Test
   fun noDelayEarly(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       verifyUntilOK(ctx) {
         val o = Obj(1)
         val start = System.currentTimeMillis()
@@ -176,7 +176,7 @@ class WithRetryTest {
    */
   @Test
   fun constantDelay(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       verifyUntilOK(ctx) {
         val o = Obj(3)
         val start = System.currentTimeMillis()
@@ -199,7 +199,7 @@ class WithRetryTest {
    */
   @Test
   fun exponentialBackoff(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       verifyUntilOK(ctx) {
         val o = Obj(4)
         val start = System.currentTimeMillis()
@@ -223,7 +223,7 @@ class WithRetryTest {
    */
   @Test
   fun exponentialBackoff3(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       verifyUntilOK(ctx) {
         val o = Obj(3)
         val start = System.currentTimeMillis()
@@ -246,7 +246,7 @@ class WithRetryTest {
    */
   @Test
   fun exponentialBackoffMaxDelay(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       verifyUntilOK(ctx) {
         val o = Obj(5)
         val start = System.currentTimeMillis()
@@ -273,7 +273,7 @@ class WithRetryTest {
    */
   @Test
   fun exponentialBackoffEarly(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       verifyUntilOK(ctx) {
         val o = Obj(2)
         val start = System.currentTimeMillis()
@@ -296,7 +296,7 @@ class WithRetryTest {
    */
   @Test
   fun exponentialBackoffFault(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       verifyUntilOK(ctx) {
         val o = Obj(4)
         val start = System.currentTimeMillis()
@@ -322,7 +322,7 @@ class WithRetryTest {
    */
   @Test
   fun cancel(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       verifyUntilOK(ctx) {
         val o = Obj(3, 2)
         val start = System.currentTimeMillis()
@@ -345,7 +345,7 @@ class WithRetryTest {
    */
   @Test
   fun cancelWithoutRetry(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       verifyUntilOK(ctx) {
         val o = Obj(3, 2)
         val start = System.currentTimeMillis()
@@ -369,7 +369,7 @@ class WithRetryTest {
    */
   @Test
   fun cancelRetryDelay(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val expectedMsg = "CANCELLED!"
       verifyUntilOK(ctx) {
         val coroutineCtx = coroutineContext + SupervisorJob()

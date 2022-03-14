@@ -18,9 +18,10 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.dispatcher
 import io.vertx.spi.cluster.hazelcast.ConfigUtil
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.plugins.call
@@ -175,11 +176,11 @@ suspend fun main() {
   })
 
   // Look for orphaned entries in the remote agent registry from time to time.
-  // Such entries may happen if there is a network failure during degistration
+  // Such entries may happen if there is a network failure during deregistration
   // of an agent.
   val lookupOrphansInterval = conf.getLong(ConfigConstants.CLUSTER_LOOKUP_ORPHANS_INTERVAL, 300_000L) // 5 minutes
   val remoteAgentRegistry = RemoteAgentRegistry(vertx)
-  GlobalScope.launch {
+  CoroutineScope(vertx.dispatcher()).launch {
     while (true) {
       try {
         delay(lookupOrphansInterval)
@@ -208,6 +209,7 @@ suspend fun main() {
   }
 
   // enable graceful shutdown
+  @Suppress("BlockingMethodInNonBlockingContext")
   Runtime.getRuntime().addShutdownHook(Thread {
     // gracefully undeploy all verticles
     val l1 = CountDownLatch(1)

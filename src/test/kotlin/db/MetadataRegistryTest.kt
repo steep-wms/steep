@@ -5,7 +5,7 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -24,7 +24,7 @@ class MetadataRegistryTest {
   fun yamlWithReferences(vertx: Vertx, ctx: VertxTestContext) {
     val registry = FileMetadataRegistry(listOf("src/test/resources/db/services_with_references.yaml"), vertx)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val services = registry.findServices()
         assertThat(services).hasSize(2)

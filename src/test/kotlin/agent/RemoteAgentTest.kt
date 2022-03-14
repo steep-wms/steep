@@ -15,7 +15,7 @@ import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import model.processchain.ProcessChain
@@ -60,7 +60,7 @@ class RemoteAgentTest : AgentTest() {
         return@consumer
       }
 
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         val la = LocalAgent(vertx, localAgentDispatcher)
         val results = la.execute(processChain)
         vertx.eventBus().send(replyAddress, json {
@@ -109,7 +109,7 @@ class RemoteAgentTest : AgentTest() {
     }
 
     val agent = createAgent(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy { agent.execute(ProcessChain()) }
             .isInstanceOf(ReplyException::class.java)
@@ -132,7 +132,7 @@ class RemoteAgentTest : AgentTest() {
     }
 
     val agent = createAgent(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy { agent.execute(ProcessChain()) }
             .isInstanceOf(CancellationException::class.java)
@@ -165,7 +165,7 @@ class RemoteAgentTest : AgentTest() {
     }
 
     val agent = createAgent(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy { agent.execute(ProcessChain()) }
             .isInstanceOf(RemoteException::class.java)
@@ -195,7 +195,7 @@ class RemoteAgentTest : AgentTest() {
     }
 
     val agent = createAgent(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy { agent.execute(ProcessChain()) }
             .isInstanceOf(CancellationException::class.java)
@@ -231,7 +231,7 @@ class RemoteAgentTest : AgentTest() {
     }
 
     val agent = createAgent(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         agent.execute(ProcessChain())
         agent.execute(ProcessChain())

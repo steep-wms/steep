@@ -9,7 +9,7 @@ import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import model.Submission
 import model.processchain.ProcessChain
@@ -38,7 +38,7 @@ abstract class SubmissionRegistryTest {
 
   @AfterEach
   fun tearDownSubmissionRegistry(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.close()
       ctx.completeNow()
     }
@@ -48,7 +48,7 @@ abstract class SubmissionRegistryTest {
   fun addSubmission(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       val s2 = submissionRegistry.findSubmissionById(s.id)
 
@@ -62,7 +62,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun findSubmissionByIdNull(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val s = submissionRegistry.findSubmissionById("DOES_NOT_EXIST")
       ctx.verify {
         assertThat(s).isNull()
@@ -77,7 +77,7 @@ abstract class SubmissionRegistryTest {
     val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
     val s3 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s1)
       submissionRegistry.addSubmission(s2)
       submissionRegistry.addSubmission(s3)
@@ -121,7 +121,7 @@ abstract class SubmissionRegistryTest {
     val s3 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
     val s4 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s1)
       submissionRegistry.addSubmission(s2)
       submissionRegistry.addSubmission(s3)
@@ -175,7 +175,7 @@ abstract class SubmissionRegistryTest {
     val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
     val s3 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s1)
       submissionRegistry.addSubmission(s2)
       submissionRegistry.addSubmission(s3)
@@ -197,7 +197,7 @@ abstract class SubmissionRegistryTest {
     val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
     val s3 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val c1 = submissionRegistry.countSubmissions()
       ctx.verify {
         assertThat(c1).isEqualTo(0)
@@ -226,7 +226,7 @@ abstract class SubmissionRegistryTest {
     val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
     val s3 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s1)
       submissionRegistry.addSubmission(s2)
       submissionRegistry.addSubmission(s3)
@@ -251,7 +251,7 @@ abstract class SubmissionRegistryTest {
   fun fetchNextSubmission(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       val s2 = submissionRegistry.fetchNextSubmission(Submission.Status.ACCEPTED,
           Submission.Status.RUNNING)
@@ -272,7 +272,7 @@ abstract class SubmissionRegistryTest {
   fun setSubmissionStartTime(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       val s1 = submissionRegistry.findSubmissionById(s.id)
 
@@ -296,7 +296,7 @@ abstract class SubmissionRegistryTest {
   fun setSubmissionEndTime(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       val s1 = submissionRegistry.findSubmissionById(s.id)
 
@@ -320,7 +320,7 @@ abstract class SubmissionRegistryTest {
   fun setSubmissionStatus(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       val submissions = submissionRegistry.findSubmissions()
       val acceptedSubmission1 = submissionRegistry.fetchNextSubmission(
@@ -361,7 +361,7 @@ abstract class SubmissionRegistryTest {
     val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
     val s3 = Submission(workflow = Workflow(), status = Submission.Status.ERROR)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s1)
       submissionRegistry.addSubmission(s2)
       submissionRegistry.addSubmission(s3)
@@ -408,7 +408,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun setSubmissionResults(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       doSetSubmissionResults(ctx)
       ctx.completeNow()
     }
@@ -416,7 +416,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun setSubmissionResultsNested(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       doSetSubmissionResults(ctx, mapOf("ARG1" to listOf(
           listOf("output1.txt", "output2.txt")
       )))
@@ -426,7 +426,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun resetSubmissionResults(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val s = doSetSubmissionResults(ctx)
 
       submissionRegistry.setSubmissionResults(s.id, null)
@@ -442,7 +442,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun getResultsOfMissingSubmission(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy {
           submissionRegistry.getSubmissionResults("MISSING")
@@ -475,7 +475,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun setSubmissionErrorMessage(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       doSetSubmissionErrorMessage(ctx)
       ctx.completeNow()
     }
@@ -483,7 +483,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun resetSubmissionErrorMessage(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val s = doSetSubmissionErrorMessage(ctx)
 
       submissionRegistry.setSubmissionErrorMessage(s.id, null)
@@ -499,7 +499,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun getErrorMessageOfMissingSubmission(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy {
           submissionRegistry.getSubmissionErrorMessage("MISSING")
@@ -513,7 +513,7 @@ abstract class SubmissionRegistryTest {
   fun setSubmissionExecutionState(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
 
       ctx.coVerify {
@@ -582,7 +582,7 @@ abstract class SubmissionRegistryTest {
       startTime = now.minusSeconds(200))
     val pc11 = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s1)
       submissionRegistry.addSubmission(s2)
       submissionRegistry.addSubmission(s3)
@@ -640,7 +640,7 @@ abstract class SubmissionRegistryTest {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChains(listOf(pc), s.id)
       val pcs = submissionRegistry.findProcessChains(s.id)
@@ -665,7 +665,7 @@ abstract class SubmissionRegistryTest {
     val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
     val pc21 = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s1)
       submissionRegistry.addProcessChains(listOf(pc11, pc12), s1.id)
       submissionRegistry.addSubmission(s2)
@@ -712,7 +712,7 @@ abstract class SubmissionRegistryTest {
     val s2 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
     val pc4 = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s1)
       submissionRegistry.addSubmission(s2)
       submissionRegistry.addProcessChains(listOf(pc1, pc2, pc3), s1.id)
@@ -759,7 +759,7 @@ abstract class SubmissionRegistryTest {
     val s2 = Submission(workflow = Workflow())
     val pc4 = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s1)
       submissionRegistry.addSubmission(s2)
       submissionRegistry.addProcessChains(listOf(pc1, pc2), s1.id,
@@ -820,7 +820,7 @@ abstract class SubmissionRegistryTest {
     val s2 = Submission(workflow = Workflow())
     val pc4 = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s1)
       submissionRegistry.addSubmission(s2)
       submissionRegistry.addProcessChains(listOf(pc1, pc2), s1.id,
@@ -857,7 +857,7 @@ abstract class SubmissionRegistryTest {
     val s2 = Submission(workflow = Workflow())
     val pc4 = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s1)
       submissionRegistry.addSubmission(s2)
       submissionRegistry.addProcessChains(listOf(pc1, pc2), s1.id,
@@ -900,7 +900,7 @@ abstract class SubmissionRegistryTest {
     val s2 = Submission(workflow = Workflow())
     val pc4 = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s1)
       submissionRegistry.addSubmission(s2)
       submissionRegistry.addProcessChains(listOf(pc1, pc2), s1.id,
@@ -934,7 +934,7 @@ abstract class SubmissionRegistryTest {
     val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
     val pc21 = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val r1 = submissionRegistry.countProcessChains()
       ctx.verify {
         assertThat(r1).isEqualTo(0)
@@ -964,7 +964,7 @@ abstract class SubmissionRegistryTest {
     val pc1 = ProcessChain()
     val pc2 = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       val count0 = submissionRegistry.countProcessChains(s.id)
       submissionRegistry.addProcessChains(listOf(pc1, pc2), s.id)
@@ -987,7 +987,7 @@ abstract class SubmissionRegistryTest {
     val pc3 = ProcessChain()
     val pc4 = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       val count0 = submissionRegistry.countProcessChains(s.id,
           SubmissionRegistry.ProcessChainStatus.REGISTERED)
@@ -1032,7 +1032,7 @@ abstract class SubmissionRegistryTest {
     val pc4 = ProcessChain(requiredCapabilities = setOf("foobar"))
     val pc5 = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       val count0 = submissionRegistry.countProcessChains(s.id,
           requiredCapabilities = setOf("docker", "gpu"))
@@ -1075,7 +1075,7 @@ abstract class SubmissionRegistryTest {
     val pc5 = ProcessChain(requiredCapabilities = rcs2)
     val pc6 = ProcessChain(requiredCapabilities = rcs1)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChains(listOf(pc1, pc2, pc3, pc4, pc5, pc6), s.id)
 
@@ -1097,7 +1097,7 @@ abstract class SubmissionRegistryTest {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChains(listOf(pc), s.id)
       val pc2 = submissionRegistry.fetchNextProcessChain(
@@ -1123,7 +1123,7 @@ abstract class SubmissionRegistryTest {
     val pc1 = ProcessChain()
     val pc2 = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChains(listOf(pc1, pc2), s.id)
       val pcA = submissionRegistry.fetchNextProcessChain(
@@ -1148,7 +1148,7 @@ abstract class SubmissionRegistryTest {
     val pc2 = ProcessChain()
     val pc3 = ProcessChain(requiredCapabilities = setOf("docker"))
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChains(listOf(pc1, pc2, pc3), s.id)
       val pcA = submissionRegistry.fetchNextProcessChain(
@@ -1182,7 +1182,7 @@ abstract class SubmissionRegistryTest {
     val s = Submission(workflow = Workflow())
     val pc1 = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       val eA = submissionRegistry.existsProcessChain(
           SubmissionRegistry.ProcessChainStatus.REGISTERED)
@@ -1214,7 +1214,7 @@ abstract class SubmissionRegistryTest {
     val pc1 = ProcessChain(requiredCapabilities = rc)
     val pc2 = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       val eA1 = submissionRegistry.existsProcessChain(
           SubmissionRegistry.ProcessChainStatus.REGISTERED)
@@ -1275,7 +1275,7 @@ abstract class SubmissionRegistryTest {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChains(listOf(pc), s.id)
       val sid = submissionRegistry.getProcessChainSubmissionId(pc.id)
@@ -1289,7 +1289,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun getSubmissionIdOfMissingProcessChain(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy {
           submissionRegistry.getProcessChainSubmissionId("MISSING")
@@ -1301,7 +1301,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun addProcessChainToMissingSubmission(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy {
           submissionRegistry.addProcessChains(listOf(ProcessChain()), "MISSING")
@@ -1316,7 +1316,7 @@ abstract class SubmissionRegistryTest {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChains(listOf(pc), s.id)
       val startTime1 = submissionRegistry.getProcessChainStartTime(pc.id)
@@ -1349,7 +1349,7 @@ abstract class SubmissionRegistryTest {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChains(listOf(pc), s.id)
       val endTime1 = submissionRegistry.getProcessChainEndTime(pc.id)
@@ -1382,7 +1382,7 @@ abstract class SubmissionRegistryTest {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChains(listOf(pc), s.id)
       val pcs = submissionRegistry.findProcessChains(s.id)
@@ -1434,7 +1434,7 @@ abstract class SubmissionRegistryTest {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChains(listOf(pc), s.id)
 
@@ -1498,7 +1498,7 @@ abstract class SubmissionRegistryTest {
     val pc4 = ProcessChain()
     val pc5 = ProcessChain()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s1)
       submissionRegistry.addProcessChains(listOf(pc1), s1.id,
           SubmissionRegistry.ProcessChainStatus.RUNNING)
@@ -1557,7 +1557,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun getStatusOfMissingProcessChain(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy {
           submissionRegistry.getProcessChainStatus("MISSING")
@@ -1592,7 +1592,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun setProcessChainResults(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       doSetProcessChainResults(ctx)
       ctx.completeNow()
     }
@@ -1600,7 +1600,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun setProcessChainResultsNested(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       doSetProcessChainResults(ctx, mapOf("ARG1" to listOf(
           listOf("output1.txt", "output2.txt")
       )))
@@ -1610,7 +1610,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun resetProcessChainResults(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val pc = doSetProcessChainResults(ctx)
 
       submissionRegistry.setProcessChainResults(pc.id, null)
@@ -1626,7 +1626,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun getResultsOfMissingProcessChain(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy {
           submissionRegistry.getProcessChainResults("MISSING")
@@ -1661,7 +1661,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun setProcessChainErrorMessage(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       doSetProcessChainErrorMessage(ctx)
       ctx.completeNow()
     }
@@ -1669,7 +1669,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun resetProcessChainErrorMessage(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val pc = doSetProcessChainErrorMessage(ctx)
 
       submissionRegistry.setProcessChainErrorMessage(pc.id, null)
@@ -1685,7 +1685,7 @@ abstract class SubmissionRegistryTest {
 
   @Test
   fun getErrorMessageOfMissingProcessChain(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy {
           submissionRegistry.getProcessChainErrorMessage("MISSING")

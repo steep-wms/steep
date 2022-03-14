@@ -18,10 +18,10 @@ import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
@@ -533,7 +533,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
         // task and need to avoid concurrent modification
         val linesCopy = lines()
 
-        GlobalScope.launch(coroutineContext) {
+        CoroutineScope(vertx.dispatcher()).launch {
           val progress = pe.call(exec, linesCopy, vertx)
           progress?.let { progressUpdater(progress) }
         }

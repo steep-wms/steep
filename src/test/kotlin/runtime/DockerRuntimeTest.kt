@@ -12,7 +12,7 @@ import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import model.metadata.Service
 import model.processchain.Argument
@@ -80,7 +80,7 @@ class DockerRuntimeTest {
     ), runtime = Service.RUNTIME_DOCKER)
 
     val runtime = DockerRuntime(config)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.verify {
         val collector = DefaultOutputCollector()
         runtime.execute(exec, collector)
@@ -112,7 +112,7 @@ class DockerRuntimeTest {
     ), runtime = Service.RUNTIME_DOCKER)
 
     val runtime = DockerRuntime(config)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.verify {
         val collector = DefaultOutputCollector()
         runtime.execute(exec, collector)
@@ -152,7 +152,7 @@ class DockerRuntimeTest {
     ))
 
     val runtime = DockerRuntime(config)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.verify {
         val collector = DefaultOutputCollector()
         runtime.execute(exec, collector)
@@ -188,7 +188,7 @@ class DockerRuntimeTest {
     ))
 
     val runtime = DockerRuntime(config)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.verify {
         val collector = DefaultOutputCollector()
         runtime.execute(exec, collector)
@@ -226,7 +226,7 @@ class DockerRuntimeTest {
     ), runtime = Service.RUNTIME_DOCKER)
 
     val runtime = DockerRuntime(config)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.verify {
         val collector = DefaultOutputCollector()
         runtime.execute(exec, collector)
@@ -261,7 +261,7 @@ class DockerRuntimeTest {
     ), runtime = Service.RUNTIME_DOCKER)
 
     val runtime = DockerRuntime(config)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.verify {
         val collector = DefaultOutputCollector()
         runtime.execute(exec, collector)

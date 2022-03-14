@@ -24,9 +24,8 @@ import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
-import io.vertx.kotlin.coroutines.toChannel
 import io.vertx.kotlin.coroutines.toReceiveChannel
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.delay
@@ -93,7 +92,7 @@ class SteepTest {
     val processChain = ProcessChain()
     val remoteAgentRegistry = RemoteAgentRegistry(vertx)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val candidates = remoteAgentRegistry.selectCandidates(
           listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
@@ -120,7 +119,7 @@ class SteepTest {
     mockkConstructor(LocalAgent::class)
     coEvery { anyConstructed<LocalAgent>().execute(processChain) } returns expectedResults
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val candidates = remoteAgentRegistry.selectCandidates(
           listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
@@ -148,7 +147,7 @@ class SteepTest {
     coEvery { anyConstructed<LocalAgent>().execute(processChain) } throws
         IOException(errorMessage)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val candidates = remoteAgentRegistry.selectCandidates(
           listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
@@ -177,7 +176,7 @@ class SteepTest {
     coEvery { anyConstructed<LocalAgent>().execute(processChain) } throws
         Shell.ExecutionException(errorMessage, lastOutput, exitCode)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val candidates = remoteAgentRegistry.selectCandidates(
           listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
@@ -210,7 +209,7 @@ class SteepTest {
       expectedResults
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val candidates = remoteAgentRegistry.selectCandidates(
           listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
@@ -259,7 +258,7 @@ class SteepTest {
       expectedResults
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val candidates = remoteAgentRegistry.selectCandidates(
           listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
@@ -304,7 +303,7 @@ class SteepTest {
     val processChain = ProcessChain(requiredCapabilities = setOf("docker", "foobar"))
     val remoteAgentRegistry = RemoteAgentRegistry(vertx)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val candidates = remoteAgentRegistry.selectCandidates(
           listOf(processChain.requiredCapabilities to 1))
       ctx.verify {
@@ -322,7 +321,7 @@ class SteepTest {
     val processChain = ProcessChain(requiredCapabilities = setOf("docker"))
     val remoteAgentRegistry = RemoteAgentRegistry(vertx)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val candidates = remoteAgentRegistry.selectCandidates(
           listOf(processChain.requiredCapabilities to 1))
       ctx.verify {
@@ -343,7 +342,7 @@ class SteepTest {
     val requiredCapabilities2 = setOf("gpu")
     val remoteAgentRegistry = RemoteAgentRegistry(vertx)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val candidates1 = remoteAgentRegistry.selectCandidates(
           listOf(requiredCapabilities1 to 1, requiredCapabilities2 to 2))
       val candidates2 = remoteAgentRegistry.selectCandidates(
@@ -369,7 +368,7 @@ class SteepTest {
   fun allocateDeallocate(vertx: Vertx, ctx: VertxTestContext) {
     val remoteAgentRegistry = RemoteAgentRegistry(vertx)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val candidates = remoteAgentRegistry.selectCandidates(
           listOf(emptySet<String>() to 1))
       ctx.coVerify {
@@ -398,7 +397,7 @@ class SteepTest {
   fun idle(vertx: Vertx, ctx: VertxTestContext) {
     val remoteAgentRegistry = RemoteAgentRegistry(vertx)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val candidates = remoteAgentRegistry.selectCandidates(
           listOf(emptySet<String>() to 1))
       ctx.coVerify {
@@ -428,7 +427,7 @@ class SteepTest {
     val processChain = ProcessChain()
     val remoteAgentRegistry = RemoteAgentRegistry(vertx)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val candidates = remoteAgentRegistry.selectCandidates(
           listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
@@ -455,7 +454,7 @@ class SteepTest {
     mockkConstructor(LocalAgent::class)
     coEvery { anyConstructed<LocalAgent>().execute(processChain) } returns emptyMap()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val candidates = remoteAgentRegistry.selectCandidates(
           listOf(processChain.requiredCapabilities to 1))
       ctx.coVerify {
@@ -512,7 +511,7 @@ class SteepTest {
         REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
     val replyAddress = "$address.reply.${UniqueID.next()}"
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val consumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
         val channel = consumer.toReceiveChannel(vertx)
@@ -551,7 +550,7 @@ class SteepTest {
         REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
     val replyAddress = "$address.reply.${UniqueID.next()}"
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val consumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
         val channel = consumer.toReceiveChannel(vertx)
@@ -584,7 +583,7 @@ class SteepTest {
         REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
     val replyAddress = "$address.reply.${UniqueID.next()}"
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val consumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
         val channel = consumer.toReceiveChannel(vertx)
@@ -620,7 +619,7 @@ class SteepTest {
         REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
     val replyAddress = "$address.reply.${UniqueID.next()}"
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val consumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
         val channel = consumer.toReceiveChannel(vertx)

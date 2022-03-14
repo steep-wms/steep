@@ -40,7 +40,7 @@ import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import model.Submission
 import model.cloud.VM
@@ -134,7 +134,7 @@ class HttpEndpointTest {
   @Test
   fun getVersion(vertx: Vertx, ctx: VertxTestContext) {
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/")
             .`as`(BodyCodec.jsonObject())
@@ -154,7 +154,7 @@ class HttpEndpointTest {
   @Test
   fun contentNegotiation(vertx: Vertx, ctx: VertxTestContext) {
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         // with "Accept: application/json"
         val response1 = client.get(port, "localhost", "/")
@@ -242,7 +242,7 @@ class HttpEndpointTest {
     coEvery { metadataRegistry.findServices() } returns serviceMetadata
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/services")
             .`as`(BodyCodec.jsonArray())
@@ -274,7 +274,7 @@ class HttpEndpointTest {
     coEvery { metadataRegistry.findServices() } returns serviceMetadata
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         client.get(port, "localhost", "/services/UNKNOWN_ID")
             .expect(ResponsePredicate.SC_NOT_FOUND)
@@ -347,7 +347,7 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.countSubmissions() } returns 3
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/workflows")
             .`as`(BodyCodec.jsonArray())
@@ -425,7 +425,7 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.countSubmissions(Submission.Status.SUCCESS) } returns 1
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/workflows?status=SUCCESS")
             .`as`(BodyCodec.jsonArray())
@@ -481,7 +481,7 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.findSubmissionById(neq(s1.id)) } returns null
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         client.get(port, "localhost", "/workflows/${s1.id}_doesnotexist")
             .`as`(BodyCodec.none())
@@ -550,7 +550,7 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.findSubmissionById(s1.id) } returns s1
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/workflows/${s1.id}")
             .`as`(BodyCodec.jsonObject())
@@ -604,7 +604,7 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getSubmissionResults(s1.id) } returns results
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/workflows/${s1.id}")
             .`as`(BodyCodec.jsonObject())
@@ -659,7 +659,7 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getSubmissionErrorMessage(s1.id) } returns errorMessage
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/workflows/${s1.id}")
             .`as`(BodyCodec.jsonObject())
@@ -703,7 +703,7 @@ class HttpEndpointTest {
         Submission.Status.RUNNING andThen Submission.Status.CANCELLED
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val cancelledBody = json {
           obj(
@@ -807,7 +807,7 @@ class HttpEndpointTest {
   @Test
   fun postWorkflowEmpty(vertx: Vertx, ctx: VertxTestContext) {
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         client.post(port, "localhost", "/workflows")
             .expect(ResponsePredicate.SC_BAD_REQUEST)
@@ -824,7 +824,7 @@ class HttpEndpointTest {
   @Test
   fun postWorkflowInvalid(vertx: Vertx, ctx: VertxTestContext) {
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         client.post(port, "localhost", "/workflows")
             .expect(ResponsePredicate.SC_BAD_REQUEST)
@@ -843,7 +843,7 @@ class HttpEndpointTest {
     val w = Workflow(name = "a".repeat(maxPostSize))
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         client.post(port, "localhost", "/workflows")
             .expect(ResponsePredicate.SC_REQUEST_ENTITY_TOO_LARGE)
@@ -862,7 +862,7 @@ class HttpEndpointTest {
     val w = Workflow(api = "0.0.0")
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         client.post(port, "localhost", "/workflows")
             .expect(ResponsePredicate.SC_BAD_REQUEST)
@@ -885,7 +885,7 @@ class HttpEndpointTest {
     }
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.post(port, "localhost", "/workflows")
             .`as`(BodyCodec.jsonObject())
@@ -1214,7 +1214,7 @@ class HttpEndpointTest {
         "THIS is an ERROR"
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/processchains")
             .`as`(BodyCodec.jsonArray())
@@ -1299,7 +1299,7 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainResults(pc2.id) } returns null
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/processchains?submissionId=${s1.id}")
             .`as`(BodyCodec.jsonArray())
@@ -1364,7 +1364,7 @@ class HttpEndpointTest {
         "output_file1" to listOf("output.txt"))
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.get(port, "localhost",
             "/processchains?submissionId=${s1.id}&status=SUCCESS")
@@ -1418,7 +1418,7 @@ class HttpEndpointTest {
         "output_file1" to listOf("output.txt"))
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         client.get(port, "localhost", "/processchains/${pc1.id}_doesnotexist")
             .`as`(BodyCodec.none())
@@ -1489,7 +1489,7 @@ class HttpEndpointTest {
     }
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/processchains/${pc1.id}")
             .`as`(BodyCodec.jsonObject())
@@ -1553,7 +1553,7 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainEndTime(pc3.id) } returns null
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val cancelledBody = json {
           obj(
@@ -1686,7 +1686,7 @@ class HttpEndpointTest {
     coEvery { vmRegistry.countVMs() } returns 3
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/vms")
             .`as`(BodyCodec.jsonArray())
@@ -1736,7 +1736,7 @@ class HttpEndpointTest {
     coEvery { vmRegistry.countVMs(status = VM.Status.CREATING) } returns 2
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/vms?status=CREATING")
             .`as`(BodyCodec.jsonArray())
@@ -1779,7 +1779,7 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainStatus(id) } throws NoSuchElementException()
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         client.get(port, "localhost", "/logs/processchains/$id")
             .expect(ResponsePredicate.SC_NOT_FOUND)
@@ -1803,7 +1803,7 @@ class HttpEndpointTest {
     coEvery { agentRegistry.getPrimaryAgentIds() } returns emptySet()
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         client.get(port, "localhost", "/logs/processchains/$id")
             .expect(ResponsePredicate.SC_NOT_FOUND)
@@ -1858,7 +1858,7 @@ class HttpEndpointTest {
     vertx.eventBus().consumer<JsonObject>(address2) { msg ->
       agent2Asked.getAndIncrement()
       val obj = msg.body()
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         ctx.coVerify {
           if (start != 0) {
             assertThat(obj.getLong("start")).isEqualTo(start.toLong())
@@ -1916,7 +1916,7 @@ class HttpEndpointTest {
         agent1Asked = agent1Asked, agent2Asked = agent2Asked)
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/logs/processchains/$id")
             .`as`(BodyCodec.string())
@@ -1948,7 +1948,7 @@ class HttpEndpointTest {
         agent1Asked = agent1Asked, agent2Asked = agent2Asked)
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/logs/processchains/$id")
             .`as`(BodyCodec.string())
@@ -1985,7 +1985,7 @@ class HttpEndpointTest {
         agent1Asked = agent1Asked, agent2Asked = agent2Asked)
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/logs/processchains/$id")
             .`as`(BodyCodec.string())
@@ -2021,7 +2021,7 @@ class HttpEndpointTest {
         agent1Asked = agent1Asked, agent2Asked = agent2Asked, checkOnly = true)
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.head(port, "localhost", "/logs/processchains/$id")
             .`as`(BodyCodec.string())
@@ -2057,7 +2057,7 @@ class HttpEndpointTest {
         errorMessage = error)
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.head(port, "localhost", "/logs/processchains/$id")
             .`as`(BodyCodec.string())
@@ -2088,7 +2088,7 @@ class HttpEndpointTest {
         agent1Asked = agent1Asked, agent2Asked = agent2Asked)
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         client.get(port, "localhost", "/logs/processchains/$id")
             .`as`(BodyCodec.string())
@@ -2124,7 +2124,7 @@ class HttpEndpointTest {
       }
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val client = WebClient.create(vertx)
         val response = client.get(port, "localhost", "/agents")
@@ -2158,7 +2158,7 @@ class HttpEndpointTest {
       msg.reply(jsonObjectOf("id" to agentId1))
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val client = WebClient.create(vertx)
         client.get(port, "localhost", "/agents")
@@ -2199,7 +2199,7 @@ class HttpEndpointTest {
       ).apply { if (!healthy) put("error", errorMessage) }
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val systemHealthy = services && agents && submissions && vms
         val client = WebClient.create(vertx)

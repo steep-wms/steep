@@ -6,7 +6,7 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import model.cloud.VM
 import model.setup.Setup
@@ -38,7 +38,7 @@ abstract class VMRegistryTest {
 
   @AfterEach
   open fun tearDown(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.close()
       ctx.completeNow()
     }
@@ -48,7 +48,7 @@ abstract class VMRegistryTest {
   fun addVM(vertx: Vertx, ctx: VertxTestContext) {
     val vm = VM(setup = setup)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.addVM(vm)
       val vm2 = vmRegistry.findVMById(vm.id)
 
@@ -62,7 +62,7 @@ abstract class VMRegistryTest {
 
   @Test
   fun findVMByIdNull(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val vm = vmRegistry.findVMById("DOES_NOT_EXIST")
       ctx.verify {
         assertThat(vm).isNull()
@@ -76,7 +76,7 @@ abstract class VMRegistryTest {
     val vm1 = VM(setup = setup, externalId = "a")
     val vm2 = VM(setup = setup, externalId = "b")
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.addVM(vm1)
       vmRegistry.addVM(vm2)
 
@@ -99,7 +99,7 @@ abstract class VMRegistryTest {
     val vm2 = VM(setup = setup, status = VM.Status.PROVISIONING)
     val vm3 = VM(setup = setup, status = VM.Status.RUNNING)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.addVM(vm1)
       vmRegistry.addVM(vm2)
       vmRegistry.addVM(vm3)
@@ -142,7 +142,7 @@ abstract class VMRegistryTest {
     val vm2 = VM(setup = setup, status = VM.Status.CREATING)
     val vm3 = VM(setup = setup, status = VM.Status.RUNNING)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.addVM(vm1)
       vmRegistry.addVM(vm2)
       vmRegistry.addVM(vm3)
@@ -176,7 +176,7 @@ abstract class VMRegistryTest {
     val vm6 = VM(setup = setup, status = VM.Status.DESTROYED)
     val vm7 = VM(setup = setup, status = VM.Status.ERROR)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.addVM(vm1)
       vmRegistry.addVM(vm2)
       vmRegistry.addVM(vm3)
@@ -208,7 +208,7 @@ abstract class VMRegistryTest {
     val vm8 = VM(setup = setup2, status = VM.Status.RUNNING)
     val vm9 = VM(setup = setup2, status = VM.Status.ERROR)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.addVM(vm1)
       vmRegistry.addVM(vm2)
       vmRegistry.addVM(vm3)
@@ -243,7 +243,7 @@ abstract class VMRegistryTest {
     val vm9 = VM(setup = setup2, status = VM.Status.ERROR)
     val vm10 = VM(setup = setup, status = VM.Status.ERROR)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.addVM(vm1)
       vmRegistry.addVM(vm2)
       vmRegistry.addVM(vm3)
@@ -290,7 +290,7 @@ abstract class VMRegistryTest {
     val vm8 = VM(setup = setup2, status = VM.Status.RUNNING)
     val vm9 = VM(setup = setup2, status = VM.Status.ERROR)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.addVM(vm1)
       vmRegistry.addVM(vm2)
       vmRegistry.addVM(vm3)
@@ -326,7 +326,7 @@ abstract class VMRegistryTest {
     val vm8 = VM(setup = setup2, status = VM.Status.RUNNING)
     val vm9 = VM(setup = setup2, status = VM.Status.ERROR)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.addVM(vm1)
       vmRegistry.addVM(vm2)
       vmRegistry.addVM(vm3)
@@ -353,7 +353,7 @@ abstract class VMRegistryTest {
     val expectedTime = Instant.now()
     val vm1 = VM(setup = setup, status = VM.Status.CREATING)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.addVM(vm1)
 
       val r1 = vmRegistry.findVMById(vm1.id)
@@ -375,7 +375,7 @@ abstract class VMRegistryTest {
     val expectedTime = Instant.now()
     val vm1 = VM(setup = setup, status = VM.Status.RUNNING)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.addVM(vm1)
 
       val r1 = vmRegistry.findVMById(vm1.id)
@@ -397,7 +397,7 @@ abstract class VMRegistryTest {
     val expectedTime = Instant.now()
     val vm1 = VM(setup = setup, status = VM.Status.DESTROYED)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.addVM(vm1)
 
       val r1 = vmRegistry.findVMById(vm1.id)
@@ -419,7 +419,7 @@ abstract class VMRegistryTest {
     val vm1 = VM(setup = setup, status = VM.Status.CREATING)
     val vm2 = VM(setup = setup, status = VM.Status.PROVISIONING)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.addVM(vm1)
       vmRegistry.addVM(vm2)
 
@@ -455,7 +455,7 @@ abstract class VMRegistryTest {
     val vm1 = VM(setup = setup, status = VM.Status.CREATING)
     val vm2 = VM(setup = setup, status = VM.Status.PROVISIONING)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.addVM(vm1)
       vmRegistry.addVM(vm2)
 
@@ -484,7 +484,7 @@ abstract class VMRegistryTest {
     val vm1 = VM(setup = setup, status = VM.Status.CREATING)
     val vm2 = VM(setup = setup, status = VM.Status.PROVISIONING)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.addVM(vm1)
       vmRegistry.addVM(vm2)
 
@@ -517,7 +517,7 @@ abstract class VMRegistryTest {
     val expectedId = "external-id"
     val vm1 = VM(setup = setup, status = VM.Status.CREATING)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.addVM(vm1)
 
       vmRegistry.setVMExternalID(vm1.id, expectedId)
@@ -536,7 +536,7 @@ abstract class VMRegistryTest {
     val expectedIpAddress = "192.168.0.1"
     val vm1 = VM(setup = setup, status = VM.Status.CREATING)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.addVM(vm1)
 
       vmRegistry.setVMIPAddress(vm1.id, expectedIpAddress)
@@ -555,7 +555,7 @@ abstract class VMRegistryTest {
     val expectedReason = "THIS IS AN ERROR"
     val vm1 = VM(setup = setup, status = VM.Status.CREATING)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.addVM(vm1)
 
       val r1 = vmRegistry.findVMById(vm1.id)
@@ -606,7 +606,7 @@ abstract class VMRegistryTest {
 
     val now = Instant.now()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       vmRegistry.addVM(vm1)
       vmRegistry.addVM(vm2)
       vmRegistry.addVM(vm3)

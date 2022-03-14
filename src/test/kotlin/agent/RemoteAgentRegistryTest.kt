@@ -14,7 +14,7 @@ import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
@@ -98,7 +98,7 @@ class RemoteAgentRegistryTest {
   @Test
   fun selectNoCandidate(vertx: Vertx, ctx: VertxTestContext) {
     val registry = RemoteAgentRegistry(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val candidates = registry.selectCandidates(listOf(emptySet<String>() to 1))
       ctx.verify {
         assertThat(candidates).isEmpty()
@@ -113,7 +113,7 @@ class RemoteAgentRegistryTest {
   @Test
   fun allocateNoAgent(vertx: Vertx, ctx: VertxTestContext) {
     val registry = RemoteAgentRegistry(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val agent = registry.tryAllocate("DUMMY_ADDRESS", UniqueID.next())
       ctx.verify {
         assertThat(agent).isNull()
@@ -142,7 +142,7 @@ class RemoteAgentRegistryTest {
       }
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       registry.register(agentId)
       delay(200)
       ctx.verify {
@@ -159,7 +159,7 @@ class RemoteAgentRegistryTest {
   fun selectOneCandidate(vertx: Vertx, ctx: VertxTestContext) {
     val registry = RemoteAgentRegistry(vertx)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val agent = registerAgentWithCapabilities(emptyList(), registry, vertx, ctx) { allRcs, _, _ ->
         ctx.verify {
           assertThat(allRcs).isEqualTo(JsonArray().add(JsonArray()))
@@ -210,7 +210,7 @@ class RemoteAgentRegistryTest {
       }
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       registry.register(agentId)
 
       val agent = registry.tryAllocate(address, processChainId)
@@ -240,7 +240,7 @@ class RemoteAgentRegistryTest {
 
     val reqCap = listOf("docker", "gpu")
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val agent = registerAgentWithCapabilities(reqCap, registry, vertx, ctx) { allRcs, capabilities, _ ->
         ctx.verify {
           assertThat(allRcs).isEqualTo(JsonArray().add(JsonArray(capabilities)))
@@ -272,7 +272,7 @@ class RemoteAgentRegistryTest {
       if (available) 0 else -1
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val agent1 = registerAgentWithCapabilities(reqCap1, registry, vertx,
           ctx, bestSelector = bestSelector)
       val agent2 = registerAgentWithCapabilities(reqCap2, registry, vertx,
@@ -318,7 +318,7 @@ class RemoteAgentRegistryTest {
       allRcs.indexOfFirst { (it as JsonArray) == JsonArray(capabilities) }
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val agent1 = registerAgentWithCapabilities(reqCap1, registry, vertx,
           ctx, bestSelector = bestSelector)
       val agent2 = registerAgentWithCapabilities(reqCap2, registry, vertx,
@@ -355,7 +355,7 @@ class RemoteAgentRegistryTest {
       if (available) 0 else -1
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val agent1 = registerAgentWithCapabilities(reqCap1, registry, vertx,
           ctx, bestSelector = bestSelector)
       val agent2 = registerAgentWithCapabilities(reqCap2, registry, vertx,
@@ -402,7 +402,7 @@ class RemoteAgentRegistryTest {
     val reqCap1 = listOf("docker")
     val reqCap2 = listOf("gpu")
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val agent1 = registerAgentWithCapabilities(reqCap1, registry, vertx,
           ctx, bestSelector = { _, _, _ -> -1 })
       val agent2 = registerAgentWithCapabilities(reqCap2, registry, vertx,
@@ -436,7 +436,7 @@ class RemoteAgentRegistryTest {
     val q1 = ArrayDeque(listOf(0L, 1L, 4L))
     val q2 = ArrayDeque(listOf(2L, 2L, 3L))
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val agent1 = registerAgentWithCapabilities(emptyList(), registry, vertx, ctx,
           sequenceProvider = q1::removeFirst, bestSelector = { _, _, _ -> 0 })
       val agent2 = registerAgentWithCapabilities(emptyList(), registry, vertx, ctx,
@@ -500,7 +500,7 @@ class RemoteAgentRegistryTest {
       result
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val agent1 = registerAgentWithCapabilities(reqCap1, registry, vertx, ctx,
           agentId = "A", sequenceProvider = q1::removeFirst, bestSelector = bestSelector)
       val agent2 = registerAgentWithCapabilities(reqCap2, registry, vertx, ctx,
@@ -627,7 +627,7 @@ class RemoteAgentRegistryTest {
       }
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       registry.register(agentId1)
       registry.register(agentId2)
 

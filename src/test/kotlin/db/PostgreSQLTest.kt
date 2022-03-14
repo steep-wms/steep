@@ -6,7 +6,7 @@ import io.vertx.kotlin.coroutines.dispatcher
 import io.vertx.pgclient.PgConnectOptions
 import io.vertx.pgclient.PgPool
 import io.vertx.sqlclient.PoolOptions
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.junit.jupiter.api.AfterEach
 import org.testcontainers.containers.JdbcDatabaseContainer
@@ -37,7 +37,7 @@ interface PostgreSQLTest {
 
     val client = PgPool.pool(vertx, connectOptions, poolOptions)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       deleteFromTables(client)
       client.close()
       ctx.completeNow()

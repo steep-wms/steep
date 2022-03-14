@@ -6,10 +6,12 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import kotlinx.coroutines.GlobalScope
+import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import model.cloud.VM
 import model.setup.Setup
@@ -27,7 +29,7 @@ class MainTest {
    * Test if Hazelcast members can be restored from still running VMs
    */
   @Test
-  fun restoreMembers(ctx: VertxTestContext) {
+  fun restoreMembers(ctx: VertxTestContext, vertx: Vertx) {
     val ip1 = "127.0.0.1"
     val ip3 = "192.0.0.1"
     val defaultPort = 6000
@@ -47,7 +49,7 @@ class MainTest {
     coEvery { vmRegistry.findNonTerminatedVMs() } returns listOf(vm1, vm2, vm3)
     coEvery { vmRegistry.close() } just Runs
 
-    GlobalScope.launch {
+    CoroutineScope(vertx.dispatcher()).launch {
       val members = restoreMembers(defaultPort, conf)
       assertThat(members).containsExactlyInAnyOrder("$ip1:$defaultPort",
           "$ip3:$defaultPort")

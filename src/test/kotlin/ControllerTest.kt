@@ -30,7 +30,6 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import model.Submission
@@ -76,7 +75,7 @@ class ControllerTest {
     coEvery { submissionRegistry.findSubmissionIdsByStatus(Status.RUNNING) } returns emptyList()
     coEvery { submissionRegistry.close() } just Runs
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       // initialize plugin registry if necessary
       if (info.tags.contains(WITH_ADAPTER)) {
         val pluginRegistryConfig = json {

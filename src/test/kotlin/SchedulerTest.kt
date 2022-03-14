@@ -30,7 +30,7 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.processchain.ProcessChain
@@ -302,7 +302,7 @@ class SchedulerTest {
 
     val pc2Results = mapOf("var" to listOf("test.txt"))
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       // add another scheduler that monitors 'pc3'
       val otherSchedulerId = UniqueID.next()
       val sharedData = vertx.sharedData()

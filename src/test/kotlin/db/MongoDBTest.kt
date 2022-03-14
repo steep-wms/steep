@@ -12,7 +12,7 @@ import helper.listCollectionNamesAwait
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
@@ -57,7 +57,7 @@ interface MongoDBTest {
     val cs = ConnectionString(CONNECTION_STRING)
     val client = MongoClients.create(cs)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       // Don't drop the whole database - just delete the contents of all
       // collections instead. It makes the unit tests much faster (they now take
       // a few seconds vs several minutes) because the collections do not have

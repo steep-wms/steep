@@ -8,7 +8,7 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import model.cloud.PoolAgentParams
 import model.cloud.VM
@@ -61,7 +61,7 @@ class SetupSelectorTest {
     coEvery { vmRegistry.countNonTerminatedVMsBySetup(any()) } returns 0
     coEvery { vmRegistry.countStartingVMsBySetup(any()) } returns 0
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThat(selector.select(1, emptyList(), emptyList())).isEmpty()
         assertThat(selector.select(1, listOf(RQ1), listOf(SETUP01, SETUP02)))
@@ -93,7 +93,7 @@ class SetupSelectorTest {
 
     val setups = listOf(SETUP01, SETUP02, SETUP03)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThat(selector.select(1, listOf(RQ1), setups))
             .containsExactly(SETUP03)
@@ -119,7 +119,7 @@ class SetupSelectorTest {
 
     val setups = listOf(SETUP01, SETUP02, SETUP03)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThat(selector.select(1, listOf(RQ1), setups))
             .isEmpty()
@@ -149,7 +149,7 @@ class SetupSelectorTest {
 
     val setups = listOf(SETUP01, SETUP02, SETUP03, SETUP04, SETUP05)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThat(selector.select(1, listOf(RQ1), setups))
             .isEmpty()
@@ -185,7 +185,7 @@ class SetupSelectorTest {
 
     val setups = listOf(SETUP01, SETUP02, SETUP03, SETUP04, SETUP05, SETUP06)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThat(selector.select(1, listOf(RQ1), setups))
             .isEmpty()
@@ -220,7 +220,7 @@ class SetupSelectorTest {
 
     val setups = listOf(SETUP07)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThat(selector.select(1, listOf(RQ1), setups))
             .isEmpty()
@@ -255,7 +255,7 @@ class SetupSelectorTest {
 
     val setups = listOf(SETUP07, SETUP08)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThat(selector.select(5, listOf(RQ1), setups))
             .containsExactly(SETUP07, SETUP07, SETUP07)
@@ -276,7 +276,7 @@ class SetupSelectorTest {
 
     val setups = listOf(SETUP07, SETUP08)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThat(selector.selectMinimum(setups, false))
             .containsExactly(SETUP07, SETUP07, SETUP08)
@@ -298,7 +298,7 @@ class SetupSelectorTest {
 
     val setups = listOf(SETUP07, SETUP08)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThat(selector.selectMinimum(setups, false))
             .containsExactly(SETUP07, SETUP07)
@@ -320,7 +320,7 @@ class SetupSelectorTest {
 
     val setups = listOf(SETUP07, SETUP08)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThat(selector.selectMinimum(setups, false))
             .containsExactly(SETUP07, SETUP07, SETUP08)
@@ -340,7 +340,7 @@ class SetupSelectorTest {
 
     val setups = listOf(SETUP07, SETUP08, SETUP09)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThat(selector.selectMinimum(setups, false))
             .containsExactly(SETUP09, SETUP09)
@@ -357,7 +357,7 @@ class SetupSelectorTest {
   fun selectMinimumVMsAndParams(vertx: Vertx, ctx: VertxTestContext) {
     val vmRegistry = mockk<VMRegistry>()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val selector1 = SetupSelector(vmRegistry, listOf(
             PoolAgentParams(listOf(RQ1), min = 2, max = 3),
@@ -412,7 +412,7 @@ class SetupSelectorTest {
     coEvery { vmRegistry.findNonTerminatedVMs() } returns listOf(
         VM(setup = SETUP07), VM(setup = SETUP08), VM(setup = SETUP08))
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val selector = SetupSelector(vmRegistry, listOf(
             PoolAgentParams(listOf(RQ1), min = 2),
@@ -451,7 +451,7 @@ class SetupSelectorTest {
 
     val setups = listOf(SETUP10, SETUP11)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         // 6 VMs are already running and the pool agent params define a
         // maximum of 7 so the selector should only return one entry!

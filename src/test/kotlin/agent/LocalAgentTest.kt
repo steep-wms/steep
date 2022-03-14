@@ -29,7 +29,7 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -79,7 +79,7 @@ class LocalAgentTest : AgentTest() {
       agent.cancel()
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy { agent.execute(processChain) }
             .isInstanceOf(CancellationException::class.java)
@@ -113,7 +113,7 @@ class LocalAgentTest : AgentTest() {
       })
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy { agent.execute(processChain) }
             .isInstanceOf(CancellationException::class.java)
@@ -152,7 +152,7 @@ class LocalAgentTest : AgentTest() {
       })
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         // execute process chain
         assertThatThrownBy { agent.execute(processChain) }
@@ -192,7 +192,7 @@ class LocalAgentTest : AgentTest() {
 
     vertx.setTimer(200) {
       val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         ctx.coVerify {
           val msg = vertx.eventBus().request<Double?>(address, json {
             obj(
@@ -206,7 +206,7 @@ class LocalAgentTest : AgentTest() {
 
     vertx.setTimer(1400) {
       val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         ctx.coVerify {
           val msg = vertx.eventBus().request<Double?>(address, json {
             obj(
@@ -218,7 +218,7 @@ class LocalAgentTest : AgentTest() {
       }
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       agent.execute(processChain)
       ctx.completeNow()
     }
@@ -277,7 +277,7 @@ class LocalAgentTest : AgentTest() {
 
     val agent = createAgent(vertx)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         agent.execute(processChain)
         verify(exactly = 5) {
@@ -352,7 +352,7 @@ class LocalAgentTest : AgentTest() {
 
     val agent = createAgent(vertx)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         agent.execute(processChain)
         verify(exactly = 9) {
@@ -383,7 +383,7 @@ class LocalAgentTest : AgentTest() {
     var messageSent = false
     vertx.setTimer(200) {
       val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
-      GlobalScope.launch(vertx.dispatcher()) {
+      CoroutineScope(vertx.dispatcher()).launch {
         ctx.coVerify {
           assertThatThrownBy {
             vertx.eventBus().request<Double?>(address, json {
@@ -397,7 +397,7 @@ class LocalAgentTest : AgentTest() {
       }
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         agent.execute(processChain)
         assertThat(messageSent).isTrue
@@ -428,7 +428,7 @@ class LocalAgentTest : AgentTest() {
 
     val agent = LocalAgent(vertx, localAgentDispatcher, config)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val start = System.currentTimeMillis()
         agent.execute(processChain)
@@ -458,7 +458,7 @@ class LocalAgentTest : AgentTest() {
 
     val agent = LocalAgent(vertx, localAgentDispatcher, config)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy { agent.execute(processChain) }
             .isInstanceOf(Shell.ExecutionException::class.java)
@@ -494,7 +494,7 @@ class LocalAgentTest : AgentTest() {
       agent.cancel()
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy { agent.execute(processChain) }
             .isInstanceOf(CancellationException::class.java)
@@ -531,7 +531,7 @@ class LocalAgentTest : AgentTest() {
     }
 
     val config = JsonObject()
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       // Old behavior, no config set.
       val invocationsNoConfig = 2
       LocalAgent(vertx, localAgentDispatcher, config).execute(processChain)
@@ -577,7 +577,7 @@ class LocalAgentTest : AgentTest() {
 
     val agent = LocalAgent(vertx, localAgentDispatcher)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         // should succeed
         agent.execute(processChain)
@@ -608,7 +608,7 @@ class LocalAgentTest : AgentTest() {
 
     val agent = LocalAgent(vertx, localAgentDispatcher)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy { agent.execute(processChain) }
           .isInstanceOf(expectedExceptionClass)
@@ -642,7 +642,7 @@ class LocalAgentTest : AgentTest() {
 
     val agent = LocalAgent(vertx, localAgentDispatcher)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy { agent.execute(processChain) }.isSameAs(e)
       }
@@ -781,7 +781,7 @@ class LocalAgentTest : AgentTest() {
 
     val agent = LocalAgent(vertx, localAgentDispatcher)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         // should succeed
         agent.execute(processChain)
@@ -815,7 +815,7 @@ class LocalAgentTest : AgentTest() {
 
     val agent = LocalAgent(vertx, localAgentDispatcher)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         // should succeed
         assertThatThrownBy { agent.execute(processChain) }
