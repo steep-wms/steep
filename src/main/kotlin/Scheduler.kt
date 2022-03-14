@@ -23,11 +23,8 @@ import io.vertx.core.Promise
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.AsyncMap
-import io.vertx.kotlin.core.eventbus.requestAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
-import io.vertx.kotlin.core.shareddata.putAwait
-import io.vertx.kotlin.core.shareddata.removeAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import kotlinx.coroutines.Job
@@ -178,7 +175,7 @@ class Scheduler : CoroutineVerticle() {
       launch {
         val theirAgentId = msg.body().getString("agentId")
         log.trace("Node `$theirAgentId' has left the cluster. Removing scheduler.")
-        schedulers.removeAwait(theirAgentId)
+        schedulers.remove(theirAgentId).await()
 
         // look for orphaned process chains the scheduler might have left behind
         lookupOrphans()
@@ -186,7 +183,7 @@ class Scheduler : CoroutineVerticle() {
     }
 
     // register our own instance in the map
-    schedulers.putAwait(agentId, true)
+    schedulers.put(agentId, true).await()
   }
 
   /**
@@ -212,7 +209,7 @@ class Scheduler : CoroutineVerticle() {
     periodicLookupJob.cancelAndJoin()
     periodicLookupOrphansJob?.cancelAndJoin()
     submissionRegistry.close()
-    schedulers.removeAwait(agentId)
+    schedulers.remove(agentId).await()
   }
 
   /**
@@ -455,7 +452,7 @@ class Scheduler : CoroutineVerticle() {
       schedulers.keys(keysPromise)
       for (scheduler in keysPromise.future().await()) {
         val address = "$SCHEDULER_PREFIX$scheduler$SCHEDULER_RUNNING_PROCESS_CHAINS_SUFFIX"
-        val ids = vertx.eventBus().requestAwait<JsonArray>(address, null)
+        val ids = vertx.eventBus().request<JsonArray>(address, null).await()
         for (id in ids.body()) {
           allRunningProcessChains.add(id.toString())
         }
@@ -490,8 +487,8 @@ class Scheduler : CoroutineVerticle() {
             "action" to "info"
         )
       }
-      val agentInfos = agentIds.map { vertx.eventBus().requestAwait<JsonObject>(
-          REMOTE_AGENT_ADDRESS_PREFIX + it, msg) }.map { it.body() }
+      val agentInfos = agentIds.map { vertx.eventBus().request<JsonObject>(
+          REMOTE_AGENT_ADDRESS_PREFIX + it, msg).await() }.map { it.body() }
       val processChainsToAgents = agentInfos.mapNotNull { info ->
         val pcId = info.getString("processChainId")
         if (pcId != null) {

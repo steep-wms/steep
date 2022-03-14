@@ -2,23 +2,22 @@ import agent.RemoteAgentRegistry
 import ch.qos.logback.classic.LoggerContext
 import ch.qos.logback.classic.joran.JoranConfigurator
 import cloud.CloudManager
-import com.hazelcast.core.MembershipAdapter
-import com.hazelcast.core.MembershipEvent
+import com.hazelcast.cluster.MembershipAdapter
+import com.hazelcast.cluster.MembershipEvent
 import db.PluginRegistryFactory
 import db.VMRegistryFactory
 import helper.JsonUtils
 import helper.LazyJsonObjectMessageCodec
 import helper.UniqueID
 import helper.loadTemplate
+import io.vertx.core.Vertx.clusteredVertx
 import io.vertx.core.VertxOptions
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.core.Vertx
-import io.vertx.kotlin.core.closeAwait
-import io.vertx.kotlin.core.deployVerticleAwait
 import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.kotlin.coroutines.await
 import io.vertx.spi.cluster.hazelcast.ConfigUtil
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager
 import kotlinx.coroutines.GlobalScope
@@ -71,7 +70,7 @@ suspend fun main() {
   // set hazelcast cluster name
   val clusterName = conf.getString(ConfigConstants.CLUSTER_HAZELCAST_CLUSTER_NAME)
   if (clusterName != null) {
-    hazelcastConfig.groupConfig.name = clusterName
+    hazelcastConfig.clusterName = clusterName
   }
 
   // set hazelcast public address
@@ -125,8 +124,8 @@ suspend fun main() {
         "`${ConfigConstants.AGENT_INSTANCES}` must be greater than 0.")
   }
 
-  hazelcastConfig.memberAttributeConfig.setStringAttribute(ATTR_AGENT_ID, agentId)
-  hazelcastConfig.memberAttributeConfig.setIntAttribute(ATTR_AGENT_INSTANCES, instances)
+  hazelcastConfig.memberAttributeConfig.setAttribute(ATTR_AGENT_ID, agentId)
+  hazelcastConfig.memberAttributeConfig.setAttribute(ATTR_AGENT_INSTANCES, instances.toString())
 
   // configure event bus
   val mgr = HazelcastClusterManager(hazelcastConfig)
@@ -141,7 +140,7 @@ suspend fun main() {
   eventBusPublicPort?.let { options.eventBusOptions.setClusterPublicPort(it) }
 
   // start Vert.x
-  val vertx = Vertx.clusteredVertxAwait(options)
+  val vertx = clusteredVertx(options).await()
   globalVertxInstance = vertx
 
   // listen to added and left cluster nodes
@@ -150,8 +149,8 @@ suspend fun main() {
   mgr.hazelcastInstance.cluster.addMembershipListener(object : MembershipAdapter() {
     override fun memberAdded(membershipEvent: MembershipEvent) {
       if (mgr.isActive) {
-        val memberAgentId = membershipEvent.member.getStringAttribute(ATTR_AGENT_ID)
-        val memberInstances = membershipEvent.member.getIntAttribute(ATTR_AGENT_INSTANCES)
+        val memberAgentId = membershipEvent.member.getAttribute(ATTR_AGENT_ID)
+        val memberInstances = membershipEvent.member.getAttribute(ATTR_AGENT_INSTANCES).toInt()
         vertx.eventBus().publish(AddressConstants.CLUSTER_NODE_ADDED, json {
           obj(
               "agentId" to memberAgentId,
@@ -163,8 +162,8 @@ suspend fun main() {
 
     override fun memberRemoved(membershipEvent: MembershipEvent) {
       if (mgr.isActive) {
-        val memberAgentId = membershipEvent.member.getStringAttribute(ATTR_AGENT_ID)
-        val memberInstances = membershipEvent.member.getIntAttribute(ATTR_AGENT_INSTANCES)
+        val memberAgentId = membershipEvent.member.getAttribute(ATTR_AGENT_ID)
+        val memberInstances = membershipEvent.member.getAttribute(ATTR_AGENT_INSTANCES).toInt()
         vertx.eventBus().publish(AddressConstants.CLUSTER_NODE_LEFT, json {
           obj(
               "agentId" to memberAgentId,
@@ -185,7 +184,7 @@ suspend fun main() {
       try {
         delay(lookupOrphansInterval)
         val remoteAgentIds = remoteAgentRegistry.getAgentIds()
-        val memberIds = mgr.hazelcastInstance.cluster.members.map { it.getStringAttribute(ATTR_AGENT_ID) }.toSet()
+        val memberIds = mgr.hazelcastInstance.cluster.members.map { it.getAttribute(ATTR_AGENT_ID) }.toSet()
         for (rid in remoteAgentIds) {
           val mainId = rid.indexOf('[').let { i -> if (i < 0) rid else rid.substring(0, i) }
           if (!memberIds.contains(mainId)) {
@@ -200,9 +199,9 @@ suspend fun main() {
   }
 
   // start Steep's main verticle
-  val deploymentOptions = deploymentOptionsOf(conf)
+  val deploymentOptions = deploymentOptionsOf(config = conf)
   val mainVerticleId = try {
-    vertx.deployVerticleAwait(Main::class.qualifiedName!!, deploymentOptions)
+    vertx.deployVerticle(Main::class.qualifiedName!!, deploymentOptions).await()
   } catch (e: Exception) {
     e.printStackTrace()
     exitProcess(1)
@@ -425,7 +424,7 @@ suspend fun restoreMembers(defaultPort: Int, config: JsonObject): List<String> {
       vmRegistry.close()
     }
   } finally {
-    vertx.closeAwait()
+    vertx.close().await()
   }
 }
 
@@ -444,18 +443,18 @@ class Main : CoroutineVerticle() {
       initializer.call(vertx)
     }
 
-    val options = deploymentOptionsOf(config)
+    val options = deploymentOptionsOf(config = config)
 
     if (config.getBoolean(ConfigConstants.CLOUD_ENABLED, false)) {
-      vertx.deployVerticleAwait(CloudManager::class.qualifiedName!!, options)
+      vertx.deployVerticle(CloudManager::class.qualifiedName!!, options).await()
     }
 
     if (config.getBoolean(ConfigConstants.SCHEDULER_ENABLED, true)) {
-      vertx.deployVerticleAwait(Scheduler::class.qualifiedName!!, options)
+      vertx.deployVerticle(Scheduler::class.qualifiedName!!, options).await()
     }
 
     if (config.getBoolean(ConfigConstants.CONTROLLER_ENABLED, true)) {
-      vertx.deployVerticleAwait(Controller::class.qualifiedName!!, options)
+      vertx.deployVerticle(Controller::class.qualifiedName!!, options).await()
     }
 
     if (config.getBoolean(ConfigConstants.AGENT_ENABLED, true)) {
@@ -465,17 +464,17 @@ class Main : CoroutineVerticle() {
       for (i in 1..instances) {
         val id = if (i == 1) agentId else "$agentId[$i]"
         val configWithAgentId = config.copy().put(ConfigConstants.AGENT_ID, id)
-        val optionsWithAgentId = deploymentOptionsOf(configWithAgentId)
-        vertx.deployVerticleAwait(Steep::class.qualifiedName!!, optionsWithAgentId)
+        val optionsWithAgentId = deploymentOptionsOf(config = configWithAgentId)
+        vertx.deployVerticle(Steep::class.qualifiedName!!, optionsWithAgentId).await()
       }
     }
 
     if (config.getBoolean(ConfigConstants.HTTP_ENABLED, true)) {
-      vertx.deployVerticleAwait(HttpEndpoint::class.qualifiedName!!, options)
+      vertx.deployVerticle(HttpEndpoint::class.qualifiedName!!, options).await()
     }
 
     if (config.getBoolean(ConfigConstants.GARBAGECOLLECTOR_ENABLED, false)) {
-      vertx.deployVerticleAwait(GarbageCollector::class.qualifiedName!!, options)
+      vertx.deployVerticle(GarbageCollector::class.qualifiedName!!, options).await()
     }
   }
 }

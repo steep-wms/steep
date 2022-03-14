@@ -16,12 +16,8 @@ import io.vertx.core.shareddata.AsyncMap
 import io.vertx.core.shareddata.LocalMap
 import io.vertx.core.shareddata.Shareable
 import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
-import io.vertx.kotlin.core.eventbus.requestAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
-import io.vertx.kotlin.core.shareddata.putAwait
-import io.vertx.kotlin.core.shareddata.removeAwait
-import io.vertx.kotlin.core.shareddata.sizeAwait
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitResult
 import io.vertx.kotlin.coroutines.dispatcher
@@ -132,7 +128,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     // do not register consumers multiple times
     if (localMap.compute(KEY_INITIALIZED) { _, v -> v != null } == false) {
       val reportRemoteAgents = debounce(vertx) {
-        val size = agents.await().sizeAwait()
+        val size = agents.await().size().await()
         log.info("New total number of remote agents: $size")
         gaugeAgents.set(size.toDouble())
       }
@@ -185,7 +181,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
    */
   suspend fun register(id: String) {
     val address = REMOTE_AGENT_ADDRESS_PREFIX + id
-    agents.await().putAwait(id, true)
+    agents.await().put(id, true).await()
     vertx.eventBus().publish(REMOTE_AGENT_ADDED, address)
   }
 
@@ -200,7 +196,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
 
   private suspend fun deregister(id: String, localOnly: Boolean) {
     val address = REMOTE_AGENT_ADDRESS_PREFIX + id
-    val oldValue = agents.await().removeAwait(id)
+    val oldValue = agents.await().remove(id).await()
     if (oldValue != null) {
       vertx.eventBus().publish(REMOTE_AGENT_LEFT, address,
           deliveryOptionsOf(localOnly = localOnly))
@@ -308,7 +304,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
 
       // inquire agent
       try {
-        val replyInquire = vertx.eventBus().requestAwait<JsonObject>(address, msgInquire)
+        val replyInquire = vertx.eventBus().request<JsonObject>(address, msgInquire).await()
         val lastSequence = replyInquire.body().getLong("lastSequence", -1L)
 
         // check if the agent is available
@@ -361,7 +357,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     }
 
     try {
-      val replyAllocate = vertx.eventBus().requestAwait<String>(address, msgAllocate)
+      val replyAllocate = vertx.eventBus().request<String>(address, msgAllocate).await()
       if (replyAllocate.body() == "ACK") {
         val agentId = address.substring(REMOTE_AGENT_ADDRESS_PREFIX.length)
         allocatedAgentsCache[agentId] = true
@@ -382,7 +378,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     }
 
     try {
-      val reply = vertx.eventBus().requestAwait<String>(agent.id, msg)
+      val reply = vertx.eventBus().request<String>(agent.id, msg).await()
       if (reply.body() != "ACK") {
         throw NoStackTraceThrowable("Unknown answer: ${reply.body()}")
       }

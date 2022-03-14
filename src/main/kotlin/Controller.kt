@@ -19,8 +19,8 @@ import helper.JsonUtils
 import io.prometheus.client.Gauge
 import io.vertx.core.shareddata.Lock
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.kotlin.core.shareddata.getLockWithTimeoutAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.kotlin.coroutines.await
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
@@ -208,7 +208,7 @@ class Controller : CoroutineVerticle() {
   private suspend fun tryLockSubmission(submissionId: String): Lock? {
     val lockName = PROCESSING_SUBMISSION_LOCK_PREFIX + submissionId
     return try {
-      vertx.sharedData().getLockWithTimeoutAwait(lockName, 1)
+      vertx.sharedData().getLockWithTimeout(lockName, 1).await()
     } catch (t: Throwable) {
       // Could not acquire lock. Assume someone else is already processing
       // this submission

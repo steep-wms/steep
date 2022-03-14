@@ -1,15 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<hazelcast xsi:schemaLocation="http://www.hazelcast.com/schema/config http://www.hazelcast.com/schema/config/hazelcast-config-3.10.xsd"
+<hazelcast xsi:schemaLocation="http://www.hazelcast.com/schema/config http://www.hazelcast.com/schema/config/hazelcast-config-4.2.xsd"
            xmlns="http://www.hazelcast.com/schema/config"
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <properties>
         <property name="hazelcast.logging.type">slf4j</property>
     </properties>
 
-    <!-- create a cluster group for Steep -->
-    <group>
-        <name>steep</name>
-    </group>
+    <!-- create a default cluster name for Steep -->
+    <cluster-name>steep</cluster-name>
 
     <!-- configure network options -->
     <network>
@@ -26,23 +24,24 @@
     </network>
 
     <!-- DEFAULT CONFIGURATION FOR VERT.X - DO NOT CHANGE! -->
-    <executor-service>
-        <pool-size>16</pool-size>
-        <queue-capacity>0</queue-capacity>
-    </executor-service>
     <multimap name="__vertx.subs">
         <backup-count>1</backup-count>
+        <value-collection-type>SET</value-collection-type>
     </multimap>
     <map name="__vertx.haInfo">
         <backup-count>1</backup-count>
-        <time-to-live-seconds>0</time-to-live-seconds>
-        <max-idle-seconds>0</max-idle-seconds>
-        <eviction-policy>NONE</eviction-policy>
-        <max-size policy="PER_NODE">0</max-size>
-        <eviction-percentage>25</eviction-percentage>
-        <merge-policy>com.hazelcast.map.merge.LatestUpdateMapMergePolicy</merge-policy>
     </map>
-    <semaphore name="__vertx.*">
-        <initial-permits>1</initial-permits>
-    </semaphore>
+    <map name="__vertx.nodeInfo">
+        <backup-count>1</backup-count>
+    </map>
+    <cp-subsystem>
+        <cp-member-count>0</cp-member-count>
+        <semaphores>
+            <semaphore>
+                <name>__vertx.*</name>
+                <jdk-compatible>false</jdk-compatible>
+                <initial-permits>1</initial-permits>
+            </semaphore>
+        </semaphores>
+    </cp-subsystem>
 </hazelcast>

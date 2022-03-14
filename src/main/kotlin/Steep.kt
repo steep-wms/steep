@@ -13,17 +13,14 @@ import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.streams.ReadStream
-import io.vertx.kotlin.core.eventbus.requestAwait
-import io.vertx.kotlin.core.file.closeAwait
-import io.vertx.kotlin.core.file.openAwait
 import io.vertx.kotlin.core.file.openOptionsOf
-import io.vertx.kotlin.core.file.propsAwait
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.kotlin.coroutines.toChannel
+import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.toReceiveChannel
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -219,12 +216,12 @@ class Steep : CoroutineVerticle() {
       // try to open the log file
       val (size, file) = try {
         val fs = vertx.fileSystem()
-        val props = fs.propsAwait(filepath)
-        val f = fs.openAwait(filepath, openOptionsOf(read = true,
-            write = false, create = false))
+        val props = fs.props(filepath).await()
+        val f = fs.open(filepath, openOptionsOf(read = true,
+            write = false, create = false)).await()
         (props.size() to f)
       } catch (t: Throwable) {
-        if (t.cause is NoSuchFileException) {
+        if (t.cause is NoSuchFileException || t.cause?.cause is NoSuchFileException) {
           vertx.eventBus().send(replyAddress, json {
             obj(
                 "error" to 404,
@@ -277,23 +274,23 @@ class Steep : CoroutineVerticle() {
       }
       file.setReadPos(start)
       val length = end - start
-      file.setReadLength(length)
+      file.readLength = length
 
       try {
         // We were able to open the file. Respond immediately and let the
         // client know that we will send the file
-        vertx.eventBus().requestAwait<Unit>(replyAddress, json {
+        vertx.eventBus().request<Unit>(replyAddress, json {
           obj(
               "size" to size,
               "start" to start,
               "end" to (end - 1),
               "length" to length
           )
-        })
+        }).await()
 
         if (!checkOnly) {
           // send the file to the reply address
-          val channel = (file as ReadStream<Buffer>).toChannel(vertx)
+          val channel = (file as ReadStream<Buffer>).toReceiveChannel(vertx)
 
           file.exceptionHandler { t ->
             vertx.eventBus().send(replyAddress, json {
@@ -311,14 +308,14 @@ class Steep : CoroutineVerticle() {
                   "data" to buf.toString()
               )
             }
-            vertx.eventBus().requestAwait<Unit>(replyAddress, chunk)
+            vertx.eventBus().request<Unit>(replyAddress, chunk).await()
           }
 
           // send end marker
           vertx.eventBus().send(replyAddress, JsonObject())
         }
       } finally {
-        file.closeAwait()
+        file.close().await()
       }
     }
   }
@@ -552,7 +549,7 @@ class Steep : CoroutineVerticle() {
               try {
                 log.info("Sending results of process chain ${processChain.id} " +
                     "to $address ...")
-                vertx.eventBus().requestAwait<Any>(address, answer)
+                vertx.eventBus().request<Any>(address, answer).await()
                 break
               } catch (t: Throwable) {
                 log.error("Error sending results of process chain " +

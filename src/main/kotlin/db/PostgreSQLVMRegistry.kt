@@ -5,7 +5,7 @@ import helper.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
-import io.vertx.kotlin.sqlclient.executeAwait
+import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.Tuple
 import model.cloud.VM
 import java.time.Instant
@@ -40,7 +40,7 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
   override suspend fun addVM(vm: VM) {
     val statement = "INSERT INTO $VMS ($ID, $DATA) VALUES ($1, $2)"
     val params = Tuple.of(vm.id, JsonUtils.toJson(vm))
-    client.preparedQuery(statement).executeAwait(params)
+    client.preparedQuery(statement).execute(params).await()
   }
 
   override suspend fun findVMs(status: VM.Status?, size: Int, offset: Int,
@@ -59,9 +59,9 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
     statement.append("ORDER BY $SERIAL $asc LIMIT $limit OFFSET $offset")
 
     val rs = if (params == null) {
-      client.query(statement.toString()).executeAwait()
+      client.query(statement.toString()).execute().await()
     } else {
-      client.preparedQuery(statement.toString()).executeAwait(params)
+      client.preparedQuery(statement.toString()).execute(params).await()
     }
     return rs.map { JsonUtils.fromJson(it.getJsonObject(0)) }
   }
@@ -69,14 +69,14 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
   override suspend fun findVMById(id: String): VM? {
     val statement = "SELECT $DATA FROM $VMS WHERE $ID=$1"
     val params = Tuple.of(id)
-    val rs = client.preparedQuery(statement).executeAwait(params)
+    val rs = client.preparedQuery(statement).execute(params).await()
     return rs.firstOrNull()?.let { JsonUtils.fromJson<VM>(it.getJsonObject(0)) }
   }
 
   override suspend fun findVMByExternalId(externalId: String): VM? {
     val statement = "SELECT $DATA FROM $VMS WHERE $DATA->'$EXTERNAL_ID'=$1"
     val params = Tuple.of(externalId)
-    val rs = client.preparedQuery(statement).executeAwait(params)
+    val rs = client.preparedQuery(statement).execute(params).await()
     return rs.firstOrNull()?.let { JsonUtils.fromJson<VM>(it.getJsonObject(0)) }
   }
 
@@ -84,7 +84,7 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
     val statement = "SELECT $DATA FROM $VMS WHERE $DATA->'$STATUS'!=$1 " +
         "AND $DATA->'$STATUS'!=$2"
     val params = Tuple.of(VM.Status.DESTROYED.toString(), VM.Status.ERROR.toString())
-    val rs = client.preparedQuery(statement).executeAwait(params)
+    val rs = client.preparedQuery(statement).execute(params).await()
     return rs.map { JsonUtils.fromJson(it.getJsonObject(0)) }
   }
 
@@ -99,9 +99,9 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
     }
 
     val rs = if (params == null) {
-      client.query(statement.toString()).executeAwait()
+      client.query(statement.toString()).execute().await()
     } else {
-      client.preparedQuery(statement.toString()).executeAwait(params)
+      client.preparedQuery(statement.toString()).execute(params).await()
     }
     return rs.firstOrNull()?.getLong(0) ?: 0L
   }
@@ -111,7 +111,7 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
         "AND $DATA->'$STATUS'!=$2 AND $DATA->'$STATUS'!=$3"
     val params = Tuple.of(setupId, VM.Status.DESTROYED.toString(),
         VM.Status.ERROR.toString())
-    val rs = client.preparedQuery(statement).executeAwait(params)
+    val rs = client.preparedQuery(statement).execute(params).await()
     return rs?.firstOrNull()?.getLong(0) ?: 0L
   }
 
@@ -120,7 +120,7 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
         "AND ($DATA->'$STATUS'=$2 OR $DATA->'$STATUS'=$3)"
     val params = Tuple.of(setupId, VM.Status.CREATING.toString(),
         VM.Status.PROVISIONING.toString())
-    val rs = client.preparedQuery(statement).executeAwait(params)
+    val rs = client.preparedQuery(statement).execute(params).await()
     return rs?.firstOrNull()?.getLong(0) ?: 0L
   }
 
@@ -161,7 +161,7 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
       )
     }
     val updateParams = Tuple.of(newObj, id, currentStatus.toString())
-    client.preparedQuery(updateStatement).executeAwait(updateParams)
+    client.preparedQuery(updateStatement).execute(updateParams).await()
   }
 
   override suspend fun forceSetVMStatus(id: String, newStatus: VM.Status) {
@@ -176,7 +176,7 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
   override suspend fun getVMStatus(id: String): VM.Status {
     val statement = "SELECT $DATA->'$STATUS' FROM $VMS WHERE $ID=$1"
     val params = Tuple.of(id)
-    val rs = client.preparedQuery(statement).executeAwait(params).firstOrNull() ?:
+    val rs = client.preparedQuery(statement).execute(params).await().firstOrNull() ?:
         throw NoSuchElementException("There is no VM with ID `$id'")
     return VM.Status.valueOf(rs.getString(0))
   }
@@ -213,7 +213,7 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
       val statement1 = "DELETE FROM $VMS WHERE $DATA->'$DESTRUCTION_TIME' < $1 " +
           "RETURNING $ID"
       val params1 = Tuple.of(timestamp.toString())
-      val rs1 = connection.preparedQuery(statement1).executeAwait(params1)
+      val rs1 = connection.preparedQuery(statement1).execute(params1).await()
       val ids1 = rs1.map { it.getString(0) }
 
       // find IDs of terminated VMs that do not have a destructionTime but
@@ -222,14 +222,14 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
       val statement2 = "SELECT $ID FROM $VMS WHERE $DATA->'$DESTRUCTION_TIME' IS NULL " +
           "AND ($DATA->'$STATUS'=$1 OR $DATA->'$STATUS'=$2)"
       val params2 = Tuple.of(VM.Status.DESTROYED.toString(), VM.Status.ERROR.toString())
-      val rs2 = connection.preparedQuery(statement2).executeAwait(params2)
+      val rs2 = connection.preparedQuery(statement2).execute(params2).await()
       val ids2 = rs2.map { it.getString(0) }
         .filter { Instant.ofEpochMilli(UniqueID.toMillis(it)).isBefore(timestamp) }
 
       // then delete those VMs
       val statement3 = "DELETE FROM $VMS WHERE $ID=ANY($1)"
       val params3 = Tuple.of(ids2.toTypedArray())
-      connection.preparedQuery(statement3).executeAwait(params3)
+      connection.preparedQuery(statement3).execute(params3).await()
 
       ids1 + ids2
     }

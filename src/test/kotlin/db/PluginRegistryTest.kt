@@ -404,7 +404,7 @@ class PluginRegistryTest {
         assertThatThrownBy {
           PluginRegistryFactory.initialize(vertx, config)
         }.isInstanceOf(io.vertx.core.file.FileSystemException::class.java)
-            .hasCauseInstanceOf(java.nio.file.NoSuchFileException::class.java)
+            .hasRootCauseInstanceOf(java.nio.file.NoSuchFileException::class.java)
       }
       ctx.completeNow()
     }

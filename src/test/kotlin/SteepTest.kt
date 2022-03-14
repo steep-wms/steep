@@ -16,7 +16,7 @@ import io.mockk.unmockkAll
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject
-import io.vertx.ext.web.handler.impl.HttpStatusException
+import io.vertx.ext.web.handler.HttpException
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.deploymentOptionsOf
@@ -25,6 +25,7 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
 import io.vertx.kotlin.coroutines.toChannel
+import io.vertx.kotlin.coroutines.toReceiveChannel
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.ReceiveChannel
@@ -75,8 +76,8 @@ class SteepTest {
           ConfigConstants.LOGS_PROCESSCHAINS_PATH to processChainLogPath
       )
     }
-    val options = deploymentOptionsOf(config)
-    vertx.deployVerticle(Steep::class.qualifiedName, options, ctx.completing())
+    val options = deploymentOptionsOf(config = config)
+    vertx.deployVerticle(Steep::class.qualifiedName, options, ctx.succeedingThenComplete())
   }
 
   @AfterEach
@@ -488,7 +489,7 @@ class SteepTest {
         receivedContents.append(obj.getString("data"))
         reply.reply(null)
       } else if (obj.getInteger("error") != null) {
-        throw HttpStatusException(obj.getInteger("error"), obj.getString("message"))
+        throw HttpException(obj.getInteger("error"), obj.getString("message"))
       } else {
         throw IllegalStateException("Illegal message: ${obj.encode()}")
       }
@@ -514,7 +515,7 @@ class SteepTest {
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.coVerify {
         val consumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
-        val channel = consumer.toChannel(vertx)
+        val channel = consumer.toReceiveChannel(vertx)
 
         val msg = json {
           obj(
@@ -553,7 +554,7 @@ class SteepTest {
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.coVerify {
         val consumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
-        val channel = consumer.toChannel(vertx)
+        val channel = consumer.toReceiveChannel(vertx)
 
         val msg = json {
           obj(
@@ -586,7 +587,7 @@ class SteepTest {
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.coVerify {
         val consumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
-        val channel = consumer.toChannel(vertx)
+        val channel = consumer.toReceiveChannel(vertx)
 
         val msg = json {
           obj(
@@ -622,7 +623,7 @@ class SteepTest {
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.coVerify {
         val consumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
-        val channel = consumer.toChannel(vertx)
+        val channel = consumer.toReceiveChannel(vertx)
 
         // request the first byte
         val msg1 = json {
@@ -797,7 +798,7 @@ class SteepTest {
         vertx.eventBus().send(address, msg8)
 
         assertThatThrownBy { receiveProcessChainLogFile(channel) }
-            .matches { it is HttpStatusException && it.statusCode == 416}
+            .matches { it is HttpException && it.statusCode == 416}
 
         // send invalid request (start position out of bounds)
         val msg9 = json {
@@ -811,7 +812,7 @@ class SteepTest {
         vertx.eventBus().send(address, msg9)
 
         assertThatThrownBy { receiveProcessChainLogFile(channel) }
-            .matches { it is HttpStatusException && it.statusCode == 416}
+            .matches { it is HttpException && it.statusCode == 416}
 
         // request the last byte
         val msg10 = json {

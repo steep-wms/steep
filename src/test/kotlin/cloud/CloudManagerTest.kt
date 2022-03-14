@@ -28,11 +28,11 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.core.deployVerticleAwait
 import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
@@ -96,7 +96,7 @@ class CloudManagerTest {
    */
   private fun deployCloudManager(tempDir: Path, setups: List<Setup>,
       vertx: Vertx, ctx: VertxTestContext, agentPool: JsonArray = JsonArray()) {
-    deployCloudManager(tempDir, setups, vertx, ctx.completing(), agentPool)
+    deployCloudManager(tempDir, setups, vertx, ctx.succeedingThenComplete(), agentPool)
   }
 
   /**
@@ -123,7 +123,7 @@ class CloudManagerTest {
             ConfigConstants.CLOUD_AGENTPOOL to agentPool
         )
       }
-      val options = deploymentOptionsOf(config)
+      val options = deploymentOptionsOf(config = config)
       cloudManager = CloudManager()
       vertx.deployVerticle(cloudManager, options, completionHandler)
     }
@@ -222,12 +222,12 @@ class CloudManagerTest {
             ConfigConstants.CLOUD_SETUPS_FILE to setupFile.toString()
         )
       }
-      val options = deploymentOptionsOf(config)
+      val options = deploymentOptionsOf(config = config)
       cloudManager = CloudManager()
 
       ctx.coVerify {
         // this should not throw!
-        vertx.deployVerticleAwait(cloudManager, options)
+        vertx.deployVerticle(cloudManager, options).await()
 
         assertThat(cloudManager.setups).hasSize(2)
         val s1 = cloudManager.setups[0]
@@ -289,7 +289,7 @@ class CloudManagerTest {
           maxVMs = 1, sshUsername = "user2")
 
       deployCloudManager(tempDir, listOf(testSetup, testSetup2), vertx,
-          ctx.completing(), sshUsername = null)
+          ctx.succeedingThenComplete(), sshUsername = null)
     }
 
     /**

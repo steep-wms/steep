@@ -1,8 +1,7 @@
 package helper
 
 import io.vertx.core.file.FileSystem
-import io.vertx.kotlin.core.file.propsAwait
-import io.vertx.kotlin.core.file.readDirAwait
+import io.vertx.kotlin.coroutines.await
 
 /**
  * Utility functions for the Vert.x [FileSystem]
@@ -24,8 +23,8 @@ object FileSystemUtils {
     q.add(dirOrFile)
     while (!q.isEmpty()) {
       val f = q.removeFirst()
-      if (fs.propsAwait(f).isDirectory) {
-        q.addAll(fs.readDirAwait(f))
+      if (fs.props(f).await().isDirectory) {
+        q.addAll(fs.readDir(f).await())
       } else {
         if (filter == null || filter(f)) {
           r.add(f)

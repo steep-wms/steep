@@ -28,7 +28,6 @@ import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
-import io.vertx.kotlin.core.shareddata.putAwait
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
@@ -87,7 +86,7 @@ class SchedulerTest {
           ConfigConstants.AGENT_ID to agentId
       )
     })
-    vertx.deployVerticle(Scheduler::class.qualifiedName, options, ctx.completing())
+    vertx.deployVerticle(Scheduler::class.qualifiedName, options, ctx.succeedingThenComplete())
   }
 
   @AfterEach
@@ -310,7 +309,7 @@ class SchedulerTest {
       val schedulersPromise = Promise.promise<AsyncMap<String, Boolean>>()
       sharedData.getAsyncMap("Scheduler.Async", schedulersPromise)
       val schedulers = schedulersPromise.future().await()
-      schedulers.putAwait(otherSchedulerId, true)
+      schedulers.put(otherSchedulerId, true).await()
       var otherSchedulerCalled = false
       val schedulerRunningAddress = AddressConstants.SCHEDULER_PREFIX +
           "$otherSchedulerId${AddressConstants.SCHEDULER_RUNNING_PROCESS_CHAINS_SUFFIX}"

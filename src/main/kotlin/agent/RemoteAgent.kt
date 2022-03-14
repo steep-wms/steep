@@ -10,11 +10,9 @@ import io.vertx.core.Vertx
 import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.Counter
-import io.vertx.kotlin.core.eventbus.requestAwait
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
-import io.vertx.kotlin.core.shareddata.getAndIncrementAwait
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.receiveChannelHandler
 import model.processchain.ProcessChain
@@ -79,10 +77,10 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
             "action" to "process",
             "processChain" to JsonUtils.toJson(processChain),
             "replyAddress" to replyAddress,
-            "sequence" to counter.await().getAndIncrementAwait()
+            "sequence" to counter.await().andIncrement.await()
           )
         }
-        vertx.eventBus().requestAwait<Any>(id, msg)
+        vertx.eventBus().request<Any>(id, msg).await()
 
         // wait for reply
         val result = adapter.receive()

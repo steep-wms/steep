@@ -95,8 +95,8 @@ class ControllerTest {
             ConfigConstants.CONTROLLER_LOOKUP_MAXERRORS to 2L
         )
       }
-      val options = deploymentOptionsOf(config)
-      vertx.deployVerticle(Controller::class.qualifiedName, options, ctx.completing())
+      val options = deploymentOptionsOf(config = config)
+      vertx.deployVerticle(Controller::class.qualifiedName, options, ctx.succeedingThenComplete())
     }
   }
 

@@ -24,11 +24,8 @@ import io.vertx.core.Promise
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.Lock
-import io.vertx.kotlin.core.executeBlockingAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
-import io.vertx.kotlin.core.shareddata.getLockAwait
-import io.vertx.kotlin.core.shareddata.getLockWithTimeoutAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import kotlinx.coroutines.Deferred
@@ -291,7 +288,7 @@ class CloudManager : CoroutineVerticle() {
   private suspend fun tryLockVM(id: String): Lock? {
     val lockName = VM_CREATION_LOCK_PREFIX + id
     return try {
-      vertx.sharedData().getLockWithTimeoutAwait(lockName, 1)
+      vertx.sharedData().getLockWithTimeout(lockName, 1).await()
     } catch (t: Throwable) {
       // Could not acquire lock. Assume someone else is already creating the VM
       null
@@ -496,7 +493,7 @@ class CloudManager : CoroutineVerticle() {
   private suspend fun createRemoteAgent(selector: suspend () -> List<Setup>): List<Pair<VM, Boolean>> {
     // atomically create VM entries in the registry
     val sharedData = vertx.sharedData()
-    val lock = sharedData.getLockAwait(LOCK_VMS)
+    val lock = sharedData.getLock(LOCK_VMS).await()
     val vmsToCreate = try {
       val setupsToCreate = selector()
       setupsToCreate.map { setup ->
@@ -522,7 +519,7 @@ class CloudManager : CoroutineVerticle() {
       // create multiple VMs in parallel
       async {
         // hold a lock as long as we are creating this VM
-        val creatingLock = sharedData.getLockAwait(VM_CREATION_LOCK_PREFIX + vm.id)
+        val creatingLock = sharedData.getLock(VM_CREATION_LOCK_PREFIX + vm.id).await()
         try {
           log.info("Creating virtual machine ${vm.id} with setup `${setup.id}' ...")
 
@@ -674,7 +671,7 @@ class CloudManager : CoroutineVerticle() {
       val destFileName = "/tmp/" + FilenameUtils.getName(script)
 
       // compile script template and write result into temporary file
-      val tmpFile = vertx.executeBlockingAwait<File>({ ebp ->
+      val tmpFile = vertx.executeBlocking<File>({ ebp ->
         val compiledTemplate = engine.getTemplate(script)
         val writer = StringWriter()
         compiledTemplate.evaluate(writer, context)
@@ -688,7 +685,7 @@ class CloudManager : CoroutineVerticle() {
           f.delete()
           throw t
         }
-      }, false)!!
+      }, false).await()!!
 
       // upload compiled script
       try {

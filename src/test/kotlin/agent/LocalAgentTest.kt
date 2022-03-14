@@ -22,11 +22,12 @@ import io.mockk.slot
 import io.mockk.spyk
 import io.mockk.verify
 import io.vertx.core.Vertx
+import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.core.eventbus.requestAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -193,11 +194,11 @@ class LocalAgentTest : AgentTest() {
       val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
       GlobalScope.launch(vertx.dispatcher()) {
         ctx.coVerify {
-          val msg = vertx.eventBus().requestAwait<Double?>(address, json {
+          val msg = vertx.eventBus().request<Double?>(address, json {
             obj(
                 "action" to "getProgress"
             )
-          })
+          }).await<Message<Double?>>()
           assertThat(msg.body()).isNull()
         }
       }
@@ -207,11 +208,11 @@ class LocalAgentTest : AgentTest() {
       val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
       GlobalScope.launch(vertx.dispatcher()) {
         ctx.coVerify {
-          val msg = vertx.eventBus().requestAwait<Double?>(address, json {
+          val msg = vertx.eventBus().request<Double?>(address, json {
             obj(
                 "action" to "getProgress"
             )
-          })
+          }).await<Message<Double?>>()
           assertThat(msg.body()).isGreaterThan(0.0)
         }
       }
@@ -264,11 +265,11 @@ class LocalAgentTest : AgentTest() {
         // validate progress
         runBlocking(vertx.dispatcher()) {
           val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
-          val msg = vertx.eventBus().requestAwait<Double?>(address, json {
+          val msg = vertx.eventBus().request<Double?>(address, json {
             obj(
                 "action" to "getProgress"
             )
-          })
+          }).await()
           assertThat(msg.body()).isEqualTo(i / 5.0)
         }
       }
@@ -332,11 +333,11 @@ class LocalAgentTest : AgentTest() {
         // validate progress
         runBlocking(vertx.dispatcher()) {
           val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
-          val msg = vertx.eventBus().requestAwait<Double?>(address, json {
+          val msg = vertx.eventBus().request<Double?>(address, json {
             obj(
                 "action" to "getProgress"
             )
-          })
+          }).await()
           assertThat(msg.body()).isEqualTo(i / 5.0)
         }
 
@@ -385,11 +386,11 @@ class LocalAgentTest : AgentTest() {
       GlobalScope.launch(vertx.dispatcher()) {
         ctx.coVerify {
           assertThatThrownBy {
-            vertx.eventBus().requestAwait<Double?>(address, json {
+            vertx.eventBus().request<Double?>(address, json {
               obj(
                   "action" to "INVALID_ACTION"
               )
-            })
+            }).await()
           }.hasMessage("Invalid action")
           messageSent = true
         }

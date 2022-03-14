@@ -15,9 +15,9 @@ import io.prometheus.client.Gauge
 import io.vertx.core.Context
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.core.eventbus.unregisterAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.coroutines.await
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -193,7 +193,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
       }
     } finally {
       // make sure the consumer is unregistered
-      consumer.unregisterAwait()
+      consumer.unregister().await()
 
       // close executor
       executor.shutdown()

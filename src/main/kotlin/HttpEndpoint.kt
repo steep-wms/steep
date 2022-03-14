@@ -55,6 +55,7 @@ import io.prometheus.client.hotspot.DefaultExports
 import io.prometheus.client.vertx.MetricsHandler
 import io.vertx.core.Promise
 import io.vertx.core.buffer.Buffer
+import io.vertx.core.eventbus.Message
 import io.vertx.core.eventbus.ReplyException
 import io.vertx.core.eventbus.ReplyFailure
 import io.vertx.core.http.HttpMethod
@@ -75,16 +76,13 @@ import io.vertx.ext.web.handler.ResponseContentTypeHandler
 import io.vertx.ext.web.handler.sockjs.SockJSBridgeOptions
 import io.vertx.ext.web.handler.sockjs.SockJSHandler
 import io.vertx.ext.web.impl.ParsableMIMEValue
-import io.vertx.kotlin.core.eventbus.requestAwait
-import io.vertx.kotlin.core.http.closeAwait
-import io.vertx.kotlin.core.http.listenAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
-import io.vertx.kotlin.coroutines.toChannel
+import io.vertx.kotlin.coroutines.toReceiveChannel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -257,7 +255,7 @@ class HttpEndpoint : CoroutineVerticle() {
       if (request.method() != HttpMethod.GET && request.method() != HttpMethod.HEAD) {
         context.next()
       } else {
-        val path = HttpUtils.removeDots(URIDecoder.decodeURIComponent(context.normalisedPath(), false))?.let {
+        val path = HttpUtils.removeDots(URIDecoder.decodeURIComponent(context.normalizedPath(), false))?.let {
           if (it.startsWith(basePath)) {
             it.substring(basePath.length)
           } else {
@@ -337,14 +335,14 @@ class HttpEndpoint : CoroutineVerticle() {
 
     val baseRouter = Router.router(vertx)
     baseRouter.mountSubRouter("$basePath/", router)
-    server.requestHandler(baseRouter).listenAwait(port, host)
+    server.requestHandler(baseRouter).listen(port, host).await()
 
     log.info("HTTP endpoint deployed to http://$host:$port$basePath")
   }
 
   override suspend fun stop() {
     log.info("Stopping HTTP endpoint ...")
-    server.closeAwait()
+    server.close().await()
     submissionRegistry.close()
   }
 
@@ -525,8 +523,8 @@ class HttpEndpoint : CoroutineVerticle() {
         }
 
         try {
-          val agents = agentIds.map { vertx.eventBus().requestAwait<JsonObject>(
-              REMOTE_AGENT_ADDRESS_PREFIX + it, msg) }.map { it.body() }
+          val agents = agentIds.map { vertx.eventBus().request<JsonObject>(
+              REMOTE_AGENT_ADDRESS_PREFIX + it, msg).await() }.map { it.body() }
 
           val result = JsonArray(agents).encode()
 
@@ -566,8 +564,8 @@ class HttpEndpoint : CoroutineVerticle() {
         }
 
         try {
-          val agent = vertx.eventBus().requestAwait<JsonObject>(
-              REMOTE_AGENT_ADDRESS_PREFIX + id, msg).body()
+          val agent = vertx.eventBus().request<JsonObject>(
+              REMOTE_AGENT_ADDRESS_PREFIX + id, msg).await().body()
           ctx.response()
               .putHeader("content-type", "application/json")
               .end(agent.encode())
@@ -649,7 +647,7 @@ class HttpEndpoint : CoroutineVerticle() {
               consumerRegisteredPromise.fail(ar.cause())
             }
           }
-          val channel = consumer.toChannel(vertx)
+          val channel = consumer.toReceiveChannel(vertx)
 
           // Important! Wait for consumer registration to be propagated across
           // cluster before sending any request. Otherwise, responses might
@@ -1281,11 +1279,11 @@ class HttpEndpoint : CoroutineVerticle() {
 
     if (status == SubmissionRegistry.ProcessChainStatus.RUNNING) {
       val response = try {
-        vertx.eventBus().requestAwait<Double?>(LOCAL_AGENT_ADDRESS_PREFIX + id, json {
+        vertx.eventBus().request<Double?>(LOCAL_AGENT_ADDRESS_PREFIX + id, json {
           obj(
               "action" to "getProgress"
           )
-        })
+        }).await<Message<Double?>>()
       } catch (_: ReplyException) {
         null
       }

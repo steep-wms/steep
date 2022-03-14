@@ -5,8 +5,7 @@ import helper.OutputCollector
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.core.executeBlockingAwait
-import io.vertx.kotlin.core.file.readFileAwait
+import io.vertx.kotlin.coroutines.await
 import model.plugins.InitializerPlugin
 import model.plugins.OutputAdapterPlugin
 import model.plugins.Plugin
@@ -170,8 +169,8 @@ object PluginRegistryFactory {
     val f = tryLoadPreCompiled(plugin) ?: run {
       log.info("Compiling plugin `${plugin.name}' (${plugin.scriptFile})")
 
-      val script = vertx.fileSystem().readFileAwait(plugin.scriptFile).toString()
-      vertx.executeBlockingAwait<KFunction<*>> { promise ->
+      val script = vertx.fileSystem().readFile(plugin.scriptFile).await().toString()
+      vertx.executeBlocking<KFunction<*>> { promise ->
         var retry = false
         while (true) {
           lastCachedScriptFile = null
@@ -205,7 +204,7 @@ object PluginRegistryFactory {
           promise.complete(f)
           break
         }
-      }
+      }.await()
     }
 
     @Suppress("UNCHECKED_CAST")

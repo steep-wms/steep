@@ -1,22 +1,15 @@
 package db
 
 import io.vertx.core.Vertx
-import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.sqlclient.executeAwait
-import io.vertx.kotlin.sqlclient.getConnectionAwait
+import io.vertx.kotlin.coroutines.await
 import io.vertx.pgclient.PgConnectOptions
 import io.vertx.pgclient.PgPool
 import io.vertx.pgclient.impl.PgConnectionUriParser
 import io.vertx.sqlclient.PoolOptions
-import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.SqlConnection
 import io.vertx.sqlclient.Tuple
 import org.flywaydb.core.Flyway
-
-fun Row.getJsonObject(column: Int): JsonObject = get(JsonObject::class.java, column)
-fun Row.getJsonObjectOrNull(column: Int): JsonObject? = getValue(column) as JsonObject?
-fun Row.getJsonArray(column: Int): JsonArray = get(JsonArray::class.java, column)
 
 /**
  * Base class for registries that access a PostgreSQL database
@@ -90,7 +83,7 @@ open class PostgreSQLRegistry(vertx: Vertx, url: String, username: String,
   }
 
   protected suspend fun <T> withConnection(block: suspend (SqlConnection) -> T): T {
-    val connection = client.getConnectionAwait()
+    val connection = client.connection.await()
     try {
       return block(connection)
     } finally {
@@ -98,11 +91,11 @@ open class PostgreSQLRegistry(vertx: Vertx, url: String, username: String,
     }
   }
 
-  protected suspend fun updateProperties(table: String, id: String, newObj: JsonObject,
+  private suspend fun updateProperties(table: String, id: String, newObj: JsonObject,
       connection: SqlConnection) {
     val updateStatement = "UPDATE $table SET $DATA=$DATA || $1 WHERE $ID=$2"
     val updateParams = Tuple.of(newObj, id)
-    connection.preparedQuery(updateStatement).executeAwait(updateParams)
+    connection.preparedQuery(updateStatement).execute(updateParams).await()
   }
 
   protected suspend fun updateProperties(table: String, id: String, newObj: JsonObject) {
@@ -115,7 +108,7 @@ open class PostgreSQLRegistry(vertx: Vertx, url: String, username: String,
       newValue: Any?) {
     val updateStatement = "UPDATE $table SET $column=$1 WHERE $ID=$2"
     val updateParams = Tuple.of(newValue, id)
-    client.preparedQuery(updateStatement).executeAwait(updateParams)
+    client.preparedQuery(updateStatement).execute(updateParams).await()
   }
 
   protected suspend fun updateColumn(table: String, id: String, column: String,
@@ -123,6 +116,6 @@ open class PostgreSQLRegistry(vertx: Vertx, url: String, username: String,
     val updateStatement = "UPDATE $table SET $column=$1 WHERE $ID=$2 " +
         "AND $column=$3"
     val updateParams = Tuple.of(newValue, id, currentValue)
-    client.preparedQuery(updateStatement).executeAwait(updateParams)
+    client.preparedQuery(updateStatement).execute(updateParams).await()
   }
 }

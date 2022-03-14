@@ -17,8 +17,7 @@ buildscript {
 group = "de.fhg.igd"
 version = "6.0.0-SNAPSHOT"
 
-val vertxVersion by extra("3.9.4")
-val hazelcastVersion by extra("3.12.9")
+val vertxVersion by extra("4.2.5")
 val prometheusClientVersion by extra("0.9.0")
 val slf4jVersion by extra("1.7.32")
 val logbackVersion by extra("1.2.10")
@@ -49,7 +48,6 @@ dependencies {
     implementation("io.vertx:vertx-shell:$vertxVersion")
     implementation("io.vertx:vertx-web:$vertxVersion")
     implementation("io.vertx:vertx-web-client:$vertxVersion")
-    implementation("com.hazelcast:hazelcast:$hazelcastVersion")
 
     implementation("commons-codec:commons-codec:1.15")
     implementation("commons-io:commons-io:2.11.0")
