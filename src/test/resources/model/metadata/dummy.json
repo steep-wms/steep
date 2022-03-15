@@ -10,7 +10,7 @@
         "description": "A dummy argument",
         "type": "input",
         "cardinality": "0..1",
-        "data_type": "string",
+        "dataType": "string",
         "default": "foo",
         "label": "-a"
     }, {
@@ -19,7 +19,7 @@
         "description": "Many input files",
         "type": "input",
         "cardinality": "1..n",
-        "data_type": "file",
+        "dataType": "file",
         "label": "--input"
     }, {
         "id": "output_file",
@@ -27,17 +27,17 @@
         "description": "Output file name",
         "type": "output",
         "cardinality": "1..1",
-        "data_type": "file",
-        "file_suffix": ".txt"
+        "dataType": "file",
+        "fileSuffix": ".txt"
     }],
-    "runtime_args": [{
+    "runtimeArgs": [{
         "id": "dataMount",
         "name": "Data mount",
         "description": "Mount data directory",
         "label": "-v",
         "value": "/data:/data"
     }],
-    "required_capabilities": [
+    "requiredCapabilities": [
         "docker",
         "gpu"
     ]

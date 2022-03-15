@@ -544,7 +544,7 @@ object ConfigConstants {
 
   /**
    * If enabled, [agent.LocalAgent] will only collect files in output
-   * directories whose `data_type` is `directory`. All other data types will
+   * directories whose `dataType` is `directory`. All other data types will
    * not be traversed and directly passed to the succeeding service.
    * This flag will be set to `true` by default in Steep 6.0.0.
    */

@@ -36,10 +36,10 @@ const Service = () => {
     title = data.name
     subtitle = data.description
     let reqcap
-    if (data.required_capabilities === undefined || data.required_capabilities.length === 0) {
+    if (data.requiredCapabilities === undefined || data.requiredCapabilities.length === 0) {
       reqcap = <>&ndash;</>
     } else {
-      reqcap = data.required_capabilities.map((r, i) => <Label key={i}>{r}</Label>)
+      reqcap = data.requiredCapabilities.map((r, i) => <Label key={i}>{r}</Label>)
     }
     service = (<>
       <div className="service-details">
@@ -84,9 +84,9 @@ const Service = () => {
         </div>
       </>)}
 
-      {data.runtime_args && data.runtime_args.length > 0 && (<>
+      {data.runtimeArgs && data.runtimeArgs.length > 0 && (<>
         <h2>Runtime arguments</h2>
-        {data.runtime_args.map(r => (
+        {data.runtimeArgs.map(r => (
           <div className="service-parameter" key={r.id}>
             <div className="service-parameter-left">
               <h4>{r.name}</h4>
@@ -97,7 +97,7 @@ const Service = () => {
               <span className="service-parameter-value">{r.id}</span>
 
               <h5>Data type:</h5>
-              <span className="service-parameter-value">{r.data_type}</span>
+              <span className="service-parameter-value">{r.dataType}</span>
 
               <h5>Label:</h5>
               <span className="service-parameter-value">{r.label || none}</span>
@@ -128,13 +128,13 @@ const Service = () => {
               <span className="service-parameter-value">{p.cardinality}</span>
 
               <h5>Data type:</h5>
-              <span className="service-parameter-value">{p.data_type}</span>
+              <span className="service-parameter-value">{p.dataType}</span>
 
               <h5>Default value:</h5>
               <span className="service-parameter-value">{p.default === undefined ? none : "" + p.default}</span>
 
               <h5>File suffix:</h5>
-              <span className="service-parameter-value">{p.file_suffix || none}</span>
+              <span className="service-parameter-value">{p.fileSuffix || none}</span>
 
               <h5>Label:</h5>
               <span className="service-parameter-value">{p.label || none}</span>

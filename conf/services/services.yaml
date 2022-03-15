@@ -11,7 +11,7 @@
       type: input
       cardinality: 1..1
       label: -n
-      data_type: boolean
+      dataType: boolean
       default: false
 
     - id: input_file
@@ -19,14 +19,14 @@
       description: Input file name
       type: input
       cardinality: 1..1
-      data_type: file
+      dataType: file
 
     - id: output_file
       name: Output file name
       description: Output file name
       type: output
       cardinality: 1..1
-      data_type: file
+      dataType: file
 
 - id: sleep
   name: sleep
@@ -40,7 +40,7 @@
       description: The number of seconds to sleep
       type: input
       cardinality: 1..1
-      data_type: integer
+      dataType: integer
 
 - id: docker_hello_world
   name: Docker hello world
@@ -61,7 +61,7 @@
       description: The sleep command
       type: input
       cardinality: 1..1
-      data_type: string
+      dataType: string
       default: sleep
 
     - id: seconds
@@ -69,4 +69,4 @@
       description: The number of seconds to sleep
       type: input
       cardinality: 1..1
-      data_type: integer
+      dataType: integer

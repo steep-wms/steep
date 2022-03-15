@@ -143,7 +143,7 @@ steep:
       vms: 365d
 
   # If enabled, Steep will only collect files in output directories whose
-  # `data_type` is `directory`. All other data types will not be traversed and
+  # `dataType` is `directory`. All other data types will not be traversed and
   # directly passed to the succeeding service.
   # In Steep 6.0.0, this property will be `true` by default
   onlyTraverseDirectoryOutputs: false

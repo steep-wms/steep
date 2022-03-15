@@ -1,7 +1,5 @@
 package model.metadata
 
-import com.fasterxml.jackson.annotation.JsonAlias
-import com.fasterxml.jackson.annotation.JsonProperty
 import model.retry.RetryPolicy
 import model.timeout.TimeoutPolicy
 
@@ -41,11 +39,11 @@ data class Service(
     val path: String,
     val runtime: String,
     val parameters: List<ServiceParameter>,
-    @JsonProperty("runtime_args") val runtimeArgs: List<RuntimeArgument> = emptyList(),
-    @JsonProperty("required_capabilities") val requiredCapabilities: Set<String> = emptySet(),
+    val runtimeArgs: List<RuntimeArgument> = emptyList(),
+    val requiredCapabilities: Set<String> = emptySet(),
     val retries: RetryPolicy? = null,
-    @JsonAlias("max_inactivity") val maxInactivity: TimeoutPolicy? = null,
-    @JsonAlias("max_runtime") val maxRuntime: TimeoutPolicy? = null,
+    val maxInactivity: TimeoutPolicy? = null,
+    val maxRuntime: TimeoutPolicy? = null,
     val deadline: TimeoutPolicy? = null
 ) {
   companion object {

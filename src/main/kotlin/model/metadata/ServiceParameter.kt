@@ -1,6 +1,5 @@
 package model.metadata
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import model.processchain.Argument
 
 /**
@@ -23,8 +22,8 @@ data class ServiceParameter(
     val description: String,
     val type: Argument.Type,
     val cardinality: Cardinality,
-    @JsonProperty("data_type") val dataType: String = Argument.DATA_TYPE_STRING,
+    val dataType: String = Argument.DATA_TYPE_STRING,
     val default: Any? = null,
-    @JsonProperty("file_suffix") val fileSuffix: String? = null,
+    val fileSuffix: String? = null,
     val label: String? = null
 )
