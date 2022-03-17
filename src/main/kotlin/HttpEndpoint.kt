@@ -45,6 +45,7 @@ import db.VMRegistryFactory
 import db.migration.removeExecuteActionParameters
 import db.migration.removeStoreActions
 import helper.JsonUtils
+import helper.MetricsHandler
 import helper.RangeParser
 import helper.UniqueID
 import helper.WorkflowValidator
@@ -52,7 +53,6 @@ import helper.YamlUtils
 import io.netty.handler.codec.http.HttpHeaderNames
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.prometheus.client.hotspot.DefaultExports
-import io.prometheus.client.vertx.MetricsHandler
 import io.vertx.core.Promise
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.Message
