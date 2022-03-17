@@ -275,38 +275,6 @@ class PluginRegistryTest {
   }
 
   /**
-   * Test if a simple progress estimator (using the deprecated `supportedServiceId'
-   * property) can be compiled and executed
-   */
-  @Test
-  fun compileDummyProgressEstimatorDeprecated(vertx: Vertx, ctx: VertxTestContext) {
-    CoroutineScope(vertx.dispatcher()).launch {
-      val config = json {
-        obj(
-            ConfigConstants.PLUGINS to "src/**/db/dummyProgressEstimatorDeprecated.yaml"
-        )
-      }
-      PluginRegistryFactory.initialize(vertx, config)
-
-      val pr = PluginRegistryFactory.create()
-      val estimator = pr.findProgressEstimator("dummy")
-      ctx.coVerify {
-        assertThat(estimator).isNotNull
-        val e = Executable(
-            path = "path",
-            arguments = emptyList()
-        )
-        assertThat(estimator!!.compiledFunction.call(e, listOf("0"), vertx)).isEqualTo(0.0)
-        assertThat(estimator.compiledFunction.call(e, listOf("10"), vertx)).isEqualTo(0.1)
-        assertThat(estimator.compiledFunction.call(e, listOf("100"), vertx)).isEqualTo(1.0)
-        assertThat(estimator.compiledFunction.call(e, listOf("aa"), vertx)).isEqualTo(null)
-      }
-
-      ctx.completeNow()
-    }
-  }
-
-  /**
    * Test if [PluginRegistry.findProgressEstimator] works correctly
    */
   @Test

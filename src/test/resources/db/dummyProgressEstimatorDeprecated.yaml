@@ -1,5 +1,0 @@
-# A dummy progress estimator (using the deprecated `supportedServiceId' property)
-- name: dummyProgressEstimator
-  type: progressEstimator
-  scriptFile: db/dummyProgressEstimator.kts
-  supportedServiceId: dummy

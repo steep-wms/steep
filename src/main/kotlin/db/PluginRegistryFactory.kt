@@ -240,11 +240,6 @@ object PluginRegistryFactory {
         }
       }
       is ProgressEstimatorPlugin -> {
-        if (plugin.supportedServiceId != null) {
-          log.warn("Progress estimator plugin `${plugin.name}' uses the " +
-              "deprecated parameter `supportedServiceId', which will be removed " +
-              "in Steep 6.0.0. Please use `supportedServiceIds' instead.")
-        }
         plugin.copy(compiledFunction = f as KFunction<Double?>)
       }
       is RuntimePlugin -> {
