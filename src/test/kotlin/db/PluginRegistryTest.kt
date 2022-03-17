@@ -565,4 +565,24 @@ class PluginRegistryTest {
       ctx.completeNow()
     }
   }
+
+  /**
+   * Tests if we can read an empty plugin configuration file. Previously,
+   * this failed with a [NullPointerException]
+   */
+  @Test
+  fun emptyPluginConfig(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val config = json {
+        obj(
+            ConfigConstants.PLUGINS to "src/**/db/emptyPluginConfig.yaml"
+        )
+      }
+
+      // should not fail!
+      PluginRegistryFactory.initialize(vertx, config)
+
+      ctx.completeNow()
+    }
+  }
 }

@@ -51,7 +51,7 @@ abstract class AbstractFileRegistry {
           "env" to System.getenv(),
         ))
         YamlUtils.mapper.convertValue(l, tr)
-      }
+      } ?: emptyList()
     }
   }
 }
