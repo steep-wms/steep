@@ -2,6 +2,8 @@ package model.plugins
 
 import io.vertx.core.Vertx
 import model.processchain.Executable
+import model.processchain.ProcessChain
+import model.workflow.Workflow
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.callSuspend
 
@@ -34,6 +36,13 @@ data class ProgressEstimatorPlugin(
      */
     override val compiledFunction: KFunction<Double?> = throwPluginNeedsCompile()
 ) : Plugin
+
+@Suppress("UNUSED_PARAMETER")
+internal fun progressEstimatorPluginTemplate(executable: Executable,
+    recentLines: List<String>, vertx: Vertx): Double? {
+  throw NotImplementedError("This is just a template specifying the " +
+      "function signature of a progress estimator plugin")
+}
 
 suspend fun ProgressEstimatorPlugin.call(executable: Executable,
     recentLines: List<String>, vertx: Vertx): Double? {

@@ -113,15 +113,11 @@ class PluginRegistryTest {
     assertThat(pr.getInitializers()).isEqualTo(listOf(init2, init3, init1))
   }
 
-  /**
-   * Test if a simple output adapter can be compiled and executed
-   */
-  @Test
-  fun compileDummyOutputAdapter(vertx: Vertx, ctx: VertxTestContext) {
+  private fun doCompileDummyOutputAdapter(vertx: Vertx, ctx: VertxTestContext, name: String) {
     CoroutineScope(vertx.dispatcher()).launch {
       val config = json {
         obj(
-            ConfigConstants.PLUGINS to "src/**/db/dummyOutputAdapter.yaml"
+            ConfigConstants.PLUGINS to "src/**/db/$name.yaml"
         )
       }
       PluginRegistryFactory.initialize(vertx, config)
@@ -141,6 +137,25 @@ class PluginRegistryTest {
   }
 
   /**
+   * Test if a simple output adapter can be compiled and executed
+   */
+  @Test
+  fun compileDummyOutputAdapter(vertx: Vertx, ctx: VertxTestContext) {
+    doCompileDummyOutputAdapter(vertx, ctx, "dummyOutputAdapter")
+  }
+
+  /**
+   * Test if a simple output adapter can be compiled and executed even if it
+   * has less parameters than specified by the API
+   */
+  @Test
+  fun compileDummyOutputAdapterWithoutUnusedParameters(vertx: Vertx,
+      ctx: VertxTestContext) {
+    doCompileDummyOutputAdapter(vertx, ctx,
+        "dummyOutputAdapterWithoutUnusedParameters")
+  }
+
+  /**
    * Test if [PluginRegistry.findOutputAdapter] works correctly
    */
   @Test
@@ -153,46 +168,12 @@ class PluginRegistryTest {
     assertThat(pr.findOutputAdapter("wrongDataType")).isNull()
   }
 
-  /**
-   * Test if a simple process chain adapter with a deprecated function signature
-   * can be compiled and executed
-   */
-  @Test
-  fun compileDeprecatedProcessChainAdapter(vertx: Vertx, ctx: VertxTestContext) {
+  private fun doCompileDummyProcessChainAdapter(vertx: Vertx,
+      ctx: VertxTestContext, name: String) {
     CoroutineScope(vertx.dispatcher()).launch {
       val config = json {
         obj(
-            ConfigConstants.PLUGINS to "src/**/db/deprecatedProcessChainAdapter.yaml"
-        )
-      }
-      PluginRegistryFactory.initialize(vertx, config)
-
-      val pr = PluginRegistryFactory.create()
-      val adapters = pr.getProcessChainAdapters()
-      ctx.coVerify {
-        assertThat(adapters).hasSize(1)
-        val adapter = adapters[0]
-        val pcs = listOf(ProcessChain())
-        val newPcs = adapter.call(pcs, Workflow(), vertx)
-        assertThat(newPcs).isNotSameAs(pcs)
-        assertThat(newPcs).hasSize(2)
-        assertThat(newPcs[0]).isSameAs(pcs[0])
-        assertThat(newPcs[1]).isNotSameAs(pcs[0])
-      }
-
-      ctx.completeNow()
-    }
-  }
-
-  /**
-   * Test if a simple process chain adapter can be compiled and executed
-   */
-  @Test
-  fun compileDummyProcessChainAdapter(vertx: Vertx, ctx: VertxTestContext) {
-    CoroutineScope(vertx.dispatcher()).launch {
-      val config = json {
-        obj(
-            ConfigConstants.PLUGINS to "src/**/db/dummyProcessChainAdapter.yaml"
+            ConfigConstants.PLUGINS to "src/**/db/$name.yaml"
         )
       }
       PluginRegistryFactory.initialize(vertx, config)
@@ -214,6 +195,25 @@ class PluginRegistryTest {
 
       ctx.completeNow()
     }
+  }
+
+  /**
+   * Test if a simple process chain adapter can be compiled and executed
+   */
+  @Test
+  fun compileDummyProcessChainAdapter(vertx: Vertx, ctx: VertxTestContext) {
+    doCompileDummyProcessChainAdapter(vertx, ctx, "dummyProcessChainAdapter")
+  }
+
+  /**
+   * Test if a simple process chain adapter can be compiled and executed even
+   * if the parameter order is different to the API
+   */
+  @Test
+  fun compileDummyProcessChainAdapterWithOtherParameterOrder(vertx: Vertx,
+      ctx: VertxTestContext) {
+    doCompileDummyProcessChainAdapter(vertx, ctx,
+        "dummyProcessChainAdapterWithOtherParameterOrder")
   }
 
   /**
@@ -358,6 +358,27 @@ class PluginRegistryTest {
   }
 
   /**
+   * Make sure that a plugin with an invalid function signature cannot be compiled
+   */
+  @Test
+  fun invalidPluginSignature(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val config = json {
+        obj(
+            ConfigConstants.PLUGINS to "src/**/db/invalidPluginSignature.yaml"
+        )
+      }
+      ctx.coVerify {
+        assertThatThrownBy {
+          PluginRegistryFactory.initialize(vertx, config)
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContainingAll("executables", "model.processchain.Executable")
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
    * Make sure that a plugin with a missing script file cannot be compiled
    */
   @Test
@@ -487,7 +508,8 @@ class PluginRegistryTest {
       scriptFile.writeBytes(script2)
       yamlFile.writeText("""
         - name: dummyRuntime
-          type: initializer
+          type: runtime
+          supportedRuntime: dummy
           scriptFile: "${tempDir.absolutePath}/script.kt"
       """.trimIndent())
       PluginRegistryFactory.initialize(vertx, config)

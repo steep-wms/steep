@@ -1,0 +1,5 @@
+# A process chain adapter that creates a dummy list of process chains
+# Parameters are ordered differently to the API and the Vertx parameter is missing
+- name: dummyProcessChainAdapterWithOtherParameterOrder
+  type: processChainAdapter
+  scriptFile: db/dummyProcessChainAdapterWithOtherParameterOrder.kts

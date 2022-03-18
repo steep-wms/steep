@@ -1,0 +1,5 @@
+# An output adapter with an invalid function signature
+- name: invalidPluginSignature
+  type: outputAdapter
+  scriptFile: db/invalidPluginSignature.kts
+  supportedDataType: dummy

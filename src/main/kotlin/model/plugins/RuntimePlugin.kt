@@ -1,5 +1,8 @@
 package model.plugins
 
+import helper.OutputCollector
+import io.vertx.core.Vertx
+import model.processchain.Executable
 import kotlin.reflect.KFunction
 
 /**
@@ -28,3 +31,10 @@ data class RuntimePlugin(
      */
     override val compiledFunction: KFunction<Unit> = throwPluginNeedsCompile()
 ) : Plugin
+
+@Suppress("UNUSED_PARAMETER")
+internal fun runtimePluginTemplate(executable: Executable,
+    outputCollector: OutputCollector, vertx: Vertx) {
+  throw NotImplementedError("This is just a template specifying the " +
+      "function signature of a runtime plugin")
+}

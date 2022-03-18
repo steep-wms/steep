@@ -1,0 +1,6 @@
+# An output adapter that creates a dummy list of files
+# The output adapter function signature does not contain unused parameters
+- name: dummyOutputAdapterWithoutUnusedParameters
+  type: outputAdapter
+  scriptFile: db/dummyOutputAdapterWithoutUnusedParameters.kts
+  supportedDataType: dummy

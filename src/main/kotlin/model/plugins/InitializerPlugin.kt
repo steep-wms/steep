@@ -27,6 +27,12 @@ data class InitializerPlugin(
     override val compiledFunction: KFunction<Unit> = throwPluginNeedsCompile()
 ) : DependentPlugin
 
+@Suppress("UNUSED_PARAMETER")
+internal fun initializerPluginTemplate(vertx: Vertx) {
+  throw NotImplementedError("This is just a template specifying the " +
+      "function signature of an initializer plugin")
+}
+
 suspend fun InitializerPlugin.call(vertx: Vertx) {
   return if (this.compiledFunction.isSuspend) {
     this.compiledFunction.callSuspend(vertx)

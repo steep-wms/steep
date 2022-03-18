@@ -31,8 +31,15 @@ data class OutputAdapterPlugin(
     /**
      * The compiled plugin
      */
-    override val compiledFunction: KFunction<List<String>> = throwPluginNeedsCompile()
+    override val compiledFunction: KFunction<List<Any>> = throwPluginNeedsCompile()
 ) : Plugin
+
+@Suppress("UNUSED_PARAMETER")
+internal fun outputAdapterPluginTemplate(output: Argument,
+    processChain: ProcessChain, vertx: Vertx): List<Any> {
+  throw NotImplementedError("This is just a template specifying the " +
+      "function signature of an output adapter plugin")
+}
 
 suspend fun OutputAdapterPlugin.call(output: Argument,
     processChain: ProcessChain, vertx: Vertx): List<Any> {

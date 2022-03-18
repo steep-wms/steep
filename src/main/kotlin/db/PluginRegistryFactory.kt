@@ -1,7 +1,6 @@
 package db
 
 import ConfigConstants
-import helper.OutputCollector
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -12,9 +11,13 @@ import model.plugins.Plugin
 import model.plugins.ProcessChainAdapterPlugin
 import model.plugins.ProgressEstimatorPlugin
 import model.plugins.RuntimePlugin
-import model.processchain.Executable
+import model.plugins.initializerPluginTemplate
+import model.plugins.outputAdapterPluginTemplate
+import model.plugins.processChainAdapterPluginTemplate
+import model.plugins.progressEstimatorPluginTemplate
+import model.plugins.runtimePluginTemplate
+import model.plugins.wrapPluginFunction
 import model.processchain.ProcessChain
-import model.workflow.Workflow
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.net.URLClassLoader
@@ -22,11 +25,9 @@ import java.security.MessageDigest
 import kotlin.reflect.KCallable
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
-import kotlin.reflect.full.callSuspend
 import kotlin.reflect.full.extensionReceiverParameter
 import kotlin.reflect.full.instanceParameter
 import kotlin.reflect.full.memberFunctions
-import kotlin.reflect.jvm.javaType
 import kotlin.reflect.jvm.kotlinFunction
 import kotlin.script.experimental.annotations.KotlinScript
 import kotlin.script.experimental.api.ScriptCompilationConfiguration
@@ -209,92 +210,18 @@ object PluginRegistryFactory {
 
     @Suppress("UNCHECKED_CAST")
     return when (plugin) {
-      is InitializerPlugin -> plugin.copy(compiledFunction = f as KFunction<Unit>)
-      is OutputAdapterPlugin -> plugin.copy(compiledFunction = f as KFunction<List<String>>)
-      is ProcessChainAdapterPlugin -> {
-        if (isDeprecatedProcessChainAdapter(f as KFunction<*>)) {
-          log.warn("Process chain adapter plugin `${plugin.name}' uses a " +
-              "deprecated function signature, which will be removed in " +
-              "Steep 6.0.0. Please update the plugin as soon as possible!")
-          val kf = f as KFunction<List<ProcessChain>>
-          val nf = if (kf.isSuspend) {
-            object {
-              @Suppress("UNUSED_PARAMETER")
-              suspend fun i(processChains: List<ProcessChain>,
-                  workflow: Workflow, vertx: Vertx): List<ProcessChain> {
-                return kf.callSuspend(processChains, vertx)
-              }
-            }::i
-          } else {
-            object {
-              @Suppress("UNUSED_PARAMETER")
-              fun i(processChains: List<ProcessChain>,
-                  workflow: Workflow, vertx: Vertx): List<ProcessChain> {
-                return kf.call(processChains, vertx)
-              }
-            }::i
-          }
-          plugin.copy(compiledFunction = nf)
-        } else {
-          plugin.copy(compiledFunction = f as KFunction<List<ProcessChain>>)
-        }
-      }
-      is ProgressEstimatorPlugin -> {
-        plugin.copy(compiledFunction = f as KFunction<Double?>)
-      }
-      is RuntimePlugin -> {
-        if (isDeprecatedRuntime(f as KFunction<*>)) {
-          log.warn("Runtime plugin `${plugin.name}' uses a deprecated function " +
-              "signature, which will be removed in Steep 6.0.0. Please update " +
-              "the plugin as soon as possible!")
-          val kf = f as KFunction<String>
-          val nf = if (kf.isSuspend) {
-            object {
-              suspend fun i(exec: Executable, outputCollector: OutputCollector, vertx: Vertx) {
-                val output = kf.callSuspend(exec, 100, vertx)
-                outputCollector.collect(output)
-              }
-            }::i
-          } else {
-            object {
-              fun i(exec: Executable, outputCollector: OutputCollector, vertx: Vertx) {
-                val output = kf.call(exec, 100, vertx)
-                outputCollector.collect(output)
-              }
-            }::i
-          }
-          plugin.copy(compiledFunction = nf)
-        } else {
-          plugin.copy(compiledFunction = f as KFunction<Unit>)
-        }
-      }
+      is InitializerPlugin -> plugin.copy(compiledFunction = wrapPluginFunction(
+          f as KFunction<Unit>, ::initializerPluginTemplate.parameters))
+      is OutputAdapterPlugin -> plugin.copy(compiledFunction = wrapPluginFunction(
+          f as KFunction<List<Any>>, ::outputAdapterPluginTemplate.parameters))
+      is ProcessChainAdapterPlugin -> plugin.copy(compiledFunction = wrapPluginFunction(
+          f as KFunction<List<ProcessChain>>, ::processChainAdapterPluginTemplate.parameters))
+      is ProgressEstimatorPlugin -> plugin.copy(compiledFunction = wrapPluginFunction(
+          f as KFunction<Double?>, ::progressEstimatorPluginTemplate.parameters))
+      is RuntimePlugin -> plugin.copy(compiledFunction = wrapPluginFunction(
+          f as KFunction<Unit>, ::runtimePluginTemplate.parameters))
       else -> throw RuntimeException("Unknown plugin type: ${plugin::class.java}")
     }
-  }
-
-  private fun isDeprecatedRuntime(f: KFunction<*>): Boolean {
-    if (f.parameters.size != 3) {
-      return false
-    }
-    val paramType = f.parameters[1].type.javaType
-    if (paramType !is Class<*>) {
-      return false
-    }
-    if (!Int::class.java.isAssignableFrom(paramType)) {
-      return false
-    }
-    val returnType = f.returnType.javaType
-    if (returnType !is Class<*>) {
-      return false
-    }
-    if (!String::class.java.isAssignableFrom(returnType)) {
-      return false
-    }
-    return true
-  }
-
-  private fun isDeprecatedProcessChainAdapter(f: KFunction<*>): Boolean {
-    return f.parameters.size != 3
   }
 
   /**
@@ -328,5 +255,10 @@ private class KFunctionWithInstance<out T>(private val func: KFunction<T>,
   override fun callBy(args: Map<KParameter, Any?>): T
       = func.callBy(args + (instanceParam to instance))
 
-  override val parameters = func.parameters.filter { it != instanceParam }
+  override val parameters: List<KParameter> = func.parameters
+      .filter { it != instanceParam }
+      .map { KParameterWithInstance(it) }
+
+  private class KParameterWithInstance(delegate: KParameter,
+      override val index: Int = delegate.index - 1) : KParameter by delegate
 }

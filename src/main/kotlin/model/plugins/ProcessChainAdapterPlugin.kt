@@ -1,6 +1,7 @@
 package model.plugins
 
 import io.vertx.core.Vertx
+import model.processchain.Argument
 import model.processchain.ProcessChain
 import model.workflow.Workflow
 import kotlin.reflect.KFunction
@@ -29,6 +30,13 @@ data class ProcessChainAdapterPlugin(
      */
     override val compiledFunction: KFunction<List<ProcessChain>> = throwPluginNeedsCompile()
 ) : DependentPlugin
+
+@Suppress("UNUSED_PARAMETER")
+internal fun processChainAdapterPluginTemplate(processChains: List<ProcessChain>,
+    workflow: Workflow, vertx: Vertx): List<ProcessChain> {
+  throw NotImplementedError("This is just a template specifying the " +
+      "function signature of a process chain adapter plugin")
+}
 
 suspend fun ProcessChainAdapterPlugin.call(processChains: List<ProcessChain>,
     workflow: Workflow, vertx: Vertx): List<ProcessChain> {
