@@ -67,13 +67,7 @@ fun <T> wrapPluginFunction(func: KFunction<T>, parameters: List<KParameter>): KF
       } else {
         val ot = TypeFactory.defaultInstance().constructType(o.type.javaType)
         if (pt.isTypeOrSuperTypeOf(ot.rawClass)) {
-          if (pt.hasContentType() && ot.hasContentType()) {
-            val ptc = pt.contentType
-            val otc = ot.contentType
-            ptc == otc
-          } else {
-            true
-          }
+          pt.contentType == ot.contentType
         } else {
           false
         }
