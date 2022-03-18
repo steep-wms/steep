@@ -48,7 +48,7 @@
     "webpack": "^5.70.0"
   },
   "devDependencies": {
-    "cypress": "^9.5.1",
+    "cypress": "^9.5.2",
     "eslint": "^8.10.0",
     "eslint-config-next": "^12.1.0",
     "eslint-plugin-cypress": "^2.12.1"
