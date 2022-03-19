@@ -26,7 +26,7 @@
     "highlight.js": "^10.7.2",
     "json2yaml": "^1.1.0",
     "lodash": "^4.17.21",
-    "mini-svg-data-uri": "^1.4.3",
+    "mini-svg-data-uri": "^1.4.4",
     "next": "^12.1.0",
     "normalize.css": "^8.0.1",
     "nprogress": "^0.2.0",
@@ -49,7 +49,7 @@
   },
   "devDependencies": {
     "cypress": "^9.5.2",
-    "eslint": "^8.10.0",
+    "eslint": "^8.11.0",
     "eslint-config-next": "^12.1.0",
     "eslint-plugin-cypress": "^2.12.1"
   }
