@@ -72,7 +72,7 @@ class DockerRuntimeTest {
       )
     }
 
-    val exec = Executable(path = "alpine", arguments = listOf(
+    val exec = Executable(path = "alpine", serviceId = "echo", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "echo"),
             type = Argument.Type.INPUT),
         Argument(variable = ArgumentVariable(UniqueID.next(), EXPECTED),
@@ -104,7 +104,7 @@ class DockerRuntimeTest {
       )
     }
 
-    val exec = Executable(path = "alpine", arguments = listOf(
+    val exec = Executable(path = "alpine", serviceId = "cat", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "cat"),
             type = Argument.Type.INPUT),
         Argument(variable = ArgumentVariable(UniqueID.next(), f.absolutePath),
@@ -138,7 +138,7 @@ class DockerRuntimeTest {
     }
 
     val containerFileName = "/tmp/test.txt"
-    val exec = Executable(path = "alpine", arguments = listOf(
+    val exec = Executable(path = "alpine", serviceId = "cat", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "cat"),
             type = Argument.Type.INPUT),
         Argument(variable = ArgumentVariable(UniqueID.next(), containerFileName),
@@ -173,7 +173,7 @@ class DockerRuntimeTest {
       )
     }
 
-    val exec = Executable(path = "alpine", arguments = listOf(
+    val exec = Executable(path = "alpine", serviceId = "sh", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "sh"),
             type = Argument.Type.INPUT),
         Argument(variable = ArgumentVariable(UniqueID.next(), "-c"),
@@ -218,7 +218,7 @@ class DockerRuntimeTest {
       )
     }
 
-    val exec = Executable(path = "alpine", arguments = listOf(
+    val exec = Executable(path = "alpine", serviceId = "cat", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "cat"),
             type = Argument.Type.INPUT),
         Argument(variable = ArgumentVariable(UniqueID.next(), containerFileName),
@@ -251,7 +251,7 @@ class DockerRuntimeTest {
       )
     }
 
-    val exec = Executable(path = "alpine", arguments = listOf(
+    val exec = Executable(path = "alpine", serviceId = "sh", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "sh"),
             type = Argument.Type.INPUT),
         Argument(variable = ArgumentVariable(UniqueID.next(), "-c"),

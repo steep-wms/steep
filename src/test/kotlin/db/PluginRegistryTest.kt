@@ -262,6 +262,7 @@ class PluginRegistryTest {
         assertThat(estimator).isNotNull
         val e = Executable(
             path = "path",
+            serviceId = "foobar",
             arguments = emptyList()
         )
         assertThat(estimator!!.compiledFunction.call(e, listOf("0"), vertx)).isEqualTo(0.0)
@@ -315,6 +316,7 @@ class PluginRegistryTest {
         assertThat(runtime).isNotNull
         runtime!!.compiledFunction.call(Executable(
             path = "path",
+            serviceId = "foobar",
             arguments = emptyList()
         ), outputCollector, vertx)
         assertThat(outputCollector.output()).isEqualTo("DUMMY")

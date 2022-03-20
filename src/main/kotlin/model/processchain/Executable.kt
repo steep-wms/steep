@@ -38,7 +38,7 @@ data class Executable(
     val arguments: List<Argument>,
     val runtime: String = Service.RUNTIME_OTHER,
     val runtimeArgs: List<Argument> = emptyList(),
-    val serviceId: String? = null,
+    val serviceId: String,
     val retries: RetryPolicy? = null,
     val maxInactivity: TimeoutPolicy? = null,
     val maxRuntime: TimeoutPolicy? = null,

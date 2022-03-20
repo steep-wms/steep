@@ -1173,7 +1173,8 @@ class HttpEndpointTest {
     val s2 = Submission(workflow = Workflow())
     coEvery { submissionRegistry.findSubmissions() } returns listOf(s1, s2)
 
-    val pc1 = ProcessChain(executables = listOf(Executable(path = "path", arguments = emptyList())))
+    val pc1 = ProcessChain(executables = listOf(Executable(path = "path",
+        serviceId = "foobar", arguments = emptyList())))
     val pc2 = ProcessChain()
     val pc3 = ProcessChain()
     val pc4 = ProcessChain()
@@ -1276,7 +1277,8 @@ class HttpEndpointTest {
     val s2 = Submission(workflow = Workflow())
     coEvery { submissionRegistry.findSubmissions() } returns listOf(s1, s2)
 
-    val pc1 = ProcessChain(executables = listOf(Executable(path = "path", arguments = emptyList())))
+    val pc1 = ProcessChain(executables = listOf(Executable(path = "path",
+        serviceId = "foobar", arguments = emptyList())))
     val pc2 = ProcessChain()
 
     coEvery { submissionRegistry.findProcessChains(s1.id, null, 10, 0, -1) } returns
@@ -1346,7 +1348,8 @@ class HttpEndpointTest {
     val s2 = Submission(workflow = Workflow())
     coEvery { submissionRegistry.findSubmissions() } returns listOf(s1, s2)
 
-    val pc1 = ProcessChain(executables = listOf(Executable(path = "path", arguments = emptyList())))
+    val pc1 = ProcessChain(executables = listOf(Executable(path = "path",
+        serviceId = "foobar", arguments = emptyList())))
 
     coEvery { submissionRegistry.findProcessChains(s1.id, ProcessChainStatus.SUCCESS,
         10, 0, -1) } returns listOf(pc1 to s1.id)
@@ -1403,7 +1406,7 @@ class HttpEndpointTest {
     val eid = UniqueID.next()
     val sid = UniqueID.next()
     val pc1 = ProcessChain(executables = listOf(Executable(id = eid,
-        path = "path", arguments = emptyList())))
+        path = "path", serviceId = "foobar", arguments = emptyList())))
 
     coEvery { submissionRegistry.findProcessChainById(pc1.id) } returns pc1
     coEvery { submissionRegistry.findProcessChainById(neq(pc1.id)) } returns null
@@ -1440,6 +1443,7 @@ class HttpEndpointTest {
                   obj(
                       "id" to eid,
                       "path" to "path",
+                      "serviceId" to "foobar",
                       "arguments" to array(),
                       "runtime" to "other",
                       "runtimeArgs" to array()
@@ -1471,7 +1475,7 @@ class HttpEndpointTest {
     val eid = UniqueID.next()
     val sid = UniqueID.next()
     val pc1 = ProcessChain(executables = listOf(Executable(id = eid,
-        path = "path", arguments = emptyList())))
+        path = "path", serviceId = "foobar", arguments = emptyList())))
 
     coEvery { submissionRegistry.findProcessChainById(pc1.id) } returns pc1
     coEvery { submissionRegistry.findProcessChainById(neq(pc1.id)) } returns null
@@ -1505,6 +1509,7 @@ class HttpEndpointTest {
                   obj(
                       "id" to eid,
                       "path" to "path",
+                      "serviceId" to "foobar",
                       "arguments" to array(),
                       "runtime" to "other",
                       "runtimeArgs" to array()

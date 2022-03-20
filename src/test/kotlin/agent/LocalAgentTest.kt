@@ -66,7 +66,7 @@ class LocalAgentTest : AgentTest() {
   @Test
   fun cancel(vertx: Vertx, ctx: VertxTestContext) {
     val processChain = ProcessChain(executables = listOf(
-        Executable(path = "sleep", arguments = listOf(
+        Executable(path = "sleep", serviceId = "sleep", arguments = listOf(
             // sleep for a long time so we run into a timeout if cancelling does not work
             Argument(variable = ArgumentVariable(UniqueID.next(), "2000"),
                 type = Argument.Type.INPUT)
@@ -96,7 +96,7 @@ class LocalAgentTest : AgentTest() {
   @Test
   fun cancelByMessage(vertx: Vertx, ctx: VertxTestContext) {
     val processChain = ProcessChain(executables = listOf(
-        Executable(path = "sleep", arguments = listOf(
+        Executable(path = "sleep", serviceId = "sleep", arguments = listOf(
             // sleep for a long time so we run into a timeout if cancelling does not work
             Argument(variable = ArgumentVariable(UniqueID.next(), "2000"),
                 type = Argument.Type.INPUT)
@@ -134,11 +134,13 @@ class LocalAgentTest : AgentTest() {
         Shell.ExecutionException("", "", 1)
 
     val processChain = ProcessChain(executables = listOf(
-        Executable(path = "ls", arguments = emptyList(), retries = RetryPolicy(
-            maxAttempts = 4,
-            // use very long delay that would definitely fail the test
-            delay = 600000
-        ))
+        Executable(path = "ls", serviceId = "ls", arguments = emptyList(),
+            retries = RetryPolicy(
+                maxAttempts = 4,
+                // use very long delay that would definitely fail the test
+                delay = 600000
+            )
+        )
     ))
 
     val agent = createAgent(vertx)
@@ -174,15 +176,15 @@ class LocalAgentTest : AgentTest() {
   @Test
   fun getProgress(vertx: Vertx, ctx: VertxTestContext) {
     val processChain = ProcessChain(executables = listOf(
-        Executable(path = "sleep", arguments = listOf(
+        Executable(path = "sleep", serviceId = "sleep", arguments = listOf(
             Argument(variable = ArgumentVariable(UniqueID.next(), "1"),
                 type = Argument.Type.INPUT)
         )),
-        Executable(path = "sleep", arguments = listOf(
+        Executable(path = "sleep", serviceId = "sleep", arguments = listOf(
             Argument(variable = ArgumentVariable(UniqueID.next(), "1"),
                 type = Argument.Type.INPUT)
         )),
-        Executable(path = "sleep", arguments = listOf(
+        Executable(path = "sleep", serviceId = "sleep", arguments = listOf(
             Argument(variable = ArgumentVariable(UniqueID.next(), "1"),
                 type = Argument.Type.INPUT)
         ))
@@ -372,7 +374,7 @@ class LocalAgentTest : AgentTest() {
   @Test
   fun invalidMessage(vertx: Vertx, ctx: VertxTestContext) {
     val processChain = ProcessChain(executables = listOf(
-        Executable(path = "sleep", arguments = listOf(
+        Executable(path = "sleep", serviceId = "sleep", arguments = listOf(
             Argument(variable = ArgumentVariable(UniqueID.next(), "1"),
                 type = Argument.Type.INPUT)
         ))
@@ -418,7 +420,7 @@ class LocalAgentTest : AgentTest() {
     }
 
     val processChain = ProcessChain(executables = listOf(
-        Executable(path = "alpine", arguments = listOf(
+        Executable(path = "alpine", serviceId = "sleep", arguments = listOf(
             Argument(variable = ArgumentVariable(UniqueID.next(), "sleep"),
                 type = Argument.Type.INPUT),
             Argument(variable = ArgumentVariable(UniqueID.next(), "1"),
@@ -450,7 +452,7 @@ class LocalAgentTest : AgentTest() {
     }
 
     val processChain = ProcessChain(executables = listOf(
-        Executable(path = "alpine", arguments = listOf(
+        Executable(path = "alpine", serviceId = "false", arguments = listOf(
             Argument(variable = ArgumentVariable(UniqueID.next(), "false"),
                 type = Argument.Type.INPUT)
         ), runtime = Service.RUNTIME_DOCKER)
@@ -479,7 +481,7 @@ class LocalAgentTest : AgentTest() {
     }
 
     val processChain = ProcessChain(executables = listOf(
-        Executable(path = "alpine", arguments = listOf(
+        Executable(path = "alpine", serviceId = "sleep", arguments = listOf(
             Argument(variable = ArgumentVariable(UniqueID.next(), "sleep"),
                 type = Argument.Type.INPUT),
             // sleep for a long time so we run into a timeout if cancelling does not work
@@ -512,7 +514,7 @@ class LocalAgentTest : AgentTest() {
     val outputFile = File(tempDir.toRealPath().toFile(), "file")
     val outputDir = File(tempDir.toRealPath().toFile(), "dir")
     val processChain = ProcessChain(executables = listOf(
-      Executable(path = "echo", arguments = listOf(
+      Executable(path = "echo", serviceId = "echo", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), outputFile.absolutePath),
           type = Argument.Type.OUTPUT,
           dataType = "file"),

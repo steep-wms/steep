@@ -169,7 +169,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
             withTimeout(exec.deadline, "deadline", exec.serviceId) {
               withRetry(exec.retries) { attempt ->
                 if (attempt > 1) {
-                  gaugeRetries.labels(exec.serviceId ?: "<unknown>").inc()
+                  gaugeRetries.labels(exec.serviceId).inc()
                 }
                 withTimeout(exec.maxRuntime, "maximum runtime", exec.serviceId) {
                   execute(exec, processChain.id, executor, contextWrapper) { p ->
@@ -373,6 +373,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
     return so.chunked(100).map { w ->
       Executable(
         path = "mkdir",
+        serviceId = "mkdir",
         arguments = listOf(
             Argument(
                 label = "-p",
@@ -523,8 +524,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
   private inner class ProgressReportingOutputCollector(maxLines: Int,
       private val exec: Executable, private val progressUpdater: (Double) -> Unit) :
       DefaultOutputCollector(maxLines) {
-    private val progressEstimator = exec.serviceId?.let {
-      pluginRegistry.findProgressEstimator(it) }
+    private val progressEstimator = pluginRegistry.findProgressEstimator(exec.serviceId)
 
     override fun collect(line: String) {
       super.collect(line)

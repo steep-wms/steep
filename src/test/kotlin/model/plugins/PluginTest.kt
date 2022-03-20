@@ -195,7 +195,8 @@ class PluginTest {
   @Test
   fun wrapPluginFunctionLists(vertx: Vertx, ctx: VertxTestContext) {
     val processChains = listOf(ProcessChain())
-    val executables = listOf(Executable(path = "path", arguments = emptyList()))
+    val executables = listOf(Executable(path = "path", serviceId = "foobar",
+        arguments = emptyList()))
     val h = FunctionHolderLists(vertx, ctx, processChains, executables)
     CoroutineScope(vertx.dispatcher()).launch {
       val wrapped = wrapPluginFunction(h::f, ::templateLists.parameters)
@@ -210,7 +211,8 @@ class PluginTest {
   @Test
   fun wrapPluginFunctionCovariance(vertx: Vertx, ctx: VertxTestContext) {
     val processChains = listOf(ProcessChain())
-    val executables = listOf(Executable(path = "path", arguments = emptyList()))
+    val executables = listOf(Executable(path = "path", serviceId = "foobar",
+        arguments = emptyList()))
     val bais = ByteArrayInputStream(ByteArray(0))
     val h = FunctionHolderCovariance(vertx, ctx, processChains, executables, bais)
     CoroutineScope(vertx.dispatcher()).launch {

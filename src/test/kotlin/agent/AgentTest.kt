@@ -69,7 +69,7 @@ abstract class AgentTest {
         type = Argument.Type.OUTPUT,
         dataType = Argument.DATA_TYPE_DIRECTORY)
     val processChain = ProcessChain(executables = listOf(
-        Executable(path = "cp", arguments = listOf(
+        Executable(path = "cp", serviceId = "cp", arguments = listOf(
             Argument(variable = ArgumentVariable(UniqueID.next(), inputFile.toString()),
                 type = Argument.Type.INPUT),
             outputArg
@@ -127,13 +127,13 @@ abstract class AgentTest {
         type = Argument.Type.OUTPUT,
         dataType = Argument.DATA_TYPE_STRING)
     val processChain = ProcessChain(executables = listOf(
-        Executable(path = "mkdir", arguments = listOf(
+        Executable(path = "mkdir", serviceId = "mkdir", arguments = listOf(
             Argument(label = "-p", variable = ArgumentVariable(UniqueID.next(), "true"),
                 type = Argument.Type.INPUT, dataType = Argument.DATA_TYPE_BOOLEAN),
             outputNewDirArg
         )),
-        Executable(path = "touch", arguments = listOf(outputNewFileArg)),
-        Executable(path = "cp", arguments = listOf(
+        Executable(path = "touch", serviceId = "touch", arguments = listOf(outputNewFileArg)),
+        Executable(path = "cp", serviceId = "cp", arguments = listOf(
             Argument(variable = ArgumentVariable(UniqueID.next(), inputFile.toString()),
                 type = Argument.Type.INPUT),
             outputArg
@@ -192,8 +192,10 @@ abstract class AgentTest {
         supportedRuntime = customRuntimeName,
         compiledFunction = customRuntime::execute
     )
+    every { pluginRegistry.findProgressEstimator(any()) } returns null
 
-    val exec = Executable(path = "ls", arguments = emptyList(), runtime = customRuntimeName)
+    val exec = Executable(path = "ls", serviceId = "ls",
+        arguments = emptyList(), runtime = customRuntimeName)
     val processChain = ProcessChain(executables = listOf(exec))
 
     val agent = createAgent(vertx)
@@ -222,9 +224,8 @@ abstract class AgentTest {
     }
 
     val processChain = ProcessChain(executables = listOf(
-        Executable(path = "ls", arguments = emptyList(), retries = RetryPolicy(
-            maxAttempts = 4
-        ))
+        Executable(path = "ls", serviceId = "ls", arguments = emptyList(),
+            retries = RetryPolicy(maxAttempts = 4))
     ))
 
     val agent = createAgent(vertx)
