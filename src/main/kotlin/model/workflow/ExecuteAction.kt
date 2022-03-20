@@ -21,16 +21,17 @@ import model.timeout.TimeoutPolicy
  * @param maxRuntime an optional timeout policy that defines how long the
  * execution of the service can take before it is automatically aborted, even
  * if the service regularly writes to the standard output and error streams. Can
- * be overridden in the workflow (see [model.workflow.ExecuteAction.maxRuntime]).
- * This value overrides any maximum runtime rule defined in the service metadata.
+ * be overridden in the workflow (see [maxRuntime]). This value overrides any
+ * maximum runtime rule defined in the service metadata.
  * @param deadline an optional timeout policy that defines how long the
  * execution of the service can take at all (including all retries and their
  * associated delays) until it is aborted. Can be overridden in the workflow
- * (see [model.workflow.ExecuteAction.deadline]). This value overrides any
- * deadline defined in the service metadata.
+ * (see [deadline]). This value overrides any deadline defined in the service
+ * metadata.
  * @author Michel Kraemer
  */
 data class ExecuteAction(
+    override val id: String = UniqueID.next(),
     val service: String,
     val inputs: List<GenericParameter> = emptyList(),
     val outputs: List<OutputParameter> = emptyList(),
@@ -38,7 +39,6 @@ data class ExecuteAction(
     val maxInactivity: TimeoutPolicy? = null,
     val maxRuntime: TimeoutPolicy? = null,
     val deadline: TimeoutPolicy? = null,
-    override val id: String = UniqueID.next(),
     @JsonInclude(JsonInclude.Include.NON_DEFAULT)
     override val dependsOn: List<String> = emptyList()
 ) : Action

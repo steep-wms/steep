@@ -500,8 +500,8 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       return@flatMap args
     }
 
-    return Executable(action.id, service.path, arguments, service.runtime,
-        runtimeArgsToArguments(service.runtimeArgs), service.id,
+    return Executable(action.id, service.path, service.id, arguments,
+        service.runtime, runtimeArgsToArguments(service.runtimeArgs),
         action.retries ?: service.retries, action.maxInactivity ?: service.maxInactivity,
         action.maxRuntime ?: service.maxRuntime, action.deadline ?: service.deadline)
   }

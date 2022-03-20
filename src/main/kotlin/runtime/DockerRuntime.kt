@@ -47,7 +47,7 @@ class DockerRuntime(config: JsonObject) : OtherRuntime() {
     )
 
     val dockerExec = Executable(id = executable.id, path = "docker",
-        arguments = dockerArgs + executable.arguments, serviceId = executable.serviceId)
+        serviceId = executable.serviceId, arguments = dockerArgs + executable.arguments)
     super.execute(dockerExec, outputCollector)
   }
 }

@@ -768,8 +768,8 @@ class LocalAgentTest : AgentTest() {
    */
   @Test
   fun maxInactivityNoTimeout(vertx: Vertx, ctx: VertxTestContext) {
-    val exec = Executable(path = "dummy", arguments = emptyList(),
-      maxInactivity = TimeoutPolicy(200), serviceId = "dummy")
+    val exec = Executable(path = "dummy", serviceId = "dummy",
+        arguments = emptyList(), maxInactivity = TimeoutPolicy(200))
     val processChain = ProcessChain(executables = listOf(exec))
 
     mockkConstructor(OtherRuntime::class)
@@ -799,8 +799,8 @@ class LocalAgentTest : AgentTest() {
 
   private fun doMaxInactivity(vertx: Vertx, ctx: VertxTestContext,
       retries: RetryPolicy?, expectedCalls: Int) {
-    val exec = Executable(path = "dummy", arguments = emptyList(),
-      maxInactivity = TimeoutPolicy(200), serviceId = "dummy", retries = retries)
+    val exec = Executable(path = "dummy", serviceId = "dummy",
+        arguments = emptyList(), retries = retries, maxInactivity = TimeoutPolicy(200))
     val processChain = ProcessChain(executables = listOf(exec))
 
     mockkConstructor(OtherRuntime::class)

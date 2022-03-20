@@ -17,13 +17,13 @@ import helper.UniqueID
  * @author Michel Kraemer
  */
 data class ForEachAction(
+    override val id: String = UniqueID.next(),
     val input: Variable,
     val enumerator: Variable,
     val output: Variable? = null,
     val actions: List<Action> = emptyList(),
     val yieldToOutput: Variable? = null,
     val yieldToInput: Variable? = null,
-    override val id: String = UniqueID.next(),
     @JsonInclude(JsonInclude.Include.NON_DEFAULT)
     override val dependsOn: List<String> = emptyList()
 ) : Action
