@@ -543,14 +543,6 @@ object ConfigConstants {
   const val GARBAGECOLLECTOR_RETENTION_VMS = "steep.garbageCollector.retention.vms"
 
   /**
-   * If enabled, [agent.LocalAgent] will only collect files in output
-   * directories whose `dataType` is `directory`. All other data types will
-   * not be traversed and directly passed to the succeeding service.
-   * This flag will be set to `true` by default in Steep 6.0.0.
-   */
-  const val ONLYTRAVERSEDIRECTORYOUTPUTS = "steep.onlyTraverseDirectoryOutputs"
-
-  /**
    * `true` if Steep should cache compiled plugin scripts on disk so they do
    * not have to be compiled again when Steep starts the next time.
    */
