@@ -1,6 +1,7 @@
 package runtime
 
 import helper.OutputCollector
+import helper.Shell
 import helper.UniqueID
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -33,6 +34,8 @@ class DockerRuntime(config: JsonObject) : OtherRuntime() {
           type = Argument.Type.INPUT)
     }
 
+    val containerName = "steep-${executable.id}-${executable.serviceId}-${UniqueID.next()}"
+        .lowercase().replace("""[^a-z0-9]""".toRegex(), "-")
     val dockerArgs = listOf(
         Argument(id = UniqueID.next(),
             variable = ArgumentVariable("dockerRun", "run"),
@@ -42,12 +45,24 @@ class DockerRuntime(config: JsonObject) : OtherRuntime() {
             label = "-v", variable = ArgumentVariable("dockerMount", "$tmpPath:$tmpPath"),
             type = Argument.Type.INPUT),
         Argument(id = UniqueID.next(),
+            label = "--name", variable = ArgumentVariable("dockerContainerName", containerName),
+            type = Argument.Type.INPUT),
+        Argument(id = UniqueID.next(),
             variable = ArgumentVariable("dockerImage", executable.path),
             type = Argument.Type.INPUT)
     )
 
     val dockerExec = Executable(id = executable.id, path = "docker",
         serviceId = executable.serviceId, arguments = dockerArgs + executable.arguments)
-    super.execute(dockerExec, outputCollector)
+    try {
+      super.execute(dockerExec, outputCollector)
+    } catch (e: InterruptedException) {
+      try {
+        Shell.execute(listOf("docker", "kill", containerName), outputCollector)
+      } catch (t: Throwable) {
+        // ignore
+      }
+      throw e
+    }
   }
 }

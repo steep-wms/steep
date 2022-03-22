@@ -2,6 +2,7 @@ package runtime
 
 import ConfigConstants
 import helper.DefaultOutputCollector
+import helper.JsonUtils
 import helper.Shell
 import helper.UniqueID
 import io.vertx.core.Vertx
@@ -13,6 +14,7 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.metadata.Service
 import model.processchain.Argument
@@ -26,6 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.nio.file.Path
+import java.util.concurrent.Executors
 
 /**
  * Tests for [DockerRuntime]
@@ -267,6 +270,71 @@ class DockerRuntimeTest {
         runtime.execute(exec, collector)
         assertThat(collector.output()).isEqualTo(EXPECTED)
       }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Get all running docker containers
+   */
+  private fun getContainers(): List<Map<String, Any>> {
+    val outputCollector = DefaultOutputCollector()
+    Shell.execute(listOf("docker", "container", "ls", "--format={{json .}}"),
+        outputCollector)
+    return outputCollector.lines().map { JsonUtils.readValue(it) }
+  }
+
+  /**
+   * Make sure a docker container is actually killed when the executable is cancelled
+   */
+  @Test
+  fun killContainerOnCancel(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
+    val config = json {
+      obj(
+          ConfigConstants.TMP_PATH to tempDir.toString()
+      )
+    }
+
+    val exec = Executable(path = "alpine", serviceId = "sleep", arguments = listOf(
+        Argument(variable = ArgumentVariable(UniqueID.next(), "sleep"),
+            type = Argument.Type.INPUT),
+        Argument(variable = ArgumentVariable(UniqueID.next(), "120"),
+            type = Argument.Type.INPUT)
+    ), runtime = Service.RUNTIME_DOCKER)
+
+    // launch a container in the background
+    val runtime = DockerRuntime(config)
+    val executor = Executors.newSingleThreadExecutor()
+    val execFuture = executor.submit {
+      runtime.execute(exec, DefaultOutputCollector())
+    }
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      // wait until the container is there
+      while (true) {
+        val containers = getContainers()
+        val sleepContainer = containers.any { container ->
+          container["Names"]?.toString()?.startsWith("steep-${exec.id}-sleep") ?: false }
+        if (sleepContainer) {
+          break
+        }
+        delay(1000)
+      }
+
+      // cancel container
+      execFuture.cancel(true)
+
+      // wait for the container to disappear
+      while (true) {
+        val containers = getContainers()
+        val sleepContainerGone = containers.none { container ->
+          container["Names"]?.toString()?.startsWith("steep-${exec.id}-sleep") ?: false }
+        if (sleepContainerGone) {
+          break
+        }
+        delay(1000)
+      }
+
       ctx.completeNow()
     }
   }
