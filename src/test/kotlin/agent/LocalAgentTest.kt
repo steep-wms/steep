@@ -534,27 +534,14 @@ class LocalAgentTest : AgentTest() {
 
     val config = JsonObject()
     CoroutineScope(vertx.dispatcher()).launch {
-      // Old behavior, no config set.
-      val invocationsNoConfig = 2
       LocalAgent(vertx, localAgentDispatcher, config).execute(processChain)
-      coVerify(exactly = invocationsNoConfig) {
-        FileSystemUtils.readRecursive(any(), any())
+      // only the directory (argument 2) should have been traversed but not
+      // the file (argument 1)
+      coVerify(exactly = 0) {
+        FileSystemUtils.readRecursive(outputFile.absolutePath, any())
       }
-
-      // Old behavior, config set.
-      val invocationsFalse = 2
-      config.put(ConfigConstants.ONLYTRAVERSEDIRECTORYOUTPUTS, false)
-      LocalAgent(vertx, localAgentDispatcher, config).execute(processChain)
-      coVerify(exactly = invocationsNoConfig + invocationsFalse) {
-        FileSystemUtils.readRecursive(any(), any())
-      }
-
-      // New behavior, config set.
-      val invocationsTrue = 1
-      config.put(ConfigConstants.ONLYTRAVERSEDIRECTORYOUTPUTS, true)
-      LocalAgent(vertx, localAgentDispatcher, config).execute(processChain)
-      coVerify(exactly = invocationsNoConfig + invocationsFalse + invocationsTrue) {
-        FileSystemUtils.readRecursive(any(), any())
+      coVerify(exactly = 1) {
+        FileSystemUtils.readRecursive(outputDir.absolutePath, any())
       }
 
       ctx.completeNow()
