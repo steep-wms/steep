@@ -1,3 +1,4 @@
+const ESLintPlugin = require("eslint-webpack-plugin")
 const svgToMiniDataURI = require("mini-svg-data-uri")
 
 const isProd = process.env.NODE_ENV === "production"
@@ -78,15 +79,9 @@ module.exports = {
     })
 
     if (dev) {
-      config.module.rules.push({
-        test: /\.jsx?$/,
-        loader: "eslint-loader",
-        exclude: [/node_modules/, /\.next/, /out/],
-        enforce: "pre",
-        options: {
-          emitWarning: true
-        }
-      })
+      config.plugins.push(new ESLintPlugin({
+        extensions: ["js", "jsx"]
+      }))
     }
 
     return config
