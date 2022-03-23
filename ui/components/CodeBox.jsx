@@ -9,11 +9,6 @@ import { Clipboard as ClipboardIcon } from "react-feather"
 const COPY = "Copy to clipboard"
 const COPIED = "Copied!"
 
-let worker = undefined
-if (typeof window !== "undefined") {
-  worker = new Worker(new URL("./lib/highlight-worker.js", import.meta.url))
-}
-
 const CodeBox = ({ json }) => {
   const jsonRef = useRef()
   const yamlRef = useRef()
@@ -23,29 +18,32 @@ const CodeBox = ({ json }) => {
   const [copyTooltipVisible, setCopyTooltipVisible] = useState(false)
   const [copyTooltipTitle, setCopyTooltipTitle] = useState(COPY)
   const [activeLang, setActiveLang] = useState(localStorage.activeCodeLanguage || "yaml")
-  const [highlightingTooLong, setHighlightingTooLong] = useState(false)
+  const [highlightingTooLongJson, setHighlightingTooLongJson] = useState(false)
+  const [highlightingTooLongYaml, setHighlightingTooLongYaml] = useState(false)
 
   let str = JSON.stringify(json, undefined, 2)
   let yamlStr = stringify(json)
 
-  useEffect(() => {
-    let highlightingFinished = false
+  function highlight(code, language, success, error) {
+    let finished = false
+    let worker = new Worker(new URL("./lib/highlight-worker.js", import.meta.url))
     worker.onmessage = ({ data: { html } }) => {
-      setHighlightedYaml(html)
-      worker.onmessage = ({ data: { html } }) => {
-        setHighlightedJson(html)
-        highlightingFinished = true
-      }
-      worker.postMessage({ code: str, language: "json" })
+      finished = true
+      success(html)
     }
-    worker.postMessage({ code: yamlStr, language: "yaml" })
+    worker.postMessage({ code, language })
 
     setTimeout(() => {
-      if (!highlightingFinished) {
-        setHighlightingTooLong(true)
+      if (!finished) {
+        error()
         worker.terminate()
       }
     }, 2000)
+  }
+
+  useEffect(() => {
+    highlight(yamlStr, "yaml", setHighlightedYaml, () => setHighlightingTooLongYaml(true))
+    highlight(str, "json", setHighlightedJson, () => setHighlightingTooLongJson(true))
   }, [str, yamlStr])
 
   useEffect(() => {
@@ -79,7 +77,10 @@ const CodeBox = ({ json }) => {
           onClick={() => onClickLanguage("yaml")}>YAML</div>
         <div className={classNames("code-box-title-tab", { active: activeLang === "json" })}
           onClick={() => onClickLanguage("json")}>JSON</div>
-        {highlightingTooLong && <div className="highlighting-disabled">
+        {highlightingTooLongJson && activeLang === "json" && <div className="highlighting-disabled">
+          Syntax highlighting was disabled because it took too long
+        </div>}
+        {highlightingTooLongYaml && activeLang === "yaml" && <div className="highlighting-disabled">
           Syntax highlighting was disabled because it took too long
         </div>}
       </div>
