@@ -77,3 +77,12 @@
     }
   }
 }
+
+.highlighting-disabled {
+  position: relative;
+  padding: .5rem 1rem;
+  flex: 1;
+  text-align: right;
+  color: $error;
+  font-weight: 400;
+}

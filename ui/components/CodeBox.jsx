@@ -15,23 +15,44 @@ hljs.registerLanguage("yaml", yaml)
 const COPY = "Copy to clipboard"
 const COPIED = "Copied!"
 
+let worker = undefined
+if (typeof window !== "undefined") {
+  worker = new Worker(new URL("./lib/highlight-worker.js", import.meta.url))
+}
+
 const CodeBox = ({ json }) => {
   const jsonRef = useRef()
   const yamlRef = useRef()
   const copyBtnRef = useRef()
+  const [highlightedJson, setHighlightedJson] = useState()
+  const [highlightedYaml, setHighlightedYaml] = useState()
   const [copyTooltipVisible, setCopyTooltipVisible] = useState(false)
   const [copyTooltipTitle, setCopyTooltipTitle] = useState(COPY)
   const [activeLang, setActiveLang] = useState(localStorage.activeCodeLanguage || "yaml")
+  const [highlightingTooLong, setHighlightingTooLong] = useState(false)
 
   let str = JSON.stringify(json, undefined, 2)
-  str = str.replace()
-
   let yamlStr = stringify(json)
 
   useEffect(() => {
-    hljs.highlightElement(jsonRef.current)
-    hljs.highlightElement(yamlRef.current)
-  }, [])
+    let highlightingFinished = false
+    worker.onmessage = ({ data: { html } }) => {
+      setHighlightedYaml(html)
+      worker.onmessage = ({ data: { html } }) => {
+        setHighlightedJson(html)
+        highlightingFinished = true
+      }
+      worker.postMessage({ code: str, language: "json" })
+    }
+    worker.postMessage({ code: yamlStr, language: "yaml" })
+
+    setTimeout(() => {
+      if (!highlightingFinished) {
+        setHighlightingTooLong(true)
+        worker.terminate()
+      }
+    }, 2000)
+  }, [str, yamlStr])
 
   useEffect(() => {
     let clipboardYaml = new Clipboard(copyBtnRef.current, {
@@ -64,13 +85,26 @@ const CodeBox = ({ json }) => {
           onClick={() => onClickLanguage("yaml")}>YAML</div>
         <div className={classNames("code-box-title-tab", { active: activeLang === "json" })}
           onClick={() => onClickLanguage("json")}>JSON</div>
+        {highlightingTooLong && <div className="highlighting-disabled">
+          Syntax highlighting was disabled because it took too long
+        </div>}
       </div>
       <div className="code-box-main">
         <div className={classNames("code-box-tab", { active: activeLang === "yaml" })}>
-          <pre><code lang="yaml" ref={yamlRef}>{yamlStr}</code></pre>
+          {highlightedYaml && (
+            <pre><code lang="json" className="hljs language-yaml" ref={yamlRef}
+              dangerouslySetInnerHTML={{ __html: highlightedYaml }}></code></pre>
+          ) || (
+            <pre><code lang="json" className="hljs language-yaml" ref={yamlRef}>{yamlStr}</code></pre>
+          )}
         </div>
         <div className={classNames("code-box-tab", { active: activeLang === "json" })}>
-          <pre><code lang="json" ref={jsonRef}>{str}</code></pre>
+          {highlightedJson && (
+            <pre><code lang="json" className="hljs language-json" ref={jsonRef}
+              dangerouslySetInnerHTML={{ __html: highlightedJson }}></code></pre>
+          ) || (
+            <pre><code lang="json" className="hljs language-json" ref={jsonRef}>{str}</code></pre>
+          )}
         </div>
         <span className="code-box-copy-btn">
           <Tooltip title={copyTooltipTitle} forceVisible={copyTooltipVisible}
