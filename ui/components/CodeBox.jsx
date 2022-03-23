@@ -12,6 +12,7 @@ const COPIED = "Copied!"
 const CodeBox = ({ json }) => {
   const jsonRef = useRef()
   const yamlRef = useRef()
+  const yamlStrRef = useRef()
   const copyBtnRef = useRef()
   const [highlightedJson, setHighlightedJson] = useState()
   const [highlightedYaml, setHighlightedYaml] = useState()
@@ -22,7 +23,10 @@ const CodeBox = ({ json }) => {
   const [highlightingTooLongYaml, setHighlightingTooLongYaml] = useState(false)
 
   let str = JSON.stringify(json, undefined, 2)
-  let yamlStr = stringify(json)
+  if (yamlStrRef.current === undefined) {
+    yamlStrRef.current = stringify(json)
+  }
+  let yamlStr = yamlStrRef.current
 
   function highlight(code, language, success, error) {
     let finished = false
