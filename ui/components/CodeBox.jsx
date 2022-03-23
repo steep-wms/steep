@@ -6,12 +6,6 @@ import stringify from "./lib/yaml-stringify"
 import Clipboard from "clipboard"
 import { Clipboard as ClipboardIcon } from "react-feather"
 
-import hljs from "highlight.js/lib/core"
-import json from "highlight.js/lib/languages/json"
-import yaml from "highlight.js/lib/languages/yaml"
-hljs.registerLanguage("json", json)
-hljs.registerLanguage("yaml", yaml)
-
 const COPY = "Copy to clipboard"
 const COPIED = "Copied!"
 
