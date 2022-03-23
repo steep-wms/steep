@@ -100,6 +100,11 @@ class Scheduler : CoroutineVerticle() {
    */
   private val processChainsToResume = mutableListOf<Pair<String, JsonObject>>()
 
+  /**
+   * `true` if the scheduler is currently shutting down
+   */
+  private var shuttingDown = false
+
   override suspend fun start() {
     log.info("Launching scheduler ...")
 
@@ -206,6 +211,7 @@ class Scheduler : CoroutineVerticle() {
 
   override suspend fun stop() {
     log.info("Stopping scheduler ...")
+    shuttingDown = true
     periodicLookupJob.cancelAndJoin()
     periodicLookupOrphansJob?.cancelAndJoin()
     submissionRegistry.close()
@@ -356,27 +362,31 @@ class Scheduler : CoroutineVerticle() {
           submissionRegistry.setProcessChainStatus(processChain.id, SUCCESS)
           gaugeProcessChains.labels(SUCCESS.name).inc()
         } catch (_: CancellationException) {
-          log.warn("Process chain execution was cancelled")
-          submissionRegistry.setProcessChainStatus(processChain.id, CANCELLED)
-          gaugeProcessChains.labels(CANCELLED.name).inc()
+          if (!shuttingDown) { // ignore cancellation on shutdown
+            log.warn("Process chain execution was cancelled")
+            submissionRegistry.setProcessChainStatus(processChain.id, CANCELLED)
+            gaugeProcessChains.labels(CANCELLED.name).inc()
+          }
         } catch (t: Throwable) {
           log.error("Process chain execution failed", t)
           submissionRegistry.setProcessChainErrorMessage(processChain.id, t.message)
           submissionRegistry.setProcessChainStatus(processChain.id, ERROR)
           gaugeProcessChains.labels(ERROR.name).inc()
         } finally {
-          gaugeProcessChains.labels(RUNNING.name).dec()
-          agentRegistry.deallocate(agent)
-          submissionRegistry.setProcessChainEndTime(processChain.id, Instant.now())
-          runningProcessChainIds.remove(processChain.id)
+          if (!shuttingDown) {
+            gaugeProcessChains.labels(RUNNING.name).dec()
+            agentRegistry.deallocate(agent)
+            submissionRegistry.setProcessChainEndTime(processChain.id, Instant.now())
+            runningProcessChainIds.remove(processChain.id)
 
-          // try to lookup next process chain immediately
-          vertx.eventBus().send(SCHEDULER_LOOKUP_NOW, json {
-            obj(
-                "maxLookups" to 1,
-                "updateRequiredCapabilities" to false
-            )
-          })
+            // try to lookup next process chain immediately
+            vertx.eventBus().send(SCHEDULER_LOOKUP_NOW, json {
+              obj(
+                  "maxLookups" to 1,
+                  "updateRequiredCapabilities" to false
+              )
+            })
+          }
         }
       }
     }

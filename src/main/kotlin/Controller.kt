@@ -32,6 +32,7 @@ import model.workflow.Workflow
 import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
 import java.time.Instant
+import java.util.concurrent.CancellationException
 
 /**
  * The controller fetches submissions from a [SubmissionRegistry], converts
@@ -79,6 +80,7 @@ class Controller : CoroutineVerticle() {
   private lateinit var periodicLookupJob: Job
   private var lookupOrphansInterval: Long = DEFAULT_LOOKUP_ORPHANS_INTERVAL
   private var periodicLookupOrphansJob: Job? = null
+  private var shuttingDown = false
 
   override suspend fun start() {
     log.info("Launching controller ...")
@@ -157,6 +159,7 @@ class Controller : CoroutineVerticle() {
 
   override suspend fun stop() {
     log.info("Stopping controller ...")
+    shuttingDown = true
     periodicLookupJob.cancelAndJoin()
     periodicLookupOrphansJob?.cancelAndJoin()
     submissionRegistry.close()
@@ -398,15 +401,21 @@ class Controller : CoroutineVerticle() {
       }
       submissionRegistry.setSubmissionEndTime(submission.id, Instant.now())
     } catch (t: Throwable) {
+      if (t is CancellationException && shuttingDown) {
+        // ignore cancellation on shutdown
+        return
+      }
       log.error("Could not execute submission", t)
       submissionRegistry.setSubmissionStatus(submission.id, Submission.Status.ERROR)
       submissionRegistry.setSubmissionErrorMessage(submission.id, t.message)
       submissionRegistry.setSubmissionEndTime(submission.id, Instant.now())
       cancelProcessChainsOfSubmission(submission.id)
     } finally {
-      // the submission was either successful or it failed - remove the current
-      // execution state so it won't be repeated/resumed
-      submissionRegistry.setSubmissionExecutionState(submission.id, null)
+      if (!shuttingDown) {
+        // the submission was either successful or it failed - remove the current
+        // execution state so it won't be repeated/resumed
+        submissionRegistry.setSubmissionExecutionState(submission.id, null)
+      }
 
       lock.release()
     }
