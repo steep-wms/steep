@@ -170,6 +170,10 @@ class ProcessChainGeneratorTest {
         // action's input
         T("forEachYieldToInput"),
 
+        // Test if more sub-actions are already generated from a recursive
+        // for-each action if the first results arrive early
+        T("forEachYieldToInput", "forEachYieldToInputEarly"),
+
         // Test if a recursive for-each action can contain another for-each
         // action
         T("forEachYieldToInputNested"),
@@ -300,8 +304,10 @@ class ProcessChainGeneratorTest {
     @Suppress("UNUSED")
     fun argumentProvider(): Stream<Arguments> = tests.flatMap {
       listOf(
-          Arguments.arguments(it.workflowName, it.resultsName, true),
-          Arguments.arguments(it.workflowName, it.resultsName, false)
+          Arguments.arguments(it.workflowName, it.resultsName, true, false),
+          Arguments.arguments(it.workflowName, it.resultsName, false, false),
+          Arguments.arguments(it.workflowName, it.resultsName, true, true),
+          Arguments.arguments(it.workflowName, it.resultsName, false, true)
       )
     }.stream()
   }
@@ -325,7 +331,7 @@ class ProcessChainGeneratorTest {
   @ParameterizedTest
   @MethodSource("argumentProvider")
   fun testAll(workflowName: String, resultsName: String = workflowName,
-      persistState: Boolean = false) {
+      persistState: Boolean = false, perResult: Boolean = false) {
     val workflow = readWorkflow(workflowName)
     val expectedChains = readProcessChains(resultsName)
 
@@ -349,7 +355,22 @@ class ProcessChainGeneratorTest {
         generator.loadState(json)
       }
 
-      val processChains = generator.generate(results, executedExecutableIds)
+      val processChains = if (perResult) {
+        // check that the process chain generator does not generate too many
+        // process chains if it's called too early (i.e. with results from
+        // only a few of the actions created before)
+        if (results.isEmpty()) {
+          val pcs = generator.generate(results, executedExecutableIds)
+          pcs
+        } else {
+          results.entries.flatMap { r ->
+            val pcs = generator.generate(mapOf(r.toPair()), executedExecutableIds)
+            pcs
+          }
+        }
+      } else {
+        generator.generate(results, executedExecutableIds)
+      }
       assertThat(YamlUtils.mapper.writeValueAsString(processChains))
         .isEqualTo(YamlUtils.mapper.writeValueAsString(expected.chains))
       results = expected.results

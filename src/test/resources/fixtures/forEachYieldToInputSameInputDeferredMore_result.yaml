@@ -36,11 +36,11 @@
               type: output
               dataType: string
   results:
+    root_cp_output:
+      - /tmp/2
     files:
       - test1.txt
       - test2.txt
-    root_cp_output:
-      - /tmp/2
 - chains:
     - id: 5
       executables:

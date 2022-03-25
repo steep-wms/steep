@@ -54,13 +54,13 @@
               type: output
               dataType: string
   results:
-    files:
-      - test1.txt
-      - test2.txt
     cp_output_1:
       - /tmp/2
     cp_output_2:
       - /tmp/4
+    files:
+      - test1.txt
+      - test2.txt
 - chains:
     - id: 7
       executables:

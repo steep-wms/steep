@@ -36,6 +36,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
     private val idGenerator: IDGenerator = UniqueID) {
   companion object {
     private val log = LoggerFactory.getLogger(ProcessChainGenerator::class.java)
+    private const val TMP_OUTPUT_SUFFIX = "$$"
   }
 
   private val vars = workflow.vars.toMutableList()
@@ -43,6 +44,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
   private val variableValues = mutableMapOf<String, Any>()
   private val executedActionIds = mutableSetOf<String>()
   private val forEachOutputsToBeCollected = mutableMapOf<String, List<Variable>>()
+  private val forEachOutputsReadyToBeRenamed = mutableSetOf<String>()
   private val forEachSubActionsToWaitFor = mutableMapOf<String, Set<String>>()
   private val iterations = mutableMapOf<String, Int>()
   private val pluginRegistry = PluginRegistryFactory.create()
@@ -73,25 +75,51 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
     // collect for-each outputs
     do {
       var didCollectOutputs = false
+      val newForEachOutputsToBeCollected = mutableMapOf<String, List<Variable>>()
       val i = forEachOutputsToBeCollected.iterator()
       for ((outputId, outputsToCollect) in i) {
+        val toKeep = mutableListOf<Variable>()
+
         // try to get values of all outputs
+        // separate them from those that don't have values yet
         val collectedOutputs = mutableListOf<Any>()
         for (o in outputsToCollect) {
-          val v = o.value ?: variableValues[o.id] ?: break
-          collectedOutputs.add(v)
+          val v = o.value ?: variableValues[o.id]
+          if (v != null) {
+            collectedOutputs.add(v)
+          } else {
+            toKeep.add(o)
+          }
         }
 
-        // if all values are available, make the for-each action's output
-        // available too and remove the item from `forEachOutputsToBeCollected`
-        if (collectedOutputs.size == outputsToCollect.size) {
+        if (collectedOutputs.isNotEmpty()) {
           variableValues[outputId] = yieldTo(variableValues[outputId], collectedOutputs)
-          i.remove()
 
           // repeat until no outputs were collected anymore
           didCollectOutputs = true
         }
+
+        if (toKeep.isEmpty()) {
+          // if all values are available, remove the item from `forEachOutputsToBeCollected`
+          i.remove()
+
+          // if `outputId` is a temporary variable name and the for-each action
+          // will not produce more values, rename the temporary variable so
+          // subsequent actions can be triggered
+          if (forEachOutputsReadyToBeRenamed.contains(outputId)) {
+            renameTemporaryOutput(outputId)
+            forEachOutputsReadyToBeRenamed.remove(outputId)
+          }
+        } else {
+          // otherwise, wait for the rest
+          newForEachOutputsToBeCollected[outputId] = toKeep
+        }
       }
+
+      // Overwrite entries in forEachOutputsToBeCollected with the remaining
+      // outputs to wait for. This basically removes those outputs we've
+      // already collected.
+      forEachOutputsToBeCollected.putAll(newForEachOutputsToBeCollected)
     } while (didCollectOutputs)
 
     // mark for-each actions as executed when all sub-actions have been executed
@@ -182,10 +210,10 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       }
 
       // keep track of outputs that need to be collected. rename output
-      // variable to avoid triggering subsequent actions until the for-each
-      // action has been removed
+      // variable to avoid triggering subsequent actions until all outputs
+      // have been collected.
       if (action.output != null) {
-        val outputId = action.output.id + "$$"
+        val outputId = action.output.id + TMP_OUTPUT_SUFFIX
         val oldList = forEachOutputsToBeCollected[outputId] ?: emptyList()
         forEachOutputsToBeCollected[outputId] = oldList + yieldToOutputs
       }
@@ -211,18 +239,19 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
         // remove unrolled for-each action
         actions.remove(action)
 
-        // rename output variable so subsequent actions can be triggered
         if (action.output != null) {
-          val tmpName = action.output.id + "$$"
-          val c = forEachOutputsToBeCollected[tmpName]
-          if (c != null) {
-            forEachOutputsToBeCollected[action.output.id] = c
-            forEachOutputsToBeCollected.remove(tmpName)
-          }
-          val v = variableValues[tmpName]
-          if (v != null) {
-            variableValues[action.output.id] = v
-            variableValues.remove(tmpName)
+          // Up to this point, the output has a temporary name (with the suffix
+          // `TMP_OUTPUT_SUFFIX`).
+          val outputId = action.output.id + TMP_OUTPUT_SUFFIX
+          if (forEachOutputsToBeCollected[outputId]?.isNotEmpty() == true) {
+            // We are still waiting for outputs of sub-actions. Mark the output
+            // as ready to be renamed to its original name as soon as all these
+            // outputs have been collected.
+            forEachOutputsReadyToBeRenamed.add(outputId)
+          } else {
+            // shortcut: since we are not waiting for any more outputs of
+            // sub-actions, we can rename the output right away
+            renameTemporaryOutput(outputId)
           }
         }
 
@@ -233,7 +262,8 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
         // keep the for-each action for the next iteration but set temporary
         // input variable to an empty list, so we can yield into it
         variableValues[recursiveInput] = emptyList<String>()
-        forEachOutputsToBeCollected[recursiveInput] = yieldToInputs
+        val oldList = forEachOutputsToBeCollected[recursiveInput] ?: emptyList()
+        forEachOutputsToBeCollected[recursiveInput] = oldList + yieldToInputs
       }
     }
   }
@@ -566,6 +596,18 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
   }
 
   /**
+   * Rename a temporary variable with the given [outputId] back to its
+   * original name without [TMP_OUTPUT_SUFFIX]
+   */
+  private fun renameTemporaryOutput(outputId: String) {
+    val v = variableValues[outputId]
+    if (v != null) {
+      variableValues[outputId.removeSuffix(TMP_OUTPUT_SUFFIX)] = v
+      variableValues.remove(outputId)
+    }
+  }
+
+  /**
    * If the given [serviceParam] is an input directory, get the common directory
    * from the given list of [values] (i.e. files). Otherwise, just return
    * [values]. Note that we only apply this method to [variableValues]. We know
@@ -617,6 +659,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       val variableValues: Map<String, Any>,
       val executedActionIds: Set<String> = emptySet(),
       val forEachOutputsToBeCollected: Map<String, List<Variable>>,
+      val forEachOutputsReadyToBeRenamed: Set<String>,
       val forEachSubActionsToWaitFor: Map<String, Set<String>> = emptyMap(),
       val iterations: Map<String, Int>
   )
@@ -626,7 +669,8 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
    */
   fun persistState(): JsonObject {
     val s = State(vars, actions.toList(), variableValues, executedActionIds,
-        forEachOutputsToBeCollected, forEachSubActionsToWaitFor, iterations)
+        forEachOutputsToBeCollected, forEachOutputsReadyToBeRenamed,
+        forEachSubActionsToWaitFor, iterations)
     return JsonUtils.toJson(s)
   }
 
@@ -640,6 +684,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
     variableValues.clear()
     executedActionIds.clear()
     forEachOutputsToBeCollected.clear()
+    forEachOutputsReadyToBeRenamed.clear()
     forEachSubActionsToWaitFor.clear()
     iterations.clear()
 
@@ -649,6 +694,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
     variableValues.putAll(s.variableValues)
     executedActionIds.addAll(s.executedActionIds)
     forEachOutputsToBeCollected.putAll(s.forEachOutputsToBeCollected)
+    forEachOutputsReadyToBeRenamed.addAll(s.forEachOutputsReadyToBeRenamed)
     forEachSubActionsToWaitFor.putAll(s.forEachSubActionsToWaitFor)
     iterations.putAll(s.iterations)
   }
