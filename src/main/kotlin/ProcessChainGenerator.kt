@@ -160,11 +160,30 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
         continue
       }
 
-      // get inputs of for-each actions if they are available, otherwise continue
-      val recursiveInput = "${action.input.id}$$enumId" // unique for this action
-      val input = variableValues[recursiveInput] ?:
-          variableValues[action.input.id] ?: action.input.value ?: continue
-      val inputCollection = if (input is Collection<*>) input else listOf(input)
+      // get value of enumerator
+      val enumInput = "${action.input.id}$$enumId" // unique for this action
+      val enumPosition = variableValues[enumInput] as Int? ?: 0
+
+      // get inputs if they are available, otherwise continue
+      val recursiveInput = "${action.input.id}$$enumId\$rec" // unique for this action
+      val tempInput = variableValues[action.input.id + TMP_OUTPUT_SUFFIX]
+      val inputCollection = (tempInput ?: variableValues[action.input.id] ?: action.input.value)?.let { input ->
+        val il = when (input) {
+          is List<*> -> input
+          is Collection<*> -> input.toList()
+          else -> listOf(input)
+        }
+        variableValues[enumInput] = il.size
+        il.subList(enumPosition, il.size)
+      }.let { inputs ->
+        // add recursive input
+        val r = variableValues[recursiveInput] as List<Any?>?
+        if (inputs != null && r != null) {
+          inputs + r
+        } else {
+          inputs ?: r
+        }
+      } ?: continue
 
       // unroll for-each action
       val yieldToOutputs = mutableListOf<Variable>()
@@ -235,6 +254,11 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
           // for outputs any more that should be yielded to input)
           continue
         }
+        if (tempInput != null) {
+          // We've fetched our input from a temporary variable. Since more
+          // values might come in later, we have to keep the for-each action.
+          continue
+        }
 
         // remove unrolled for-each action
         actions.remove(action)
@@ -258,6 +282,11 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
         if (action.yieldToInput != null) {
           forEachOutputsToBeCollected.remove(recursiveInput)
         }
+
+        // now that the action has been removed, we don't need enum position
+        // and recursive input anymore
+        variableValues.remove(enumInput)
+        variableValues.remove(recursiveInput)
       } else {
         // keep the for-each action for the next iteration but set temporary
         // input variable to an empty list, so we can yield into it

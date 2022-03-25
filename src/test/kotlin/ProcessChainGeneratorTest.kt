@@ -149,6 +149,12 @@ class ProcessChainGeneratorTest {
         // Test for-each action with yield
         T("forEachYield"),
 
+        // Test if a for-each action with yieldToOutput can yield to a
+        // subsequent for-each action early, meaning the second for-each
+        // action can already start although the first one has not completely
+        // finished yet
+        T("forEachYield", "forEachYieldEarly"),
+
         // Test for-each action with yield and subsequent join
         T("forEachYieldJoin"),
 
