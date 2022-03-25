@@ -617,7 +617,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       val variableValues: Map<String, Any>,
       val executedActionIds: Set<String> = emptySet(),
       val forEachOutputsToBeCollected: Map<String, List<Variable>>,
-      val forEachActionsToWaitFor: Map<String, Set<String>> = emptyMap(),
+      val forEachSubActionsToWaitFor: Map<String, Set<String>> = emptyMap(),
       val iterations: Map<String, Int>
   )
 
@@ -649,7 +649,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
     variableValues.putAll(s.variableValues)
     executedActionIds.addAll(s.executedActionIds)
     forEachOutputsToBeCollected.putAll(s.forEachOutputsToBeCollected)
-    forEachSubActionsToWaitFor.putAll(s.forEachActionsToWaitFor)
+    forEachSubActionsToWaitFor.putAll(s.forEachSubActionsToWaitFor)
     iterations.putAll(s.iterations)
   }
 }
