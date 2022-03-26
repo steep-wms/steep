@@ -16,7 +16,6 @@ import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus
 import db.SubmissionRegistryFactory
 import helper.JsonUtils
-import io.prometheus.client.Gauge
 import io.vertx.core.shareddata.Lock
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
@@ -48,14 +47,6 @@ class Controller : CoroutineVerticle() {
     private const val DEFAULT_LOOKUP_ORPHANS_INITIAL_DELAY = 0L
     private const val DEFAULT_LOOKUP_ORPHANS_INTERVAL = 300_000L
     private const val PROCESSING_SUBMISSION_LOCK_PREFIX = "Controller.ProcessingSubmission."
-
-    /**
-     * The number of process chains we are currently waiting for
-     */
-    private val gaugeProcessChains = Gauge.build()
-        .name("steep_controller_process_chains")
-        .help("Number of process chains the controller is waiting for")
-        .register()
   }
 
   /**
@@ -296,16 +287,17 @@ class Controller : CoroutineVerticle() {
       var results = mapOf<String, List<Any>>()
       var executedExecutableIds = setOf<String>()
       val submissionResults = mutableMapOf<String, List<Any>>()
+      val processChains = mutableMapOf<String, ProcessChain>()
       while (true) {
         // generate process chains
-        val processChains = if (processChainsToResume != null) {
+        val newProcessChains = if (processChainsToResume != null) {
           val pcs = processChainsToResume
           processChainsToResume = null
           pcs
         } else {
           val pcs = applyPlugins(generator.generate(results, executedExecutableIds),
             submission.workflow)
-          if (pcs.isEmpty()) {
+          if (processChains.isEmpty() && pcs.isEmpty()) {
             break
           }
 
@@ -329,7 +321,9 @@ class Controller : CoroutineVerticle() {
           }
 
           // store process chains in submission registry
-          submissionRegistry.addProcessChains(pcs, submission.id)
+          if (pcs.isNotEmpty()) {
+            submissionRegistry.addProcessChains(pcs, submission.id)
+          }
 
           // store the generator's state so we are able to resume the
           // submission later if necessary
@@ -339,14 +333,18 @@ class Controller : CoroutineVerticle() {
           pcs
         }
 
-        // notify scheduler(s)
-        vertx.eventBus().publish(AddressConstants.SCHEDULER_LOOKUP_NOW, null)
+        newProcessChains.associateByTo(processChains) { it.id }
+
+        if (newProcessChains.isNotEmpty()) {
+          // notify scheduler(s)
+          vertx.eventBus().publish(AddressConstants.SCHEDULER_LOOKUP_NOW, null)
+        }
 
         // do not keep temporary process chain results in memory if not needed
         val collectTemporaryResults = !generator.isFinished()
 
         // wait for process chain results
-        totalProcessChains += processChains.size
+        totalProcessChains += newProcessChains.size
         val w = waitForProcessChains(processChains, collectTemporaryResults)
         results = w.results
         failed += w.failed
@@ -422,77 +420,65 @@ class Controller : CoroutineVerticle() {
   }
 
   /**
-   * Wait for the given list of process chains to finish
-   * @param processChains the process chains to wait for
-   * @param collectTemporaryResults `true` if the method should collect results
-   * of process chains even if they are only temporary or `false` if it should
-   * only keep submission results.
-   * @return an object containing the accumulated process chain results as well
-   * as the number of failed and cancelled process chains
+   * Wait for the given [processChains] to finish. If some of them finish
+   * earlier than others, remove them from [processChains] and return early.
+   * [collectTemporaryResults] of process chains even if they are only
+   * temporary, or don't if only submission results should be kept.
    */
-  private suspend fun waitForProcessChains(processChains: Collection<ProcessChain>,
+  private suspend fun waitForProcessChains(processChains: MutableMap<String, ProcessChain>,
       collectTemporaryResults: Boolean): WaitForProcessChainsResult {
     val results = mutableMapOf<String, List<Any>>()
+    var succeeded = 0
     var failed = 0
     var cancelled = 0
     var lookupErrors = 0L
     val executedExecutableIds = mutableSetOf<String>()
 
-    val processChainsToCheck = processChains.associateBy { it.id }.toMutableMap()
-    gaugeProcessChains.inc(processChainsToCheck.size.toDouble())
-    try {
-      while (processChainsToCheck.isNotEmpty()) {
-        delay(lookupInterval)
 
-        val finishedProcessChains = mutableSetOf<String>()
-        try {
-          loop@ for ((processChainId, processChain) in processChainsToCheck) {
-            when (submissionRegistry.getProcessChainStatus(processChainId)) {
-              ProcessChainStatus.SUCCESS -> {
-                submissionRegistry.getProcessChainResults(processChainId)?.let { pcr ->
-                  if (collectTemporaryResults) {
-                    results.putAll(pcr)
-                  } else {
-                    results.putAll(pcr.filter { (_, v) -> hasSubmissionResults(v) })
-                  }
+    while (succeeded == 0 && failed == 0 && cancelled == 0) {
+      delay(lookupInterval)
+
+      val finishedProcessChains = mutableSetOf<String>()
+      try {
+        loop@ for ((processChainId, processChain) in processChains) {
+          when (submissionRegistry.getProcessChainStatus(processChainId)) {
+            ProcessChainStatus.SUCCESS -> {
+              submissionRegistry.getProcessChainResults(processChainId)?.let { pcr ->
+                if (collectTemporaryResults) {
+                  results.putAll(pcr)
+                } else {
+                  results.putAll(pcr.filter { (_, v) -> hasSubmissionResults(v) })
                 }
-                executedExecutableIds.addAll(processChain.executables.map { it.id })
-                finishedProcessChains.add(processChainId)
               }
-
-              ProcessChainStatus.ERROR -> {
-                failed++
-                finishedProcessChains.add(processChainId)
-              }
-
-              ProcessChainStatus.CANCELLED -> {
-                cancelled++
-                finishedProcessChains.add(processChainId)
-              }
-
-              else -> {
-                // since we're waiting for all process chains to finish anyhow, we
-                // can stop looking as soon as we find a process chain that has not
-                // finished yet and wait for the next interval
-                break@loop
-              }
+              executedExecutableIds.addAll(processChain.executables.map { it.id })
+              succeeded++
+              finishedProcessChains.add(processChainId)
             }
-          }
 
-          lookupErrors = 0
-        } catch (t: Throwable) {
-          log.warn("Could not look up process chain status", t)
-          lookupErrors++
-          if (lookupErrors == lookupMaxErrors) {
-            throw t
+            ProcessChainStatus.ERROR -> {
+              failed++
+              finishedProcessChains.add(processChainId)
+            }
+
+            ProcessChainStatus.CANCELLED -> {
+              cancelled++
+              finishedProcessChains.add(processChainId)
+            }
+
+            else -> { /* continue looking */ }
           }
         }
 
-        processChainsToCheck.keys.removeAll(finishedProcessChains)
-        gaugeProcessChains.dec(finishedProcessChains.size.toDouble())
+        lookupErrors = 0
+      } catch (t: Throwable) {
+        log.warn("Could not look up process chain status", t)
+        lookupErrors++
+        if (lookupErrors == lookupMaxErrors) {
+          throw t
+        }
       }
-    } finally {
-      gaugeProcessChains.dec(processChainsToCheck.size.toDouble())
+
+      processChains.keys.removeAll(finishedProcessChains)
     }
 
     return WaitForProcessChainsResult(results, failed, cancelled, executedExecutableIds)

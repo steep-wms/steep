@@ -1,5 +1,7 @@
 import AddressConstants.LOCAL_AGENT_ADDRESS_PREFIX
 import TestMetadata.services
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.module.kotlin.convertValue
 import db.MetadataRegistry
 import db.MetadataRegistryFactory
 import db.PluginRegistryFactory
@@ -331,6 +333,7 @@ class ControllerTest {
 
     val processChains = listOf(ProcessChain(), ProcessChain(), ProcessChain())
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     data class SmallState(val vars: List<Variable>, val actions: List<Action>,
         val variableValues: Map<String, Any> = emptyMap(),
         val forEachOutputsToBeCollected: Map<String, List<Variable>> = emptyMap(),
@@ -409,6 +412,12 @@ class ControllerTest {
     val executionStateSlot = slot<JsonObject>()
     coEvery { submissionRegistry.setSubmissionExecutionState(submission.id,
         capture(executionStateSlot)) } answers {
+      ctx.verify {
+        val state = JsonUtils.mapper.convertValue<SmallState>(executionStateSlot.captured)
+        assertThat(state.actions).hasSize(1)
+        assertThat(state.actions.first()).isEqualTo(workflow.actions[3])
+      }
+    } andThenAnswer {
       ctx.verify {
         assertThat(executionStateSlot.captured.getJsonArray("actions")).isEqualTo(JsonArray())
       }
