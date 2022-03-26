@@ -434,20 +434,25 @@ class Controller : CoroutineVerticle() {
     var lookupErrors = 0L
     val executedExecutableIds = mutableSetOf<String>()
 
-
     while (succeeded == 0 && failed == 0 && cancelled == 0) {
       delay(lookupInterval)
 
       val finishedProcessChains = mutableSetOf<String>()
       try {
-        loop@ for ((processChainId, processChain) in processChains) {
-          when (submissionRegistry.getProcessChainStatus(processChainId)) {
+        val finished = submissionRegistry.getProcessChainStatusAndResultsIfFinished(
+            processChains.keys)
+        for (f in finished) {
+          val processChainId = f.key
+          val processChain = processChains[processChainId]!!
+          val status = f.value.first
+          val pcResults = f.value.second
+          when (status) {
             ProcessChainStatus.SUCCESS -> {
-              submissionRegistry.getProcessChainResults(processChainId)?.let { pcr ->
+              if (pcResults != null) {
                 if (collectTemporaryResults) {
-                  results.putAll(pcr)
+                  results.putAll(pcResults)
                 } else {
-                  results.putAll(pcr.filter { (_, v) -> hasSubmissionResults(v) })
+                  results.putAll(pcResults.filterValues { hasSubmissionResults(it) })
                 }
               }
               executedExecutableIds.addAll(processChain.executables.map { it.id })
@@ -465,10 +470,9 @@ class Controller : CoroutineVerticle() {
               finishedProcessChains.add(processChainId)
             }
 
-            else -> { /* continue looking */ }
+            else -> { /* we will never get here */ }
           }
         }
-
         lookupErrors = 0
       } catch (t: Throwable) {
         log.warn("Could not look up process chain status", t)

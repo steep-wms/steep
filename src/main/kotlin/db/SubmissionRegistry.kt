@@ -379,6 +379,14 @@ interface SubmissionRegistry : Registry {
   suspend fun getProcessChainResults(processChainId: String): Map<String, List<Any>>?
 
   /**
+   * Query the process chains with the given [processChainIds] and return
+   * status and results of those that are finished (i.e. not
+   * [ProcessChainStatus.REGISTERED] or [ProcessChainStatus.RUNNING])
+   */
+  suspend fun getProcessChainStatusAndResultsIfFinished(processChainIds: Collection<String>):
+      Map<String, Pair<ProcessChainStatus, Map<String, List<Any>>?>>
+
+  /**
    * Set the error message of a process chain
    * @param processChainId the process chain ID
    * @param errorMessage the error message (may be `null` if the error message

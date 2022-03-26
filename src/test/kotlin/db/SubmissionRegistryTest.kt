@@ -1636,6 +1636,80 @@ abstract class SubmissionRegistryTest {
     }
   }
 
+  @Test
+  fun getProcessChainStatusAndResultsIfFinished(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val s1 = Submission(workflow = Workflow())
+      val s2 = Submission(workflow = Workflow())
+      val pc1 = ProcessChain()
+      val pc2 = ProcessChain()
+      val pc3 = ProcessChain()
+      val pc4 = ProcessChain()
+      val pc5 = ProcessChain()
+      val pc6 = ProcessChain()
+      val pc7 = ProcessChain()
+
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addProcessChains(listOf(pc1), s1.id,
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      submissionRegistry.addProcessChains(listOf(pc2), s1.id,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      submissionRegistry.addProcessChains(listOf(pc3), s1.id,
+          SubmissionRegistry.ProcessChainStatus.SUCCESS)
+      submissionRegistry.addProcessChains(listOf(pc4), s1.id,
+          SubmissionRegistry.ProcessChainStatus.CANCELLED)
+      submissionRegistry.addProcessChains(listOf(pc5), s1.id,
+          SubmissionRegistry.ProcessChainStatus.ERROR)
+      submissionRegistry.addProcessChains(listOf(pc6), s2.id,
+          SubmissionRegistry.ProcessChainStatus.SUCCESS)
+      submissionRegistry.addProcessChains(listOf(pc7), s2.id,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+
+      val results1 = mapOf("output" to listOf("/tmp/out/file1"))
+      val results2 = mapOf("output" to listOf("/tmp/out/file2"))
+      submissionRegistry.setProcessChainResults(pc3.id, results1)
+      submissionRegistry.setProcessChainResults(pc6.id, results2)
+
+      ctx.coVerify {
+        val r1 = submissionRegistry.getProcessChainStatusAndResultsIfFinished(emptyList())
+        assertThat(r1).isEmpty()
+
+        val r2 = submissionRegistry.getProcessChainStatusAndResultsIfFinished(listOf(pc1.id))
+        assertThat(r2).isEmpty()
+
+        val r3 = submissionRegistry.getProcessChainStatusAndResultsIfFinished(listOf(pc3.id))
+        assertThat(r3).isEqualTo(mapOf(pc3.id to (SubmissionRegistry.ProcessChainStatus.SUCCESS to results1)))
+
+        val r4 = submissionRegistry.getProcessChainStatusAndResultsIfFinished(
+            listOf(pc3.id, pc4.id))
+        assertThat(r4).isEqualTo(mapOf(
+            pc3.id to (SubmissionRegistry.ProcessChainStatus.SUCCESS to results1),
+            pc4.id to (SubmissionRegistry.ProcessChainStatus.CANCELLED to null)
+        ))
+
+        // also check what happens if the process chain IDs are provided as a set
+        val r5 = submissionRegistry.getProcessChainStatusAndResultsIfFinished(
+            setOf(pc3.id, pc4.id))
+        assertThat(r5).isEqualTo(mapOf(
+            pc3.id to (SubmissionRegistry.ProcessChainStatus.SUCCESS to results1),
+            pc4.id to (SubmissionRegistry.ProcessChainStatus.CANCELLED to null)
+        ))
+
+        val r6 = submissionRegistry.getProcessChainStatusAndResultsIfFinished(
+            listOf(pc1.id, pc2.id, pc3.id, pc4.id, pc5.id, pc6.id, pc7.id))
+        assertThat(r6).isEqualTo(mapOf(
+            pc3.id to (SubmissionRegistry.ProcessChainStatus.SUCCESS to results1),
+            pc4.id to (SubmissionRegistry.ProcessChainStatus.CANCELLED to null),
+            pc5.id to (SubmissionRegistry.ProcessChainStatus.ERROR to null),
+            pc6.id to (SubmissionRegistry.ProcessChainStatus.SUCCESS to results2)
+        ))
+      }
+
+      ctx.completeNow()
+    }
+  }
+
   private suspend fun doSetProcessChainErrorMessage(ctx: VertxTestContext): ProcessChain {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()

@@ -479,6 +479,23 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       getProcessChainColumn(processChainId, RESULTS) { r ->
         r.getJsonObject(0)?.let { JsonUtils.fromJson<Map<String, List<Any>>>(it) } }
 
+  override suspend fun getProcessChainStatusAndResultsIfFinished(processChainIds: Collection<String>):
+      Map<String, Pair<ProcessChainStatus, Map<String, List<Any>>?>> {
+    val statement = "SELECT $ID, $STATUS, $RESULTS FROM $PROCESS_CHAINS " +
+        "WHERE $STATUS!=$1 AND $STATUS!=$2 AND $ID=ANY($3)"
+    val params = Tuple.of(
+        ProcessChainStatus.REGISTERED,
+        ProcessChainStatus.RUNNING,
+        processChainIds.toTypedArray()
+    )
+    val rs = client.preparedQuery(statement).execute(params).await()
+    return rs.associateBy({ it.getString(0) }, { row ->
+      val status = ProcessChainStatus.valueOf(row.getString(1))
+      val results = row.getJsonObject(2)?.let { JsonUtils.fromJson<Map<String, List<Any>>>(it) }
+      status to results
+    })
+  }
+
   override suspend fun setProcessChainErrorMessage(processChainId: String,
       errorMessage: String?) {
     updateColumn(PROCESS_CHAINS, processChainId, ERROR_MESSAGE, errorMessage)

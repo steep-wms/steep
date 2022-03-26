@@ -494,6 +494,18 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   override suspend fun getProcessChainResults(processChainId: String): Map<String, List<Any>>? =
       getProcessChainEntryById(processChainId).results
 
+  override suspend fun getProcessChainStatusAndResultsIfFinished(processChainIds: Collection<String>):
+      Map<String, Pair<ProcessChainStatus, Map<String, List<Any>>?>> {
+    val ids = processChainIds.toSet()
+    return findProcessChainEntries()
+        .filter {
+          ids.contains(it.processChain.id) &&
+              it.status != ProcessChainStatus.REGISTERED &&
+              it.status !== ProcessChainStatus.RUNNING
+        }
+        .associateBy({ it.processChain.id }, { it.status to it.results })
+  }
+
   override suspend fun setProcessChainErrorMessage(processChainId: String,
       errorMessage: String?) {
     updateProcessChain(processChainId) { it.copy(errorMessage = errorMessage) }

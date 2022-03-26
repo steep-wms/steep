@@ -637,6 +637,11 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         results?.let{ JsonObject(it) })
   }
 
+  private suspend fun getProcessChainResultsInternal(processChainId: String): Map<String, List<Any>>? {
+    val buf = readGridFSDocument(bucketProcessChainResults, processChainId)
+    return buf?.let { JsonUtils.readValue(it.array()) }
+  }
+
   override suspend fun getProcessChainResults(processChainId: String): Map<String, List<Any>>? {
     val processChainCount = collProcessChains.countDocumentsAwait(json {
       obj(
@@ -646,9 +651,46 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     if (processChainCount == 0L) {
       throw NoSuchElementException("There is no process chain with ID `$processChainId'")
     }
+    return getProcessChainResultsInternal(processChainId)
+  }
 
-    val buf = readGridFSDocument(bucketProcessChainResults, processChainId)
-    return buf?.let { JsonUtils.readValue(it.array()) }
+  override suspend fun getProcessChainStatusAndResultsIfFinished(processChainIds: Collection<String>):
+      Map<String, Pair<ProcessChainStatus, Map<String, List<Any>>?>> {
+    val finished = collProcessChains.findAwait(json {
+      obj(
+          "\$and" to array(
+              obj(
+                  STATUS to obj(
+                      "\$ne" to ProcessChainStatus.REGISTERED.toString()
+                  ),
+              ),
+              obj(
+                  STATUS to obj(
+                      "\$ne" to ProcessChainStatus.RUNNING.toString()
+                  )
+              )
+          ),
+          INTERNAL_ID to obj(
+              "\$in" to processChainIds.toList()
+          )
+      )
+    }, projection = json {
+      obj(
+          INTERNAL_ID to 1,
+          STATUS to 1
+      )
+    }).associateBy({ it.getString(INTERNAL_ID) }, {
+      ProcessChainStatus.valueOf(it.getString(STATUS)) })
+
+    // shortcut: only successful process chains can have a result
+    return finished.mapValues { f ->
+      val results = if (f.value == ProcessChainStatus.SUCCESS) {
+        getProcessChainResultsInternal(f.key)
+      } else {
+        null
+      }
+      f.value to results
+    }
   }
 
   override suspend fun setProcessChainErrorMessage(processChainId: String, errorMessage: String?) {

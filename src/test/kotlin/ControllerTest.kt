@@ -147,15 +147,16 @@ class ControllerTest {
             assertThat(processChain.requiredCapabilities).contains(NEW_REQUIRED_CAPABILITY)
           }
         }
-
-        coEvery { submissionRegistry.getProcessChainStatus(processChain.id) } answers {
-          processChainStatusSupplier(processChain)
-        }
-
-        val results = processChainResultsSupplier(processChain)
-        coEvery { submissionRegistry.getProcessChainResults(processChain.id) } returns results
-
         coEvery { submissionRegistry.setProcessChainStartTime(processChain.id, any()) } just Runs
+      }
+
+      val processChainsById = processChainsSlot.captured.associateBy { it.id }
+      val processChainIdsSlot = slot<Collection<String>>()
+      coEvery { submissionRegistry.getProcessChainStatusAndResultsIfFinished(capture(processChainIdsSlot)) } answers {
+        processChainIdsSlot.captured.associateWith { id ->
+          val pc = processChainsById[id]!!
+          processChainStatusSupplier(pc) to processChainResultsSupplier(pc)
+        }
       }
     }
 
@@ -368,20 +369,26 @@ class ControllerTest {
     coEvery { submissionRegistry.setProcessChainErrorMessage(processChains[1].id, null) } just Runs
 
     // pretend the resumed process chains succeed
-    coEvery { submissionRegistry.getProcessChainStatus(processChains[0].id) } returns
-        ProcessChainStatus.SUCCESS
-    coEvery { submissionRegistry.getProcessChainStatus(processChains[1].id) } returns
-        ProcessChainStatus.RUNNING andThen ProcessChainStatus.SUCCESS
-    coEvery { submissionRegistry.getProcessChainStatus(processChains[2].id) } returns
-        ProcessChainStatus.RUNNING andThen ProcessChainStatus.SUCCESS
-
-    // return process chain results
-    coEvery { submissionRegistry.getProcessChainResults(processChains[0].id) } returns
-        mapOf("output_file1" to listOf("/tmp/1"))
-    coEvery { submissionRegistry.getProcessChainResults(processChains[1].id) } returns
-        mapOf("output_file2" to listOf("/tmp/2"))
-    coEvery { submissionRegistry.getProcessChainResults(processChains[2].id) } returns
-        mapOf("output_file3" to listOf("/tmp/3"))
+    var nProcessChainStatusAndResults = 0
+    val processChainStatusAndResults = mutableMapOf(
+        processChains[0].id to (ProcessChainStatus.SUCCESS to mapOf("output_file1" to listOf("/tmp/1"))),
+        processChains[1].id to (ProcessChainStatus.RUNNING to null),
+        processChains[2].id to (ProcessChainStatus.RUNNING to null)
+    )
+    val processChainIdsSlot = slot<Collection<String>>()
+    coEvery { submissionRegistry.getProcessChainStatusAndResultsIfFinished(capture(processChainIdsSlot)) } answers {
+      val r = processChainIdsSlot.captured.associateWith { id ->
+        processChainStatusAndResults[id] ?: throw IllegalStateException("Unknown process chain id: $id")
+      }
+      if (nProcessChainStatusAndResults == 0) {
+        processChainStatusAndResults[processChains[1].id] =
+            ProcessChainStatus.SUCCESS to mapOf("output_file2" to listOf("/tmp/2"))
+        processChainStatusAndResults[processChains[2].id] =
+            ProcessChainStatus.SUCCESS to mapOf("output_file3" to listOf("/tmp/3"))
+      }
+      nProcessChainStatusAndResults++
+      r
+    }
 
     // accept process chain start and end times
     coEvery { submissionRegistry.setProcessChainStartTime(processChains[0].id, any()) } just Runs
@@ -399,10 +406,8 @@ class ControllerTest {
         assertThat(processChainsSlot.captured[0].executables[0].id).isEqualTo("join")
       }
       for (processChain in processChainsSlot.captured) {
-        coEvery { submissionRegistry.getProcessChainStatus(processChain.id) } returns
-            ProcessChainStatus.SUCCESS
-        coEvery { submissionRegistry.getProcessChainResults(processChain.id) } returns
-            mapOf("output_file4" to listOf("/tmp/4"))
+        processChainStatusAndResults[processChain.id] =
+            ProcessChainStatus.SUCCESS to mapOf("output_file4" to listOf("/tmp/4"))
         coEvery { submissionRegistry.setProcessChainStartTime(processChain.id, any()) } just Runs
         coEvery { submissionRegistry.setProcessChainEndTime(processChain.id, any()) } just Runs
       }
