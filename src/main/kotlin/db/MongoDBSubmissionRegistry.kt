@@ -1,5 +1,6 @@
 package db
 
+import com.mongodb.MongoGridFSException
 import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.IndexModel
 import com.mongodb.client.model.IndexOptions
@@ -281,12 +282,14 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   }
 
   private suspend fun readGridFSDocument(bucket: GridFSBucket, id: String): ByteBuffer? {
-    val file = bucket.findAwait(json {
-      obj(
-          "filename" to id
-      )
-    })
-    return file?.let { bucket.download(it.id) }
+    try {
+      return bucket.download(id)
+    } catch (e: MongoGridFSException) {
+      if (e.message == "File not found") {
+        return null
+      }
+      throw e
+    }
   }
 
   override suspend fun setSubmissionResults(submissionId: String, results: Map<String, List<Any>>?) {

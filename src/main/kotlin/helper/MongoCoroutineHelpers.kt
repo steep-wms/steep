@@ -222,7 +222,7 @@ suspend fun GridFSBucket.upload(filename: String, buffer: ByteBuffer) {
   } ?: throw IllegalStateException("Upload operation did not produce a result")
 }
 
-suspend fun GridFSBucket.download(filename: BsonValue): ByteBuffer {
+suspend fun GridFSBucket.download(filename: String): ByteBuffer {
   return wrapCoroutine {
     downloadToPublisher(filename)
   } ?: throw IllegalStateException("Download operation did not produce a result")
