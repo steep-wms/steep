@@ -688,7 +688,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       val variableValues: Map<String, Any>,
       val executedActionIds: Set<String> = emptySet(),
       val forEachOutputsToBeCollected: Map<String, List<Variable>>,
-      val forEachOutputsReadyToBeRenamed: Set<String>,
+      val forEachOutputsReadyToBeRenamed: Set<String> = emptySet(),
       val forEachSubActionsToWaitFor: Map<String, Set<String>> = emptyMap(),
       val iterations: Map<String, Int>
   )
