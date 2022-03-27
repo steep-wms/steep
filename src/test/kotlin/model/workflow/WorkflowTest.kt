@@ -2,6 +2,8 @@ package model.workflow
 
 import com.fasterxml.jackson.databind.deser.UnresolvedForwardReference
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException
+import com.fasterxml.jackson.module.kotlin.convertValue
+import helper.JsonUtils
 import helper.YamlUtils
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -134,5 +136,34 @@ class WorkflowTest {
     val a0 = workflow.actions[0] as ExecuteAction
     val a1 = workflow.actions[1] as ExecuteAction
     assertThat(a0.inputs[0].variable).isSameAs(a1.inputs[0].variable)
+  }
+
+  /**
+   * Test if we can specify an input parameter with a value (which will be
+   * wrapped into an anonymous variable) instead of a pre-defined variable
+   */
+  @Test
+  fun anonymousInputParameter() {
+    val fixture = javaClass.getResource("anonymousInput.yaml")!!.readText()
+    val workflow = YamlUtils.readValue<Workflow>(fixture)
+    assertThat(workflow.actions).hasSize(1)
+    val a0 = workflow.actions.first() as ExecuteAction
+    assertThat(a0.inputs).hasSize(2)
+    val i1 = a0.inputs[0]
+    val i2 = a0.inputs[1]
+    assertThat(i1).isInstanceOf(GenericParameter::class.java)
+    assertThat(i2).isInstanceOf(AnonymousParameter::class.java)
+    assertThat(i1.variable.value).isEqualTo(5)
+    assertThat(i2.variable.value).isEqualTo(13)
+    assertThat(workflow.vars).hasSize(1)
+    assertThat(i1.variable).isSameAs(workflow.vars.first())
+    assertThat(i2.variable).isNotSameAs(workflow.vars.first())
+
+    // check if AnonymousParameter is correctly serialized
+    val m = JsonUtils.mapper.convertValue<Map<String, Any>>(workflow)
+    @Suppress("UNCHECKED_CAST") val ma = m["actions"] as List<Map<String, Any>>
+    @Suppress("UNCHECKED_CAST") val mai = ma[0]["inputs"] as List<Map<String, Any>>
+    assertThat(mai[1]["value"]).isEqualTo(13)
+    assertThat(mai[1]["variable"]).isNull()
   }
 }

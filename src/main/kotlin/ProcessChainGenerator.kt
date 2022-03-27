@@ -13,8 +13,10 @@ import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import model.processchain.ProcessChain
 import model.workflow.Action
+import model.workflow.AnonymousParameter
 import model.workflow.ExecuteAction
 import model.workflow.ForEachAction
+import model.workflow.GenericParameter
 import model.workflow.OutputParameter
 import model.workflow.Variable
 import model.workflow.Workflow
@@ -317,8 +319,13 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
           )
         } else {
           action.copy(
-            inputs = action.inputs.map {
-              it.copy(variable = substitutions[it.variable.id] ?: it.variable)
+            inputs = action.inputs.map { input ->
+              when (input) {
+                is GenericParameter ->
+                  input.copy(variable = substitutions[input.variable.id] ?: input.variable)
+                is AnonymousParameter ->
+                  input
+              }
             },
             dependsOn = action.dependsOn.map {
               substitutions[it]?.id ?: it

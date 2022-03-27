@@ -1,0 +1,11 @@
+vars:
+  - id: predefined
+    value: 5
+actions:
+  - type: execute
+    service: myservice
+    inputs:
+      - id: input1
+        var: predefined
+      - id: input2
+        value: 13

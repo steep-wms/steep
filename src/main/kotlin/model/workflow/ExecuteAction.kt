@@ -33,7 +33,7 @@ import model.timeout.TimeoutPolicy
 data class ExecuteAction(
     override val id: String = UniqueID.next(),
     val service: String,
-    val inputs: List<GenericParameter> = emptyList(),
+    val inputs: List<InputParameter> = emptyList(),
     val outputs: List<OutputParameter> = emptyList(),
     val retries: RetryPolicy? = null,
     val maxInactivity: TimeoutPolicy? = null,

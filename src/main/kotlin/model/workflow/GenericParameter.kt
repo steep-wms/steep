@@ -6,4 +6,4 @@ import helper.UniqueID
 data class GenericParameter(
     override val id: String = UniqueID.next(),
     @JsonProperty("var") override val variable: Variable
-) : Parameter
+) : InputParameter
