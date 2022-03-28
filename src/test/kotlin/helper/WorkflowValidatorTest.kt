@@ -103,4 +103,17 @@ class WorkflowValidatorTest {
     assertThat(result[0].message).containsSubsequence(listOf(
       "Unable to resolve action dependency", "cp2", "cp1"))
   }
+
+  /**
+   * Validate a workflow with input variables without a value
+   */
+  @Test
+  fun missingInputValue() {
+    val result = WorkflowValidator.validate(readWorkflow("missingInputValue"))
+    assertThat(result).hasSize(2)
+    assertThat(result[0].message).containsSubsequence(listOf(
+        "Input variable", "input_file1", "has no value"))
+    assertThat(result[1].message).containsSubsequence(listOf(
+        "Input variable", "input_file3", "has no value"))
+  }
 }

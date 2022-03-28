@@ -1,5 +1,7 @@
 package model.workflow
 
+import com.fasterxml.jackson.annotation.JsonInclude
+
 /**
  * A workflow
  * @param name a human-readable name
@@ -10,6 +12,7 @@ package model.workflow
 data class Workflow(
     val api: String = "4.4.0",
     val name: String? = null,
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT)
     val vars: List<Variable> = emptyList(),
     val actions: List<Action> = emptyList()
 )

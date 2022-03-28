@@ -1,6 +1,5 @@
 package model.workflow
 
-import com.fasterxml.jackson.databind.deser.UnresolvedForwardReference
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException
 import com.fasterxml.jackson.module.kotlin.convertValue
 import helper.JsonUtils
@@ -82,14 +81,60 @@ class WorkflowTest {
   }
 
   /**
-   * Test if reading a workflow with an undeclared variable fails
+   * Test if reading a workflow with an undeclared variable succeeds
    */
   @Test
-  fun undeclaredVar() {
-    val fixture = javaClass.getResource("undeclaredVar.yaml")!!.readText()
-    assertThatThrownBy { YamlUtils.readValue<Workflow>(fixture) }
-        .isInstanceOf(UnresolvedForwardReference::class.java)
-        .hasMessageContaining("Object Id [input_file1]")
+  fun undeclaredOutputVar() {
+    val fixture = javaClass.getResource("undeclaredOutputVar.yaml")!!.readText()
+    val workflow = YamlUtils.readValue<Workflow>(fixture)
+    assertThat(workflow.actions).hasSize(2)
+    val a1 = workflow.actions[0] as ExecuteAction
+    val a2 = workflow.actions[1] as ExecuteAction
+    assertThat(a1.outputs).hasSize(1)
+    assertThat(a2.inputs).hasSize(1)
+    assertThat(a1.outputs[0].variable).isSameAs(a2.inputs[0].variable)
+  }
+
+  /**
+   * Check if variables are correctly serialized
+   */
+  @Test
+  fun undeclaredOutputVarSerialize() {
+    val v1 = Variable(id = "input1", value = 5)
+    val v2 = Variable(id = "output1")
+    val w = Workflow(
+        vars = listOf(v1, v2),
+        actions = listOf(
+            ExecuteAction(
+                service = "cp",
+                inputs = listOf(
+                    GenericParameter(variable = v1),
+                    AnonymousParameter(id = "anon1", value = 20)
+                ),
+                outputs = listOf(
+                    OutputParameter(variable = v2),
+                    OutputParameter(variable = Variable(id = "output2"))
+                )
+            )
+        )
+    )
+
+    val m = JsonUtils.mapper.convertValue<Map<String, Any>>(w)
+    val vars = m["vars"] as List<*>
+    assertThat(vars).hasSize(2)
+    // vars should always be serialized as objects
+    assertThat(vars[0]).isInstanceOf(Map::class.java)
+    assertThat(vars[1]).isInstanceOf(Map::class.java)
+
+    @Suppress("UNCHECKED_CAST") val ma = m["actions"] as List<Map<String, Any>>
+    @Suppress("UNCHECKED_CAST") val mai = ma[0]["inputs"] as List<Map<String, Any>>
+    @Suppress("UNCHECKED_CAST") val mao = ma[0]["outputs"] as List<Map<String, Any>>
+    // parameters should be serialized as strings if they don't have a value
+    assertThat(mai[0]["var"]).isInstanceOf(String::class.java)
+    assertThat(mai[1]["var"]).isNull()
+    assertThat(mai[1]["value"]).isEqualTo(20)
+    assertThat(mao[0]["var"]).isInstanceOf(String::class.java)
+    assertThat(mao[1]["var"]).isInstanceOf(String::class.java)
   }
 
   /**
@@ -158,8 +203,15 @@ class WorkflowTest {
     assertThat(workflow.vars).hasSize(1)
     assertThat(i1.variable).isSameAs(workflow.vars.first())
     assertThat(i2.variable).isNotSameAs(workflow.vars.first())
+  }
 
-    // check if AnonymousParameter is correctly serialized
+  /**
+   * Check if AnonymousParameter is correctly serialized
+   */
+  @Test
+  fun anonymousInputParameterSerialize() {
+    val fixture = javaClass.getResource("anonymousInput.yaml")!!.readText()
+    val workflow = YamlUtils.readValue<Workflow>(fixture)
     val m = JsonUtils.mapper.convertValue<Map<String, Any>>(workflow)
     @Suppress("UNCHECKED_CAST") val ma = m["actions"] as List<Map<String, Any>>
     @Suppress("UNCHECKED_CAST") val mai = ma[0]["inputs"] as List<Map<String, Any>>

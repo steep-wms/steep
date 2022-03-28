@@ -2,11 +2,13 @@ package helper
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.vertx.core.json.JsonObject
 import io.vertx.core.json.jackson.DatabindCodec
+import model.workflow.VariableSerializerModifier
 import java.net.URL
 
 /**
@@ -14,8 +16,13 @@ import java.net.URL
  * @author Michel Kraemer
  */
 object JsonUtils {
+  private val variableSerializerModule = SimpleModule().apply {
+    setSerializerModifier(VariableSerializerModifier())
+  }
+
   val mapper: ObjectMapper = DatabindCodec.mapper().copy()
       .registerKotlinModule()
+      .registerModule(variableSerializerModule)
       .setSerializationInclusion(JsonInclude.Include.NON_NULL)
 
   /**

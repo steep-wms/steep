@@ -26,6 +26,7 @@ object WorkflowValidator {
     outputsWithValues(workflow, results)
     duplicateIds(workflow, results)
     missingDependsOnTargets(workflow, results)
+    missingInputValues(workflow, results)
     return results
   }
 
@@ -123,6 +124,31 @@ object WorkflowValidator {
     })
   }
 
+  private fun missingInputValues(workflow: Workflow,
+      results: MutableList<ValidationError>) {
+    // collect all outputs
+    val outputIds = mutableSetOf<String>()
+    visit(workflow.actions, results, executeActionVisitor = { action ->
+      outputIds.addAll(action.outputs.map { it.variable.id })
+    }, forEachActionVisitor = { action ->
+      action.output?.let { outputIds.add(it.id) }
+      outputIds.add(action.enumerator.id)
+    })
+
+    // check if all inputs have values or if they refer to a known output
+    visit(workflow.actions, results, executeActionVisitor = { action ->
+      for (i in action.inputs) {
+        if (i.variable.value == null && !outputIds.contains(i.variable.id)) {
+          results.add(makeMissingInputValueError(i.variable))
+        }
+      }
+    }, forEachActionVisitor = { action ->
+      if (action.input.value == null && !outputIds.contains(action.input.id)) {
+        results.add(makeMissingInputValueError(action.input))
+      }
+    })
+  }
+
   private fun makeOutputWithValueError(v: Variable) = ValidationError(
       "Output variable `${v.id}' has a value.", "Output variables should " +
       "always be undefined as their value will be generated during runtime. " +
@@ -137,5 +163,12 @@ object WorkflowValidator {
       "Unable to resolve action dependency `$actionId'->`$target'.", "Action " +
       "`$actionId' depends on an action with ID `$target' but this action does " +
       "not exist the workflow."
+  )
+
+  private fun makeMissingInputValueError(v: Variable) = ValidationError(
+      "Input variable `${v.id}' has no value.", "The input variable has no " +
+      "value and will never get one during workflow execution. Either define " +
+      "a constant `value' or define an output variable with ID `${v.id}' " +
+      "elsewhere in the workflow."
   )
 }

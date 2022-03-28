@@ -33,7 +33,9 @@ import model.timeout.TimeoutPolicy
 data class ExecuteAction(
     override val id: String = UniqueID.next(),
     val service: String,
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT)
     val inputs: List<InputParameter> = emptyList(),
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT)
     val outputs: List<OutputParameter> = emptyList(),
     val retries: RetryPolicy? = null,
     val maxInactivity: TimeoutPolicy? = null,
