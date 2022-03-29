@@ -43,7 +43,6 @@ import db.SubmissionRegistryFactory
 import db.VMRegistry
 import db.VMRegistryFactory
 import db.migration.removeExecuteActionParameters
-import db.migration.removeStoreActions
 import helper.JsonUtils
 import helper.MetricsHandler
 import helper.RangeParser
@@ -1115,24 +1114,16 @@ class HttpEndpoint : CoroutineVerticle() {
       renderError(ctx, 400, "Invalid workflow api version: " + e.message)
       return
     }
-    if (!api.satisfies(gte("3.0.0").and(lte("4.4.0")))) {
+    if (!api.satisfies(gte("4.0.0").and(lte("4.4.0")))) {
       renderError(ctx, 400, "Invalid workflow api version: $api. " +
-          "Supported version range is [3.0.0, 4.4.0].")
+          "Supported version range is [4.0.0, 4.4.0].")
       return
-    }
-
-    // remove incompatible store action
-    if (removeStoreActions(workflowJson)) {
-      log.warn("Found a store action in the posted workflow. Such " +
-          "actions were removed in workflow API version 4.0.0. The " +
-          "action will be removed from the workflow. Use the `store' " +
-          "flag on `output' parameters instead.")
     }
 
     // remove deprecated action parameters
     if (removeExecuteActionParameters(workflowJson)) {
       log.warn("Found `parameters' in an execute action. Parameters " +
-          "are unnecessary and will be removed in workflow API " +
+          "are unnecessary and were removed in workflow API " +
           "version 5.0.0. Use `inputs' instead. The posted workflow " +
           "will now be modified automatically and the parameters will " +
           "be merged into the action's inputs.")
