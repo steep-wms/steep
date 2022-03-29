@@ -116,4 +116,17 @@ class WorkflowValidatorTest {
     assertThat(result[1].message).containsSubsequence(listOf(
         "Input variable", "input_file3", "has no value"))
   }
+
+  /**
+   * Make sure a variable cannot be used more than once as an output
+   */
+  @Test
+  fun reuseOutput() {
+    val result = WorkflowValidator.validate(readWorkflow("reuseOutput"))
+    assertThat(result).hasSize(2)
+    assertThat(result[0].message).containsSubsequence(listOf(
+        "Output variable", "output_file2", "used more than once"))
+    assertThat(result[1].message).containsSubsequence(listOf(
+        "Output variable", "output_file2", "used more than once"))
+  }
 }

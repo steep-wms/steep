@@ -5,6 +5,7 @@ vars:
     value: input_file2.txt
   - id: output_file1
     value: output_file.txt
+  - id: output_file2
 actions:
   - type: execute
     service: cp
@@ -21,4 +22,4 @@ actions:
         var: input_file2
     outputs:
       - id: output_file
-        var: output_file1
+        var: output_file2

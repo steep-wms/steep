@@ -27,6 +27,7 @@ object WorkflowValidator {
     duplicateIds(workflow, results)
     missingDependsOnTargets(workflow, results)
     missingInputValues(workflow, results)
+    reuseOutput(workflow, results)
     return results
   }
 
@@ -149,6 +150,28 @@ object WorkflowValidator {
     })
   }
 
+  private fun reuseOutput(workflow: Workflow, results: MutableList<ValidationError>) {
+    val outputIds = mutableSetOf<String>()
+    visit(workflow.actions, results, executeActionVisitor = { action ->
+      for (o in action.outputs) {
+        if (outputIds.contains(o.variable.id)) {
+          results.add(makeReuseOutputError(o.variable))
+        } else {
+          outputIds.add(o.variable.id)
+        }
+      }
+      outputIds.addAll(action.outputs.map { it.variable.id })
+    }, forEachActionVisitor = { action ->
+      if (action.output != null) {
+        if (outputIds.contains(action.output.id)) {
+          results.add(makeReuseOutputError(action.output))
+        } else {
+          outputIds.add(action.output.id)
+        }
+      }
+    })
+  }
+
   private fun makeOutputWithValueError(v: Variable) = ValidationError(
       "Output variable `${v.id}' has a value.", "Output variables should " +
       "always be undefined as their value will be generated during runtime. " +
@@ -170,5 +193,10 @@ object WorkflowValidator {
       "value and will never get one during workflow execution. Either define " +
       "a constant `value' or define an output variable with ID `${v.id}' " +
       "elsewhere in the workflow."
+  )
+
+  private fun makeReuseOutputError(v: Variable) = ValidationError(
+      "Output variable `${v.id}' used more than once.", "A variable can only " +
+      "be used once as an output. Introduce a new variable for each output."
   )
 }

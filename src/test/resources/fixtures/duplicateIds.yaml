@@ -1,7 +1,6 @@
 vars:
   - id: input_file1
     value: input_file.txt
-  - id: output_file1
   - id: input_files
     value:
       - input_file1
@@ -26,7 +25,7 @@ actions:
         var: input_file1
     outputs:
       - id: output_file
-        var: output_file1
+        var: output_file2
 
   - id: cp1 # !!! same ID as other action
     type: execute
@@ -36,7 +35,7 @@ actions:
         var: input_file1
     outputs:
       - id: output_file
-        var: output_file1
+        var: output_file3
 
   - id: cp2
     type: execute
@@ -46,7 +45,7 @@ actions:
         var: input_file1
     outputs:
       - id: output_file
-        var: output_file1
+        var: output_file4
 
   - id: cp2 # !!! same ID as other action
     type: for
@@ -61,4 +60,4 @@ actions:
             var: i
         outputs:
           - id: output_file
-            var: output_file1
+            var: output_file5

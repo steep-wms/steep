@@ -1,9 +1,10 @@
+vars:
+  - id: for_input
+    value: ["test.txt"]
 actions:
   - id: cp1
     type: execute
     service: cp
-    dependsOn:
-      - cp1
     inputs:
       - id: input_file
         value: "test.txt"
@@ -13,14 +14,13 @@ actions:
   - id: cp2
     type: execute
     service: cp
-    dependsOn:
-      - cp1
     inputs:
       - id: input_file
-        var: input_file1
+        value: "test2.txt"
     outputs:
       - id: output_file
-        var: output_file3
+        var: output_file2
   - type: for
-    input: input_file3
+    input: for_input
+    output: output_file2
     enumerator: i
