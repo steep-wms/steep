@@ -34,18 +34,25 @@ class DockerRuntime(config: JsonObject) : OtherRuntime() {
           type = Argument.Type.INPUT)
     }
 
-    val containerName = "steep-${executable.id}-${executable.serviceId}-${UniqueID.next()}"
-        .lowercase().replace("""[^a-z0-9]""".toRegex(), "-")
+    // Keep the container name if already defined by the user.
+    val existingContainerName = executable.runtimeArgs.firstOrNull { it.label == "--name" }?.variable?.value
+    val containerName = existingContainerName ?: "steep-${executable.id}-${executable.serviceId}-${UniqueID.next()}"
+      .lowercase().replace("""[^a-z0-9]""".toRegex(), "-")
+    val containerNameArgument = if (existingContainerName == null) {
+      listOf(Argument(id = UniqueID.next(),
+        label = "--name", variable = ArgumentVariable("dockerContainerName", containerName),
+        type = Argument.Type.INPUT))
+    } else {
+      emptyList()
+    }
+
     val dockerArgs = listOf(
         Argument(id = UniqueID.next(),
             variable = ArgumentVariable("dockerRun", "run"),
             type = Argument.Type.INPUT)
-    ) + executable.runtimeArgs + additionalEnvironment + additionalVolumes + listOf(
+    ) + executable.runtimeArgs + additionalEnvironment + additionalVolumes + containerNameArgument + listOf(
         Argument(id = UniqueID.next(),
             label = "-v", variable = ArgumentVariable("dockerMount", "$tmpPath:$tmpPath"),
-            type = Argument.Type.INPUT),
-        Argument(id = UniqueID.next(),
-            label = "--name", variable = ArgumentVariable("dockerContainerName", containerName),
             type = Argument.Type.INPUT),
         Argument(id = UniqueID.next(),
             variable = ArgumentVariable("dockerImage", executable.path),

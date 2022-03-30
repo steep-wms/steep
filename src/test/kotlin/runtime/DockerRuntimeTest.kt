@@ -338,4 +338,68 @@ class DockerRuntimeTest {
       ctx.completeNow()
     }
   }
+
+  /**
+   * Test that a given docker container name is not overwritten
+   */
+  @Test
+  fun setContainerName(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
+
+    val config = json {
+      obj(
+        ConfigConstants.TMP_PATH to tempDir.toString()
+      )
+    }
+
+    val containerName = "testing-steep-container-names-" + UniqueID.next()
+    val exec = Executable(path = "alpine", serviceId = "sleep",
+      runtimeArgs = listOf(
+        Argument(id = UniqueID.next(),
+          label = "--name", variable = ArgumentVariable("containerName", containerName),
+          type = Argument.Type.INPUT)
+      ),
+      arguments = listOf(
+        Argument(variable = ArgumentVariable(UniqueID.next(), "sleep"),
+          type = Argument.Type.INPUT),
+        Argument(variable = ArgumentVariable(UniqueID.next(), "120"),
+          type = Argument.Type.INPUT)
+    ), runtime = Service.RUNTIME_DOCKER)
+
+    // launch a container in the background
+    val runtime = DockerRuntime(config)
+    val executor = Executors.newSingleThreadExecutor()
+    val execFuture = executor.submit {
+      runtime.execute(exec, DefaultOutputCollector())
+    }
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      // wait until the container is there
+      while (true) {
+        val containers = getContainers()
+        val sleepContainer = containers.any { container ->
+          container["Names"]?.toString()?.equals(containerName) ?: false }
+        if (sleepContainer) {
+          break
+        }
+        delay(1000)
+      }
+
+      // cancel container
+      execFuture.cancel(true)
+
+      // wait for the container to disappear
+      while (true) {
+        val containers = getContainers()
+        val sleepContainerGone = containers.none { container ->
+          container["Names"]?.toString()?.equals(containerName) ?: false }
+        if (sleepContainerGone) {
+          break
+        }
+        delay(1000)
+      }
+
+      ctx.completeNow()
+    }
+
+  }
 }
