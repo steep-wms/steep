@@ -1141,7 +1141,8 @@ class HttpEndpoint : CoroutineVerticle() {
     if (validationResults.isNotEmpty()) {
       renderError(ctx, 400, "Invalid workflow:\n\n" + validationResults.joinToString("\n\n") {
             "- ${WordUtils.wrap(it.message, 80, "\n  ", true)}\n\n  " +
-                WordUtils.wrap(it.details, 80, "\n  ", true)
+                "${WordUtils.wrap(it.details, 80, "\n  ", true)}\n\n  " +
+                it.path.joinToString("->")
           })
       return
     }
