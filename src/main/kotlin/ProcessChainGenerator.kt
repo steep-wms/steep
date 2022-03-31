@@ -356,8 +356,6 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
           )
         }
       }
-
-      else -> throw RuntimeException("Unknown action type `${action.javaClass}'")
     }
   }
 

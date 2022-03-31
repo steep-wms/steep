@@ -49,9 +49,6 @@ object WorkflowValidator {
           forEachActionVisitor(action)
           visit(action.actions, results, executeActionVisitor, forEachActionVisitor)
         }
-
-        else -> results.add(ValidationError("Unknown action type: " +
-            "`${action::class.java.name}'"))
       }
     }
   }

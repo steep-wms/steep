@@ -16,7 +16,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
     Type(value = ExecuteAction::class, name = "execute"),
     Type(value = ForEachAction::class, name = "for")
 )
-interface Action {
+sealed interface Action {
     /**
      * The action's unique identifier
      */
