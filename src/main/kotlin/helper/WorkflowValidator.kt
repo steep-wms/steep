@@ -28,6 +28,8 @@ object WorkflowValidator {
     missingDependsOnTargets(workflow, results)
     missingInputValues(workflow, results)
     reuseOutput(workflow, results)
+    reuseEnumerator(workflow, results)
+    enumeratorAsInput(workflow, results)
     return results
   }
 
@@ -172,6 +174,34 @@ object WorkflowValidator {
     })
   }
 
+  private fun reuseEnumerator(workflow: Workflow, results: MutableList<ValidationError>) {
+    val enumIds = mutableSetOf<String>()
+    visit(workflow.actions, results, forEachActionVisitor = { action ->
+      if (enumIds.contains(action.enumerator.id)) {
+        results.add(makeReuseEnumeratorError(action.enumerator))
+      } else {
+        enumIds.add(action.enumerator.id)
+      }
+    })
+  }
+
+  private fun enumeratorAsInput(workflow: Workflow, results: MutableList<ValidationError>) {
+    // collect all outputs (except for enumerators)
+    val outputIds = mutableSetOf<String>()
+    visit(workflow.actions, results, executeActionVisitor = { action ->
+      outputIds.addAll(action.outputs.map { it.variable.id })
+    }, forEachActionVisitor = { action ->
+      action.output?.let { outputIds.add(it.id) }
+    })
+
+    // check all enumerators
+    visit(workflow.actions, results, forEachActionVisitor = { action ->
+      if (outputIds.contains(action.enumerator.id)) {
+        results.add(makeEnumeratorAsOutputError(action.enumerator))
+      }
+    })
+  }
+
   private fun makeOutputWithValueError(v: Variable) = ValidationError(
       "Output variable `${v.id}' has a value.", "Output variables should " +
       "always be undefined as their value will be generated during runtime. " +
@@ -198,5 +228,15 @@ object WorkflowValidator {
   private fun makeReuseOutputError(v: Variable) = ValidationError(
       "Output variable `${v.id}' used more than once.", "A variable can only " +
       "be used once as an output. Introduce a new variable for each output."
+  )
+
+  private fun makeReuseEnumeratorError(v: Variable) = ValidationError(
+      "Enumerator `${v.id}' used more than once.", "A variable can only " +
+      "be used once as an enumerator of a for-each action."
+  )
+
+  private fun makeEnumeratorAsOutputError(v: Variable) = ValidationError(
+      "Enumerator `${v.id}' used as an output.", "An enumerator may only be " +
+      "used as an input."
   )
 }

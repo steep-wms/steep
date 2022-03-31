@@ -1,0 +1,17 @@
+vars:
+  - id: for_input
+    value: ["test.txt"]
+actions:
+  - type: for
+    input: for_input
+    output: output_file1
+    enumerator: i
+  - id: cp2
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        value: "test2.txt"
+    outputs:
+      - id: output_file
+        var: i

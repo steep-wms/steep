@@ -46,37 +46,37 @@
 - chains:
     - id: "5"
       executables:
-        - id: cp2$2
+        - id: cp2$0
           serviceId: cp
           path: cp
           arguments:
             - id: input_file
               variable:
-                id: i$2
+                id: j$0
                 value: input_file3.txt
               type: input
               dataType: string
             - id: output_file
               variable:
-                id: output_file2$2
+                id: output_file2$0
                 value: /tmp/4
               type: output
               dataType: string
     - id: "7"
       executables:
-        - id: cp2$3
+        - id: cp2$1
           serviceId: cp
           path: cp
           arguments:
             - id: input_file
               variable:
-                id: i$3
+                id: j$1
                 value: input_file4.txt
               type: input
               dataType: string
             - id: output_file
               variable:
-                id: output_file2$3
+                id: output_file2$1
                 value: /tmp/6
               type: output
               dataType: string

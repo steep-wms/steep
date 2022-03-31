@@ -129,4 +129,26 @@ class WorkflowValidatorTest {
     assertThat(result[1].message).containsSubsequence(listOf(
         "Output variable", "output_file2", "used more than once"))
   }
+
+  /**
+   * Make sure an enumerator cannot be used more than once
+   */
+  @Test
+  fun reuseEnumerator() {
+    val result = WorkflowValidator.validate(readWorkflow("reuseEnumerator"))
+    assertThat(result).hasSize(1)
+    assertThat(result[0].message).containsSubsequence(listOf(
+        "Enumerator", "i", "used more than once"))
+  }
+
+  /**
+   * Make sure an enumerator cannot be used as an output
+   */
+  @Test
+  fun enumeratorAsOutput() {
+    val result = WorkflowValidator.validate(readWorkflow("enumeratorAsOutput"))
+    assertThat(result).hasSize(1)
+    assertThat(result[0].message).containsSubsequence(listOf(
+        "Enumerator", "i", "used as an output"))
+  }
 }

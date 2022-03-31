@@ -1,0 +1,16 @@
+vars:
+  - id: for_input
+    value: ["test.txt"]
+actions:
+  - type: for
+    input: for_input
+    output: output_file1
+    enumerator: i
+  - type: for
+    input: for_input
+    output: output_file2
+    enumerator: j
+  - type: for
+    input: for_input
+    output: output_file3
+    enumerator: i

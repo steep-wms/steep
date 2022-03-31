@@ -27,7 +27,7 @@ actions:
             var: output_file1
   - type: for
     input: input_files2
-    enumerator: i
+    enumerator: j
     dependsOn:
       - foreach1
     actions:
@@ -36,7 +36,7 @@ actions:
         service: cp
         inputs:
           - id: input_file
-            var: i
+            var: j
         outputs:
           - id: output_file
             var: output_file2
