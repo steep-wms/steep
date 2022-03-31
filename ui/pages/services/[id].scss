@@ -1,6 +1,6 @@
 @import "css/variables";
 
-.service-details, .retry-policy-details {
+.service-details, .retry-policy-details, .timeout-policy-details {
   .service-details-dl {
     display: flex;
     flex-wrap: wrap;
@@ -39,7 +39,7 @@
   }
 }
 
-.retry-policy-details {
+.retry-policy-details, .timeout-policy-details {
   border-top: 1px solid $gray-300;
   padding-top: $spacer * 2;
 }

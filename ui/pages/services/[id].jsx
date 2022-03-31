@@ -84,6 +84,35 @@ const Service = () => {
         </div>
       </>)}
 
+      {(data.maxInactivity || data.maxRuntime || data.deadline) && (<>
+        <h2>Timeout policy</h2>
+        <div className="timeout-policy-details">
+          <DefinitionList>
+            <div className="service-details-dl">
+              <div className="service-details-left">
+                <DefinitionListItem title="Max. inactivity">
+                  {data.maxInactivity && (<>
+                    {data.maxInactivity.errorOnTimeout ? "Fail" : "Cancel"} after {formatDurationMilliseconds(data.maxInactivity.timeout, true)}
+                  </>) || <>&ndash;</>}
+                </DefinitionListItem>
+                <DefinitionListItem title="Max. runtime">
+                  {data.maxRuntime && (<>
+                    {data.maxRuntime.errorOnTimeout ? "Fail" : "Cancel"} after {formatDurationMilliseconds(data.maxRuntime.timeout, true)}
+                  </>) || <>&ndash;</>}
+                </DefinitionListItem>
+              </div>
+              <div className="service-details-right">
+                <DefinitionListItem title="Deadline">
+                  {data.deadline && (<>
+                    {data.deadline.errorOnTimeout ? "Fail" : "Cancel"} after {formatDurationMilliseconds(data.deadline.timeout, true)}
+                  </>) || <>&ndash;</>}
+                </DefinitionListItem>
+              </div>
+            </div>
+          </DefinitionList>
+        </div>
+      </>)}
+
       {data.runtimeArgs && data.runtimeArgs.length > 0 && (<>
         <h2>Runtime arguments</h2>
         {data.runtimeArgs.map(r => (
