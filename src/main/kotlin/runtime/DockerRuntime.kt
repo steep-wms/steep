@@ -34,7 +34,7 @@ class DockerRuntime(config: JsonObject) : OtherRuntime() {
           type = Argument.Type.INPUT)
     }
 
-    // Keep the container name if already defined by the user.
+    // keep container name if already defined
     val existingContainerName = executable.runtimeArgs.firstOrNull { it.label == "--name" }?.variable?.value
     val containerName = existingContainerName ?: "steep-${executable.id}-${executable.serviceId}-${UniqueID.next()}"
       .lowercase().replace("""[^a-z0-9]""".toRegex(), "-")

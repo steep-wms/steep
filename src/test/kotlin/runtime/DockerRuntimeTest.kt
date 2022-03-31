@@ -344,7 +344,6 @@ class DockerRuntimeTest {
    */
   @Test
   fun setContainerName(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
-
     val config = json {
       obj(
         ConfigConstants.TMP_PATH to tempDir.toString()
@@ -400,6 +399,5 @@ class DockerRuntimeTest {
 
       ctx.completeNow()
     }
-
   }
 }
