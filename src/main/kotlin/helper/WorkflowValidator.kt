@@ -31,6 +31,7 @@ object WorkflowValidator {
     reuseOutput(workflow, results)
     reuseEnumerator(workflow, results)
     enumeratorAsInput(workflow, results)
+    scoping(workflow, results)
     return results
   }
 
@@ -130,16 +131,20 @@ object WorkflowValidator {
     })
   }
 
-  private fun missingInputValues(workflow: Workflow,
-      results: MutableList<ValidationError>) {
-    // collect all outputs
+  private fun collectAllOutputs(workflow: Workflow): Set<String> {
     val outputIds = mutableSetOf<String>()
-    visit(workflow.actions, results, executeActionVisitor = { action, _ ->
+    visit(workflow.actions, mutableListOf(), executeActionVisitor = { action, _ ->
       outputIds.addAll(action.outputs.map { it.variable.id })
     }, forEachActionVisitor = { action, _ ->
       action.output?.let { outputIds.add(it.id) }
       outputIds.add(action.enumerator.id)
     })
+    return outputIds
+  }
+
+  private fun missingInputValues(workflow: Workflow,
+      results: MutableList<ValidationError>) {
+    val outputIds = collectAllOutputs(workflow)
 
     // check if all inputs have values or if they refer to a known output
     visit(workflow.actions, results, executeActionVisitor = { action, path ->
@@ -205,6 +210,68 @@ object WorkflowValidator {
     })
   }
 
+  private fun scoping(workflow: Workflow, results: MutableList<ValidationError>) {
+    // collect all possible outputs
+    val outputIds = collectAllOutputs(workflow)
+
+    val stack = ArrayDeque<Set<String>>()
+
+    fun isVisible(v: Variable) =
+        stack.any { frame -> frame.contains(v.id) }
+
+    fun visitScope(actions: List<Action>, path: List<String>) {
+      // collect all outputs visible at this level
+      val frame = mutableSetOf<String>()
+      for (a in actions) {
+        when (a) {
+          is ExecuteAction -> a.outputs.forEach { frame.add(it.variable.id) }
+          is ForEachAction -> a.output?.let { frame.add(it.id) }
+        }
+      }
+      stack.add(frame)
+
+      // check if all inputs are visible
+      for ((i, action) in actions.withIndex()) {
+        when (action) {
+          is ExecuteAction -> {
+            val newPath = path + listOf("actions[$i](execute ${action.service})")
+            for (input in action.inputs) {
+              if (input.variable.value == null &&
+                  outputIds.contains(input.variable.id) &&
+                  !isVisible(input.variable)) {
+                results.add(makeScopingError(input.variable, newPath))
+              }
+            }
+          }
+
+          is ForEachAction -> {
+            val newPath = path + listOf("actions[$i](for-each)")
+            if (action.input.value == null &&
+                outputIds.contains(action.input.id) &&
+                !isVisible(action.input)) {
+              results.add(makeScopingError(action.input, newPath))
+            }
+
+            // add enumerator to stack
+            stack.add(setOf(action.enumerator.id))
+
+            // check children
+            visitScope(action.actions, newPath)
+
+            stack.removeLast()
+          }
+        }
+      }
+
+      stack.removeLast()
+    }
+
+    // add all workflow vars with values to stack
+    stack.add(workflow.vars.filter { it.value != null }.map { it.id }.toSet())
+
+    visitScope(workflow.actions, listOf("workflow"))
+  }
+
   private fun makeOutputWithValueError(v: Variable, path: List<String>) = ValidationError(
       "Output variable `${v.id}' has a value.", "Output variables should " +
       "always be undefined as their value will be generated during runtime. " +
@@ -239,4 +306,10 @@ object WorkflowValidator {
   private fun makeEnumeratorAsOutputError(v: Variable, path: List<String>) = ValidationError(
       "Enumerator `${v.id}' used as an output.", "An enumerator may only be " +
       "used as an input.", path)
+
+  private fun makeScopingError(v: Variable, path: List<String>) = ValidationError(
+      "Variable `${v.id}' not visible.", "The value of variable `${v.id}' is " +
+      "only visible inside the for-each action where the variable has been " +
+      "defined as an output or an enumerator. If you want to access the value " +
+      "outside the for-each action, use `yieldToOutput'.", path)
 }

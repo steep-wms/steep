@@ -151,4 +151,21 @@ class WorkflowValidatorTest {
     assertThat(result[0].message).containsSubsequence(listOf(
         "Enumerator", "i", "used as an output"))
   }
+
+  /**
+   * Make sure scoping issues are detected
+   */
+  @Test
+  fun scoping() {
+    val result = WorkflowValidator.validate(readWorkflow("scoping"))
+    assertThat(result).hasSize(4)
+    assertThat(result[0].message).containsSubsequence(listOf(
+        "Variable", "output_file2", "not visible"))
+    assertThat(result[1].message).containsSubsequence(listOf(
+        "Variable", "i", "not visible"))
+    assertThat(result[2].message).containsSubsequence(listOf(
+        "Variable", "i", "not visible"))
+    assertThat(result[3].message).containsSubsequence(listOf(
+        "Variable", "k", "not visible"))
+  }
 }

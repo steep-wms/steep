@@ -1,0 +1,65 @@
+vars:
+  - id: for_input
+    value: ["test.txt"]
+  - id: i
+actions:
+  - type: for
+    input: for_input
+    enumerator: i
+    actions:
+      - type: execute
+        service: cp
+        inputs:
+          - id: input_file
+            var: i
+        outputs:
+          - id: output_file
+            var: output_file2
+  - type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: output_file2
+    outputs:
+      - id: output_file
+        var: output_file3
+  - type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: i
+    outputs:
+      - id: output_file
+        var: output_file4
+  - type: for
+    input: for_input
+    enumerator: j
+    actions:
+      - type: for
+        input: j
+        enumerator: k
+        actions:
+          - type: execute
+            service: cp
+            inputs:
+              - id: input_file
+                var: i
+            outputs:
+              - id: output_file
+                var: output_file5
+          - type: execute
+            service: cp
+            inputs:
+              - id: input_file
+                var: j
+            outputs:
+              - id: output_file
+                var: output_file6
+      - type: execute
+        service: cp
+        inputs:
+          - id: input_file
+            var: k
+        outputs:
+          - id: output_file
+            var: output_file7
