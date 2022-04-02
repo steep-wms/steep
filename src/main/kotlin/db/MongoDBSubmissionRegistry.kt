@@ -27,6 +27,7 @@ import helper.insertOneAwait
 import helper.updateManyAwait
 import helper.upload
 import io.vertx.core.Vertx
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.array
@@ -281,7 +282,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     }
   }
 
-  private suspend fun readGridFSDocument(bucket: GridFSBucket, id: String): ByteBuffer? {
+  private suspend fun readGridFSDocument(bucket: GridFSBucket, id: String): Buffer? {
     try {
       return bucket.download(id)
     } catch (e: MongoGridFSException) {
@@ -308,7 +309,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     }
 
     val buf = readGridFSDocument(bucketSubmissionResults, submissionId)
-    return buf?.let { JsonUtils.readValue(it.array()) }
+    return buf?.let { JsonUtils.readValue(it.bytes) }
   }
 
   override suspend fun setSubmissionErrorMessage(submissionId: String,
@@ -325,7 +326,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   override suspend fun getSubmissionExecutionState(submissionId: String): JsonObject? {
     val buf = readGridFSDocument(bucketExecutionStates, submissionId)
-    return buf?.let { JsonObject(String(it.array())) }
+    return buf?.let { JsonObject(it) }
   }
 
   override suspend fun deleteSubmissionsFinishedBefore(timestamp: Instant): Collection<String> {
@@ -444,7 +445,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     val buf = readGridFSDocument(bucketProcessChains, id)
         ?: throw IllegalStateException("Got process chain metadata with " +
             "ID `$id' but could not find corresponding object in GridFS bucket.")
-    return Pair(JsonUtils.readValue(buf.array()), submissionId)
+    return Pair(JsonUtils.readValue(buf.bytes), submissionId)
   }
 
   override suspend fun findProcessChains(submissionId: String?,
@@ -642,7 +643,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   private suspend fun getProcessChainResultsInternal(processChainId: String): Map<String, List<Any>>? {
     val buf = readGridFSDocument(bucketProcessChainResults, processChainId)
-    return buf?.let { JsonUtils.readValue(it.array()) }
+    return buf?.let { JsonUtils.readValue(it.bytes) }
   }
 
   override suspend fun getProcessChainResults(processChainId: String): Map<String, List<Any>>? {

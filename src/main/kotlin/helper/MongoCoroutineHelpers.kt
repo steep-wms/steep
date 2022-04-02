@@ -10,6 +10,7 @@ import com.mongodb.client.result.UpdateResult
 import com.mongodb.reactivestreams.client.MongoCollection
 import com.mongodb.reactivestreams.client.MongoDatabase
 import com.mongodb.reactivestreams.client.gridfs.GridFSBucket
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.JsonObject
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -76,6 +77,31 @@ private class CollectionSubscriber<T>(private val cont: CancellableContinuation<
 
   override fun onNext(t: T) {
     result.add(t)
+  }
+
+  override fun onError(t: Throwable) {
+    cont.resumeWithException(t)
+  }
+}
+
+/**
+ * A subscriber that requests as many [ByteBuffer]s as possible and collects
+ * them in a Vert.x [Buffer]
+ * @author Michel Kraemer
+ */
+private class BufferSubscriber(private val cont: CancellableContinuation<Buffer>) : Subscriber<ByteBuffer> {
+  private val result = Buffer.buffer()
+
+  override fun onComplete() {
+    cont.resume(result)
+  }
+
+  override fun onSubscribe(s: Subscription) {
+    s.request(Long.MAX_VALUE)
+  }
+
+  override fun onNext(t: ByteBuffer) {
+    result.appendBytes(t.array())
   }
 
   override fun onError(t: Throwable) {
@@ -222,8 +248,8 @@ suspend fun GridFSBucket.upload(filename: String, buffer: ByteBuffer) {
   } ?: throw IllegalStateException("Upload operation did not produce a result")
 }
 
-suspend fun GridFSBucket.download(filename: String): ByteBuffer {
-  return wrapCoroutine {
-    downloadToPublisher(filename)
-  } ?: throw IllegalStateException("Download operation did not produce a result")
+suspend fun GridFSBucket.download(filename: String): Buffer {
+  return suspendCancellableCoroutine { cont: CancellableContinuation<Buffer> ->
+    downloadToPublisher(filename).subscribe(BufferSubscriber(cont))
+  }
 }
