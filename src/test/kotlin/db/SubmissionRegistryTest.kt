@@ -1092,6 +1092,66 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun countProcessChainsPerStatus(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow())
+    val pc1 = ProcessChain()
+    val pc2 = ProcessChain()
+    val pc3 = ProcessChain()
+    val pc4 = ProcessChain()
+    val s2 = Submission(workflow = Workflow())
+    val pc5 = ProcessChain()
+    val pc6 = ProcessChain()
+    val pc7 = ProcessChain()
+    val pc8 = ProcessChain()
+    val pc9 = ProcessChain()
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addProcessChains(listOf(pc1, pc2, pc3), s1.id,
+          SubmissionRegistry.ProcessChainStatus.SUCCESS)
+      submissionRegistry.addProcessChains(listOf(pc4), s1.id,
+          SubmissionRegistry.ProcessChainStatus.ERROR)
+
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addProcessChains(listOf(pc5), s2.id,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      submissionRegistry.addProcessChains(listOf(pc6, pc7), s2.id,
+          SubmissionRegistry.ProcessChainStatus.ERROR)
+      submissionRegistry.addProcessChains(listOf(pc8), s2.id,
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      submissionRegistry.addProcessChains(listOf(pc9), s2.id,
+          SubmissionRegistry.ProcessChainStatus.CANCELLED)
+
+      ctx.coVerify {
+        assertThat(submissionRegistry.countProcessChainsPerStatus())
+            .isEqualTo(mapOf(
+                SubmissionRegistry.ProcessChainStatus.SUCCESS to 3L,
+                SubmissionRegistry.ProcessChainStatus.ERROR to 3L,
+                SubmissionRegistry.ProcessChainStatus.RUNNING to 1L,
+                SubmissionRegistry.ProcessChainStatus.REGISTERED to 1L,
+                SubmissionRegistry.ProcessChainStatus.CANCELLED to 1L
+            ))
+
+        assertThat(submissionRegistry.countProcessChainsPerStatus(s1.id))
+            .isEqualTo(mapOf(
+                SubmissionRegistry.ProcessChainStatus.SUCCESS to 3L,
+                SubmissionRegistry.ProcessChainStatus.ERROR to 1L
+            ))
+
+        assertThat(submissionRegistry.countProcessChainsPerStatus(s2.id))
+            .isEqualTo(mapOf(
+                SubmissionRegistry.ProcessChainStatus.RUNNING to 1L,
+                SubmissionRegistry.ProcessChainStatus.ERROR to 2L,
+                SubmissionRegistry.ProcessChainStatus.REGISTERED to 1L,
+                SubmissionRegistry.ProcessChainStatus.CANCELLED to 1L
+            ))
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun findProcessChainRequiredCapabilities(vertx: Vertx, ctx: VertxTestContext) {
     val rcs1 = setOf("rc1")
     val rcs2 = setOf("rc1", "rc2")

@@ -554,6 +554,30 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         }
       })
 
+  override suspend fun countProcessChainsPerStatus(submissionId: String?):
+      Map<ProcessChainStatus, Long> {
+    // db.processChains.aggregate([{$match:{submissionId:"aytd7wsvepytjxpdbisa"}},{$sortByCount:"$status"}])
+    val pipeline = mutableListOf<JsonObject>()
+    if (submissionId != null) {
+      pipeline.add(json {
+        obj(
+            "\$match" to obj(
+                SUBMISSION_ID to submissionId
+            )
+        )
+      })
+    }
+
+    pipeline.add(json {
+      obj(
+          "\$sortByCount" to "\$$STATUS"
+      )
+    })
+
+    return collProcessChains.aggregateAwait(pipeline).associateBy({
+      ProcessChainStatus.valueOf(it.getString(INTERNAL_ID)) },  { it.getLong("count") })
+  }
+
   override suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
       newStatus: ProcessChainStatus, requiredCapabilities: Collection<String>?): ProcessChain? {
     val doc = collProcessChains.findOneAndUpdateAwait(json {

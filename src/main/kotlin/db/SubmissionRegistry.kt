@@ -261,6 +261,18 @@ interface SubmissionRegistry : Registry {
       requiredCapabilities: Collection<String>? = null): Long
 
   /**
+   * Group process chains belonging to a given [submissionId] by status and
+   * count the items in each group. Example: if the submission contains 1
+   * process chain with the status [ProcessChainStatus.RUNNING] and 2 chains
+   * with the status [ProcessChainStatus.SUCCESS], the method will return
+   * `mapOf(ProcessChainStatus.RUNNING to 1L, ProcessChainStatus.SUCCESS to 2L)`.
+   * [submissionId] may be null if all process chains in the registry should
+   * be counted.
+   */
+  suspend fun countProcessChainsPerStatus(submissionId: String? = null):
+      Map<ProcessChainStatus, Long>
+
+  /**
    * Atomically fetch a process chain that has the given [currentStatus] and
    * set its status to `newStatus` before returning it. Process chains should
    * be returned in the order they have been added to the registry. The method

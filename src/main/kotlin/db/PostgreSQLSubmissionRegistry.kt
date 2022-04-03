@@ -43,6 +43,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     private const val ERROR_MESSAGE = "errorMessage"
     private const val EXECUTION_STATE = "executionState"
     private const val SERIAL = "serial"
+    private const val EXECUTABLES = "executables"
   }
 
   /**
@@ -272,7 +273,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
     val statement = StringBuilder()
     if (excludeExecutables) {
-      statement.append("SELECT $DATA #- '{executables}', $SUBMISSION_ID FROM $PROCESS_CHAINS ")
+      statement.append("SELECT $DATA #- '{$EXECUTABLES}', $SUBMISSION_ID FROM $PROCESS_CHAINS ")
     } else {
       statement.append("SELECT $DATA, $SUBMISSION_ID FROM $PROCESS_CHAINS ")
     }
@@ -375,6 +376,23 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
 
     return rs?.firstOrNull()?.getLong(0) ?: 0L
+  }
+
+  override suspend fun countProcessChainsPerStatus(submissionId: String?):
+      Map<ProcessChainStatus, Long> {
+    val statement = StringBuilder()
+    statement.append("SELECT $STATUS, COUNT(*) FROM $PROCESS_CHAINS")
+
+    val params = Tuple.tuple()
+    if (submissionId != null) {
+      statement.append(" WHERE $SUBMISSION_ID=$1")
+      params.addString(submissionId)
+    }
+    statement.append(" GROUP BY $STATUS")
+
+    val rs = client.preparedQuery(statement.toString()).execute(params).await()
+    return rs.associateBy({ ProcessChainStatus.valueOf(it.getString(0)) },
+        { it.getLong(1) })
   }
 
   override suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,

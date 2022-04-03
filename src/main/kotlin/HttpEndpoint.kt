@@ -899,20 +899,17 @@ class HttpEndpoint : CoroutineVerticle() {
   private suspend fun amendSubmission(submission: JsonObject,
       includeDetails: Boolean = false) {
     val submissionId = submission.getString("id")
-    val runningProcessChains = submissionRegistry.countProcessChains(
-        submissionId, SubmissionRegistry.ProcessChainStatus.RUNNING)
-    val cancelledProcessChains = submissionRegistry.countProcessChains(
-        submissionId, SubmissionRegistry.ProcessChainStatus.CANCELLED)
-    val succeededProcessChains = submissionRegistry.countProcessChains(
-        submissionId, SubmissionRegistry.ProcessChainStatus.SUCCESS)
-    val failedProcessChains = submissionRegistry.countProcessChains(
-        submissionId, SubmissionRegistry.ProcessChainStatus.ERROR)
-    val totalProcessChains = submissionRegistry.countProcessChains(submissionId)
-    submission.put("runningProcessChains", runningProcessChains)
-    submission.put("cancelledProcessChains", cancelledProcessChains)
-    submission.put("succeededProcessChains", succeededProcessChains)
-    submission.put("failedProcessChains", failedProcessChains)
-    submission.put("totalProcessChains", totalProcessChains)
+    val statuses = submissionRegistry.countProcessChainsPerStatus(submissionId)
+    val running = statuses[SubmissionRegistry.ProcessChainStatus.RUNNING] ?: 0L
+    val cancelled = statuses[SubmissionRegistry.ProcessChainStatus.CANCELLED] ?: 0L
+    val succeeded = statuses[SubmissionRegistry.ProcessChainStatus.SUCCESS] ?: 0L
+    val failed = statuses[SubmissionRegistry.ProcessChainStatus.ERROR] ?: 0L
+    val total = running + cancelled + succeeded + failed
+    submission.put("runningProcessChains", running)
+    submission.put("cancelledProcessChains", cancelled)
+    submission.put("succeededProcessChains", succeeded)
+    submission.put("failedProcessChains", failed)
+    submission.put("totalProcessChains", total)
 
     if (includeDetails) {
       val strStatus = submission.getString("status")
