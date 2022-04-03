@@ -1,5 +1,7 @@
 package db
 
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.mongodb.MongoGridFSException
 import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.IndexModel
@@ -34,6 +36,7 @@ import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import model.Submission
+import model.processchain.Executable
 import model.processchain.ProcessChain
 import org.slf4j.LoggerFactory
 import java.nio.ByteBuffer
@@ -98,6 +101,16 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     }
     private val PROCESS_CHAIN_EXCLUDES_BUT_SUBMISSION_ID =
         PROCESS_CHAIN_EXCLUDES.copy().also { it.remove(SUBMISSION_ID) }
+
+    /**
+     * A Jackson mix-in to ignore process chain executables during deserialization
+     */
+    abstract class ProcessChainIgnoreExecutablesMixin {
+      @JsonIgnore
+      val executables: List<Executable> = emptyList()
+    }
+    private val ignoreExecutablesMapper = JsonUtils.mapper.copy().addMixIn(
+        ProcessChain::class.java, ProcessChainIgnoreExecutablesMixin::class.java)
   }
 
   private val collSubmissions: MongoCollection<JsonObject> =
@@ -438,18 +451,21 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
    * Handle process chain metadata [document] and read corresponding process
    * chain from GridFS. Return pair of process chain and submission ID
    */
-  private suspend fun readProcessChain(document: JsonObject): Pair<ProcessChain, String> {
+  private suspend fun readProcessChain(document: JsonObject,
+      excludeExecutables: Boolean = false): Pair<ProcessChain, String> {
     val submissionId = document.getString(SUBMISSION_ID, "")
     val id = document.getString(INTERNAL_ID)
 
     val buf = readGridFSDocument(bucketProcessChains, id)
         ?: throw IllegalStateException("Got process chain metadata with " +
             "ID `$id' but could not find corresponding object in GridFS bucket.")
-    return Pair(JsonUtils.readValue(buf.bytes), submissionId)
+    val mapper = if (excludeExecutables) ignoreExecutablesMapper else JsonUtils.mapper
+    return Pair(mapper.readValue(buf.bytes), submissionId)
   }
 
   override suspend fun findProcessChains(submissionId: String?,
-      status: ProcessChainStatus?, size: Int, offset: Int, order: Int) =
+      status: ProcessChainStatus?, size: Int, offset: Int, order: Int,
+      excludeExecutables: Boolean) =
       collProcessChains.findAwait(JsonObject().also {
         if (submissionId != null) {
           it.put(SUBMISSION_ID, submissionId)
@@ -461,7 +477,8 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         obj(
             SEQUENCE to order
         )
-      }, PROCESS_CHAIN_EXCLUDES_BUT_SUBMISSION_ID).map { readProcessChain(it) }
+      }, PROCESS_CHAIN_EXCLUDES_BUT_SUBMISSION_ID).map {
+        readProcessChain(it, excludeExecutables) }
 
   override suspend fun findProcessChainIdsByStatus(status: ProcessChainStatus) =
       collProcessChains.findAwait(json {

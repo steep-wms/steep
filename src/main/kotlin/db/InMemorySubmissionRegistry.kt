@@ -319,8 +319,8 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   }
 
   override suspend fun findProcessChains(submissionId: String?,
-      status: ProcessChainStatus?, size: Int, offset: Int, order: Int) =
-      findProcessChainEntries()
+      status: ProcessChainStatus?, size: Int, offset: Int, order: Int,
+      excludeExecutables: Boolean) = findProcessChainEntries()
           .filter {
             (submissionId == null || it.submissionId == submissionId) &&
                 (status == null || it.status == status)
@@ -328,7 +328,14 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
           .let { if (order < 0) it.reversed() else it }
           .drop(offset)
           .let { if (size >= 0) it.take(size) else it }
-          .map { Pair(it.processChain, it.submissionId) }
+          .map {
+            val pc = if (excludeExecutables) {
+              it.processChain.copy(executables = emptyList())
+            } else {
+              it.processChain
+            }
+            Pair(pc, it.submissionId)
+          }
 
   override suspend fun findProcessChainIdsByStatus(status: ProcessChainStatus) =
       findProcessChainEntries()

@@ -265,12 +265,17 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun findProcessChains(submissionId: String?, status: ProcessChainStatus?,
-      size: Int, offset: Int, order: Int): Collection<Pair<ProcessChain, String>> {
+      size: Int, offset: Int, order: Int, excludeExecutables: Boolean):
+      Collection<Pair<ProcessChain, String>> {
     val asc = if (order >= 0) "ASC" else "DESC"
     val limit = if (size < 0) "ALL" else size.toString()
 
     val statement = StringBuilder()
-    statement.append("SELECT $DATA, $SUBMISSION_ID FROM $PROCESS_CHAINS ")
+    if (excludeExecutables) {
+      statement.append("SELECT $DATA #- '{executables}', $SUBMISSION_ID FROM $PROCESS_CHAINS ")
+    } else {
+      statement.append("SELECT $DATA, $SUBMISSION_ID FROM $PROCESS_CHAINS ")
+    }
 
     val params = if (submissionId != null && status != null) {
       statement.append("WHERE $SUBMISSION_ID=$1 AND $STATUS=$2 ")

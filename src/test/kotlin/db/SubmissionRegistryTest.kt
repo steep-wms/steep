@@ -12,6 +12,7 @@ import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import model.Submission
+import model.processchain.Executable
 import model.processchain.ProcessChain
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
@@ -920,6 +921,34 @@ abstract class SubmissionRegistryTest {
         assertThat(statuses2).isEqualTo(mapOf(
             pc4.id to SubmissionRegistry.ProcessChainStatus.REGISTERED
         ))
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun findProcessChainWithoutExecutables(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow())
+    val pc1 = ProcessChain(executables = listOf(Executable(path = "cp",
+        serviceId = "cp", arguments = emptyList())))
+    val pc2 = ProcessChain(executables = listOf(Executable(path = "sleep",
+        serviceId = "sleep", arguments = emptyList())))
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addProcessChains(listOf(pc1, pc2), s1.id,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+
+      ctx.coVerify {
+        val r1 = submissionRegistry.findProcessChains()
+        assertThat(r1).containsExactlyInAnyOrder(Pair(pc1, s1.id), Pair(pc2, s1.id))
+
+        val r2 = submissionRegistry.findProcessChains(excludeExecutables = true)
+        assertThat(r2).containsExactlyInAnyOrder(
+            Pair(pc1.copy(executables = emptyList()), s1.id),
+            Pair(pc2.copy(executables = emptyList()), s1.id)
+        )
       }
 
       ctx.completeNow()

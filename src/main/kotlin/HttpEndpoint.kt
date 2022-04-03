@@ -1314,9 +1314,13 @@ class HttpEndpoint : CoroutineVerticle() {
         }
 
         val list = submissionRegistry.findProcessChains(submissionId = submissionId,
-            status = status, size = size, offset = offset, order = -1).map { p ->
+            status = status, size = size, offset = offset, order = -1,
+            excludeExecutables = true).map { p ->
           JsonUtils.toJson(p.first).also {
+            // we've already excluded the executables, but we still need to
+            // make sure the result doesn't include an empty list
             it.remove("executables")
+
             amendProcessChain(it, p.second)
           }
         }

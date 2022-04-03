@@ -195,11 +195,13 @@ interface SubmissionRegistry : Registry {
    * @param offset the index of the first process chain to return
    * @param order a positive number if the process chains should be returned in
    * an ascending order, negative otherwise
+   * @param excludeExecutables `true` if all executables should be excluded
+   * from the result
    * @return all process chains and the ID of their respective submission
    */
   suspend fun findProcessChains(submissionId: String? = null,
       status: ProcessChainStatus? = null, size: Int = -1, offset: Int = 0,
-      order: Int = 1): Collection<Pair<ProcessChain, String>>
+      order: Int = 1, excludeExecutables: Boolean = false): Collection<Pair<ProcessChain, String>>
 
   /**
    * Find the IDs of all process chains that have a given status
