@@ -47,17 +47,17 @@ interface SubmissionRegistry : Registry {
   suspend fun addSubmission(submission: Submission)
 
   /**
-   * Get a list of all submissions in the registry
+   * Get a list of all raw (JSON) submissions in the registry
    * @param status an optional status the returned submissions should have
    * @param size the maximum number of submissions to return (may be negative
    * if all submissions should be returned)
    * @param offset the index of the first submission to return
-   * @param order a positive number if the submissions should be returned in an
+   * @param order a positive number if the submissions should be returned in
    * ascending order, negative otherwise
    * @return all submissions
    */
-  suspend fun findSubmissions(status: Submission.Status? = null, size: Int = -1,
-      offset: Int = 0, order: Int = 1): Collection<Submission>
+  suspend fun findSubmissionsRaw(status: Submission.Status? = null, size: Int = -1,
+      offset: Int = 0, order: Int = 1): Collection<JsonObject>
 
   /**
    * Get a single submission from the registry

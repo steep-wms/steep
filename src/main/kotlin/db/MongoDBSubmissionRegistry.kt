@@ -163,19 +163,23 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     collSubmissions.insertOneAwait(doc)
   }
 
-  /**
-   * Deserialize a submission from a database [document]
-   */
-  private fun deserializeSubmission(document: JsonObject): Submission {
+  private fun cleanSubmissionDocument(document: JsonObject) {
     document.remove(ERROR_MESSAGE)
     document.remove(SEQUENCE)
     document.put(ID, document.getString(INTERNAL_ID))
     document.remove(INTERNAL_ID)
+  }
+
+  /**
+   * Deserialize a submission from a database [document]
+   */
+  private fun deserializeSubmission(document: JsonObject): Submission {
+    cleanSubmissionDocument(document)
     return JsonUtils.fromJson(document)
   }
 
-  override suspend fun findSubmissions(status: Submission.Status?, size: Int,
-      offset: Int, order: Int): Collection<Submission> {
+  override suspend fun findSubmissionsRaw(status: Submission.Status?, size: Int,
+      offset: Int, order: Int): Collection<JsonObject> {
     val docs = collSubmissions.findAwait(JsonObject().also {
       if (status != null) {
         it.put(STATUS, status.toString())
@@ -185,7 +189,8 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
           SEQUENCE to order
       )
     }, SUBMISSION_EXCLUDES)
-    return docs.map { deserializeSubmission(it) }
+    docs.forEach { cleanSubmissionDocument(it) }
+    return docs
   }
 
   override suspend fun findSubmissionById(submissionId: String): Submission? {

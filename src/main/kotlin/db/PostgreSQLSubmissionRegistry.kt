@@ -61,8 +61,8 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     client.preparedQuery(statement).execute(params).await()
   }
 
-  override suspend fun findSubmissions(status: Submission.Status?, size: Int,
-      offset: Int, order: Int): Collection<Submission> {
+  override suspend fun findSubmissionsRaw(status: Submission.Status?, size: Int,
+      offset: Int, order: Int): Collection<JsonObject> {
     val asc = if (order >= 0) "ASC" else "DESC"
     val limit = if (size < 0) "ALL" else size.toString()
 
@@ -83,7 +83,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     } else {
       client.query(statement.toString()).execute().await()
     }
-    return rs.map { JsonUtils.fromJson(it.getJsonObject(0)) }
+    return rs.map { it.getJsonObject(0) }
   }
 
   override suspend fun findSubmissionById(submissionId: String): Submission? {

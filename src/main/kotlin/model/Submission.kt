@@ -1,10 +1,9 @@
 package model
 
 import helper.UniqueID
+import io.vertx.core.json.JsonArray
+import io.vertx.core.json.JsonObject
 import model.metadata.Service
-import model.workflow.Action
-import model.workflow.ExecuteAction
-import model.workflow.ForEachAction
 import model.workflow.Workflow
 import java.time.Instant
 
@@ -34,32 +33,35 @@ data class Submission(
   }
 
   companion object {
-    private fun collectRequiredCapabilities(actions: List<Action>,
+    private fun collectRequiredCapabilities(actions: JsonArray,
         serviceMetadata: Map<String, Service>): Set<String> {
       val result = mutableSetOf<String>()
-      for (a in actions) {
-        when (a) {
-          is ExecuteAction -> {
-            val service = serviceMetadata[a.service]
+      for (i in 0 until actions.size()) {
+        val a = actions.getJsonObject(i)
+        when (a.getString("type")) {
+          "execute" -> {
+            val service = serviceMetadata[a.getString("service")]
             if (service != null) {
               result.addAll(service.requiredCapabilities)
             }
           }
 
-          is ForEachAction ->
-            result.addAll(collectRequiredCapabilities(a.actions, serviceMetadata))
+          "for" -> result.addAll(collectRequiredCapabilities(
+              a.getJsonArray("actions"), serviceMetadata))
         }
       }
       return result
     }
-  }
 
-  /**
-   * Use the metadata of the given [services] to calculate a set of
-   * capabilities required to execute this submission
-   */
-  fun collectRequiredCapabilities(services: List<Service>): Set<String> {
-    val serviceMetadata = services.associateBy { it.id }
-    return collectRequiredCapabilities(workflow.actions, serviceMetadata)
+    /**
+     * Use the metadata of the given [services] to calculate a set of
+     * capabilities required to execute the given [submission]
+     */
+    fun collectRequiredCapabilities(submission: JsonObject, services: List<Service>): Set<String> {
+      val serviceMetadata = services.associateBy { it.id }
+      val workflow = submission.getJsonObject("workflow")
+      val actions = workflow.getJsonArray("actions")
+      return collectRequiredCapabilities(actions, serviceMetadata)
+    }
   }
 }

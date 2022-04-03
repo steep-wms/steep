@@ -2,6 +2,7 @@ package db
 
 import assertThatThrownBy
 import coVerify
+import helper.JsonUtils
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
@@ -82,33 +83,36 @@ abstract class SubmissionRegistryTest {
       submissionRegistry.addSubmission(s1)
       submissionRegistry.addSubmission(s2)
       submissionRegistry.addSubmission(s3)
+      val js1 = JsonUtils.toJson(s1)
+      val js2 = JsonUtils.toJson(s2)
+      val js3 = JsonUtils.toJson(s3)
 
       // check if order is correct
-      val r1 = submissionRegistry.findSubmissions()
+      val r1 = submissionRegistry.findSubmissionsRaw()
       ctx.verify {
-        assertThat(r1).isEqualTo(listOf(s1, s2, s3))
+        assertThat(r1).isEqualTo(listOf(js1, js2, js3))
       }
 
       // check if order can be reversed
-      val r2 = submissionRegistry.findSubmissions(order = -1)
+      val r2 = submissionRegistry.findSubmissionsRaw(order = -1)
       ctx.verify {
-        assertThat(r2).isEqualTo(listOf(s3, s2, s1))
+        assertThat(r2).isEqualTo(listOf(js3, js2, js1))
       }
 
       // check if we can query pages
-      val r3 = submissionRegistry.findSubmissions(size = 1, offset = 0)
-      val r4 = submissionRegistry.findSubmissions(size = 2, offset = 1)
+      val r3 = submissionRegistry.findSubmissionsRaw(size = 1, offset = 0)
+      val r4 = submissionRegistry.findSubmissionsRaw(size = 2, offset = 1)
       ctx.verify {
-        assertThat(r3).isEqualTo(listOf(s1))
-        assertThat(r4).isEqualTo(listOf(s2, s3))
+        assertThat(r3).isEqualTo(listOf(js1))
+        assertThat(r4).isEqualTo(listOf(js2, js3))
       }
 
       // check if we can query pages with reversed order
-      val r5 = submissionRegistry.findSubmissions(size = 1, offset = 0, order = -1)
-      val r6 = submissionRegistry.findSubmissions(size = 2, offset = 1, order = -1)
+      val r5 = submissionRegistry.findSubmissionsRaw(size = 1, offset = 0, order = -1)
+      val r6 = submissionRegistry.findSubmissionsRaw(size = 2, offset = 1, order = -1)
       ctx.verify {
-        assertThat(r5).isEqualTo(listOf(s3))
-        assertThat(r6).isEqualTo(listOf(s2, s1))
+        assertThat(r5).isEqualTo(listOf(js3))
+        assertThat(r6).isEqualTo(listOf(js2, js1))
       }
 
       ctx.completeNow()
@@ -121,6 +125,10 @@ abstract class SubmissionRegistryTest {
     val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
     val s3 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
     val s4 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
+    val js1 = JsonUtils.toJson(s1)
+    val js2 = JsonUtils.toJson(s2)
+    val js3 = JsonUtils.toJson(s3)
+    val js4 = JsonUtils.toJson(s4)
 
     CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s1)
@@ -129,41 +137,41 @@ abstract class SubmissionRegistryTest {
       submissionRegistry.addSubmission(s4)
 
       // check if we can query by status
-      val r1 = submissionRegistry.findSubmissions()
-      val r2 = submissionRegistry.findSubmissions(Submission.Status.RUNNING)
-      val r3 = submissionRegistry.findSubmissions(Submission.Status.SUCCESS)
-      val r4 = submissionRegistry.findSubmissions(Submission.Status.ERROR)
+      val r1 = submissionRegistry.findSubmissionsRaw()
+      val r2 = submissionRegistry.findSubmissionsRaw(Submission.Status.RUNNING)
+      val r3 = submissionRegistry.findSubmissionsRaw(Submission.Status.SUCCESS)
+      val r4 = submissionRegistry.findSubmissionsRaw(Submission.Status.ERROR)
       ctx.verify {
-        assertThat(r1).isEqualTo(listOf(s1, s2, s3, s4))
-        assertThat(r2).isEqualTo(listOf(s1, s3, s4))
-        assertThat(r3).isEqualTo(listOf(s2))
+        assertThat(r1).isEqualTo(listOf(js1, js2, js3, js4))
+        assertThat(r2).isEqualTo(listOf(js1, js3, js4))
+        assertThat(r3).isEqualTo(listOf(js2))
         assertThat(r4).isEmpty()
       }
 
       // check if order can be reversed
-      val r5 = submissionRegistry.findSubmissions(Submission.Status.RUNNING, order = -1)
+      val r5 = submissionRegistry.findSubmissionsRaw(Submission.Status.RUNNING, order = -1)
       ctx.verify {
-        assertThat(r5).isEqualTo(listOf(s4, s3, s1))
+        assertThat(r5).isEqualTo(listOf(js4, js3, js1))
       }
 
       // check if we can query pages
-      val r6 = submissionRegistry.findSubmissions(Submission.Status.RUNNING,
+      val r6 = submissionRegistry.findSubmissionsRaw(Submission.Status.RUNNING,
           size = 1, offset = 0)
-      val r7 = submissionRegistry.findSubmissions(Submission.Status.RUNNING,
+      val r7 = submissionRegistry.findSubmissionsRaw(Submission.Status.RUNNING,
           size = 2, offset = 1)
       ctx.verify {
-        assertThat(r6).isEqualTo(listOf(s1))
-        assertThat(r7).isEqualTo(listOf(s3, s4))
+        assertThat(r6).isEqualTo(listOf(js1))
+        assertThat(r7).isEqualTo(listOf(js3, js4))
       }
 
       // check if we can query pages with reversed order
-      val r8 = submissionRegistry.findSubmissions(Submission.Status.RUNNING,
+      val r8 = submissionRegistry.findSubmissionsRaw(Submission.Status.RUNNING,
           size = 1, offset = 0, order = -1)
-      val r9 = submissionRegistry.findSubmissions(Submission.Status.RUNNING,
+      val r9 = submissionRegistry.findSubmissionsRaw(Submission.Status.RUNNING,
           size = 2, offset = 1, order = -1)
       ctx.verify {
-        assertThat(r8).isEqualTo(listOf(s4))
-        assertThat(r9).isEqualTo(listOf(s3, s1))
+        assertThat(r8).isEqualTo(listOf(js4))
+        assertThat(r9).isEqualTo(listOf(js3, js1))
       }
 
       ctx.completeNow()
@@ -320,10 +328,11 @@ abstract class SubmissionRegistryTest {
   @Test
   fun setSubmissionStatus(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
+    val js = JsonUtils.toJson(s)
 
     CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
-      val submissions = submissionRegistry.findSubmissions()
+      val submissions = submissionRegistry.findSubmissionsRaw()
       val acceptedSubmission1 = submissionRegistry.fetchNextSubmission(
           Submission.Status.ACCEPTED, Submission.Status.ACCEPTED)
       val runningSubmission1 = submissionRegistry.fetchNextSubmission(
@@ -331,7 +340,7 @@ abstract class SubmissionRegistryTest {
 
       ctx.verify {
         assertThat(submissions)
-            .containsExactly(s)
+            .containsExactly(js)
         assertThat(acceptedSubmission1)
             .isEqualTo(s)
         assertThat(runningSubmission1)
@@ -627,8 +636,8 @@ abstract class SubmissionRegistryTest {
             Pair(pc3, s2.id), Pair(pc4, s2.id), Pair(pc7, s4.id), Pair(pc9, s6.id),
             Pair(pc11, s8.id))
 
-        val r2 = submissionRegistry.findSubmissions()
-        assertThat(r2.map { it.id }).containsExactlyInAnyOrder(s1.id, s2.id,
+        val r2 = submissionRegistry.findSubmissionsRaw()
+        assertThat(r2.map { it.getString("id") }).containsExactlyInAnyOrder(s1.id, s2.id,
           s4.id, s6.id, s8.id)
       }
 

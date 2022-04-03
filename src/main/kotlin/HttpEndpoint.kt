@@ -900,16 +900,15 @@ class HttpEndpoint : CoroutineVerticle() {
       includeDetails: Boolean = false) {
     val submissionId = submission.getString("id")
     val statuses = submissionRegistry.countProcessChainsPerStatus(submissionId)
-    val running = statuses[SubmissionRegistry.ProcessChainStatus.RUNNING] ?: 0L
-    val cancelled = statuses[SubmissionRegistry.ProcessChainStatus.CANCELLED] ?: 0L
-    val succeeded = statuses[SubmissionRegistry.ProcessChainStatus.SUCCESS] ?: 0L
-    val failed = statuses[SubmissionRegistry.ProcessChainStatus.ERROR] ?: 0L
-    val total = running + cancelled + succeeded + failed
-    submission.put("runningProcessChains", running)
-    submission.put("cancelledProcessChains", cancelled)
-    submission.put("succeededProcessChains", succeeded)
-    submission.put("failedProcessChains", failed)
-    submission.put("totalProcessChains", total)
+    submission.put("runningProcessChains",
+        statuses[SubmissionRegistry.ProcessChainStatus.RUNNING] ?: 0L)
+    submission.put("cancelledProcessChains",
+        statuses[SubmissionRegistry.ProcessChainStatus.CANCELLED] ?: 0L)
+    submission.put("succeededProcessChains",
+        statuses[SubmissionRegistry.ProcessChainStatus.SUCCESS] ?: 0L)
+    submission.put("failedProcessChains",
+        statuses[SubmissionRegistry.ProcessChainStatus.ERROR] ?: 0L)
+    submission.put("totalProcessChains", statuses.values.sum())
 
     if (includeDetails) {
       val strStatus = submission.getString("status")
@@ -950,20 +949,17 @@ class HttpEndpoint : CoroutineVerticle() {
         }
 
         val total = submissionRegistry.countSubmissions(status)
-        val submissions = submissionRegistry.findSubmissions(status, size, offset, -1)
+        val submissions = submissionRegistry.findSubmissionsRaw(status, size, offset, -1)
 
         val list = submissions.map { submission ->
-          val reqCaps = submission.collectRequiredCapabilities(
+          val reqCaps = Submission.collectRequiredCapabilities(submission,
               metadataRegistry.findServices())
 
           // do not unnecessarily encode workflow to save time for large workflows
-          val c = submission.copy(workflow = Workflow())
+          submission.remove("workflow")
 
-          JsonUtils.toJson(c).also {
-            it.remove("workflow")
-            amendSubmission(it)
-            it.put("requiredCapabilities", jsonArrayOf(*(reqCaps.toTypedArray())))
-          }
+          amendSubmission(submission)
+          submission.put("requiredCapabilities", jsonArrayOf(*(reqCaps.toTypedArray())))
         }
 
         val encodedJson = JsonArray(list).encode()
@@ -992,7 +988,7 @@ class HttpEndpoint : CoroutineVerticle() {
           renderError(ctx, 404, "There is no workflow with ID `$id'")
         } else {
           val json = JsonUtils.toJson(submission)
-          val reqCaps = submission.collectRequiredCapabilities(
+          val reqCaps = Submission.collectRequiredCapabilities(json,
               metadataRegistry.findServices())
 
           amendSubmission(json, true)

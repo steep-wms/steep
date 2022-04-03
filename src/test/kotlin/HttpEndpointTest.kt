@@ -300,48 +300,35 @@ class HttpEndpointTest {
   @Test
   fun getWorkflows(vertx: Vertx, ctx: VertxTestContext) {
     val s1 = Submission(workflow = Workflow())
-    coEvery { submissionRegistry.countProcessChains(s1.id) } returns 15
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.REGISTERED) } returns 1
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.RUNNING) } returns 2
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.CANCELLED) } returns 3
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.ERROR) } returns 4
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.SUCCESS) } returns 5
+    coEvery { submissionRegistry.countProcessChainsPerStatus(s1.id) } returns mapOf(
+        ProcessChainStatus.REGISTERED to 1L,
+        ProcessChainStatus.RUNNING to 2L,
+        ProcessChainStatus.CANCELLED to 3L,
+        ProcessChainStatus.ERROR to 4L,
+        ProcessChainStatus.SUCCESS to 5L
+    )
 
     val s2 = Submission(workflow = Workflow())
-    coEvery { submissionRegistry.countProcessChains(s2.id) } returns 65
-    coEvery { submissionRegistry.countProcessChains(s2.id,
-        ProcessChainStatus.REGISTERED) } returns 11
-    coEvery { submissionRegistry.countProcessChains(s2.id,
-        ProcessChainStatus.RUNNING) } returns 12
-    coEvery { submissionRegistry.countProcessChains(s2.id,
-        ProcessChainStatus.CANCELLED) } returns 13
-    coEvery { submissionRegistry.countProcessChains(s2.id,
-        ProcessChainStatus.ERROR) } returns 14
-    coEvery { submissionRegistry.countProcessChains(s2.id,
-        ProcessChainStatus.SUCCESS) } returns 15
+    coEvery { submissionRegistry.countProcessChainsPerStatus(s2.id) } returns mapOf(
+        ProcessChainStatus.REGISTERED to 11L,
+        ProcessChainStatus.RUNNING to 12L,
+        ProcessChainStatus.CANCELLED to 13L,
+        ProcessChainStatus.ERROR to 14L,
+        ProcessChainStatus.SUCCESS to 15L
+    )
 
     val s3 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
-    coEvery { submissionRegistry.countProcessChains(s3.id) } returns 1
-    coEvery { submissionRegistry.countProcessChains(s3.id,
-        ProcessChainStatus.REGISTERED) } returns 0
-    coEvery { submissionRegistry.countProcessChains(s3.id,
-        ProcessChainStatus.RUNNING) } returns 0
-    coEvery { submissionRegistry.countProcessChains(s3.id,
-        ProcessChainStatus.CANCELLED) } returns 0
-    coEvery { submissionRegistry.countProcessChains(s3.id,
-        ProcessChainStatus.ERROR) } returns 0
-    coEvery { submissionRegistry.countProcessChains(s3.id,
-        ProcessChainStatus.SUCCESS) } returns 1
+    coEvery { submissionRegistry.countProcessChainsPerStatus(s3.id) } returns
+        mapOf(ProcessChainStatus.SUCCESS to 1L)
 
     coEvery { metadataRegistry.findServices() } returns emptyList()
 
-    coEvery { submissionRegistry.findSubmissions(any(), any(), any(), any()) } returns
-        listOf(s1, s2, s3)
+    val js1 = JsonUtils.toJson(s1)
+    val js2 = JsonUtils.toJson(s2)
+    val js3 = JsonUtils.toJson(s3)
+
+    coEvery { submissionRegistry.findSubmissionsRaw(any(), any(), any(), any()) } returns
+        listOf(js1, js2, js3)
     coEvery { submissionRegistry.countSubmissions() } returns 3
 
     val client = WebClient.create(vertx)
@@ -403,23 +390,15 @@ class HttpEndpointTest {
   @Test
   fun getWorkflowsByStatus(vertx: Vertx, ctx: VertxTestContext) {
     val s3 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
+    val js3 = JsonUtils.toJson(s3)
 
-    coEvery { submissionRegistry.countProcessChains(s3.id) } returns 1
-    coEvery { submissionRegistry.countProcessChains(s3.id,
-        ProcessChainStatus.REGISTERED) } returns 0
-    coEvery { submissionRegistry.countProcessChains(s3.id,
-        ProcessChainStatus.RUNNING) } returns 0
-    coEvery { submissionRegistry.countProcessChains(s3.id,
-        ProcessChainStatus.CANCELLED) } returns 0
-    coEvery { submissionRegistry.countProcessChains(s3.id,
-        ProcessChainStatus.ERROR) } returns 0
-    coEvery { submissionRegistry.countProcessChains(s3.id,
-        ProcessChainStatus.SUCCESS) } returns 1
+    coEvery { submissionRegistry.countProcessChainsPerStatus(s3.id) } returns
+        mapOf(ProcessChainStatus.SUCCESS to 1L)
 
     coEvery { metadataRegistry.findServices() } returns emptyList()
 
-    coEvery { submissionRegistry.findSubmissions(Submission.Status.SUCCESS,
-        any(), any(), any()) } returns listOf(s3)
+    coEvery { submissionRegistry.findSubmissionsRaw(Submission.Status.SUCCESS,
+        any(), any(), any()) } returns listOf(js3)
     coEvery { submissionRegistry.countSubmissions(Submission.Status.SUCCESS) } returns 1
 
     val client = WebClient.create(vertx)
@@ -461,17 +440,13 @@ class HttpEndpointTest {
   @Test
   fun getWorkflowById(vertx: Vertx, ctx: VertxTestContext) {
     val s1 = Submission(workflow = Workflow())
-    coEvery { submissionRegistry.countProcessChains(s1.id) } returns 15
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.REGISTERED) } returns 1
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.RUNNING) } returns 2
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.CANCELLED) } returns 3
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.ERROR) } returns 4
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.SUCCESS) } returns 5
+    coEvery { submissionRegistry.countProcessChainsPerStatus(s1.id) } returns mapOf(
+        ProcessChainStatus.REGISTERED to 1L,
+        ProcessChainStatus.RUNNING to 2L,
+        ProcessChainStatus.CANCELLED to 3L,
+        ProcessChainStatus.ERROR to 4L,
+        ProcessChainStatus.SUCCESS to 5L
+    )
 
     coEvery { metadataRegistry.findServices() } returns emptyList()
 
@@ -524,17 +499,8 @@ class HttpEndpointTest {
             ExecuteAction(service = "b")
         ), input = Variable(), enumerator = Variable())
     )))
-    coEvery { submissionRegistry.countProcessChains(s1.id) } returns 1
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.REGISTERED) } returns 1
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.RUNNING) } returns 0
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.CANCELLED) } returns 0
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.ERROR) } returns 0
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.SUCCESS) } returns 0
+    coEvery { submissionRegistry.countProcessChainsPerStatus(s1.id) } returns
+        mapOf(ProcessChainStatus.REGISTERED to 1L)
 
     coEvery { metadataRegistry.findServices() } returns listOf(
         Service(id = "a", name = "name a", description = "", path = "",
@@ -582,17 +548,8 @@ class HttpEndpointTest {
   @Test
   fun getWorkflowByIdSuccess(vertx: Vertx, ctx: VertxTestContext) {
     val s1 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
-    coEvery { submissionRegistry.countProcessChains(s1.id) } returns 1
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.REGISTERED) } returns 0
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.RUNNING) } returns 0
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.CANCELLED) } returns 0
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.ERROR) } returns 0
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.SUCCESS) } returns 1
+    coEvery { submissionRegistry.countProcessChainsPerStatus(s1.id) } returns
+        mapOf(ProcessChainStatus.SUCCESS to 1L)
 
     coEvery { metadataRegistry.findServices() } returns emptyList()
 
@@ -637,17 +594,8 @@ class HttpEndpointTest {
   @Test
   fun getWorkflowByIdError(vertx: Vertx, ctx: VertxTestContext) {
     val s1 = Submission(workflow = Workflow(), status = Submission.Status.ERROR)
-    coEvery { submissionRegistry.countProcessChains(s1.id) } returns 1
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.REGISTERED) } returns 0
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.RUNNING) } returns 0
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.CANCELLED) } returns 0
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.ERROR) } returns 1
-    coEvery { submissionRegistry.countProcessChains(s1.id,
-        ProcessChainStatus.SUCCESS) } returns 0
+    coEvery { submissionRegistry.countProcessChainsPerStatus(s1.id) } returns
+        mapOf(ProcessChainStatus.ERROR to 1)
 
     coEvery { metadataRegistry.findServices() } returns emptyList()
 
@@ -762,15 +710,10 @@ class HttpEndpointTest {
         // now test valid requests
         coEvery { submissionRegistry.setAllProcessChainsStatus(s1.id,
             ProcessChainStatus.REGISTERED, ProcessChainStatus.CANCELLED) } just Runs
-        coEvery { submissionRegistry.countProcessChains(s1.id,
-            ProcessChainStatus.RUNNING) } returns 1
-        coEvery { submissionRegistry.countProcessChains(s1.id,
-            ProcessChainStatus.CANCELLED) } returns 2
-        coEvery { submissionRegistry.countProcessChains(s1.id,
-            ProcessChainStatus.SUCCESS) } returns 0
-        coEvery { submissionRegistry.countProcessChains(s1.id,
-            ProcessChainStatus.ERROR) } returns 0
-        coEvery { submissionRegistry.countProcessChains(s1.id) } returns 3
+        coEvery { submissionRegistry.countProcessChainsPerStatus(s1.id) } returns mapOf(
+            ProcessChainStatus.RUNNING to 1L,
+            ProcessChainStatus.CANCELLED to 2L
+        )
         val response1 = client.put(port, "localhost", "/workflows/${s1.id}")
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
@@ -932,7 +875,9 @@ class HttpEndpointTest {
   fun getProcessChains(vertx: Vertx, ctx: VertxTestContext) {
     val s1 = Submission(workflow = Workflow())
     val s2 = Submission(workflow = Workflow())
-    coEvery { submissionRegistry.findSubmissions() } returns listOf(s1, s2)
+    val js1 = JsonUtils.toJson(s1)
+    val js2 = JsonUtils.toJson(s2)
+    coEvery { submissionRegistry.findSubmissionsRaw() } returns listOf(js1, js2)
 
     val pc1 = ProcessChain(executables = listOf(Executable(path = "path",
         serviceId = "foobar", arguments = emptyList())))
@@ -1036,7 +981,9 @@ class HttpEndpointTest {
   fun getProcessChainsBySubmissionId(vertx: Vertx, ctx: VertxTestContext) {
     val s1 = Submission(workflow = Workflow())
     val s2 = Submission(workflow = Workflow())
-    coEvery { submissionRegistry.findSubmissions() } returns listOf(s1, s2)
+    val js1 = JsonUtils.toJson(s1)
+    val js2 = JsonUtils.toJson(s2)
+    coEvery { submissionRegistry.findSubmissionsRaw() } returns listOf(js1, js2)
 
     val pc1 = ProcessChain(executables = listOf(Executable(path = "path",
         serviceId = "foobar", arguments = emptyList())))
@@ -1107,7 +1054,9 @@ class HttpEndpointTest {
   fun getProcessChainsBySubmissionIdAndStatus(vertx: Vertx, ctx: VertxTestContext) {
     val s1 = Submission(workflow = Workflow())
     val s2 = Submission(workflow = Workflow())
-    coEvery { submissionRegistry.findSubmissions() } returns listOf(s1, s2)
+    val js1 = JsonUtils.toJson(s1)
+    val js2 = JsonUtils.toJson(s2)
+    coEvery { submissionRegistry.findSubmissionsRaw() } returns listOf(js1, js2)
 
     val pc1 = ProcessChain(executables = listOf(Executable(path = "path",
         serviceId = "foobar", arguments = emptyList())))

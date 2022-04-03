@@ -29,12 +29,12 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
 
     vertx.eventBus().publish(AddressConstants.SUBMISSION_ADDED, {
       JsonUtils.toJson(submission.copy(workflow = Workflow())).also {
+        // add required capabilities
+        val reqCaps = Submission.collectRequiredCapabilities(it, services)
+        it.put("requiredCapabilities", jsonArrayOf(*(reqCaps.toTypedArray())))
+
         // do not serialize workflow
         it.remove("workflow")
-
-        // add required capabilities
-        val reqCaps = submission.collectRequiredCapabilities(services)
-        it.put("requiredCapabilities", jsonArrayOf(*(reqCaps.toTypedArray())))
       }
     }, deliveryOptionsOf(codecName = "lazyjsonobject"))
   }
