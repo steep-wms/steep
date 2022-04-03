@@ -53,8 +53,6 @@ import model.processchain.ProcessChain
 import model.setup.Setup
 import model.workflow.ExecuteAction
 import model.workflow.ForEachAction
-import model.workflow.GenericParameter
-import model.workflow.OutputParameter
 import model.workflow.Variable
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
@@ -942,7 +940,7 @@ class HttpEndpointTest {
     val pc3 = ProcessChain()
     val pc4 = ProcessChain()
 
-    coEvery { submissionRegistry.findProcessChains(any(), any(), any(), any(), any()) } returns listOf(
+    coEvery { submissionRegistry.findProcessChains(any(), any(), any(), any(), any(), true) } returns listOf(
         Pair(pc1, s1.id), Pair(pc2, s1.id), Pair(pc3, s2.id), Pair(pc4, s2.id))
     coEvery { submissionRegistry.countProcessChains() } returns 4
 
@@ -1044,7 +1042,7 @@ class HttpEndpointTest {
         serviceId = "foobar", arguments = emptyList())))
     val pc2 = ProcessChain()
 
-    coEvery { submissionRegistry.findProcessChains(s1.id, null, 10, 0, -1) } returns
+    coEvery { submissionRegistry.findProcessChains(s1.id, null, 10, 0, -1, true) } returns
         listOf(pc1 to s1.id, pc2 to s1.id)
     coEvery { submissionRegistry.countProcessChains(s1.id) } returns 2
 
@@ -1115,7 +1113,7 @@ class HttpEndpointTest {
         serviceId = "foobar", arguments = emptyList())))
 
     coEvery { submissionRegistry.findProcessChains(s1.id, ProcessChainStatus.SUCCESS,
-        10, 0, -1) } returns listOf(pc1 to s1.id)
+        10, 0, -1, true) } returns listOf(pc1 to s1.id)
     coEvery { submissionRegistry.countProcessChains(s1.id, ProcessChainStatus.SUCCESS) } returns 1
 
     coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns ProcessChainStatus.SUCCESS
