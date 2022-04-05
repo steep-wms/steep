@@ -55,6 +55,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v3
+
       - name: Download install directory
         uses: actions/download-artifact@v2
         with:
