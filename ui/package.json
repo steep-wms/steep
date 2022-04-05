@@ -11,7 +11,7 @@
     "cypress:run": "cypress run",
     "test": "playwright test",
     "start-server": "../build/install/steep/bin/steep",
-    "ci": "WAIT_ON_INTERVAL=100 start-server-and-test start-server http-get://localhost:8080 test"
+    "ci": "STEEP_OVERRIDECONFIGFILE=../../../ui/tests/conf/steep-override-ui-tests.yaml WAIT_ON_INTERVAL=100 start-server-and-test start-server http-get://localhost:8080 test"
   },
   "author": "Michel Kraemer",
   "license": "Apache-2.0",

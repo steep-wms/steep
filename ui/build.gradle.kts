@@ -49,6 +49,11 @@ tasks {
             .withPropertyName("out")
     }
 
+    val ci by creating(NpmTask::class) {
+        dependsOn(":installDist")
+        args.set(listOf("run", "ci"))
+    }
+
     processResources {
         dependsOn(buildUi)
     }
