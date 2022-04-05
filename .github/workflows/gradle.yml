@@ -30,7 +30,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: steep-build
-          path: build/install
+          path: build
           retention-days: 1
 
   test:
@@ -52,7 +52,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: steep-build
-          path: build/install
+          path: build
 
       - name: Run unit tests
         run: ./gradlew test -x :ui:processResources jacocoTestReport
@@ -71,7 +71,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: steep-build
-          path: build/install
+          path: build
 
       - name: Build Docker image
         run: |
