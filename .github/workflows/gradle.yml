@@ -33,6 +33,13 @@ jobs:
           path: build
           retention-days: 1
 
+      - name: Upload UI artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: steep-ui-out
+          path: ui/out
+          retention-days: 1
+
   test:
     needs: build
     runs-on: ubuntu-latest
@@ -53,6 +60,12 @@ jobs:
         with:
           name: steep-build
           path: build
+      
+      - name: Download UI artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: steep-ui-out
+          path: ui/out
 
       - name: Run unit tests
         run: ./gradlew test -x :ui:processResources jacocoTestReport
