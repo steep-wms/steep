@@ -22,7 +22,7 @@ jobs:
           java-version: 11
 
       - name: Run tests and install
-        run: ./gradlew check installDist
+        run: ./gradlew check installDist --parallel
 
       - name: Create test reports
         run: ./gradlew jacocoTestReport
