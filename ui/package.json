@@ -47,7 +47,7 @@
     "spinkit": "^2.0.1",
     "svgo-loader": "^3.0.0",
     "unfetch": "^4.2.0",
-    "webpack": "^5.70.0"
+    "webpack": "^5.71.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.20.2",
