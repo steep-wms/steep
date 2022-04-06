@@ -26,20 +26,24 @@ interface PostgreSQLTest {
    * Clear database after each test
    */
   @AfterEach
-  fun tearDownDatabase(vertx: Vertx, ctx: VertxTestContext) {
+  fun tearDownDatabase(ctx: VertxTestContext) {
     val url = postgresql.jdbcUrl.let { if (it.startsWith("jdbc:")) it.substring(5) else it }
     val connectOptions = PgConnectOptions.fromUri(url)
         .setUser(postgresql.username)
         .setPassword(postgresql.password)
 
+    // we need a new Vert.x instance here, because the injected one might
+    // already be closed if the test has failed
+    val isolatedVertx = Vertx.vertx()
+
     val poolOptions = PoolOptions()
         .setMaxSize(5)
+    val client = PgPool.pool(isolatedVertx, connectOptions, poolOptions)
 
-    val client = PgPool.pool(vertx, connectOptions, poolOptions)
-
-    CoroutineScope(vertx.dispatcher()).launch {
+    CoroutineScope(isolatedVertx.dispatcher()).launch {
       deleteFromTables(client)
       client.close()
+      isolatedVertx.close()
       ctx.completeNow()
     }
 
