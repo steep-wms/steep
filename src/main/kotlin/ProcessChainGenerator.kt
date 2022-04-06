@@ -57,6 +57,11 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
   fun isFinished() = actions.isEmpty()
 
   /**
+   * The priority to assign to generated process chains
+   */
+  var defaultPriority = workflow.priority
+
+  /**
    * Create the next set of process chains. Call this method until it returns
    * an empty list (i.e. until it does not produce more process chains).
    * Execute the process chains after each call to this method and pass their
@@ -464,7 +469,8 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       }
 
       if (executables.isNotEmpty()) {
-        processChains.add(ProcessChain(idGenerator.next(), executables, capabilities))
+        processChains.add(ProcessChain(idGenerator.next(), executables,
+            capabilities, defaultPriority))
       }
     }
 

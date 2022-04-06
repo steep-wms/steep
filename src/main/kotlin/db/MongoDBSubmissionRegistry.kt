@@ -74,6 +74,8 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     private const val REQUIRED_CAPABILITIES = "requiredCapabilities"
     private const val ERROR_MESSAGE = "errorMessage"
     private const val SEQUENCE = "sequence"
+    private const val PRIORITY = "priority"
+    private const val WORKFLOW = "workflow"
 
     /**
      * Fields to exclude when querying the `submissions` collection
@@ -131,7 +133,8 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       // create indexes for `submission` collection
       collSubmissions.createIndexes(listOf(
           IndexModel(Indexes.ascending(STATUS), IndexOptions().background(true)),
-          IndexModel(Indexes.ascending(SEQUENCE), IndexOptions().background(true))
+          IndexModel(Indexes.ascending(SEQUENCE), IndexOptions().background(true)),
+          IndexModel(Indexes.descending("$WORKFLOW.$PRIORITY"), IndexOptions().background(true))
       )).subscribe(object : DefaultSubscriber<String>() {
         override fun onError(t: Throwable) {
           log.error("Could not create index on collection `$COLL_SUBMISSIONS'", t)
@@ -142,10 +145,11 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       collProcessChains.createIndexes(listOf(
           IndexModel(Indexes.ascending(SUBMISSION_ID), IndexOptions().background(true)),
           IndexModel(Indexes.ascending(STATUS), IndexOptions().background(true)),
+          IndexModel(Indexes.ascending(PRIORITY), IndexOptions().background(true)),
           IndexModel(Indexes.ascending(SEQUENCE), IndexOptions().background(true)),
           IndexModel(Indexes.ascending(REQUIRED_CAPABILITIES), IndexOptions().background(true)),
           // compound index to speed up fetchNextProcessChain
-          IndexModel(Indexes.ascending(STATUS, REQUIRED_CAPABILITIES, SEQUENCE), IndexOptions().background(true))
+          IndexModel(Indexes.ascending(STATUS, REQUIRED_CAPABILITIES, PRIORITY, SEQUENCE), IndexOptions().background(true))
       )).subscribe(object : DefaultSubscriber<String>() {
         override fun onError(t: Throwable) {
           log.error("Could not create index on collection `$COLL_PROCESS_CHAINS'", t)
@@ -160,6 +164,11 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     doc.put(INTERNAL_ID, submission.id)
     doc.remove(ID)
     doc.put(SEQUENCE, sequence)
+
+    // Make sure there's always a priority even if it's 0 (we configured Jackson
+    // to not serialize 0's by default). Otherwise, we can't sort correctly.
+    doc.getJsonObject(WORKFLOW)?.put(PRIORITY, submission.workflow.priority)
+
     collSubmissions.insertOneAwait(doc)
   }
 
@@ -168,6 +177,11 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     document.remove(SEQUENCE)
     document.put(ID, document.getString(INTERNAL_ID))
     document.remove(INTERNAL_ID)
+
+    // remove priority that we only added for sorting (see [addSubmission])
+    if (document.getJsonObject(WORKFLOW)?.getInteger(PRIORITY) == 0) {
+      document.getJsonObject(WORKFLOW)?.remove(PRIORITY)
+    }
   }
 
   /**
@@ -262,7 +276,14 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
               STATUS to newStatus.toString()
           )
       )
-    }, FindOneAndUpdateOptions().projection(wrap(SUBMISSION_EXCLUDES)))
+    }, FindOneAndUpdateOptions()
+        .projection(wrap(SUBMISSION_EXCLUDES))
+        .sort(wrap(json {
+          obj(
+              "$WORKFLOW.$PRIORITY" to -1,
+              SEQUENCE to 1
+          )
+        })))
     return doc?.let { deserializeSubmission(it) }
   }
 
@@ -436,11 +457,13 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
     val sequence = getNextSequence(COLL_PROCESS_CHAINS, processChains.size)
     val requests = processChains.mapIndexed { i, pc ->
-      writeGridFSDocument(bucketProcessChains, pc.id, JsonUtils.toJson(pc))
+      // write process chain without priority
+      writeGridFSDocument(bucketProcessChains, pc.id, JsonUtils.toJson(pc.copy(priority = 0)))
       val doc = json {
         obj(
             INTERNAL_ID to pc.id,
             SEQUENCE to sequence + i,
+            PRIORITY to -pc.priority, // negate priority so we can use compound index
             SUBMISSION_ID to submissionId,
             STATUS to status.toString(),
             REQUIRED_CAPABILITIES to JsonUtils.writeValueAsString(pc.requiredCapabilities)
@@ -460,12 +483,13 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       excludeExecutables: Boolean = false): Pair<ProcessChain, String> {
     val submissionId = document.getString(SUBMISSION_ID, "")
     val id = document.getString(INTERNAL_ID)
+    val priority = -document.getInteger(PRIORITY) // priorities are stored negated
 
     val buf = readGridFSDocument(bucketProcessChains, id)
         ?: throw IllegalStateException("Got process chain metadata with " +
             "ID `$id' but could not find corresponding object in GridFS bucket.")
     val mapper = if (excludeExecutables) ignoreExecutablesMapper else JsonUtils.mapper
-    return Pair(mapper.readValue(buf.bytes), submissionId)
+    return Pair(mapper.readValue<ProcessChain>(buf.bytes).copy(priority = priority), submissionId)
   }
 
   override suspend fun findProcessChains(submissionId: String?,
@@ -606,6 +630,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         .projection(wrap(PROCESS_CHAIN_EXCLUDES))
         .sort(wrap(json {
           obj(
+              PRIORITY to 1,
               SEQUENCE to 1
           )
         })))

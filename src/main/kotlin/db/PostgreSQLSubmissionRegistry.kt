@@ -43,7 +43,9 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     private const val ERROR_MESSAGE = "errorMessage"
     private const val EXECUTION_STATE = "executionState"
     private const val SERIAL = "serial"
+    private const val PRIORITY = "priority"
     private const val EXECUTABLES = "executables"
+    private const val WORKFLOW = "workflow"
   }
 
   /**
@@ -57,7 +59,13 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
   override suspend fun addSubmission(submission: Submission) {
     val statement = "INSERT INTO $SUBMISSIONS ($ID, $DATA) VALUES ($1, $2)"
-    val params = Tuple.of(submission.id, JsonUtils.toJson(submission))
+    val obj = JsonUtils.toJson(submission)
+
+    // Make sure there's always a priority even if it's 0 (we configured Jackson
+    // to not serialize 0's by default). Otherwise, we can't sort correctly.
+    obj.getJsonObject(WORKFLOW)?.put(PRIORITY, submission.workflow.priority)
+
+    val params = Tuple.of(submission.id, obj)
     client.preparedQuery(statement).execute(params).await()
   }
 
@@ -83,7 +91,16 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     } else {
       client.query(statement.toString()).execute().await()
     }
-    return rs.map { it.getJsonObject(0) }
+    return rs.map { row ->
+      val s = row.getJsonObject(0)
+
+      // remove priority that we only added for sorting (see [addSubmission])
+      if (s.getJsonObject(WORKFLOW)?.getInteger(PRIORITY) == 0) {
+        s.getJsonObject(WORKFLOW)?.remove(PRIORITY)
+      }
+
+      s
+    }
   }
 
   override suspend fun findSubmissionById(submissionId: String): Submission? {
@@ -124,7 +141,8 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       newStatus: Submission.Status): Submission? {
     val updateStatement = "UPDATE $SUBMISSIONS SET $DATA=$DATA || $1 " +
         "WHERE $ID = (" +
-          "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$STATUS'=$2 LIMIT 1 " +
+          "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$STATUS'=$2 " +
+          "ORDER BY $DATA->'$WORKFLOW'->'$PRIORITY' DESC, $SERIAL ASC LIMIT 1 " +
           "FOR UPDATE SKIP LOCKED" + // skip rows being updated concurrently
         ") RETURNING $DATA"
     val newObj = json {
@@ -259,7 +277,13 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       val insertStatement = "INSERT INTO $PROCESS_CHAINS ($ID, $SUBMISSION_ID, $STATUS, $DATA) " +
           "VALUES ($1, $2, $3, $4)"
       val insertParams = processChains.map {
-        Tuple.of(it.id, submissionId, status.toString(), JsonUtils.toJson(it))
+        val obj = JsonUtils.toJson(it)
+
+        // for correct sorting, make sure there's always a priority even if it's 0
+        // (we configured Jackson to not serialize 0's)
+        obj.put(PRIORITY, it.priority)
+
+        Tuple.of(it.id, submissionId, status.toString(), obj)
       }
       connection.preparedQuery(insertStatement).executeBatch(insertParams).await()
     }
@@ -412,7 +436,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     val updateStatement = "UPDATE $PROCESS_CHAINS SET $STATUS=$1 " +
         "WHERE $ID = (" +
           "$selectStatement " +
-          "ORDER BY $SERIAL LIMIT 1 " +
+          "ORDER BY $DATA->'$PRIORITY' DESC, $SERIAL ASC LIMIT 1 " +
           "FOR UPDATE SKIP LOCKED" + // skip rows being updated concurrently
         ") RETURNING $DATA"
     val rs = client.preparedQuery(updateStatement).execute(params).await()

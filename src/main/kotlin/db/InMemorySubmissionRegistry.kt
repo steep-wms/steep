@@ -150,7 +150,10 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       val map = submissions.await()
       val values = awaitResult<List<String>> { map.values(it) }
       val entry = values.map { JsonUtils.readValue<SubmissionEntry>(it) }
-          .find { it.submission.status == currentStatus }
+          .filter { it.submission.status == currentStatus }
+          .sortedWith(compareByDescending<SubmissionEntry> { it.submission.workflow.priority }
+              .thenBy { it.serial })
+          .firstOrNull()
       return entry?.let {
         val newEntry = it.copy(submission = it.submission.copy(status = newStatus))
         map.put(it.submission.id, JsonUtils.writeValueAsString(newEntry)).await()
@@ -399,7 +402,8 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
           .filter { it.status == currentStatus && (requiredCapabilities == null ||
               (it.processChain.requiredCapabilities.size == requiredCapabilities.size &&
                   it.processChain.requiredCapabilities.containsAll(requiredCapabilities))) }
-          .minByOrNull { it.serial }
+          .sortedWith(compareByDescending<ProcessChainEntry> { it.processChain.priority }.thenBy { it.serial })
+          .firstOrNull()
       return entry?.let {
         val newEntry = it.copy(status = newStatus)
         map.put(it.processChain.id, JsonUtils.writeValueAsString(newEntry)).await()

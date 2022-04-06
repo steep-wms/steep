@@ -317,7 +317,7 @@ class HttpEndpointTest {
         ProcessChainStatus.SUCCESS to 15L
     )
 
-    val s3 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
+    val s3 = Submission(workflow = Workflow(priority = 10), status = Submission.Status.SUCCESS)
     coEvery { submissionRegistry.countProcessChainsPerStatus(s3.id) } returns
         mapOf(ProcessChainStatus.SUCCESS to 1L)
 
@@ -439,7 +439,7 @@ class HttpEndpointTest {
    */
   @Test
   fun getWorkflowById(vertx: Vertx, ctx: VertxTestContext) {
-    val s1 = Submission(workflow = Workflow())
+    val s1 = Submission(workflow = Workflow(priority = -10))
     coEvery { submissionRegistry.countProcessChainsPerStatus(s1.id) } returns mapOf(
         ProcessChainStatus.REGISTERED to 1L,
         ProcessChainStatus.RUNNING to 2L,

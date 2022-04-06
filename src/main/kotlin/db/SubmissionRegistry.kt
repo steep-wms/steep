@@ -82,7 +82,10 @@ interface SubmissionRegistry : Registry {
 
   /**
    * Atomically fetch a submission that has the given `currentStatus` and
-   * set its status to `newStatus` before returning it.
+   * set its status to `newStatus` before returning it. Returned submissions
+   * should be ordered by their workflow priority. Submissions with the same
+   * priority should be returned in the order in which they have been added to
+   * the registry.
    * @param currentStatus the current status of the submission
    * @param newStatus the new status
    * @return the submission (or `null` if there was no submission with
@@ -274,10 +277,11 @@ interface SubmissionRegistry : Registry {
 
   /**
    * Atomically fetch a process chain that has the given [currentStatus] and
-   * set its status to `newStatus` before returning it. Process chains should
-   * be returned in the order they have been added to the registry. The method
-   * only looks for process chains whose set of [requiredCapabilities] equals
-   * the given one. If no [requiredCapabilities] have been specified, the
+   * set its status to `newStatus` before returning it. Returned process chains
+   * should be ordered by priority. Process chains with the same priority should
+   * be returned in the order in which they have been added to the registry.
+   * The method only looks for process chains whose set of [requiredCapabilities]
+   * equals the given one. If no [requiredCapabilities] have been specified, the
    * method returns the first process chain found.
    * @param currentStatus the current status of the process chain
    * @param newStatus the new status

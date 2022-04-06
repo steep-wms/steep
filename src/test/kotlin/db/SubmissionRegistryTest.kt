@@ -278,6 +278,37 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun fetchNextSubmissionPriority(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow(priority = -10))
+    val s2 = Submission(workflow = Workflow())
+    val s3 = Submission(workflow = Workflow(priority = 10))
+    val s4 = Submission(workflow = Workflow())
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addSubmission(s3)
+      submissionRegistry.addSubmission(s4)
+      val sA = submissionRegistry.fetchNextSubmission(Submission.Status.ACCEPTED,
+          Submission.Status.RUNNING)
+      val sB = submissionRegistry.fetchNextSubmission(Submission.Status.ACCEPTED,
+          Submission.Status.RUNNING)
+      val sC = submissionRegistry.fetchNextSubmission(Submission.Status.ACCEPTED,
+          Submission.Status.RUNNING)
+      val sD = submissionRegistry.fetchNextSubmission(Submission.Status.ACCEPTED,
+          Submission.Status.RUNNING)
+      ctx.verify {
+        assertThat(sA).isEqualTo(s3)
+        assertThat(sB).isEqualTo(s2)
+        assertThat(sC).isEqualTo(s4)
+        assertThat(sD).isEqualTo(s1)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun setSubmissionStartTime(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
 
@@ -1233,6 +1264,45 @@ abstract class SubmissionRegistryTest {
       ctx.verify {
         assertThat(pcA).isEqualTo(pc1)
         assertThat(pcB).isEqualTo(pc2)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun fetchNextProcessChainPriority(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc1 = ProcessChain(priority = -10)
+    val pc2 = ProcessChain()
+    val pc3 = ProcessChain(priority = 10)
+    val pc4 = ProcessChain(priority = 0)
+    val pc5 = ProcessChain()
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      submissionRegistry.addSubmission(s)
+      submissionRegistry.addProcessChains(listOf(pc1, pc2, pc3, pc4, pc5), s.id)
+      val pcA = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      val pcB = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      val pcC = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      val pcD = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      val pcE = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      ctx.verify {
+        assertThat(pcA).isEqualTo(pc3)
+        assertThat(pcB).isEqualTo(pc2)
+        assertThat(pcC).isEqualTo(pc4)
+        assertThat(pcD).isEqualTo(pc5)
+        assertThat(pcE).isEqualTo(pc1)
       }
 
       ctx.completeNow()
