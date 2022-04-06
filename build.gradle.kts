@@ -5,7 +5,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     application
     jacoco
-    kotlin("jvm") version "1.6.10"
+    kotlin("jvm") version "1.6.20"
 }
 
 buildscript {
@@ -80,7 +80,7 @@ dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation(kotlin("script-runtime"))
 
-    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.4.3")
+    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.4.5")
     testImplementation("io.mockk:mockk:1.12.3")
     testImplementation("io.vertx:vertx-junit5:$vertxVersion")
     testImplementation("org.assertj:assertj-core:3.22.0")

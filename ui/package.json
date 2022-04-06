@@ -17,7 +17,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@monaco-editor/react": "^4.4.1",
-    "@popperjs/core": "^2.11.4",
+    "@popperjs/core": "^2.11.5",
     "@vertx/eventbus-bridge-client.js": "^1.0.0",
     "body-scroll-lock": "^3.1.5",
     "classnames": "^2.3.1",
@@ -29,7 +29,7 @@
     "json2yaml": "^1.1.0",
     "lodash": "^4.17.21",
     "mini-svg-data-uri": "^1.4.4",
-    "next": "^12.1.2",
+    "next": "^12.1.4",
     "normalize.css": "^8.0.1",
     "nprogress": "^0.2.0",
     "parse-content-range-header": "^0.2.4",
@@ -41,19 +41,19 @@
     "react-timeago": "^6.2.1",
     "react-virtualized-auto-sizer": "^1.0.6",
     "react-window": "^1.8.6",
-    "sass": "^1.49.9",
+    "sass": "^1.49.11",
     "sass-loader": "^12.6.0",
     "serve": "^13.0.2",
     "spinkit": "^2.0.1",
     "svgo-loader": "^3.0.0",
     "unfetch": "^4.2.0",
-    "webpack": "^5.70.0"
+    "webpack": "^5.71.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.20.2",
     "cypress": "^9.5.3",
-    "eslint": "^8.11.0",
-    "eslint-config-next": "^12.1.2",
+    "eslint": "^8.12.0",
+    "eslint-config-next": "^12.1.4",
     "eslint-plugin-cypress": "^2.12.1",
     "eslint-webpack-plugin": "^3.1.1",
     "start-server-and-test": "^1.14.0"
