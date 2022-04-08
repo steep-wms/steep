@@ -22,17 +22,14 @@ class SetupSelector(private val vmRegistry: VMRegistry,
    * Iterate through [nVMsPerSetup] and [nCreatedPerSetup] and count how many
    * of the VMs provide the given [capabilities]
    */
-  private fun countVMsWithCapabilities(nVMsPerSetup: Map<String, Long>,
-      nCreatedPerSetup: MutableMap<String, Long>, capabilities: List<String>,
-      setups: List<Setup>): Long {
+  private fun countVMsWithCapabilities(nVMsPerSetup: Map<Setup, Long>,
+      nCreatedPerSetup: MutableMap<Setup, Long>, capabilities: List<String>): Long {
     // also consider how many VMs we are about to create
     val merged = (nCreatedPerSetup.entries + nVMsPerSetup.entries)
         .groupBy { it.key }.mapValues { e -> e.value.sumOf { v -> v.value } }
 
-    val setupsById = setups.associateBy { it.id }
-    return merged.map { (setupId, n) ->
-      val setup = setupsById[setupId]
-      if (setup?.providedCapabilities?.containsAll(capabilities) == true) {
+    return merged.map { (setup, n) ->
+      if (setup.providedCapabilities.containsAll(capabilities)) {
         n
       } else {
         0
@@ -43,8 +40,8 @@ class SetupSelector(private val vmRegistry: VMRegistry,
   /**
    * Get the number of non-terminated VMs per setup from the registry
    */
-  private suspend fun countNonTerminatedVMsPerSetup(): Map<String, Long> {
-    return vmRegistry.findNonTerminatedVMs().groupBy { it.setup.id }
+  private suspend fun countNonTerminatedVMsPerSetup(): Map<Setup, Long> {
+    return vmRegistry.findNonTerminatedVMs().groupBy { it.setup }
         .mapValues { it.value.size.toLong() }
   }
 
@@ -75,8 +72,8 @@ class SetupSelector(private val vmRegistry: VMRegistry,
     remaining -= starting.sum()
 
     val result = mutableListOf<Setup>()
-    val nCreatedPerSetup = mutableMapOf<String, Long>()
-    var nVMsPerSetup: Map<String, Long>? = null
+    val nCreatedPerSetup = mutableMapOf<Setup, Long>()
+    var nVMsPerSetup: Map<Setup, Long>? = null
 
     outer@for ((i, setup) in matchingSetups.withIndex()) {
       if (remaining <= 0) {
@@ -106,7 +103,7 @@ class SetupSelector(private val vmRegistry: VMRegistry,
 
           // now count how many of them provide the requested capabilities
           val m = countVMsWithCapabilities(nVMsPerSetup, nCreatedPerSetup,
-              params.capabilities, setups)
+              params.capabilities)
           if (m >= params.max) {
             // there already are enough VMs with these capabilities
             log.trace("There already are $m VMs with capabilities " +
@@ -132,7 +129,7 @@ class SetupSelector(private val vmRegistry: VMRegistry,
       for (j in 0 until toCreate) {
         result.add(setup)
       }
-      nCreatedPerSetup[setup.id] = (nCreatedPerSetup[setup.id] ?: 0) + toCreate
+      nCreatedPerSetup[setup] = (nCreatedPerSetup[setup] ?: 0) + toCreate
       remaining -= toCreate
     }
 
@@ -207,7 +204,7 @@ class SetupSelector(private val vmRegistry: VMRegistry,
       val i = result.iterator()
       while (i.hasNext()) {
         val setup = i.next()
-        val nExisting = nVMsPerSetup[setup.id]?.toInt() ?: 0
+        val nExisting = nVMsPerSetup[setup]?.toInt() ?: 0
         val nToCreate = nToCreatePerSetup[setup.id] ?: 0
         if (nToCreate < nExisting) {
           i.remove()

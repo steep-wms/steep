@@ -462,4 +462,33 @@ class SetupSelectorTest {
       ctx.completeNow()
     }
   }
+
+  /**
+   * Make sure the setup selector does not create too many VMs if it is only
+   * called with a subset of all available setups and there already are some
+   * VMs from other setups not belonging to this subset that also match the
+   * given required capabilities.
+   */
+  @Test
+  fun selectWithLessSetups(vertx: Vertx, ctx: VertxTestContext) {
+    val vmRegistry = mockk<VMRegistry>()
+    val selector = SetupSelector(vmRegistry,
+        listOf(PoolAgentParams(listOf(RQ1), min = 0, max = 3)))
+
+    coEvery { vmRegistry.countNonTerminatedVMsBySetup(SETUP04.id) } returns 0
+    coEvery { vmRegistry.countStartingVMsBySetup(any()) } returns 0
+    coEvery { vmRegistry.findNonTerminatedVMs() } returns listOf(
+        VM(setup = SETUP01), VM(setup = SETUP05), VM(setup = SETUP03))
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        // There already are 3 VMs running providing RQ1 and the pool agent
+        // parameters specify a maximum of 3. The setup selector should not
+        // return more VMs even if we only query for SETUP04.
+        assertThat(selector.select(100, listOf(RQ1), listOf(SETUP04)))
+            .isEmpty()
+      }
+      ctx.completeNow()
+    }
+  }
 }
