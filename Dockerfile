@@ -1,4 +1,4 @@
-FROM openjdk:11-jdk
+FROM azul/zulu-openjdk:11
 
 # prepare
 RUN apt-get update && \
@@ -6,6 +6,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       apt-transport-https \
       ca-certificates \
+      curl \
       gettext \
       gnupg-agent \
       libnss-wrapper \
@@ -18,6 +19,8 @@ RUN apt-get update && \
        stable" && \
     apt-get update && \
     apt-get install -y --no-install-recommends docker-ce && \
+    apt-get purge -y software-properties-common && \
+    apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     useradd -s /bin/bash -m steep && \
