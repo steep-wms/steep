@@ -19,6 +19,9 @@ import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
+import io.vertx.kotlin.micrometer.micrometerMetricsOptionsOf
+import io.vertx.kotlin.micrometer.vertxPrometheusOptionsOf
+import io.vertx.micrometer.MicrometerMetricsOptions
 import io.vertx.spi.cluster.hazelcast.ConfigUtil
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager
 import kotlinx.coroutines.CoroutineScope
@@ -139,6 +142,10 @@ suspend fun main() {
   eventPublicHost?.let { options.eventBusOptions.setClusterPublicHost(it) }
   val eventBusPublicPort = conf.getInteger(ConfigConstants.CLUSTER_EVENTBUS_PUBLIC_PORT)
   eventBusPublicPort?.let { options.eventBusOptions.setClusterPublicPort(it) }
+
+  // enable metrics
+  options.metricsOptions = micrometerMetricsOptionsOf(enabled = true,
+      prometheusOptions = vertxPrometheusOptionsOf(enabled = true))
 
   // start Vert.x
   val vertx = clusteredVertx(options).await()
