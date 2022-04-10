@@ -4,6 +4,7 @@ import agent.LocalAgent
 import agent.RemoteAgentRegistry
 import db.SubmissionRegistry
 import db.SubmissionRegistryFactory
+import helper.CompressedJsonObjectMessageCodec
 import helper.Shell
 import helper.UniqueID
 import io.mockk.coEvery
@@ -54,6 +55,8 @@ class SteepTest {
 
   @BeforeEach
   fun setUp(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
+    vertx.eventBus().registerCodec(CompressedJsonObjectMessageCodec())
+
     agentId = UniqueID.next()
 
     // mock submission registry

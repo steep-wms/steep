@@ -2,6 +2,7 @@ package agent
 
 import AddressConstants
 import db.SubmissionRegistry.ProcessChainStatus
+import helper.CompressedJsonObjectMessageCodec
 import helper.JsonUtils
 import helper.UniqueID
 import io.vertx.core.Future
@@ -10,6 +11,7 @@ import io.vertx.core.Vertx
 import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.Counter
+import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
@@ -80,7 +82,9 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
             "sequence" to counter.await().andIncrement.await()
           )
         }
-        vertx.eventBus().request<Any>(id, msg).await()
+        vertx.eventBus().request<Any>(id, msg, deliveryOptionsOf(
+            codecName = CompressedJsonObjectMessageCodec.NAME
+        )).await()
 
         // wait for reply
         val result = adapter.receive()

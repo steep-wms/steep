@@ -5,6 +5,7 @@ import AddressConstants.REMOTE_AGENT_LEFT
 import assertThatThrownBy
 import coVerify
 import db.SubmissionRegistry
+import helper.CompressedJsonObjectMessageCodec
 import helper.JsonUtils
 import helper.UniqueID
 import io.vertx.core.Vertx
@@ -20,6 +21,7 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import model.processchain.ProcessChain
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
@@ -39,6 +41,11 @@ class RemoteAgentTest : AgentTest() {
 
   private val executorService = Executors.newCachedThreadPool()
   private val localAgentDispatcher = executorService.asCoroutineDispatcher()
+
+  @BeforeEach
+  fun setUp(vertx: Vertx) {
+    vertx.eventBus().registerCodec(CompressedJsonObjectMessageCodec())
+  }
 
   override fun createAgent(vertx: Vertx): Agent =
       RemoteAgent(ADDRESS, vertx)

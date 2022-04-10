@@ -6,6 +6,7 @@ import com.hazelcast.cluster.MembershipAdapter
 import com.hazelcast.cluster.MembershipEvent
 import db.PluginRegistryFactory
 import db.VMRegistryFactory
+import helper.CompressedJsonObjectMessageCodec
 import helper.JsonUtils
 import helper.LazyJsonObjectMessageCodec
 import helper.UniqueID
@@ -21,7 +22,6 @@ import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
 import io.vertx.kotlin.micrometer.micrometerMetricsOptionsOf
 import io.vertx.kotlin.micrometer.vertxPrometheusOptionsOf
-import io.vertx.micrometer.MicrometerMetricsOptions
 import io.vertx.spi.cluster.hazelcast.ConfigUtil
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager
 import kotlinx.coroutines.CoroutineScope
@@ -444,6 +444,7 @@ suspend fun restoreMembers(defaultPort: Int, config: JsonObject): List<String> {
 class Main : CoroutineVerticle() {
   override suspend fun start() {
     vertx.eventBus().registerCodec(LazyJsonObjectMessageCodec())
+    vertx.eventBus().registerCodec(CompressedJsonObjectMessageCodec())
 
     PluginRegistryFactory.initialize(vertx)
 

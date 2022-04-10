@@ -5,6 +5,7 @@ import AddressConstants.REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
 import agent.LocalAgent
 import agent.RemoteAgentRegistry
 import db.SubmissionRegistry
+import helper.CompressedJsonObjectMessageCodec
 import helper.JsonUtils
 import helper.Shell
 import io.vertx.core.buffer.Buffer
@@ -13,6 +14,7 @@ import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.streams.ReadStream
+import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
 import io.vertx.kotlin.core.file.openOptionsOf
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.get
@@ -549,7 +551,9 @@ class Steep : CoroutineVerticle() {
               try {
                 log.info("Sending results of process chain ${processChain.id} " +
                     "to $address ...")
-                vertx.eventBus().request<Any>(address, answer).await()
+                vertx.eventBus().request<Any>(address, answer, deliveryOptionsOf(
+                    codecName = CompressedJsonObjectMessageCodec.NAME
+                )).await()
                 break
               } catch (t: Throwable) {
                 log.error("Error sending results of process chain " +
