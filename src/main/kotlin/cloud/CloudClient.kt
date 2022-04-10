@@ -84,8 +84,9 @@ interface CloudClient {
    * Wait for a virtual machine to be available (e.g. after it has been created
    * or after it was restarted, etc.)
    * @param vmId the ID of the virtual machine
+   * @param timeout the maximum time to wait
    */
-  suspend fun waitForVM(vmId: String)
+  suspend fun waitForVM(vmId: String, timeout: Duration? = null)
 
   /**
    * Destroy a virtual machine

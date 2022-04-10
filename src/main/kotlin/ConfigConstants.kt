@@ -371,6 +371,12 @@ object ConfigConstants {
   const val CLOUD_TIMEOUTS_AGENTREADY = "steep.cloud.timeouts.agentReadySeconds"
 
   /**
+   * The maximum number of seconds that creating a VM may take before it is
+   * aborted with an error
+   */
+  const val CLOUD_TIMEOUTS_CREATEVM = "steep.cloud.timeouts.createVMSeconds"
+
+  /**
    * The maximum number of seconds that destroying a VM may take before it is
    * aborted with an error
    */

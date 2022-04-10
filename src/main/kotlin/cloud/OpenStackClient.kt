@@ -243,20 +243,22 @@ class OpenStackClient(endpoint: String, username: String, password: String,
     return server.status == Server.Status.ACTIVE
   }
 
-  override suspend fun waitForVM(vmId: String) {
+  override suspend fun waitForVM(vmId: String, timeout: Duration?) {
     val os = this.os.await()
     val server = blocking { os.compute().servers().get(vmId) } ?:
         throw NoSuchElementException("VM does not exist")
-    waitForServer(server)
+    waitForServer(server, timeout)
   }
 
   /**
    * Wait for a server to be available
    * @param server the server
+   * @param timeout the maximum time to wait
    */
-  private suspend fun waitForServer(server: Server) {
+  private suspend fun waitForServer(server: Server, timeout: Duration?) {
     val os = this.os.await()
     var myServer = server
+    val deadline = timeout?.let { Instant.now().plus(it) }
     while (true) {
       val fault = myServer.fault
       if (fault != null) {
@@ -270,7 +272,19 @@ class OpenStackClient(endpoint: String, username: String, password: String,
       }
 
       log.info("Waiting for VM `${myServer.id}'. Status is `$status' ...")
-      delay(2000)
+
+      val d = (if (deadline != null)
+        deadline.toEpochMilli() - Instant.now().toEpochMilli()
+      else
+        2000).coerceAtMost(2000)
+      delay(d)
+
+      val now = Instant.now()
+      if (deadline != null && (now.isAfter(deadline) || now == deadline)) {
+        log.error("Timed out waiting for VM ${server.id} to become available")
+        throw IllegalStateException("Timed out waiting for VM ${server.id} " +
+            "to become available")
+      }
 
       myServer = blocking { os.compute().servers().get(myServer.id) } ?:
           throw NoSuchElementException("VM does not exist anymore")

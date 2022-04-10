@@ -158,6 +158,12 @@ class CloudManager : CoroutineVerticle() {
   private var timeoutAgentReady: Long = 300L
 
   /**
+   * The maximum number of seconds that creating a VM may take before it is
+   * aborted with an error
+   */
+  private var timeoutCreateVM: Long = 300L
+
+  /**
    * The maximum number of seconds that destroying a VM may take before it is
    * aborted with an error
    */
@@ -179,6 +185,7 @@ class CloudManager : CoroutineVerticle() {
 
     timeoutSshReady = config.getLong(ConfigConstants.CLOUD_TIMEOUTS_SSHREADY, timeoutSshReady)
     timeoutAgentReady = config.getLong(ConfigConstants.CLOUD_TIMEOUTS_AGENTREADY, timeoutAgentReady)
+    timeoutCreateVM = config.getLong(ConfigConstants.CLOUD_TIMEOUTS_CREATEVM, timeoutCreateVM)
     timeoutDestroyVM = config.getLong(ConfigConstants.CLOUD_TIMEOUTS_DESTROYVM, timeoutDestroyVM)
 
     // load setups file
@@ -538,7 +545,7 @@ class CloudManager : CoroutineVerticle() {
             val volumeDeferreds = createVolumesAsync(externalId, setup)
 
             try {
-              cloudClient.waitForVM(externalId)
+              cloudClient.waitForVM(externalId, Duration.ofSeconds(timeoutCreateVM))
 
               val volumeIds = volumeDeferreds.awaitAll()
               for (volumeId in volumeIds) {
@@ -727,7 +734,7 @@ class CloudManager : CoroutineVerticle() {
     val retries = timeoutSshReady / retrySeconds
 
     for (i in 1L..retries) {
-      cloudClient.waitForVM(externalId)
+      cloudClient.waitForVM(externalId, Duration.ofSeconds(timeoutCreateVM))
 
       log.info("Waiting for SSH: $ipAddress")
 

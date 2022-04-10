@@ -95,6 +95,7 @@ steep:
     timeouts:
       sshReadySeconds: 300
       agentReadySeconds: 300
+      createVMSeconds: 300
       destroyVMSeconds: 300
 
     # agentPool:
