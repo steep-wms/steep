@@ -176,10 +176,8 @@ class OpenStackClient(endpoint: String, username: String, password: String,
       log.info("Waiting for volume `${myVolume.id}'. Status is `$status' ...")
       delay(2000)
 
-      myVolume = blocking { os.blockStorage().volumes().get(myVolume.id) }
-      if (myVolume == null) {
-        throw NoSuchElementException("Volume does not exist anymore")
-      }
+      myVolume = blocking { os.blockStorage().volumes().get(myVolume.id) } ?:
+          throw NoSuchElementException("Volume does not exist anymore")
     }
   }
 
@@ -274,10 +272,8 @@ class OpenStackClient(endpoint: String, username: String, password: String,
       log.info("Waiting for VM `${myServer.id}'. Status is `$status' ...")
       delay(2000)
 
-      myServer = blocking { os.compute().servers().get(myServer.id) }
-      if (myServer == null) {
-        throw NoSuchElementException("VM does not exist anymore")
-      }
+      myServer = blocking { os.compute().servers().get(myServer.id) } ?:
+          throw NoSuchElementException("VM does not exist anymore")
     }
   }
 
