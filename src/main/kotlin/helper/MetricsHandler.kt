@@ -15,7 +15,7 @@ import java.io.Writer
  */
 class MetricsHandler : Handler<RoutingContext> {
   private val prometheusRegistry: CollectorRegistry = CollectorRegistry.defaultRegistry
-  private val micrometerRegistry = BackendRegistries.getDefaultNow() as PrometheusMeterRegistry
+  private val micrometerRegistry = BackendRegistries.getDefaultNow() as? PrometheusMeterRegistry
 
   /**
    * Wrap a [Buffer] as a [Writer] so it can be used with [TextFormat] writer
@@ -47,7 +47,9 @@ class MetricsHandler : Handler<RoutingContext> {
           prometheusRegistry.filteredMetricFamilySamples(filter))
 
       // add micrometer metrics
-      writer.write(micrometerRegistry.scrape(contentType, filter))
+      if (micrometerRegistry != null) {
+        writer.write(micrometerRegistry.scrape(contentType, filter))
+      }
 
       ctx.response()
           .setStatusCode(200)
