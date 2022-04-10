@@ -146,7 +146,7 @@ class CloudManagerTest {
           metadata) } answers { UniqueID.next() }
     }
     coEvery { client.getIPAddress(any()) } answers { UniqueID.next() }
-    coEvery { client.waitForVM(any()) } coAnswers {
+    coEvery { client.waitForVM(any(), any()) } coAnswers {
       // Pretend that booting the VM takes some time. This is important for
       // tests that use `async`. Otherwise, these tests may fail sporadically.
       delay(200)
@@ -734,7 +734,7 @@ class CloudManagerTest {
         UniqueID.next().also { createdVMs.add(it) }
       }
       coEvery { client.getIPAddress(any()) } answers { UniqueID.next() }
-      coEvery { client.waitForVM(any()) } just Runs
+      coEvery { client.waitForVM(any(), any()) } just Runs
 
       // mock SSH agent
       val testShSrcSlot = slot<String>()
@@ -864,7 +864,7 @@ class CloudManagerTest {
         UniqueID.next().also { createdVMs.add(it) }
       }
       coEvery { client.getIPAddress(any()) } answers { UniqueID.next() }
-      coEvery { client.waitForVM(any()) } just Runs
+      coEvery { client.waitForVM(any(), any()) } just Runs
 
       // mock SSH agent
       val testShSrcSlot = slot<String>()
