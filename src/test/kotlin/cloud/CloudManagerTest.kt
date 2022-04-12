@@ -636,7 +636,7 @@ class CloudManagerTest {
       // return a VM that should be deleted when the verticle starts up
       coEvery { client.listVMs(any()) } returns listOf(MY_OLD_VM)
       coEvery { client.listAvailableBlockDevices(any()) } returns listOf(MY_OLD_VOLUME)
-      coEvery { client.isVMCreating(MY_OLD_VM) } returns false
+      coEvery { client.isVMActive(MY_OLD_VM) } returns true
       coEvery { client.destroyVM(MY_OLD_VM, any()) } just Runs
       coEvery { client.destroyBlockDevice(MY_OLD_VOLUME) } just Runs
 

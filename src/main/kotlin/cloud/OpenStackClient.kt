@@ -236,11 +236,11 @@ class OpenStackClient(endpoint: String, username: String, password: String,
     return server.id
   }
 
-  override suspend fun isVMCreating(vmId: String): Boolean {
+  override suspend fun isVMActive(vmId: String): Boolean {
     val os = this.os.await()
     val server = blocking { os.compute().servers().get(vmId) } ?:
         throw NoSuchElementException("VM does not exist")
-    return server.status == Server.Status.BUILD
+    return server.status == Server.Status.ACTIVE
   }
 
   override suspend fun waitForVM(vmId: String, timeout: Duration?) {
