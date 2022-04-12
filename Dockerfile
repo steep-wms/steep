@@ -10,6 +10,7 @@ RUN apt-get update && \
       gettext \
       gnupg-agent \
       libnss-wrapper \
+      openssh-client \
       software-properties-common \
     && \
     curl -fsSL https://download.docker.com/linux/$(. /etc/os-release; echo "$ID")/gpg | apt-key add - && \
