@@ -346,12 +346,12 @@ class CloudManager : CoroutineVerticle() {
       }
 
       if (shouldDelete) {
-        val active = try {
-          cloudClient.isVMActive(externalId)
+        val creating = try {
+          cloudClient.isVMCreating(externalId)
         } catch (e: NoSuchElementException) {
-          false
+          true
         }
-        if (active) {
+        if (!creating) {
           deleteDeferreds.add(async {
             log.info("Found orphaned VM `$externalId' ...")
             cloudClient.destroyVM(externalId, Duration.ofSeconds(timeoutDestroyVM))

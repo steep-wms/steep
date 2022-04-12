@@ -62,7 +62,7 @@ interface CloudClient {
   /**
    * Create a virtual machine. The virtual machine will not be available when
    * the method returns. You should use [waitForVM] to wait for it to become
-   * available or [isVMActive] to poll its state.
+   * available or [isVMCreating] to poll its state.
    * @param name the new virtual machine's name
    * @param flavor the flavor to use
    * @param blockDeviceId the ID of the block device to attach
@@ -74,11 +74,11 @@ interface CloudClient {
       availabilityZone: String, metadata: Map<String, String>): String
 
   /**
-   * Check if the VM with the given ID is active
+   * Check if the VM with the given ID is still being created
    * @param vmId the ID of the virtual machine
-   * @return `true` if the VM is active, `false` otherwise
+   * @return `true` if the VM is being created, `false` otherwise
    */
-  suspend fun isVMActive(vmId: String): Boolean
+  suspend fun isVMCreating(vmId: String): Boolean
 
   /**
    * Wait for a virtual machine to be available (e.g. after it has been created
