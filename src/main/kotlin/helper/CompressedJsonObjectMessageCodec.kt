@@ -24,37 +24,20 @@ class CompressedJsonObjectMessageCodec(private val forcePureJava: Boolean = fals
     private const val COMPRESSION_NONE: Byte = 0
     private const val COMPRESSION_ZSTD: Byte = 1
 
-    private val counterTotalSent = Counter.build()
-        .name("steep_eventbus_compressed_json_total_sent")
-        .help("Total number of sent compressed JSON messages")
+    private val counterTotal = Counter.build()
+        .name("steep_eventbus_compressedjson_messages")
+        .help("Total number of compressed JSON messages")
+        .labelNames("method")
         .register()
-    private val counterTotalRecv = Counter.build()
-        .name("steep_eventbus_compressed_json_total_recv")
-        .help("Total number of received compressed JSON messages")
+    private val counterBytes = Counter.build()
+        .name("steep_eventbus_compressedjson_bytes")
+        .help("Total number of compressed JSON bytes")
+        .labelNames("method", "state")
         .register()
-    private val counterBytesWritten = Counter.build()
-        .name("steep_eventbus_compressed_json_bytes_written")
-        .help("Total number of written compressed JSON bytes")
-        .register()
-    private val counterBytesWrittenBefore = Counter.build()
-        .name("steep_eventbus_compressed_json_bytes_written_before")
-        .help("Total number of JSON bytes before compression")
-        .register()
-    private val counterBytesRead = Counter.build()
-        .name("steep_eventbus_compressed_json_bytes_read")
-        .help("Total number of read compressed JSON bytes")
-        .register()
-    private val counterBytesReadAfter = Counter.build()
-        .name("steep_eventbus_compressed_json_bytes_read_after")
-        .help("Total number of JSON bytes after decompression")
-        .register()
-    private val counterBytesTimeCompress = Counter.build()
-        .name("steep_eventbus_compressed_json_time_compress")
-        .help("Total number of milliseconds spent compressing JSON")
-        .register()
-    private val counterBytesTimeDecompress = Counter.build()
-        .name("steep_eventbus_compressed_json_time_decompress")
-        .help("Total number of milliseconds spent decompressing JSON")
+    private val counterBytesTime = Counter.build()
+        .name("steep_eventbus_compressedjson_time")
+        .help("Total number of milliseconds spent compressing/decompressing JSON")
+        .labelNames("method")
         .register()
   }
 
@@ -140,10 +123,10 @@ class CompressedJsonObjectMessageCodec(private val forcePureJava: Boolean = fals
       buffer.appendByte(COMPRESSION_ZSTD)
       val compressedLength = compress(uncompressed, buffer)
 
-      counterBytesTimeCompress.inc((System.nanoTime() - start).toDouble() / 1e6)
-      counterTotalSent.inc()
-      counterBytesWritten.inc(compressedLength.toDouble())
-      counterBytesWrittenBefore.inc(uncompressed.size.toDouble())
+      counterBytesTime.labels("compress").inc((System.nanoTime() - start).toDouble() / 1e6)
+      counterTotal.labels("sent").inc()
+      counterBytes.labels("sent", "compressed").inc(compressedLength.toDouble())
+      counterBytes.labels("sent", "uncompressed").inc(uncompressed.size.toDouble())
     }
   }
 
@@ -162,10 +145,10 @@ class CompressedJsonObjectMessageCodec(private val forcePureJava: Boolean = fals
 
       val (dst, decompressedLength) = decompress(compressed)
 
-      counterBytesTimeDecompress.inc((System.nanoTime() - start).toDouble() / 1e6)
-      counterTotalRecv.inc()
-      counterBytesRead.inc(length.toDouble())
-      counterBytesReadAfter.inc(decompressedLength.toDouble())
+      counterBytesTime.labels("decompress").inc((System.nanoTime() - start).toDouble() / 1e6)
+      counterTotal.labels("recv").inc()
+      counterBytes.labels("recv", "compressed").inc(length.toDouble())
+      counterBytes.labels("recv", "uncompressed").inc(decompressedLength.toDouble())
 
       JsonObject(JsonUtils.mapper.readValue(dst, 0, decompressedLength, tr))
     }
