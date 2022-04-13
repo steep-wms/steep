@@ -44,7 +44,6 @@ import db.VMRegistry
 import db.VMRegistryFactory
 import db.migration.removeExecuteActionParameters
 import helper.JsonUtils
-import helper.MetricsHandler
 import helper.RangeParser
 import helper.UniqueID
 import helper.WorkflowValidator
@@ -82,6 +81,7 @@ import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.toReceiveChannel
+import io.vertx.micrometer.PrometheusScrapingHandler
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -245,7 +245,7 @@ class HttpEndpoint : CoroutineVerticle() {
         .handler(this::onPostWorkflow)
 
     router.route("/metrics")
-        .handler(MetricsHandler())
+        .handler(PrometheusScrapingHandler.create())
     DefaultExports.initialize()
 
     // a static handler that replaces placeholders in assets

@@ -11,6 +11,10 @@ import helper.JsonUtils
 import helper.LazyJsonObjectMessageCodec
 import helper.UniqueID
 import helper.loadTemplate
+import io.micrometer.core.instrument.Clock
+import io.micrometer.prometheus.PrometheusConfig
+import io.micrometer.prometheus.PrometheusMeterRegistry
+import io.prometheus.client.CollectorRegistry
 import io.vertx.core.Vertx.clusteredVertx
 import io.vertx.core.VertxOptions
 import io.vertx.core.json.JsonObject
@@ -145,6 +149,8 @@ suspend fun main() {
 
   // enable metrics
   options.metricsOptions = micrometerMetricsOptionsOf(enabled = true,
+      micrometerRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT,
+          CollectorRegistry.defaultRegistry, Clock.SYSTEM),
       prometheusOptions = vertxPrometheusOptionsOf(enabled = true))
 
   // start Vert.x
