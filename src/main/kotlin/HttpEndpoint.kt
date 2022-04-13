@@ -50,7 +50,6 @@ import helper.WorkflowValidator
 import helper.YamlUtils
 import io.netty.handler.codec.http.HttpHeaderNames
 import io.netty.handler.codec.http.HttpResponseStatus
-import io.prometheus.client.hotspot.DefaultExports
 import io.vertx.core.Promise
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.Message
@@ -246,7 +245,6 @@ class HttpEndpoint : CoroutineVerticle() {
 
     router.route("/metrics")
         .handler(PrometheusScrapingHandler.create())
-    DefaultExports.initialize()
 
     // a static handler that replaces placeholders in assets
     val placeholderHandler = { replaceFavicons: Boolean -> { context: RoutingContext ->

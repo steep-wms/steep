@@ -148,10 +148,13 @@ suspend fun main() {
   eventBusPublicPort?.let { options.eventBusOptions.setClusterPublicPort(it) }
 
   // enable metrics
-  options.metricsOptions = micrometerMetricsOptionsOf(enabled = true,
+  options.metricsOptions = micrometerMetricsOptionsOf(
+      enabled = true,
       micrometerRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT,
           CollectorRegistry.defaultRegistry, Clock.SYSTEM),
-      prometheusOptions = vertxPrometheusOptionsOf(enabled = true))
+      jvmMetricsEnabled = true,
+      prometheusOptions = vertxPrometheusOptionsOf(enabled = true)
+  )
 
   // start Vert.x
   val vertx = clusteredVertx(options).await()
