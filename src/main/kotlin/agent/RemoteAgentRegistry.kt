@@ -200,6 +200,9 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     if (oldValue != null) {
       vertx.eventBus().publish(REMOTE_AGENT_LEFT, address,
           deliveryOptionsOf(localOnly = localOnly))
+    } else {
+      // make sure metrics are correct
+      gaugeAgents.set(agents.await().size().await().toDouble())
     }
   }
 
