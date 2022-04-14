@@ -16,6 +16,7 @@ import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus
 import db.SubmissionRegistryFactory
 import helper.JsonUtils
+import io.prometheus.client.Gauge
 import io.vertx.core.shareddata.Lock
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
@@ -47,6 +48,15 @@ class Controller : CoroutineVerticle() {
     private const val DEFAULT_LOOKUP_ORPHANS_INITIAL_DELAY = 0L
     private const val DEFAULT_LOOKUP_ORPHANS_INTERVAL = 300_000L
     private const val PROCESSING_SUBMISSION_LOCK_PREFIX = "Controller.ProcessingSubmission."
+
+    /**
+     * The number of generated process chains the controller is waiting for
+     */
+    private val gaugeProcessChains = Gauge.build()
+        .name("steep_controller_process_chains")
+        .labelNames("submissionId")
+        .help("Number of generated process chains the controller is waiting for")
+        .register()
   }
 
   /**
@@ -288,6 +298,8 @@ class Controller : CoroutineVerticle() {
       var executedExecutableIds = setOf<String>()
       val submissionResults = mutableMapOf<String, List<Any>>()
       val processChains = mutableMapOf<String, ProcessChain>()
+      val gauge = gaugeProcessChains.labels(submission.id)
+      gauge.set(0.0)
       while (true) {
         // generate process chains
         val newProcessChains = if (processChainsToResume != null) {
@@ -334,6 +346,7 @@ class Controller : CoroutineVerticle() {
         }
 
         newProcessChains.associateByTo(processChains) { it.id }
+        gauge.set(processChains.size.toDouble())
 
         if (newProcessChains.isNotEmpty()) {
           // notify scheduler(s)
@@ -350,10 +363,12 @@ class Controller : CoroutineVerticle() {
         failed += w.failed
         cancelled += w.cancelled
         executedExecutableIds = w.executedExecutableIds
+        gauge.set(processChains.size.toDouble())
 
         // collect submission results
         submissionResults.putAll(results.filter { (_, v) -> hasSubmissionResults(v) })
       }
+      gauge.set(0.0)
 
       // evaluate results
       val (status, errorMessage) = if (generator.isFinished()) {
@@ -415,6 +430,7 @@ class Controller : CoroutineVerticle() {
         submissionRegistry.setSubmissionExecutionState(submission.id, null)
       }
 
+      gaugeProcessChains.remove(submission.id)
       lock.release()
     }
   }
