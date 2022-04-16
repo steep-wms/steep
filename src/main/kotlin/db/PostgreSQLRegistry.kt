@@ -66,6 +66,7 @@ open class PostgreSQLRegistry(vertx: Vertx, url: String, username: String,
     val connectOptions = PgConnectOptions(parsedConfiguration)
         .setUser(username)
         .setPassword(password)
+        .setCachePreparedStatements(true)
     if (!parsedConfiguration.containsKey("search_path") &&
         parsedConfiguration.containsKey("currentschema")) {
       connectOptions.addProperty("search_path",

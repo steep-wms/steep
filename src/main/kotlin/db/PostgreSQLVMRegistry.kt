@@ -1,5 +1,6 @@
 package db
 
+import com.fasterxml.jackson.module.kotlin.readValue
 import helper.JsonUtils
 import helper.UniqueID
 import io.vertx.core.Vertx
@@ -47,7 +48,7 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
       order: Int): Collection<VM> {
     val asc = if (order >= 0) "ASC" else "DESC"
     val limit = if (size < 0) "ALL" else size.toString()
-    val statement = StringBuilder("SELECT $DATA FROM $VMS ")
+    val statement = StringBuilder("SELECT $DATA::varchar FROM $VMS ")
 
     val params = if (status != null) {
       statement.append("WHERE $DATA->'$STATUS'=$1 ")
@@ -63,29 +64,29 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
     } else {
       client.preparedQuery(statement.toString()).execute(params).await()
     }
-    return rs.map { JsonUtils.fromJson(it.getJsonObject(0)) }
+    return rs.map { JsonUtils.mapper.readValue(it.getString(0)) }
   }
 
   override suspend fun findVMById(id: String): VM? {
-    val statement = "SELECT $DATA FROM $VMS WHERE $ID=$1"
+    val statement = "SELECT $DATA::varchar FROM $VMS WHERE $ID=$1"
     val params = Tuple.of(id)
     val rs = client.preparedQuery(statement).execute(params).await()
-    return rs.firstOrNull()?.let { JsonUtils.fromJson<VM>(it.getJsonObject(0)) }
+    return rs.firstOrNull()?.let { JsonUtils.mapper.readValue(it.getString(0)) }
   }
 
   override suspend fun findVMByExternalId(externalId: String): VM? {
-    val statement = "SELECT $DATA FROM $VMS WHERE $DATA->'$EXTERNAL_ID'=$1"
+    val statement = "SELECT $DATA::varchar FROM $VMS WHERE $DATA->'$EXTERNAL_ID'=$1"
     val params = Tuple.of(externalId)
     val rs = client.preparedQuery(statement).execute(params).await()
-    return rs.firstOrNull()?.let { JsonUtils.fromJson<VM>(it.getJsonObject(0)) }
+    return rs.firstOrNull()?.let { JsonUtils.mapper.readValue(it.getString(0)) }
   }
 
   override suspend fun findNonTerminatedVMs(): Collection<VM> {
-    val statement = "SELECT $DATA FROM $VMS WHERE $DATA->'$STATUS'!=$1 " +
+    val statement = "SELECT $DATA::varchar FROM $VMS WHERE $DATA->'$STATUS'!=$1 " +
         "AND $DATA->'$STATUS'!=$2"
     val params = Tuple.of(VM.Status.DESTROYED.toString(), VM.Status.ERROR.toString())
     val rs = client.preparedQuery(statement).execute(params).await()
-    return rs.map { JsonUtils.fromJson(it.getJsonObject(0)) }
+    return rs.map { JsonUtils.mapper.readValue(it.getString(0)) }
   }
 
   override suspend fun countVMs(status: VM.Status?): Long {

@@ -1,5 +1,6 @@
 package db
 
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.google.common.cache.CacheBuilder
 import db.SubmissionRegistry.ProcessChainStatus
 import helper.JsonUtils
@@ -104,10 +105,10 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun findSubmissionById(submissionId: String): Submission? {
-    val statement = "SELECT $DATA FROM $SUBMISSIONS WHERE $ID=$1"
+    val statement = "SELECT $DATA::varchar FROM $SUBMISSIONS WHERE $ID=$1"
     val params = Tuple.of(submissionId)
     val rs = client.preparedQuery(statement).execute(params).await()
-    return rs?.firstOrNull()?.let { JsonUtils.fromJson<Submission>(it.getJsonObject(0)) }
+    return rs?.firstOrNull()?.let { JsonUtils.mapper.readValue(it.getString(0)) }
   }
 
   override suspend fun findSubmissionIdsByStatus(status: Submission.Status): Collection<String> {
@@ -144,7 +145,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
           "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$STATUS'=$2 " +
           "ORDER BY $DATA->'$WORKFLOW'->'$PRIORITY' DESC, $SERIAL ASC LIMIT 1 " +
           "FOR UPDATE SKIP LOCKED" + // skip rows being updated concurrently
-        ") RETURNING $DATA"
+        ") RETURNING $DATA::varchar"
     val newObj = json {
       obj(
           STATUS to newStatus.toString()
@@ -152,7 +153,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
     val updateParams = Tuple.of(newObj, currentStatus.toString())
     val rs = client.preparedQuery(updateStatement).execute(updateParams).await()
-    return rs?.firstOrNull()?.let { JsonUtils.fromJson<Submission>(it.getJsonObject(0))
+    return rs?.firstOrNull()?.let { JsonUtils.mapper.readValue<Submission>(it.getString(0))
         .copy(status = currentStatus) }
   }
 
@@ -206,8 +207,8 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun getSubmissionResults(submissionId: String): Map<String, List<Any>>? =
-      getSubmissionColumn(submissionId, RESULTS) { r ->
-        r.getJsonObject(0)?.let { JsonUtils.fromJson<Map<String, List<Any>>>(it) } }
+      getSubmissionColumn(submissionId, "$RESULTS::varchar") { r ->
+        r.getString(0)?.let { JsonUtils.mapper.readValue(it) } }
 
   override suspend fun setSubmissionErrorMessage(submissionId: String,
       errorMessage: String?) {
@@ -297,9 +298,9 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
     val statement = StringBuilder()
     if (excludeExecutables) {
-      statement.append("SELECT $DATA #- '{$EXECUTABLES}', $SUBMISSION_ID FROM $PROCESS_CHAINS ")
+      statement.append("SELECT ($DATA #- '{$EXECUTABLES}')::varchar, $SUBMISSION_ID FROM $PROCESS_CHAINS ")
     } else {
-      statement.append("SELECT $DATA, $SUBMISSION_ID FROM $PROCESS_CHAINS ")
+      statement.append("SELECT $DATA::varchar, $SUBMISSION_ID FROM $PROCESS_CHAINS ")
     }
 
     val params = if (submissionId != null && status != null) {
@@ -323,7 +324,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       client.query(statement.toString()).execute().await()
     }
 
-    return rs.map { Pair(JsonUtils.fromJson(it.getJsonObject(0)), it.getString(1)) }
+    return rs.map { Pair(JsonUtils.mapper.readValue(it.getString(0)), it.getString(1)) }
   }
 
   override suspend fun findProcessChainIdsByStatus(
@@ -363,10 +364,10 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun findProcessChainById(processChainId: String): ProcessChain? {
-    val statement = "SELECT $DATA FROM $PROCESS_CHAINS WHERE $ID=$1"
+    val statement = "SELECT $DATA::varchar FROM $PROCESS_CHAINS WHERE $ID=$1"
     val params = Tuple.of(processChainId)
     val rs = client.preparedQuery(statement).execute(params).await()
-    return rs?.firstOrNull()?.let { JsonUtils.fromJson<ProcessChain>(it.getJsonObject(0)) }
+    return rs?.firstOrNull()?.let { JsonUtils.mapper.readValue(it.getString(0)) }
   }
 
   override suspend fun countProcessChains(submissionId: String?,
@@ -438,9 +439,9 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
           "$selectStatement " +
           "ORDER BY $DATA->'$PRIORITY' DESC, $SERIAL ASC LIMIT 1 " +
           "FOR UPDATE SKIP LOCKED" + // skip rows being updated concurrently
-        ") RETURNING $DATA"
+        ") RETURNING $DATA::varchar"
     val rs = client.preparedQuery(updateStatement).execute(params).await()
-    return rs?.firstOrNull()?.let { JsonUtils.fromJson<ProcessChain>(it.getJsonObject(0)) }
+    return rs?.firstOrNull()?.let { JsonUtils.mapper.readValue(it.getString(0)) }
   }
 
   override suspend fun existsProcessChain(currentStatus: ProcessChainStatus,
@@ -523,12 +524,12 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun getProcessChainResults(processChainId: String): Map<String, List<Any>>? =
-      getProcessChainColumn(processChainId, RESULTS) { r ->
-        r.getJsonObject(0)?.let { JsonUtils.fromJson<Map<String, List<Any>>>(it) } }
+      getProcessChainColumn(processChainId, "$RESULTS::varchar") { r ->
+        r.getString(0)?.let { JsonUtils.mapper.readValue(it) } }
 
   override suspend fun getProcessChainStatusAndResultsIfFinished(processChainIds: Collection<String>):
       Map<String, Pair<ProcessChainStatus, Map<String, List<Any>>?>> {
-    val statement = "SELECT $ID, $STATUS, $RESULTS FROM $PROCESS_CHAINS " +
+    val statement = "SELECT $ID, $STATUS, $RESULTS::varchar FROM $PROCESS_CHAINS " +
         "WHERE $STATUS!=$1 AND $STATUS!=$2 AND $ID=ANY($3)"
     val params = Tuple.of(
         ProcessChainStatus.REGISTERED,
@@ -538,7 +539,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     val rs = client.preparedQuery(statement).execute(params).await()
     return rs.associateBy({ it.getString(0) }, { row ->
       val status = ProcessChainStatus.valueOf(row.getString(1))
-      val results = row.getJsonObject(2)?.let { JsonUtils.fromJson<Map<String, List<Any>>>(it) }
+      val results = row.getString(2)?.let { JsonUtils.mapper.readValue<Map<String, List<Any>>>(it) }
       status to results
     })
   }
