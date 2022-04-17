@@ -415,6 +415,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       }
 
       val executables = mutableListOf<Executable>()
+      val executableIds = mutableSetOf<String>()
       val capabilities = mutableSetOf<String>()
       val argumentValues = mutableMapOf<String, String>()
 
@@ -427,13 +428,14 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
         // (b) check if all inputs are set (either because the variable has a
         // value or because the value has been calculated earlier)
         val allDependingExecuted = nextAction.dependsOn.all { target ->
-          executedActionIds.contains(target) || executables.any { it.id == target } }
+          executedActionIds.contains(target) || executableIds.contains(target) }
         val allInputsAvailable = nextAction.inputs.all { it.variable.value != null ||
             it.variable.id in variableValues || it.variable.id in argumentValues }
         val isExecutable = allDependingExecuted && allInputsAvailable
         if (isExecutable) {
           val newExecutable = actionToExecutable(nextAction, capabilities, argumentValues)
           executables.add(newExecutable)
+          executableIds.add(newExecutable.id)
 
           // do not visit this action again
           actionsToRemove.add(nextAction)
