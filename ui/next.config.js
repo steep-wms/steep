@@ -1,9 +1,10 @@
-const ESLintPlugin = require("eslint-webpack-plugin")
-const svgToMiniDataURI = require("mini-svg-data-uri")
+import ESLintPlugin from "eslint-webpack-plugin"
+import styledJsx from "styled-jsx/webpack.js"
+import svgToMiniDataURI from "mini-svg-data-uri"
 
 const isProd = process.env.NODE_ENV === "production"
 
-module.exports = {
+const config = {
   env: {
     // URL to Steep. Used to connect to the event bus.
     // Magic string will be replaced by Steep's HttpEndpoint verticle
@@ -32,6 +33,12 @@ module.exports = {
     disableStaticImages: true
   },
 
+  experimental: {
+    // Set esmExternals to 'loose' to allow highlight-worker.js web worker to be
+    // imported. Without this, we'll get an exception.
+    esmExternals: "loose"
+  },
+
   // list pages to export
   exportPathMap() {
     return {
@@ -57,7 +64,7 @@ module.exports = {
       use: [
         defaultLoaders.babel,
         {
-          loader: require("styled-jsx/webpack").loader,
+          loader: styledJsx.loader,
           options: {
             type: (fileName, options) => options.query.type || "scoped"
           }
@@ -87,3 +94,5 @@ module.exports = {
     return config
   }
 }
+
+export default config

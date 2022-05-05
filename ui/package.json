@@ -3,6 +3,7 @@
   "private": true,
   "description": "User interface for Steep",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "dev": "next",
     "build": "next build && next export -o out/ui",
