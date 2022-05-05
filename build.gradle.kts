@@ -69,7 +69,7 @@ dependencies {
     implementation("org.flywaydb:flyway-core:8.5.10")
     implementation("org.mongodb:mongodb-driver-reactivestreams:4.5.1")
     implementation("com.github.openstack4j.core:openstack4j:3.10")
-    implementation("org.postgresql:postgresql:42.3.3")
+    implementation("org.postgresql:postgresql:42.3.4")
     implementation("org.quartz-scheduler:quartz:2.3.2") {
         // we only need org.quartz.CronExpression, so we can exclude all dependencies
         isTransitive = false
