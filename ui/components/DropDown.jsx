@@ -8,7 +8,7 @@ const DropDown = ({ title, right, primary, children }) => {
   const ref = useRef()
   const btnRef = useRef()
 
-  function onDropDownClick() {
+  function onDropDownClick(e) {
     if (visible) {
       setVisible(false)
       btnRef.current.blur()
@@ -16,6 +16,7 @@ const DropDown = ({ title, right, primary, children }) => {
       setVisible(true)
       btnRef.current.focus()
     }
+    e.stopPropagation()
   }
 
   useEffect(() => {
