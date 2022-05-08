@@ -370,6 +370,7 @@ class HttpEndpointTest {
               obj(
                   "id" to s3.id,
                   "status" to Submission.Status.SUCCESS.toString(),
+                  "priority" to 10,
                   "runningProcessChains" to 0,
                   "cancelledProcessChains" to 0,
                   "failedProcessChains" to 0,
@@ -474,6 +475,7 @@ class HttpEndpointTest {
                 "id" to s1.id,
                 "workflow" to JsonUtils.toJson(s1.workflow),
                 "status" to Submission.Status.ACCEPTED.toString(),
+                "priority" to -10,
                 "runningProcessChains" to 2,
                 "cancelledProcessChains" to 3,
                 "failedProcessChains" to 4,

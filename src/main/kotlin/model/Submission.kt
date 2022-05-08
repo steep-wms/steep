@@ -1,5 +1,6 @@
 package model
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import helper.UniqueID
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -19,6 +20,8 @@ import java.time.Instant
 data class Submission(
     val id: String = UniqueID.next(),
     val workflow: Workflow,
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+    val priority: Int = workflow.priority,
     val startTime: Instant? = null,
     val endTime: Instant? = null,
     val status: Status = Status.ACCEPTED
