@@ -215,6 +215,10 @@ actions:
   await expect(end).toHaveText("\u2013")
   await expect(elapsed).not.toHaveText("\u2013")
 
+  let labelsMiddle = page.locator(".detail-header-middle .definition-list-content")
+  let priority = labelsMiddle.nth(0)
+  await expect(priority).toHaveText("0 (normal)")
+
   // check if workflow status changes to 'Success'
   await expect(status).toContainText("Success", { timeout: 10000 })
 

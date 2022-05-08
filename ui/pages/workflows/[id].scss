@@ -1,19 +1,5 @@
 @import "css/variables";
 
-.log-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  min-height: 30rem;
-  max-height: 30rem;
-  width: 100%;
-
-  &.error {
-    min-height: auto;
-    max-height: auto;
-  }
-}
-
 .left-two-columns {
   .detail-header-middle {
     margin-top: 1rem;

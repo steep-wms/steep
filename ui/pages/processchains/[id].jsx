@@ -13,6 +13,7 @@ import { LOGS_PROCESSCHAINS_PREFIX } from "../../components/lib/EventBusMessages
 import Label from "../../components/Label"
 import ListItemProgressBox from "../../components/ListItemProgressBox"
 import LiveDuration from "../../components/LiveDuration"
+import Priority from "../../components/Priority"
 import ProcessChainContext from "../../components/processchains/ProcessChainContext"
 import ProcessChainLog from "../../components/ProcessChainLog"
 import Tooltip from "../../components/Tooltip"
@@ -154,7 +155,7 @@ function ProcessChainDetails({ id }) {
     if (pc.requiredCapabilities === undefined || pc.requiredCapabilities.length === 0) {
       reqcap = <>&ndash;</>
     } else {
-      reqcap = pc.requiredCapabilities.map((r, i) => <Label key={i}>{r}</Label>)
+      reqcap = pc.requiredCapabilities.flatMap((r, i) => [<Label key={i}>{r}</Label>, <wbr key={`wbr${i}`}/>])
     }
 
     let estimatedProgress
@@ -173,25 +174,34 @@ function ProcessChainDetails({ id }) {
 
     processchain = (<>
       <div className="detail-header">
-        <div className="detail-header-left">
-          <DefinitionList>
-            <DefinitionListItem title="Start time">
-              {pc.startTime ? formatDate(pc.startTime) : <>&ndash;</>}
-            </DefinitionListItem>
-            <DefinitionListItem title="End time">
-              {pc.endTime ? formatDate(pc.endTime) : <>&ndash;</>}
-            </DefinitionListItem>
-            <DefinitionListItem title="Time elapsed">
-              {
-                pc.startTime && pc.endTime ? formatDurationTitle(pc.startTime, pc.endTime) : (
-                  pc.startTime ? <LiveDuration startTime={pc.startTime} /> : <>&ndash;</>
-                )
-              }
-            </DefinitionListItem>
-            <DefinitionListItem title="Required capabilities">
-              {reqcap}
-            </DefinitionListItem>
-          </DefinitionList>
+        <div className="left-two-columns">
+          <div className="detail-header-left">
+            <DefinitionList>
+              <DefinitionListItem title="Start time">
+                {pc.startTime ? formatDate(pc.startTime) : <>&ndash;</>}
+              </DefinitionListItem>
+              <DefinitionListItem title="End time">
+                {pc.endTime ? formatDate(pc.endTime) : <>&ndash;</>}
+              </DefinitionListItem>
+              <DefinitionListItem title="Time elapsed">
+                {
+                  pc.startTime && pc.endTime ? formatDurationTitle(pc.startTime, pc.endTime) : (
+                    pc.startTime ? <LiveDuration startTime={pc.startTime} /> : <>&ndash;</>
+                  )
+                }
+              </DefinitionListItem>
+            </DefinitionList>
+          </div>
+          <div className="detail-header-middle">
+            <DefinitionList>
+              <DefinitionListItem title="Priority">
+                <Priority value={pc.priority} />
+              </DefinitionListItem>
+              <DefinitionListItem title="Required capabilities">
+                {reqcap}
+              </DefinitionListItem>
+            </DefinitionList>
+          </div>
         </div>
         <div className="detail-header-right">
           <ListItemProgressBox progress={progress} deleted={deleted} />

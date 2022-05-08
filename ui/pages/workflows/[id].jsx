@@ -10,11 +10,13 @@ import DefinitionListItem from "../../components/DefinitionListItem"
 import Label from "../../components/Label"
 import ListItemProgressBox from "../../components/ListItemProgressBox"
 import LiveDuration from "../../components/LiveDuration"
+import Priority from "../../components/Priority"
 import WorkflowContext from "../../components/workflows/WorkflowContext"
 import { formatDate, formatDurationTitle } from "../../components/lib/date-time-utils"
 import workflowToProgress from "../../components/workflows/workflow-to-progress"
 import fetcher from "../../components/lib/json-fetcher"
 import { disableBodyScroll, enableBodyScroll } from "body-scroll-lock"
+import styles from "./[id].scss"
 
 function WorkflowDetails({ id }) {
   const workflows = useContext(WorkflowContext.Items)
@@ -71,6 +73,7 @@ function WorkflowDetails({ id }) {
   let startTime
   let endTime
   let requiredCapabilities
+  let priority
   let deleted
   if (workflows.items !== undefined && workflows.items.length > 0) {
     let w = workflows.items[0]
@@ -78,6 +81,7 @@ function WorkflowDetails({ id }) {
     startTime = w.startTime
     endTime = w.endTime
     requiredCapabilities = w.requiredCapabilities
+    priority = w.priority
     workflowSource = w.workflow
     deleted = !!w.deleted
   }
@@ -94,10 +98,10 @@ function WorkflowDetails({ id }) {
     if (requiredCapabilities === undefined || requiredCapabilities.length === 0) {
       reqcap = <>&ndash;</>
     } else {
-      reqcap = requiredCapabilities.map((r, i) => <Label key={i}>{r}</Label>)
+      reqcap = requiredCapabilities.flatMap((r, i) => [<Label key={i}>{r}</Label>, <wbr key={`wbr${i}`}/>])
     }
 
-    return (
+    return (<div className="left-two-columns">
       <div className="detail-header-left">
         <DefinitionList>
           <DefinitionListItem title="Start time">
@@ -113,13 +117,21 @@ function WorkflowDetails({ id }) {
               )
             }
           </DefinitionListItem>
+        </DefinitionList>
+      </div>
+      <div className="detail-header-middle">
+        <DefinitionList>
+          <DefinitionListItem title="Priority">
+            <Priority value={priority}/>
+          </DefinitionListItem>
           <DefinitionListItem title="Required capabilities">
             {reqcap}
           </DefinitionListItem>
         </DefinitionList>
       </div>
-    )
-  }, [startTime, endTime, requiredCapabilities])
+      <style jsx>{styles}</style>
+    </div>)
+  }, [startTime, endTime, requiredCapabilities, priority])
 
   let title
   let workflow
