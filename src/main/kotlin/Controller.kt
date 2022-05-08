@@ -17,6 +17,8 @@ import db.SubmissionRegistry.ProcessChainStatus
 import db.SubmissionRegistryFactory
 import helper.JsonUtils
 import io.prometheus.client.Gauge
+import io.vertx.core.eventbus.MessageConsumer
+import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.Lock
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
@@ -245,6 +247,7 @@ class Controller : CoroutineVerticle() {
       return
     }
 
+    var updatePriorityConsumer: MessageConsumer<JsonObject>? = null
     try {
       // check twice - the submission may have already been processed before we
       // were able to acquire the lock
@@ -259,6 +262,16 @@ class Controller : CoroutineVerticle() {
           FilenameUtils.normalize("$tmpPath/${submission.id}"),
           FilenameUtils.normalize("$outPath/${submission.id}"),
           metadataRegistry.findServices())
+
+      // update default priority for new process chains if the submission's
+      // priority has changed
+      updatePriorityConsumer = vertx.eventBus().consumer(AddressConstants.SUBMISSION_PRIORITY_CHANGED) { msg ->
+        val id: String? = msg.body().getString("submissionId")
+        val priority: Int? = msg.body().getInteger("priority")
+        if (id == submission.id && priority != null) {
+          generator.defaultPriority = priority
+        }
+      }
 
       // check if submission needs to be resumed
       var processChainsToResume: Collection<ProcessChain>? = null
@@ -430,6 +443,7 @@ class Controller : CoroutineVerticle() {
         submissionRegistry.setSubmissionExecutionState(submission.id, null)
       }
 
+      updatePriorityConsumer?.unregister()
       gaugeProcessChains.remove(submission.id)
       lock.release()
     }

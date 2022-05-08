@@ -20,6 +20,7 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.slot
 import io.mockk.unmockkAll
+import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.core.impl.ConcurrentHashSet
 import io.vertx.core.impl.NoStackTraceThrowable
@@ -29,7 +30,9 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -112,14 +115,15 @@ class ControllerTest {
   }
 
   private fun doSimple(vertx: Vertx, ctx: VertxTestContext,
-      withAdapter: Boolean = false, workflowName: String = "singleService",
-      processChainStatusSupplier: (processChain: ProcessChain) -> ProcessChainStatus = {
+      workflowName: String = "singleService",
+      processChainStatusSupplier: suspend (processChain: ProcessChain, submissionId: String) -> ProcessChainStatus = { _, _ ->
         ProcessChainStatus.SUCCESS
       },
       processChainResultsSupplier: (processChain: ProcessChain) -> Map<String, List<String>> = { processChain ->
         processChain.executables.flatMap { it.arguments }.filter {
           it.type == Argument.Type.OUTPUT }.associate { (it.variable.id to listOf(it.variable.value)) }
       },
+      processChainVerifier: ((processChain: ProcessChain) -> Unit)? = null,
       expectedSubmissionStatus: Status = Status.SUCCESS,
       completer: (ctx: VertxTestContext) -> Unit = { ctx.completeNow() },
       verify: (suspend MockKVerificationScope.(Submission) -> Unit)? = null) {
@@ -142,20 +146,16 @@ class ControllerTest {
     val processChainsSlot = slot<List<ProcessChain>>()
     coEvery { submissionRegistry.addProcessChains(capture(processChainsSlot), submission.id) } answers {
       for (processChain in processChainsSlot.captured) {
-        if (withAdapter) {
-          ctx.verify {
-            assertThat(processChain.requiredCapabilities).contains(NEW_REQUIRED_CAPABILITY)
-          }
-        }
+        processChainVerifier?.invoke(processChain)
         coEvery { submissionRegistry.setProcessChainStartTime(processChain.id, any()) } just Runs
       }
 
       val processChainsById = processChainsSlot.captured.associateBy { it.id }
       val processChainIdsSlot = slot<Collection<String>>()
-      coEvery { submissionRegistry.getProcessChainStatusAndResultsIfFinished(capture(processChainIdsSlot)) } answers {
+      coEvery { submissionRegistry.getProcessChainStatusAndResultsIfFinished(capture(processChainIdsSlot)) } coAnswers {
         processChainIdsSlot.captured.associateWith { id ->
           val pc = processChainsById[id]!!
-          processChainStatusSupplier(pc) to processChainResultsSupplier(pc)
+          processChainStatusSupplier(pc, submission.id) to processChainResultsSupplier(pc)
         }
       }
     }
@@ -201,7 +201,11 @@ class ControllerTest {
   @Test
   @Tag(WITH_ADAPTER)
   fun simpleWithAdapter(vertx: Vertx, ctx: VertxTestContext) {
-    doSimple(vertx, ctx, true)
+    doSimple(vertx, ctx, processChainVerifier = { pc ->
+      ctx.verify {
+        assertThat(pc.requiredCapabilities).contains(NEW_REQUIRED_CAPABILITY)
+      }
+    })
   }
 
   /**
@@ -212,7 +216,7 @@ class ControllerTest {
   @Test
   fun fail(vertx: Vertx, ctx: VertxTestContext) {
     coEvery { submissionRegistry.setSubmissionErrorMessage(any(), "All process chains failed") } just Runs
-    doSimple(vertx, ctx, processChainStatusSupplier = { ProcessChainStatus.ERROR },
+    doSimple(vertx, ctx, processChainStatusSupplier = { _, _ -> ProcessChainStatus.ERROR },
         expectedSubmissionStatus = Status.ERROR) { submission ->
       submissionRegistry.setSubmissionErrorMessage(submission.id, "All process chains failed")
     }
@@ -227,7 +231,7 @@ class ControllerTest {
   fun partial(vertx: Vertx, ctx: VertxTestContext) {
     var n = 0
     doSimple(vertx, ctx, workflowName = "twoIndependentServices",
-        processChainStatusSupplier = {
+        processChainStatusSupplier = { _, _ ->
           n += 1
           if (n == 1) ProcessChainStatus.SUCCESS else ProcessChainStatus.ERROR
         },
@@ -248,7 +252,7 @@ class ControllerTest {
         "Submission was not executed completely because 2 process chains failed") } just Runs
     var n = 0
     doSimple(vertx, ctx, workflowName = "smallGraph",
-        processChainStatusSupplier = {
+        processChainStatusSupplier = { _, _ ->
           n += 1
           if (n == 1) ProcessChainStatus.SUCCESS else ProcessChainStatus.ERROR
         },
@@ -269,7 +273,7 @@ class ControllerTest {
         "Submission was not executed completely because a process chain failed") } just Runs
     var n = 0
     doSimple(vertx, ctx, workflowName = "join",
-        processChainStatusSupplier = {
+        processChainStatusSupplier = { _, _ ->
           n += 1
           if (n == 1) ProcessChainStatus.SUCCESS else ProcessChainStatus.ERROR
         },
@@ -457,7 +461,7 @@ class ControllerTest {
   @Test
   fun cancel(vertx: Vertx, ctx: VertxTestContext) {
     doSimple(vertx, ctx, workflowName = "smallGraph",
-        processChainStatusSupplier = { processChain ->
+        processChainStatusSupplier = { processChain, _ ->
           if (processChain.executables.any { it.path == "join.sh" })
             ProcessChainStatus.CANCELLED else ProcessChainStatus.SUCCESS
         },
@@ -473,7 +477,7 @@ class ControllerTest {
   fun cancelRunning(vertx: Vertx, ctx: VertxTestContext) {
     var n = 0
     doSimple(vertx, ctx, workflowName = "smallGraph",
-        processChainStatusSupplier = { processChain ->
+        processChainStatusSupplier = { processChain, _ ->
           if (processChain.executables.any { it.path == "join.sh" }) {
             n++
             if (n == 1) {
@@ -497,7 +501,7 @@ class ControllerTest {
   fun ignoreDatabaseConnectionError(vertx: Vertx, ctx: VertxTestContext) {
     var statusRequested = 0
     doSimple(vertx, ctx,
-        processChainStatusSupplier = {
+        processChainStatusSupplier = { _, _ ->
           statusRequested++
           when (statusRequested) {
             1 -> ProcessChainStatus.RUNNING
@@ -532,7 +536,7 @@ class ControllerTest {
     var consumerRegistered = false
     val processChainCancelled = Channel<Boolean>()
     doSimple(vertx, ctx,
-      processChainStatusSupplier = { processChain ->
+      processChainStatusSupplier = { processChain, _ ->
         processChainIds.add(processChain.id)
 
         if (!consumerRegistered) {
@@ -570,6 +574,51 @@ class ControllerTest {
       // check that the error message was correctly set
       assertThat(errorMessageSubmissionIdSlot.captured).isEqualTo(submission.id)
       assertThat(errorMessageMessageSlot.captured).isEqualTo(expectedMessage)
+    }
+  }
+
+  /**
+   * Runs a simple workflow and change the default priority in between
+   * @param vertx the Vert.x instance
+   * @param ctx the test context
+   */
+  @Test
+  fun priorityChange(vertx: Vertx, ctx: VertxTestContext) {
+    var priorityChanged = false
+    val expectedPriority = 100
+    var originalPriorityValidated = false
+    var changedPriorityValidated = false
+    doSimple(vertx, ctx, workflowName = "join",
+        processChainStatusSupplier = { _, submissionId ->
+          if (!priorityChanged) {
+            vertx.eventBus().publish(AddressConstants.SUBMISSION_PRIORITY_CHANGED, jsonObjectOf(
+                "submissionId" to submissionId,
+                "priority" to expectedPriority
+            ))
+
+            // wait for the next event loop tick (i.e. make sure the message is processed)
+            val p = Promise.promise<Unit>()
+            vertx.runOnContext { p.complete() }
+            p.future().await()
+
+            priorityChanged = true
+          }
+          ProcessChainStatus.SUCCESS
+        },
+        processChainVerifier = { pc ->
+          ctx.verify {
+            if (!priorityChanged) {
+              assertThat(pc.priority).isEqualTo(0)
+              originalPriorityValidated = true
+            } else {
+              assertThat(pc.priority).isEqualTo(expectedPriority)
+              changedPriorityValidated = true
+            }
+          }
+        }) {
+      assertThat(priorityChanged).isTrue
+      assertThat(originalPriorityValidated).isTrue
+      assertThat(changedPriorityValidated).isTrue()
     }
   }
 }

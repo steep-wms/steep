@@ -124,6 +124,13 @@ interface SubmissionRegistry : Registry {
   suspend fun getSubmissionStatus(submissionId: String): Submission.Status
 
   /**
+   * Sets the [priority] of the submission with the given [submissionId].
+   * Attention: This method does change the priorities of the process chains
+   * belonging to this submission. Use [setAllProcessChainsPriority] for this.
+   */
+  suspend fun setSubmissionPriority(submissionId: String, priority: Int)
+
+  /**
    * Set the results of a submission
    * @param submissionId the submission ID
    * @param results the results to set (may be `null` if the results should be removed)
@@ -379,6 +386,17 @@ interface SubmissionRegistry : Registry {
    * @throws NoSuchElementException if the process chain does not exist
    */
   suspend fun getProcessChainStatus(processChainId: String): ProcessChainStatus
+
+  /**
+   * Set the [priority] of the process chain with the given [processChainId]
+   */
+  suspend fun setProcessChainPriority(processChainId: String, priority: Int)
+
+  /**
+   * Set the [priority] of all process chains of the submission with the
+   * given [submissionId]
+   */
+  suspend fun setAllProcessChainsPriority(submissionId: String, priority: Int)
 
   /**
    * Set the results of a process chain

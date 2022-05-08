@@ -9,6 +9,7 @@ import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.Row
@@ -190,6 +191,11 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     val rs = client.preparedQuery(statement).execute(params).await()?.firstOrNull()
         ?: throw NoSuchElementException("There is no submission with ID `$submissionId'")
     return Submission.Status.valueOf(rs.getString(0))
+  }
+
+  override suspend fun setSubmissionPriority(submissionId: String, priority: Int) {
+    val newObj = jsonObjectOf(PRIORITY to priority)
+    updateProperties(SUBMISSIONS, submissionId, newObj)
   }
 
   private suspend fun <T> getSubmissionColumn(submissionId: String,
@@ -517,6 +523,19 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   override suspend fun getProcessChainStatus(processChainId: String): ProcessChainStatus =
       getProcessChainColumn(processChainId, STATUS) { r ->
         r.getString(0).let { ProcessChainStatus.valueOf(it) } }
+
+  override suspend fun setProcessChainPriority(processChainId: String, priority: Int) {
+    val newObj = jsonObjectOf(PRIORITY to priority)
+    updateProperties(PROCESS_CHAINS, processChainId, newObj)
+  }
+
+  override suspend fun setAllProcessChainsPriority(submissionId: String, priority: Int) {
+    val newObj = jsonObjectOf(PRIORITY to priority)
+    val updateStatement = "UPDATE $PROCESS_CHAINS SET $DATA=$DATA || $1 WHERE " +
+        "$SUBMISSION_ID=$2"
+    val updateParams = Tuple.of(newObj, submissionId)
+    client.preparedQuery(updateStatement).execute(updateParams).await()
+  }
 
   override suspend fun setProcessChainResults(processChainId: String,
       results: Map<String, List<Any>>?) {

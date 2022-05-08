@@ -123,6 +123,13 @@ object AddressConstants {
   const val SUBMISSION_STATUS_CHANGED = "steep.submissionRegistry.submissionStatusChanged"
 
   /**
+   * Will be published when a submission's priority has changed. Does not mean
+   * that the priorities of the process chains belonging to this submission have
+   * also changed. Listen to [PROCESSCHAIN_ALL_PRIORITY_CHANGED] for this.
+   */
+  const val SUBMISSION_PRIORITY_CHANGED = "steep.submissionRegistry.submissionPriorityChanged"
+
+  /**
    * Will be published when a submission's error message has changed
    */
   const val SUBMISSION_ERRORMESSAGE_CHANGED = "steep.submissionRegistry.submissionErrorMessageChanged"
@@ -162,6 +169,16 @@ object AddressConstants {
    * Will be published when the status of multiple process chains has changed at once
    */
   const val PROCESSCHAIN_ALL_STATUS_CHANGED = "steep.submissionRegistry.processChainAllStatusChanged"
+
+  /**
+   * Will be published when a process chain's priority has changed
+   */
+  const val PROCESSCHAIN_PRIORITY_CHANGED = "steep.submissionRegistry.processChainPriorityChanged"
+
+  /**
+   * Will be published when the priority of multiple process chains has changed at once
+   */
+  const val PROCESSCHAIN_ALL_PRIORITY_CHANGED = "steep.submissionRegistry.processChainAllPriorityChanged"
 
   /**
    * Will be published when a process chain's results have changed

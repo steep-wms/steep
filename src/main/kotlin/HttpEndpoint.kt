@@ -1018,23 +1018,33 @@ class HttpEndpoint : CoroutineVerticle() {
       return
     }
 
-    val strStatus = try {
+    val strStatus: String? = try {
       update.getString("status")
     } catch (e: ClassCastException) {
       renderError(ctx, 400, "`status' property must be a string")
       return
     }
 
-    if (strStatus == null) {
-      renderError(ctx, 400, "Missing `status' property")
+    val priority: Int? = try {
+      update.getInteger("priority")
+    } catch (e: ClassCastException) {
+      renderError(ctx, 400, "`priority' property must be an integer")
       return
     }
 
-    val status = try {
-      Submission.Status.valueOf(strStatus)
-    } catch (e: IllegalArgumentException) {
-      renderError(ctx, 400, "Invalid `status' property")
+    if (strStatus == null && priority == null) {
+      renderError(ctx, 400, "Missing properties. At least one of `status' " +
+          "and `priority' required")
       return
+    }
+
+    val status = strStatus?.let {
+      try {
+        Submission.Status.valueOf(strStatus)
+      } catch (e: IllegalArgumentException) {
+        renderError(ctx, 400, "Invalid `status' property")
+        return
+      }
     }
 
     launch {
@@ -1042,7 +1052,7 @@ class HttpEndpoint : CoroutineVerticle() {
       if (submission == null) {
         renderError(ctx, 404, "There is no workflow with ID `$id'")
       } else {
-        if (submission.status != status && status == Submission.Status.CANCELLED) {
+        if (status != submission.status && status == Submission.Status.CANCELLED) {
           // first, atomically cancel all process chains that are currently
           // registered but not running yet
           submissionRegistry.setAllProcessChainsStatus(id,
@@ -1067,6 +1077,16 @@ class HttpEndpoint : CoroutineVerticle() {
               break
             }
           }
+        }
+
+        if (priority != null) {
+          // update submission priority first so all process chains generated
+          // from now on get the new priority
+          submissionRegistry.setSubmissionPriority(id, priority)
+
+          // now also update priority of all process chains belonging to
+          // this submission
+          submissionRegistry.setAllProcessChainsPriority(id, priority)
         }
 
         val updatedSubmission = submissionRegistry.findSubmissionById(id)!!
@@ -1372,23 +1392,33 @@ class HttpEndpoint : CoroutineVerticle() {
       return
     }
 
-    val strStatus = try {
+    val strStatus: String? = try {
       update.getString("status")
     } catch (e: ClassCastException) {
       renderError(ctx, 400, "`status' property must be a string")
       return
     }
 
-    if (strStatus == null) {
-      renderError(ctx, 400, "Missing `status' property")
+    val priority: Int? = try {
+      update.getInteger("priority")
+    } catch (e: ClassCastException) {
+      renderError(ctx, 400, "`priority' property must be an integer")
       return
     }
 
-    val status = try {
-      SubmissionRegistry.ProcessChainStatus.valueOf(strStatus)
-    } catch (e: IllegalArgumentException) {
-      renderError(ctx, 400, "Invalid `status' property")
+    if (strStatus == null && priority == null) {
+      renderError(ctx, 400, "Missing properties. At least one of `status' " +
+          "and `priority' required")
       return
+    }
+
+    val status = strStatus?.let {
+      try {
+        SubmissionRegistry.ProcessChainStatus.valueOf(strStatus)
+      } catch (e: IllegalArgumentException) {
+        renderError(ctx, 400, "Invalid `status' property")
+        return
+      }
     }
 
     launch {
@@ -1422,6 +1452,10 @@ class HttpEndpoint : CoroutineVerticle() {
               }
             }
           }
+        }
+
+        if (priority != null) {
+          submissionRegistry.setProcessChainPriority(id, priority)
         }
 
         val updatedProcessChain = submissionRegistry.findProcessChainById(id)!!

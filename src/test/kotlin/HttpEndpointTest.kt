@@ -659,15 +659,34 @@ class HttpEndpointTest {
           )
         }
 
+        val expectedPriority = 100
+        val priorityBody = json {
+          obj(
+              "priority" to expectedPriority
+          )
+        }
+
         val missingBody = json {
           obj(
               "foo" to "bar"
           )
         }
 
-        val invalidBody = json {
+        val invalidBody1 = json {
           obj(
               "status" to "INVALID"
+          )
+        }
+
+        val invalidBody2 = json {
+          obj(
+              "status" to 5
+          )
+        }
+
+        val invalidBody3 = json {
+          obj(
+              "priority" to "INVALID"
           )
         }
 
@@ -693,7 +712,19 @@ class HttpEndpointTest {
         client.put(port, "localhost", "/workflows/${s1.id}")
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_BAD_REQUEST)
-            .sendJsonObject(invalidBody)
+            .sendJsonObject(invalidBody1)
+            .await()
+
+        client.put(port, "localhost", "/workflows/${s1.id}")
+            .`as`(BodyCodec.none())
+            .expect(ResponsePredicate.SC_BAD_REQUEST)
+            .sendJsonObject(invalidBody2)
+            .await()
+
+        client.put(port, "localhost", "/workflows/${s1.id}")
+            .`as`(BodyCodec.none())
+            .expect(ResponsePredicate.SC_BAD_REQUEST)
+            .sendJsonObject(invalidBody3)
             .await()
 
         client.put(port, "localhost", "/workflows/UNKNOWN")
@@ -709,7 +740,7 @@ class HttpEndpointTest {
             .sendJsonObject(cancelledBody)
             .await()
 
-        // now test valid requests
+        // now test valid requests (cancel submission)
         coEvery { submissionRegistry.setAllProcessChainsStatus(s1.id,
             ProcessChainStatus.REGISTERED, ProcessChainStatus.CANCELLED) } just Runs
         coEvery { submissionRegistry.countProcessChainsPerStatus(s1.id) } returns mapOf(
@@ -737,6 +768,34 @@ class HttpEndpointTest {
         coVerify(exactly = 1) {
           submissionRegistry.setAllProcessChainsStatus(s1.id,
               ProcessChainStatus.REGISTERED, ProcessChainStatus.CANCELLED)
+        }
+
+        // set priority
+        coEvery { submissionRegistry.setSubmissionPriority(s1.id, expectedPriority) } just Runs
+        coEvery { submissionRegistry.setAllProcessChainsPriority(s1.id, expectedPriority) } just Runs
+        coEvery { submissionRegistry.findSubmissionById(s1.id) } returns s1.copy(priority = expectedPriority)
+        val response2 = client.put(port, "localhost", "/workflows/${s1.id}")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .sendJsonObject(priorityBody)
+            .await()
+
+        assertThat(response2.body()).isEqualTo(json {
+          obj(
+              "id" to s1.id,
+              "status" to Submission.Status.RUNNING.toString(),
+              "runningProcessChains" to 1,
+              "cancelledProcessChains" to 2,
+              "succeededProcessChains" to 0,
+              "failedProcessChains" to 0,
+              "totalProcessChains" to 3,
+              "priority" to expectedPriority
+          )
+        })
+
+        coVerify(exactly = 1) {
+          submissionRegistry.setSubmissionPriority(s1.id, expectedPriority)
+          submissionRegistry.setAllProcessChainsPriority(s1.id, expectedPriority)
         }
       }
 
@@ -1278,15 +1337,34 @@ class HttpEndpointTest {
           )
         }
 
+        val expectedPriority = 100
+        val priorityBody = json {
+          obj(
+              "priority" to expectedPriority
+          )
+        }
+
         val missingBody = json {
           obj(
               "foo" to "bar"
           )
         }
 
-        val invalidBody = json {
+        val invalidBody1 = json {
           obj(
               "status" to "INVALID"
+          )
+        }
+
+        val invalidBody2 = json {
+          obj(
+              "status" to 5
+          )
+        }
+
+        val invalidBody3 = json {
+          obj(
+              "priority" to "INVALID"
           )
         }
 
@@ -1312,7 +1390,19 @@ class HttpEndpointTest {
         client.put(port, "localhost", "/processchains/${pc1.id}")
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_BAD_REQUEST)
-            .sendJsonObject(invalidBody)
+            .sendJsonObject(invalidBody1)
+            .await()
+
+        client.put(port, "localhost", "/processchains/${pc1.id}")
+            .`as`(BodyCodec.none())
+            .expect(ResponsePredicate.SC_BAD_REQUEST)
+            .sendJsonObject(invalidBody2)
+            .await()
+
+        client.put(port, "localhost", "/processchains/${pc1.id}")
+            .`as`(BodyCodec.none())
+            .expect(ResponsePredicate.SC_BAD_REQUEST)
+            .sendJsonObject(invalidBody3)
             .await()
 
         client.put(port, "localhost", "/processchains/UNKNOWN")
@@ -1328,7 +1418,7 @@ class HttpEndpointTest {
             .sendJsonObject(cancelledBody)
             .await()
 
-        // now test valid requests
+        // now test valid requests (cancel process chain)
         coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns
             ProcessChainStatus.SUCCESS
         val response1 = client.put(port, "localhost", "/processchains/${pc1.id}")
@@ -1384,6 +1474,28 @@ class HttpEndpointTest {
               "status" to ProcessChainStatus.CANCELLED.toString()
           )
         })
+
+        // set process chain priority
+        coEvery { submissionRegistry.setProcessChainPriority(pc3.id, any()) } just Runs
+        coEvery { submissionRegistry.findProcessChainById(pc3.id) } returns pc3.copy(priority = expectedPriority)
+        val response4 = client.put(port, "localhost", "/processchains/${pc3.id}")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .sendJsonObject(priorityBody)
+            .await()
+
+        assertThat(response4.body()).isEqualTo(json {
+          obj(
+              "id" to pc3.id,
+              "requiredCapabilities" to array(),
+              "submissionId" to sid,
+              "status" to ProcessChainStatus.CANCELLED.toString(),
+              "priority" to expectedPriority
+          )
+        })
+        coVerify(exactly = 1) {
+          submissionRegistry.setProcessChainPriority(pc3.id, expectedPriority)
+        }
       }
 
       ctx.completeNow()

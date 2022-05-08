@@ -426,6 +426,39 @@ abstract class SubmissionRegistryTest {
     }
   }
 
+  @Test
+  fun setSubmissionPriority(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow())
+    val s2 = Submission(workflow = Workflow(priority = 100))
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addSubmission(s2)
+
+      val r1 = submissionRegistry.findSubmissionById(s1.id)!!
+      val r2 = submissionRegistry.findSubmissionById(s2.id)!!
+      ctx.verify {
+        assertThat(r1.priority).isEqualTo(0)
+        assertThat(r1.workflow.priority).isEqualTo(0)
+        assertThat(r2.priority).isEqualTo(100)
+        assertThat(r2.workflow.priority).isEqualTo(100)
+      }
+
+      submissionRegistry.setSubmissionPriority(s1.id, -100)
+
+      val r3 = submissionRegistry.findSubmissionById(s1.id)!!
+      val r4 = submissionRegistry.findSubmissionById(s2.id)!!
+      ctx.verify {
+        assertThat(r3.priority).isEqualTo(-100)
+        assertThat(r3.workflow.priority).isEqualTo(0) // should still be the same!
+        assertThat(r4.priority).isEqualTo(100)
+        assertThat(r4.workflow.priority).isEqualTo(100)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
   private suspend fun doSetSubmissionResults(ctx: VertxTestContext,
       results: Map<String, List<Any>> = mapOf("ARG1" to listOf("output.txt"))): Submission {
     val s = Submission(workflow = Workflow())
@@ -1732,6 +1765,92 @@ abstract class SubmissionRegistryTest {
         }.isInstanceOf(NoSuchElementException::class.java)
         ctx.completeNow()
       }
+    }
+  }
+
+  @Test
+  fun setProcessChainPriority(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val s = Submission(workflow = Workflow())
+      val pc = ProcessChain()
+
+      submissionRegistry.addSubmission(s)
+      submissionRegistry.addProcessChains(listOf(pc), s.id)
+      val r1 = submissionRegistry.findProcessChainById(pc.id)!!
+
+      ctx.verify {
+        assertThat(r1.priority).isEqualTo(0)
+      }
+
+      submissionRegistry.setProcessChainPriority(pc.id, 10)
+      val r2 = submissionRegistry.findProcessChainById(pc.id)!!
+
+      ctx.verify {
+        assertThat(r2.priority).isEqualTo(10)
+      }
+
+      submissionRegistry.setProcessChainPriority(pc.id, -10)
+      val r3 = submissionRegistry.findProcessChainById(pc.id)!!
+
+      ctx.verify {
+        assertThat(r3.priority).isEqualTo(-10)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun setAllProcessChainPriority(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow())
+    val pc1 = ProcessChain(priority = -10)
+    val pc2 = ProcessChain()
+    val pc3 = ProcessChain()
+
+    val s2 = Submission(workflow = Workflow())
+    val pc4 = ProcessChain()
+    val pc5 = ProcessChain(priority = 100)
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addProcessChains(listOf(pc1), s1.id,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      submissionRegistry.addProcessChains(listOf(pc2, pc3), s1.id,
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addProcessChains(listOf(pc4, pc5), s2.id,
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+
+      val r11 = submissionRegistry.findProcessChains(submissionId = s1.id).map { it.first }
+      val r12 = submissionRegistry.findProcessChains(submissionId = s2.id).map { it.first }
+      ctx.verify {
+        assertThat(r11).hasSize(3)
+        assertThat(r11[0]).isEqualTo(pc1)
+        assertThat(r11[1]).isEqualTo(pc2)
+        assertThat(r11[2]).isEqualTo(pc3)
+
+        assertThat(r12).hasSize(2)
+        assertThat(r12[0]).isEqualTo(pc4)
+        assertThat(r12[1]).isEqualTo(pc5)
+      }
+
+      submissionRegistry.setAllProcessChainsPriority(s1.id, -1000)
+
+      val r21 = submissionRegistry.findProcessChains(submissionId = s1.id).map { it.first }
+      val r22 = submissionRegistry.findProcessChains(submissionId = s2.id).map { it.first }
+      ctx.verify {
+        assertThat(r21).hasSize(3)
+        assertThat(r21[0].priority).isEqualTo(-1000)
+        assertThat(r21[1].priority).isEqualTo(-1000)
+        assertThat(r21[2].priority).isEqualTo(-1000)
+
+        assertThat(r22).hasSize(2)
+        assertThat(r22[0]).isEqualTo(pc4)
+        assertThat(r22[1]).isEqualTo(pc5)
+      }
+
+      ctx.completeNow()
     }
   }
 

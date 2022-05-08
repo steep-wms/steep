@@ -34,6 +34,7 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 import model.Submission
 import model.processchain.Executable
@@ -304,6 +305,10 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       getSubmissionField<String>(submissionId, STATUS).let {
         Submission.Status.valueOf(it)
       }
+
+  override suspend fun setSubmissionPriority(submissionId: String, priority: Int) {
+    updateField(collSubmissions, submissionId, PRIORITY, priority)
+  }
 
   private suspend fun writeGridFSDocument(bucket: GridFSBucket, id: String,
       obj: JsonObject?) {
@@ -705,6 +710,22 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       getProcessChainField<String>(processChainId, STATUS).let {
         ProcessChainStatus.valueOf(it)
       }
+
+  override suspend fun setProcessChainPriority(processChainId: String, priority: Int) {
+    // priorities are stored negated
+    updateField(collProcessChains, processChainId, PRIORITY, -priority)
+  }
+
+  override suspend fun setAllProcessChainsPriority(submissionId: String, priority: Int) {
+    collProcessChains.updateManyAwait(jsonObjectOf(
+      SUBMISSION_ID to submissionId
+    ), jsonObjectOf(
+        "\$set" to jsonObjectOf(
+            // priorities are stored negated
+            PRIORITY to -priority
+        )
+    ))
+  }
 
   override suspend fun setProcessChainResults(processChainId: String,
       results: Map<String, List<Any>>?) {

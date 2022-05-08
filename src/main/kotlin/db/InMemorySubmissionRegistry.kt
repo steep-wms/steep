@@ -203,6 +203,10 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     return s.status
   }
 
+  override suspend fun setSubmissionPriority(submissionId: String, priority: Int) {
+    updateSubmission(submissionId) { it.copy(priority = priority) }
+  }
+
   override suspend fun setSubmissionResults(submissionId: String, results: Map<String, List<Any>>?) {
     updateSubmissionEntry(submissionId) { it.copy(results = results) }
   }
@@ -507,6 +511,34 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
 
   override suspend fun getProcessChainStatus(processChainId: String): ProcessChainStatus =
       getProcessChainEntryById(processChainId).status
+
+  override suspend fun setProcessChainPriority(processChainId: String,
+      priority: Int) {
+    updateProcessChain(processChainId) { entry -> entry.copy(
+        processChain = entry.processChain.copy(priority = priority)
+    )}
+  }
+
+  override suspend fun setAllProcessChainsPriority(submissionId: String,
+      priority: Int) {
+    val sharedData = vertx.sharedData()
+    val lock = sharedData.getLock(LOCK_PROCESS_CHAINS).await()
+    try {
+      val map = processChains.await()
+      val values = awaitResult<List<String>> { map.values(it) }
+      values.map { JsonUtils.readValue<ProcessChainEntry>(it) }
+          .filter { it.submissionId == submissionId }
+          .forEach { entry ->
+            val newEntry = entry.copy(
+                processChain = entry.processChain.copy(priority = priority)
+            )
+            map.put(entry.processChain.id,
+                JsonUtils.writeValueAsString(newEntry)).await()
+          }
+    } finally {
+      lock.release()
+    }
+  }
 
   override suspend fun setProcessChainResults(processChainId: String,
       results: Map<String, List<Any>>?) {
