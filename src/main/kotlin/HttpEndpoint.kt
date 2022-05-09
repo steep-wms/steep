@@ -3,9 +3,11 @@ import AddressConstants.LOCAL_AGENT_ADDRESS_PREFIX
 import AddressConstants.LOGS_PROCESSCHAINS_PREFIX
 import AddressConstants.PROCESSCHAINS_ADDED
 import AddressConstants.PROCESSCHAINS_ADDED_SIZE
+import AddressConstants.PROCESSCHAIN_ALL_PRIORITY_CHANGED
 import AddressConstants.PROCESSCHAIN_ALL_STATUS_CHANGED
 import AddressConstants.PROCESSCHAIN_ENDTIME_CHANGED
 import AddressConstants.PROCESSCHAIN_ERRORMESSAGE_CHANGED
+import AddressConstants.PROCESSCHAIN_PRIORITY_CHANGED
 import AddressConstants.PROCESSCHAIN_PROGRESS_CHANGED
 import AddressConstants.PROCESSCHAIN_STARTTIME_CHANGED
 import AddressConstants.PROCESSCHAIN_STATUS_CHANGED
@@ -19,6 +21,7 @@ import AddressConstants.SUBMISSIONS_DELETED
 import AddressConstants.SUBMISSION_ADDED
 import AddressConstants.SUBMISSION_ENDTIME_CHANGED
 import AddressConstants.SUBMISSION_ERRORMESSAGE_CHANGED
+import AddressConstants.SUBMISSION_PRIORITY_CHANGED
 import AddressConstants.SUBMISSION_STARTTIME_CHANGED
 import AddressConstants.SUBMISSION_STATUS_CHANGED
 import AddressConstants.VMS_DELETED
@@ -283,6 +286,8 @@ class HttpEndpoint : CoroutineVerticle() {
         .addOutboundPermitted(PermittedOptions()
             .setAddress(SUBMISSION_STATUS_CHANGED))
         .addOutboundPermitted(PermittedOptions()
+            .setAddress(SUBMISSION_PRIORITY_CHANGED))
+        .addOutboundPermitted(PermittedOptions()
             .setAddress(SUBMISSION_ERRORMESSAGE_CHANGED))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(SUBMISSIONS_DELETED))
@@ -298,6 +303,10 @@ class HttpEndpoint : CoroutineVerticle() {
             .setAddress(PROCESSCHAIN_STATUS_CHANGED))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(PROCESSCHAIN_ALL_STATUS_CHANGED))
+        .addOutboundPermitted(PermittedOptions()
+            .setAddress(PROCESSCHAIN_PRIORITY_CHANGED))
+        .addOutboundPermitted(PermittedOptions()
+            .setAddress(PROCESSCHAIN_ALL_PRIORITY_CHANGED))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(PROCESSCHAIN_ERRORMESSAGE_CHANGED))
         .addOutboundPermitted(PermittedOptions()

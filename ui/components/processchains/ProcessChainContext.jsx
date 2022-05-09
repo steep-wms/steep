@@ -6,6 +6,8 @@ import {
   PROCESS_CHAIN_END_TIME_CHANGED,
   PROCESS_CHAIN_STATUS_CHANGED,
   PROCESS_CHAIN_ALL_STATUS_CHANGED,
+  PROCESS_CHAIN_PRIORITY_CHANGED,
+  PROCESS_CHAIN_ALL_PRIORITY_CHANGED,
   PROCESS_CHAIN_ERROR_MESSAGE_CHANGED,
   PROCESS_CHAIN_PROGRESS_CHANGED,
   SUBMISSIONS_DELETED
@@ -48,6 +50,14 @@ const UPDATE_MESSAGES = {
     status: body.newStatus,
     submissionId: body.submissionId
   }),
+  [PROCESS_CHAIN_PRIORITY_CHANGED]: (body) => ({
+    id: body.processChainId,
+    priority: body.priority
+  }),
+  [PROCESS_CHAIN_ALL_PRIORITY_CHANGED]: (body) => ({
+    priority: body.priority,
+    submissionId: body.submissionId
+  }),
   [SUBMISSIONS_DELETED]: (body) => body.submissionIds.map(submissionId => ({
     submissionId,
     deleted: true
@@ -68,6 +78,8 @@ function reducer(state, { action, items }, next) {
               newItems[i] = { ...pc, deleted: item.deleted }
             } else if (item.currentStatus !== undefined && pc.status === item.currentStatus) {
               newItems[i] = { ...pc, status: item.status }
+            } else if (item.priority !== undefined) {
+              newItems[i] = { ...pc, priority: item.priority }
             }
             state = { ...state, items: newItems }
           }

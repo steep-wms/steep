@@ -1,0 +1,10 @@
+@import "css/variables";
+
+.modal-buttons {
+  margin-top: $spacer * 1.5;
+  margin-bottom: $spacer * 0.5;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  gap: $spacer / 2;
+}

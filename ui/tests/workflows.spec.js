@@ -257,3 +257,47 @@ actions:
   await expect(tooltip1).not.toBeVisible()
   await expect(tooltip1).not.toHaveClass(/visible/)
 })
+
+test("change workflow priority", async({ page, request }) => {
+  await page.goto("/workflows", { waitUntil: "networkidle" })
+
+  let workflow = `api: 4.4.0
+actions:
+  - type: execute
+    service: sleep
+    inputs:
+      - id: seconds
+        value: 30
+`
+
+  // submit workflow
+  let response = await request.post("/workflows", {
+    data: workflow
+  })
+  expect(response.status()).toBe(202)
+  let submissionId = (await response.json()).id
+
+  // visit details page
+  await page.click(`a:text("${submissionId}")`)
+
+  // click priority label
+  await page.click(":text('0 (normal)')")
+
+  // change priority in input field, which should now have appeared
+  let priorityInput = page.locator("input[value='0']")
+  await priorityInput.fill("100")
+  await priorityInput.press("Enter")
+
+  // confirm
+  await page.click("button:text('Change priority')")
+
+  let newLabel = page.locator(":text('100 (higher)')")
+  await expect(newLabel).toBeVisible()
+
+  // cancel workflow
+  await request.put(`/workflows/${submissionId}`, {
+    data: {
+      status: "CANCELLED"
+    }
+  })
+})

@@ -23,5 +23,9 @@
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     flex: 1;
+
+    .detail-header-middle {
+      margin-top: 0;
+    }
   }
 }

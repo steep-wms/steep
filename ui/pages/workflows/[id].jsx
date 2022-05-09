@@ -15,7 +15,6 @@ import WorkflowContext from "../../components/workflows/WorkflowContext"
 import { formatDate, formatDurationTitle } from "../../components/lib/date-time-utils"
 import workflowToProgress from "../../components/workflows/workflow-to-progress"
 import fetcher from "../../components/lib/json-fetcher"
-import { disableBodyScroll, enableBodyScroll } from "body-scroll-lock"
 import styles from "./[id].scss"
 
 function WorkflowDetails({ id }) {
@@ -52,14 +51,6 @@ function WorkflowDetails({ id }) {
     })
   }
 
-  function onCancelModalOpen() {
-    disableBodyScroll()
-  }
-
-  function onCancelModalClose() {
-    enableBodyScroll()
-  }
-
   function onResubmit() {
     router.push({
       pathname: "/new/workflow",
@@ -94,6 +85,17 @@ function WorkflowDetails({ id }) {
   ], [id])
 
   const detailHeaderLeft = useMemo(() => {
+    function onDoChangePriority(priority) {
+      fetcher(`${process.env.baseUrl}/workflows/${id}`, false, {
+        method: "PUT",
+        body: JSON.stringify({
+          priority
+        })
+      }).catch(error => {
+        console.error(error)
+      })
+    }
+
     let reqcap
     if (requiredCapabilities === undefined || requiredCapabilities.length === 0) {
       reqcap = <>&ndash;</>
@@ -122,7 +124,8 @@ function WorkflowDetails({ id }) {
       <div className="detail-header-middle">
         <DefinitionList>
           <DefinitionListItem title="Priority">
-            <Priority value={priority}/>
+            <Priority value={priority} onChange={v => onDoChangePriority(v)}
+              subjectShort="workflow" subjectLong="workflow and all its process chains" />
           </DefinitionListItem>
           <DefinitionListItem title="Required capabilities">
             {reqcap}
@@ -131,7 +134,7 @@ function WorkflowDetails({ id }) {
       </div>
       <style jsx>{styles}</style>
     </div>)
-  }, [startTime, endTime, requiredCapabilities, priority])
+  }, [id, startTime, endTime, requiredCapabilities, priority])
 
   let title
   let workflow
@@ -178,7 +181,6 @@ function WorkflowDetails({ id }) {
       {workflow}
       {error}
       <CancelModal isOpen={cancelModalOpen} contentLabel="Cancel modal"
-          onAfterOpen={onCancelModalOpen} onAfterClose={onCancelModalClose}
           onRequestClose={() => setCancelModalOpen(false)} title="Cancel workflow"
           onConfirm={onDoCancel} onDeny={() => setCancelModalOpen(false)}>
         <p>Are you sure you want to cancel this workflow?</p>

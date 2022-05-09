@@ -5,6 +5,7 @@ import {
   SUBMISSION_START_TIME_CHANGED,
   SUBMISSION_END_TIME_CHANGED,
   SUBMISSION_STATUS_CHANGED,
+  SUBMISSION_PRIORITY_CHANGED,
   SUBMISSION_ERROR_MESSAGE_CHANGED,
   SUBMISSIONS_DELETED,
   PROCESS_CHAINS_ADDED_SIZE,
@@ -40,6 +41,10 @@ const UPDATE_MESSAGES = {
   [SUBMISSION_STATUS_CHANGED]: (body) => ({
     id: body.submissionId,
     status: body.status
+  }),
+  [SUBMISSION_PRIORITY_CHANGED]: (body) => ({
+    id: body.submissionId,
+    priority: body.priority
   }),
   [SUBMISSION_ERROR_MESSAGE_CHANGED]: (body) => ({
     id: body.submissionId,

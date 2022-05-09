@@ -220,3 +220,16 @@ code, pre {
   border-top-color: $primary;
   border-left-color: $primary;
 }
+
+input {
+  font-weight: 300;
+  color: $gray-700;
+  border: 1px solid $gray-300;
+  outline: none;
+  border-radius: $border-radius / 2;
+  padding: 3px 5px;
+
+  &:focus {
+    border-color: $gray-500;
+  }
+}

@@ -1,0 +1,44 @@
+@import "css/variables";
+
+.priority-label {
+  cursor: pointer;
+
+  .number {
+    color: $primary;
+    border-bottom: 1px dashed $primary;
+  }
+
+  .icon {
+    display: none;
+  }
+
+  &:hover {
+    .icon {
+      display: inline;
+    }
+  }
+
+  .editing & {
+    display: none;
+  }
+}
+
+.priority-input {
+  display: none;
+  width: 5em;
+  margin-right: 0.25rem;
+
+  .editing & {
+    display: inline;
+  }
+}
+
+.ok-button, .cancel-button {
+  margin-left: 0.5rem;
+  cursor: pointer;
+  display: none;
+
+  .editing & {
+    display: inline;
+  }
+}

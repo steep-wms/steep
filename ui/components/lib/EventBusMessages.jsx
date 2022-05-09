@@ -3,6 +3,7 @@ module.exports = {
   SUBMISSION_START_TIME_CHANGED: "steep.submissionRegistry.submissionStartTimeChanged",
   SUBMISSION_END_TIME_CHANGED: "steep.submissionRegistry.submissionEndTimeChanged",
   SUBMISSION_STATUS_CHANGED: "steep.submissionRegistry.submissionStatusChanged",
+  SUBMISSION_PRIORITY_CHANGED: "steep.submissionRegistry.submissionPriorityChanged",
   SUBMISSION_ERROR_MESSAGE_CHANGED: "steep.submissionRegistry.submissionErrorMessageChanged",
   SUBMISSIONS_DELETED: "steep.submissionRegistry.submissionsDeleted",
 
@@ -12,6 +13,8 @@ module.exports = {
   PROCESS_CHAIN_END_TIME_CHANGED: "steep.submissionRegistry.processChainEndTimeChanged",
   PROCESS_CHAIN_STATUS_CHANGED: "steep.submissionRegistry.processChainStatusChanged",
   PROCESS_CHAIN_ALL_STATUS_CHANGED: "steep.submissionRegistry.processChainAllStatusChanged",
+  PROCESS_CHAIN_PRIORITY_CHANGED: "steep.submissionRegistry.processChainPriorityChanged",
+  PROCESS_CHAIN_ALL_PRIORITY_CHANGED: "steep.submissionRegistry.processChainAllPriorityChanged",
   PROCESS_CHAIN_ERROR_MESSAGE_CHANGED: "steep.submissionRegistry.processChainErrorMessageChanged",
   PROCESS_CHAIN_PROGRESS_CHANGED: "steep.submissionRegistry.processChainProgressChanged",
 

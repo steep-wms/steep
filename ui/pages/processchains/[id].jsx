@@ -19,7 +19,6 @@ import ProcessChainLog from "../../components/ProcessChainLog"
 import Tooltip from "../../components/Tooltip"
 import { formatDate, formatDurationTitle } from "../../components/lib/date-time-utils"
 import fetcher from "../../components/lib/json-fetcher"
-import { disableBodyScroll, enableBodyScroll } from "body-scroll-lock"
 import EventBus from "@vertx/eventbus-bridge-client.js"
 import classNames from "classnames"
 import styles from "./[id].scss"
@@ -104,12 +103,15 @@ function ProcessChainDetails({ id }) {
     })
   }
 
-  function onCancelModalOpen() {
-    disableBodyScroll()
-  }
-
-  function onCancelModalClose() {
-    enableBodyScroll()
+  function onDoChangePriority(priority) {
+    fetcher(`${process.env.baseUrl}/processchains/${id}`, false, {
+      method: "PUT",
+      body: JSON.stringify({
+        priority
+      })
+    }).catch(error => {
+      console.error(error)
+    })
   }
 
   let breadcrumbs
@@ -195,7 +197,8 @@ function ProcessChainDetails({ id }) {
           <div className="detail-header-middle">
             <DefinitionList>
               <DefinitionListItem title="Priority">
-                <Priority value={pc.priority} />
+                <Priority value={pc.priority} onChange={v => onDoChangePriority(v)}
+                  subjectShort="process chain" subjectLong="process chain" />
               </DefinitionListItem>
               <DefinitionListItem title="Required capabilities">
                 {reqcap}
@@ -231,7 +234,6 @@ function ProcessChainDetails({ id }) {
       {processchain}
       {error}
       <CancelModal isOpen={cancelModalOpen} contentLabel="Cancel modal"
-          onAfterOpen={onCancelModalOpen} onAfterClose={onCancelModalClose}
           onRequestClose={() => setCancelModalOpen(false)} title="Cancel process chain"
           onConfirm={onDoCancel} onDeny={() => setCancelModalOpen(false)}>
         <p>Are you sure you want to cancel this process chain?</p>
