@@ -1,5 +1,6 @@
 package model.workflow
 
+import com.fasterxml.jackson.annotation.JsonFormat
 import com.fasterxml.jackson.annotation.JsonInclude
 import helper.UniqueID
 
@@ -25,5 +26,6 @@ data class ForEachAction(
     val yieldToOutput: Variable? = null,
     val yieldToInput: Variable? = null,
     @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+    @JsonFormat(with = [JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY])
     override val dependsOn: List<String> = emptyList()
 ) : Action
