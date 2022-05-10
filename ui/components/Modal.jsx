@@ -2,7 +2,7 @@ import resolvedStyles from "./Modal.scss?type=resolve"
 import styles from "./Modal.scss"
 import { useRef } from "react"
 import ReactModal from "react-modal"
-import { disableBodyScroll, enableBodyScroll } from "body-scroll-lock"
+import { disableBodyScroll, clearAllBodyScrollLocks } from "body-scroll-lock"
 import classNames from "classnames"
 
 ReactModal.setAppElement("#__next")
@@ -15,7 +15,9 @@ const Modal = (props) => {
   }
 
   function onModalClose() {
-    enableBodyScroll(ref.current)
+    // we must use clearAllBodyScrollLocks here instead of enableBodyScroll
+    // because the component might already be disposed at this point
+    clearAllBodyScrollLocks()
   }
 
   return (
