@@ -1135,12 +1135,12 @@ class HttpEndpoint : CoroutineVerticle() {
     val api = try {
       SemVersion.valueOf(workflowJson["api"].toString())
     } catch (e: Exception) {
-      renderError(ctx, 400, "Invalid workflow api version: " + e.message)
+      renderError(ctx, 400, "Invalid workflow API version: " + e.message)
       return
     }
-    if (!api.satisfies(gte("4.0.0").and(lte("4.4.0")))) {
-      renderError(ctx, 400, "Invalid workflow api version: $api. " +
-          "Supported version range is [4.0.0, 4.4.0].")
+    if (!api.satisfies(gte("4.0.0").and(lte("4.5.0")))) {
+      renderError(ctx, 400, "Invalid workflow API version: $api. " +
+          "Supported version range is [4.0.0, 4.5.0].")
       return
     }
 
