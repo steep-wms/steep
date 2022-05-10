@@ -193,9 +193,15 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     return Submission.Status.valueOf(rs.getString(0))
   }
 
-  override suspend fun setSubmissionPriority(submissionId: String, priority: Int) {
+  override suspend fun setSubmissionPriority(submissionId: String, priority: Int): Boolean {
     val newObj = jsonObjectOf(PRIORITY to priority)
-    updateProperties(SUBMISSIONS, submissionId, newObj)
+    val updateStatement = "UPDATE $SUBMISSIONS SET $DATA=$DATA || $1 " +
+        "WHERE $ID=$2 AND ($DATA->'$PRIORITY' IS NULL OR $DATA->'$PRIORITY'!=$3) AND " +
+        "($DATA->'$STATUS'=$4 OR $DATA->'$STATUS'=$5) RETURNING 1"
+    val updateParams = Tuple.of(newObj, submissionId, priority,
+        Submission.Status.ACCEPTED.toString(), Submission.Status.RUNNING.toString())
+    val result = client.preparedQuery(updateStatement).execute(updateParams).await()
+    return result.size() > 0
   }
 
   private suspend fun <T> getSubmissionColumn(submissionId: String,
@@ -524,16 +530,22 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       getProcessChainColumn(processChainId, STATUS) { r ->
         r.getString(0).let { ProcessChainStatus.valueOf(it) } }
 
-  override suspend fun setProcessChainPriority(processChainId: String, priority: Int) {
+  override suspend fun setProcessChainPriority(processChainId: String, priority: Int): Boolean {
     val newObj = jsonObjectOf(PRIORITY to priority)
-    updateProperties(PROCESS_CHAINS, processChainId, newObj)
+    val updateStatement = "UPDATE $PROCESS_CHAINS SET $DATA=$DATA || $1 " +
+        "WHERE $ID=$2 AND $DATA->'$PRIORITY'!=$3 AND ($STATUS=$4 OR $STATUS=$5) RETURNING 1"
+    val updateParams = Tuple.of(newObj, processChainId, priority,
+        ProcessChainStatus.REGISTERED.toString(), ProcessChainStatus.RUNNING.toString())
+    val result = client.preparedQuery(updateStatement).execute(updateParams).await()
+    return result.size() > 0
   }
 
   override suspend fun setAllProcessChainsPriority(submissionId: String, priority: Int) {
     val newObj = jsonObjectOf(PRIORITY to priority)
     val updateStatement = "UPDATE $PROCESS_CHAINS SET $DATA=$DATA || $1 WHERE " +
-        "$SUBMISSION_ID=$2"
-    val updateParams = Tuple.of(newObj, submissionId)
+        "$SUBMISSION_ID=$2 AND ($STATUS=$3 OR $STATUS=$4)"
+    val updateParams = Tuple.of(newObj, submissionId,
+        ProcessChainStatus.REGISTERED.toString(), ProcessChainStatus.RUNNING.toString())
     client.preparedQuery(updateStatement).execute(updateParams).await()
   }
 

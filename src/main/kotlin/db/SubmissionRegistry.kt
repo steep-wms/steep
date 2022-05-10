@@ -124,11 +124,16 @@ interface SubmissionRegistry : Registry {
   suspend fun getSubmissionStatus(submissionId: String): Submission.Status
 
   /**
-   * Sets the [priority] of the submission with the given [submissionId].
+   * Sets the [priority] of the submission with the given [submissionId]
+   * if (and only if) the submission has not already finished (i.e. only if its
+   * status is either [Submission.Status.ACCEPTED] or [Submission.Status.RUNNING]).
+   * Priorities of finished submissions are fixed and cannot be modified.
+   * Return `true` if the submission was updated, `false` otherwise.
+   *
    * Attention: This method does change the priorities of the process chains
    * belonging to this submission. Use [setAllProcessChainsPriority] for this.
    */
-  suspend fun setSubmissionPriority(submissionId: String, priority: Int)
+  suspend fun setSubmissionPriority(submissionId: String, priority: Int): Boolean
 
   /**
    * Set the results of a submission
@@ -389,12 +394,20 @@ interface SubmissionRegistry : Registry {
 
   /**
    * Set the [priority] of the process chain with the given [processChainId]
+   * if (and only if) the process chain has not already finished (i.e. only if
+   * its status is either [ProcessChainStatus.REGISTERED] or
+   * [ProcessChainStatus.RUNNING]). Priorities of finished process chains are
+   * fixed and cannot be modified. Return `true` if the process chain was
+   * updated, `false` otherwise.
    */
-  suspend fun setProcessChainPriority(processChainId: String, priority: Int)
+  suspend fun setProcessChainPriority(processChainId: String, priority: Int): Boolean
 
   /**
    * Set the [priority] of all process chains of the submission with the
-   * given [submissionId]
+   * given [submissionId]. Only affects process chains that are not finished
+   * yet (i.e. only those that have a status of either [ProcessChainStatus.REGISTERED]
+   * or [ProcessChainStatus.RUNNING]). Priorities of finished process chains are
+   * fixed and cannot be modified. They will be skipped silently.
    */
   suspend fun setAllProcessChainsPriority(submissionId: String, priority: Int)
 

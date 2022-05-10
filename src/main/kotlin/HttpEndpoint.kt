@@ -1060,6 +1060,10 @@ class HttpEndpoint : CoroutineVerticle() {
       val submission = submissionRegistry.findSubmissionById(id)
       if (submission == null) {
         renderError(ctx, 404, "There is no workflow with ID `$id'")
+      } else if (priority != null && submission.status != Submission.Status.ACCEPTED &&
+          submission.status != Submission.Status.RUNNING) {
+        // 422 Unprocessable Entity
+        renderError(ctx, 422, "Cannot change priority of a finished submission")
       } else {
         if (status != submission.status && status == Submission.Status.CANCELLED) {
           // first, atomically cancel all process chains that are currently
@@ -1435,8 +1439,15 @@ class HttpEndpoint : CoroutineVerticle() {
       if (processChain == null) {
         renderError(ctx, 404, "There is no process chain with ID `$id'")
       } else {
+        val currentStatus = submissionRegistry.getProcessChainStatus(id)
+
+        if (priority != null && currentStatus != SubmissionRegistry.ProcessChainStatus.REGISTERED &&
+            currentStatus != SubmissionRegistry.ProcessChainStatus.RUNNING) {
+          // 422 Unprocessable Entity
+          renderError(ctx, 422, "Cannot change priority of a finished process chain")
+        }
+
         if (status == SubmissionRegistry.ProcessChainStatus.CANCELLED) {
-          val currentStatus = submissionRegistry.getProcessChainStatus(id)
           if (currentStatus == SubmissionRegistry.ProcessChainStatus.REGISTERED) {
             submissionRegistry.setProcessChainStatus(id, currentStatus, status)
           } else if (currentStatus == SubmissionRegistry.ProcessChainStatus.RUNNING) {

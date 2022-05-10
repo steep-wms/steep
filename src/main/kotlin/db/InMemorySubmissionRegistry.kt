@@ -203,8 +203,18 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     return s.status
   }
 
-  override suspend fun setSubmissionPriority(submissionId: String, priority: Int) {
-    updateSubmission(submissionId) { it.copy(priority = priority) }
+  override suspend fun setSubmissionPriority(submissionId: String, priority: Int): Boolean {
+    var updated = false
+    updateSubmission(submissionId) { s ->
+      if (s.priority != priority && (s.status == Submission.Status.ACCEPTED ||
+              s.status == Submission.Status.RUNNING)) {
+        updated = true
+        s.copy(priority = priority)
+      } else {
+        s
+      }
+    }
+    return updated
   }
 
   override suspend fun setSubmissionResults(submissionId: String, results: Map<String, List<Any>>?) {
@@ -513,10 +523,21 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       getProcessChainEntryById(processChainId).status
 
   override suspend fun setProcessChainPriority(processChainId: String,
-      priority: Int) {
-    updateProcessChain(processChainId) { entry -> entry.copy(
-        processChain = entry.processChain.copy(priority = priority)
-    )}
+      priority: Int): Boolean {
+    var updated = false
+    updateProcessChain(processChainId) { entry ->
+      if (entry.processChain.priority != priority && (
+              entry.status == ProcessChainStatus.REGISTERED ||
+                  entry.status == ProcessChainStatus.RUNNING)) {
+        updated = true
+        entry.copy(
+            processChain = entry.processChain.copy(priority = priority)
+        )
+      } else {
+        entry
+      }
+    }
+    return updated
   }
 
   override suspend fun setAllProcessChainsPriority(submissionId: String,
@@ -527,7 +548,9 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       val map = processChains.await()
       val values = awaitResult<List<String>> { map.values(it) }
       values.map { JsonUtils.readValue<ProcessChainEntry>(it) }
-          .filter { it.submissionId == submissionId }
+          .filter { it.submissionId == submissionId &&
+              (it.status == ProcessChainStatus.REGISTERED ||
+                  it.status == ProcessChainStatus.RUNNING) }
           .forEach { entry ->
             val newEntry = entry.copy(
                 processChain = entry.processChain.copy(priority = priority)

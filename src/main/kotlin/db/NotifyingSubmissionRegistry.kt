@@ -83,14 +83,18 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
     })
   }
 
-  override suspend fun setSubmissionPriority(submissionId: String, priority: Int) {
-    delegate.setSubmissionPriority(submissionId, priority)
-    vertx.eventBus().publish(AddressConstants.SUBMISSION_PRIORITY_CHANGED, json {
-      obj(
-          "submissionId" to submissionId,
-          "priority" to priority
-      )
-    })
+  override suspend fun setSubmissionPriority(submissionId: String,
+      priority: Int): Boolean {
+    val r = delegate.setSubmissionPriority(submissionId, priority)
+    if (r) {
+      vertx.eventBus().publish(AddressConstants.SUBMISSION_PRIORITY_CHANGED, json {
+        obj(
+            "submissionId" to submissionId,
+            "priority" to priority
+        )
+      })
+    }
+    return r
   }
 
   override suspend fun setSubmissionErrorMessage(submissionId: String, errorMessage: String?) {
@@ -220,14 +224,17 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
     })
   }
 
-  override suspend fun setProcessChainPriority(processChainId: String, priority: Int) {
-    delegate.setProcessChainPriority(processChainId, priority)
-    vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_PRIORITY_CHANGED, json {
-      obj(
-          "processChainId" to processChainId,
-          "priority" to priority
-      )
-    })
+  override suspend fun setProcessChainPriority(processChainId: String, priority: Int): Boolean {
+    val r = delegate.setProcessChainPriority(processChainId, priority)
+    if (r) {
+      vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_PRIORITY_CHANGED, json {
+        obj(
+            "processChainId" to processChainId,
+            "priority" to priority
+        )
+      })
+    }
+    return r
   }
 
   override suspend fun setAllProcessChainsPriority(submissionId: String, priority: Int) {

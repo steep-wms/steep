@@ -300,4 +300,14 @@ actions:
       status: "CANCELLED"
     }
   })
+
+  // wait for the workflow to finish
+  let status = page.locator(".list-item-progress-box")
+  await expect(status).toContainText("Cancelled")
+
+  // priority should not be editable anymore
+  await expect(newLabel).toBeVisible()
+  await newLabel.click()
+  await expect(page.locator("input[value='100']")).not.toBeVisible()
+  await expect(newLabel).toBeVisible()
 })

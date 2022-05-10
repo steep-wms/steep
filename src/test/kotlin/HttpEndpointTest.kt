@@ -771,7 +771,7 @@ class HttpEndpointTest {
         }
 
         // set priority
-        coEvery { submissionRegistry.setSubmissionPriority(s1.id, expectedPriority) } just Runs
+        coEvery { submissionRegistry.setSubmissionPriority(s1.id, expectedPriority) } returns true
         coEvery { submissionRegistry.setAllProcessChainsPriority(s1.id, expectedPriority) } just Runs
         coEvery { submissionRegistry.findSubmissionById(s1.id) } returns s1.copy(priority = expectedPriority)
         val response2 = client.put(port, "localhost", "/workflows/${s1.id}")
@@ -797,6 +797,16 @@ class HttpEndpointTest {
           submissionRegistry.setSubmissionPriority(s1.id, expectedPriority)
           submissionRegistry.setAllProcessChainsPriority(s1.id, expectedPriority)
         }
+
+        // try to change priority of finished submission
+        coEvery { submissionRegistry.findSubmissionById(s1.id) } returns s1.copy(
+            status = Submission.Status.SUCCESS
+        )
+        client.put(port, "localhost", "/workflows/${s1.id}")
+            .`as`(BodyCodec.none())
+            .expect(ResponsePredicate.SC_UNPROCESSABLE_ENTITY)
+            .sendJsonObject(priorityBody)
+            .await()
       }
 
       ctx.completeNow()
@@ -1308,25 +1318,30 @@ class HttpEndpointTest {
     val pc1 = ProcessChain()
     val pc2 = ProcessChain()
     val pc3 = ProcessChain()
+    val pc4 = ProcessChain()
 
     coEvery { submissionRegistry.findProcessChainById(pc1.id) } returns pc1
     coEvery { submissionRegistry.findProcessChainById(pc2.id) } returns pc2
     coEvery { submissionRegistry.findProcessChainById(pc3.id) } returns pc3
+    coEvery { submissionRegistry.findProcessChainById(pc4.id) } returns pc4
     coEvery { submissionRegistry.findProcessChainById("UNKNOWN") } returns null
 
     coEvery { submissionRegistry.getProcessChainSubmissionId(pc1.id) } returns sid
     coEvery { submissionRegistry.getProcessChainSubmissionId(pc2.id) } returns sid
     coEvery { submissionRegistry.getProcessChainSubmissionId(pc3.id) } returns sid
+    coEvery { submissionRegistry.getProcessChainSubmissionId(pc4.id) } returns sid
 
     val startTime = Instant.now()
     coEvery { submissionRegistry.getProcessChainStartTime(pc1.id) } returns startTime
     coEvery { submissionRegistry.getProcessChainStartTime(pc2.id) } returns startTime
     coEvery { submissionRegistry.getProcessChainStartTime(pc3.id) } returns null
+    coEvery { submissionRegistry.getProcessChainStartTime(pc4.id) } returns null
 
     val endTime = Instant.now()
     coEvery { submissionRegistry.getProcessChainEndTime(pc1.id) } returns endTime
     coEvery { submissionRegistry.getProcessChainEndTime(pc2.id) } returns null
     coEvery { submissionRegistry.getProcessChainEndTime(pc3.id) } returns null
+    coEvery { submissionRegistry.getProcessChainEndTime(pc4.id) } returns null
 
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
@@ -1476,9 +1491,11 @@ class HttpEndpointTest {
         })
 
         // set process chain priority
-        coEvery { submissionRegistry.setProcessChainPriority(pc3.id, any()) } just Runs
-        coEvery { submissionRegistry.findProcessChainById(pc3.id) } returns pc3.copy(priority = expectedPriority)
-        val response4 = client.put(port, "localhost", "/processchains/${pc3.id}")
+        coEvery { submissionRegistry.getProcessChainStatus(pc4.id) } returns
+            ProcessChainStatus.REGISTERED
+        coEvery { submissionRegistry.setProcessChainPriority(pc4.id, any()) } returns true
+        coEvery { submissionRegistry.findProcessChainById(pc4.id) } returns pc4.copy(priority = expectedPriority)
+        val response4 = client.put(port, "localhost", "/processchains/${pc4.id}")
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .sendJsonObject(priorityBody)
@@ -1486,16 +1503,25 @@ class HttpEndpointTest {
 
         assertThat(response4.body()).isEqualTo(json {
           obj(
-              "id" to pc3.id,
+              "id" to pc4.id,
               "requiredCapabilities" to array(),
               "submissionId" to sid,
-              "status" to ProcessChainStatus.CANCELLED.toString(),
+              "status" to ProcessChainStatus.REGISTERED.toString(),
               "priority" to expectedPriority
           )
         })
         coVerify(exactly = 1) {
-          submissionRegistry.setProcessChainPriority(pc3.id, expectedPriority)
+          submissionRegistry.setProcessChainPriority(pc4.id, expectedPriority)
         }
+
+        // try to change priority of finished process chain
+        coEvery { submissionRegistry.getProcessChainStatus(pc4.id) } returns
+            ProcessChainStatus.SUCCESS
+        client.put(port, "localhost", "/processchains/${pc4.id}")
+            .`as`(BodyCodec.none())
+            .expect(ResponsePredicate.SC_UNPROCESSABLE_ENTITY)
+            .sendJsonObject(priorityBody)
+            .await()
       }
 
       ctx.completeNow()

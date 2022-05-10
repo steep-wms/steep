@@ -198,7 +198,8 @@ function ProcessChainDetails({ id }) {
             <DefinitionList>
               <DefinitionListItem title="Priority">
                 <Priority value={pc.priority} onChange={v => onDoChangePriority(v)}
-                  subjectShort="process chain" subjectLong="process chain" />
+                  subjectShort="process chain" subjectLong="process chain"
+                  editable={pc.status === "REGISTERED" || pc.status === "RUNNING"} />
               </DefinitionListItem>
               <DefinitionListItem title="Required capabilities">
                 {reqcap}

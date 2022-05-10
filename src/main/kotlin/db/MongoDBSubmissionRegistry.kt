@@ -27,6 +27,7 @@ import helper.findOneAndUpdateAwait
 import helper.findOneAwait
 import helper.insertOneAwait
 import helper.updateManyAwait
+import helper.updateOneAwait
 import helper.upload
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
@@ -34,6 +35,7 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 import model.Submission
@@ -306,8 +308,24 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         Submission.Status.valueOf(it)
       }
 
-  override suspend fun setSubmissionPriority(submissionId: String, priority: Int) {
-    updateField(collSubmissions, submissionId, PRIORITY, priority)
+  override suspend fun setSubmissionPriority(submissionId: String,
+      priority: Int): Boolean {
+    val result = collSubmissions.updateOneAwait(jsonObjectOf(
+        INTERNAL_ID to submissionId,
+        "\$or" to jsonArrayOf(
+            jsonObjectOf(
+                STATUS to Submission.Status.ACCEPTED
+            ),
+            jsonObjectOf(
+                STATUS to Submission.Status.RUNNING
+            )
+        )
+    ), jsonObjectOf(
+        "\$set" to jsonObjectOf(
+            PRIORITY to priority
+        )
+    ))
+    return result.modifiedCount > 0
   }
 
   private suspend fun writeGridFSDocument(bucket: GridFSBucket, id: String,
@@ -711,14 +729,37 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         ProcessChainStatus.valueOf(it)
       }
 
-  override suspend fun setProcessChainPriority(processChainId: String, priority: Int) {
-    // priorities are stored negated
-    updateField(collProcessChains, processChainId, PRIORITY, -priority)
+  override suspend fun setProcessChainPriority(processChainId: String, priority: Int): Boolean {
+    val result = collProcessChains.updateOneAwait(jsonObjectOf(
+        INTERNAL_ID to processChainId,
+        "\$or" to jsonArrayOf(
+            jsonObjectOf(
+                STATUS to ProcessChainStatus.REGISTERED
+            ),
+            jsonObjectOf(
+                STATUS to ProcessChainStatus.RUNNING
+            )
+        )
+    ), jsonObjectOf(
+        "\$set" to jsonObjectOf(
+            // priorities are stored negated
+            PRIORITY to -priority
+        )
+    ))
+    return result.modifiedCount > 0
   }
 
   override suspend fun setAllProcessChainsPriority(submissionId: String, priority: Int) {
     collProcessChains.updateManyAwait(jsonObjectOf(
-      SUBMISSION_ID to submissionId
+        SUBMISSION_ID to submissionId,
+        "\$or" to jsonArrayOf(
+            jsonObjectOf(
+                STATUS to ProcessChainStatus.REGISTERED
+            ),
+            jsonObjectOf(
+                STATUS to ProcessChainStatus.RUNNING
+            )
+        )
     ), jsonObjectOf(
         "\$set" to jsonObjectOf(
             // priorities are stored negated

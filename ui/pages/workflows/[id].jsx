@@ -66,6 +66,7 @@ function WorkflowDetails({ id }) {
   let requiredCapabilities
   let priority
   let deleted
+  let status
   if (workflows.items !== undefined && workflows.items.length > 0) {
     let w = workflows.items[0]
     id = w.id
@@ -75,6 +76,7 @@ function WorkflowDetails({ id }) {
     priority = w.priority
     workflowSource = w.workflow
     deleted = !!w.deleted
+    status = w.status
   }
 
   const codeBox = useMemo(() => <CodeBox json={workflowSource} />, [workflowSource])
@@ -125,7 +127,8 @@ function WorkflowDetails({ id }) {
         <DefinitionList>
           <DefinitionListItem title="Priority">
             <Priority value={priority} onChange={v => onDoChangePriority(v)}
-              subjectShort="workflow" subjectLong="workflow and all its process chains" />
+              subjectShort="workflow" subjectLong="workflow and all its process chains"
+              editable={status === "ACCEPTED" || status === "RUNNING"} />
           </DefinitionListItem>
           <DefinitionListItem title="Required capabilities">
             {reqcap}
@@ -134,7 +137,7 @@ function WorkflowDetails({ id }) {
       </div>
       <style jsx>{styles}</style>
     </div>)
-  }, [id, startTime, endTime, requiredCapabilities, priority])
+  }, [id, startTime, endTime, requiredCapabilities, priority, status])
 
   let title
   let workflow
@@ -144,7 +147,7 @@ function WorkflowDetails({ id }) {
     let w = workflows.items[0]
     title = w.id
 
-    if (w.status === "ACCEPTED" || w.status === "RUNNING") {
+    if (status === "ACCEPTED" || status === "RUNNING") {
       menu = (
         <ul>
           <li onClick={onCancel}>Cancel</li>
