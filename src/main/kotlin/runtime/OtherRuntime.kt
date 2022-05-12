@@ -1,6 +1,5 @@
 package runtime
 
-import helper.DefaultOutputCollector
 import helper.OutputCollector
 import helper.Shell
 import model.processchain.Argument
@@ -12,12 +11,6 @@ import org.apache.commons.lang3.BooleanUtils
  * @author Michel Kraemer
  */
 open class OtherRuntime : Runtime {
-  override fun execute(executable: Executable, outputLinesToCollect: Int): String {
-    val collector = DefaultOutputCollector(outputLinesToCollect)
-    execute(executable, collector)
-    return collector.output()
-  }
-
   override fun execute(executable: Executable, outputCollector: OutputCollector) {
     val cmd = executableToCommandLine(executable)
     Shell.execute(cmd, outputCollector)
