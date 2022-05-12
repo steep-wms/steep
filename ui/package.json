@@ -17,7 +17,7 @@
   "author": "Michel Kraemer",
   "license": "Apache-2.0",
   "dependencies": {
-    "@monaco-editor/react": "^4.4.4",
+    "@monaco-editor/react": "^4.4.5",
     "@popperjs/core": "^2.11.5",
     "@vertx/eventbus-bridge-client.js": "^1.0.0",
     "body-scroll-lock": "^3.1.5",
