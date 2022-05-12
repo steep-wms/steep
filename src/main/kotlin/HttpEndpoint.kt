@@ -340,7 +340,7 @@ class HttpEndpoint : CoroutineVerticle() {
     router.route("/eventbus/*").handler(sockJSHandler)
 
     val baseRouter = Router.router(vertx)
-    baseRouter.mountSubRouter("$basePath/", router)
+    baseRouter.route("$basePath/*").subRouter(router)
     server.requestHandler(baseRouter).listen(port, host).await()
 
     log.info("HTTP endpoint deployed to http://$host:$port$basePath")
@@ -1016,7 +1016,7 @@ class HttpEndpoint : CoroutineVerticle() {
   private fun onPutWorkflowById(ctx: RoutingContext) {
     val id = ctx.pathParam("id")
     val update = try {
-      ctx.bodyAsJson
+      ctx.body().asJsonObject()
     } catch (e: Exception) {
       renderError(ctx, 400, "Invalid request body: " + e.message)
       return
@@ -1121,7 +1121,7 @@ class HttpEndpoint : CoroutineVerticle() {
   private fun onPostWorkflow(ctx: RoutingContext) {
     // parse workflow
     val workflowJson: Map<String, Any> = try {
-      val str = ctx.bodyAsString.trim()
+      val str = ctx.body().asString().trim()
       if (str[0] == '{') {
         JsonUtils.readValue(str)
       } else {
@@ -1394,7 +1394,7 @@ class HttpEndpoint : CoroutineVerticle() {
   private fun onPutProcessChainById(ctx: RoutingContext) {
     val id = ctx.pathParam("id")
     val update = try {
-      ctx.bodyAsJson
+      ctx.body().asJsonObject()
     } catch (e: Exception) {
       renderError(ctx, 400, "Invalid request body: " + e.message)
       return
