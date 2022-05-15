@@ -12,6 +12,10 @@ import java.time.Instant
  * A submission
  * @param id the submission's unique identifier
  * @param workflow the workflow to execute
+ * @param priority the submission's priority. Derived from the [workflow]'s
+ * priority [Workflow.priority] but can be overridden. Process chains generated
+ * from submissions with higher priorities will be scheduled before those with
+ * lower priorities.
  * @param startTime the time when the workflow was started
  * @param endTime the time when the workflow has finished
  * @param status the current execution status
