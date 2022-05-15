@@ -83,7 +83,7 @@ dependencies {
     implementation(kotlin("script-runtime"))
 
     testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.4.5")
-    testImplementation("io.mockk:mockk:1.12.3")
+    testImplementation("io.mockk:mockk:1.12.4")
     testImplementation("io.vertx:vertx-junit5:$vertxVersion")
     testImplementation("org.assertj:assertj-core:3.22.0")
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
