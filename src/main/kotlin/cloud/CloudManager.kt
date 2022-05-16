@@ -7,7 +7,6 @@ import AddressConstants.REMOTE_AGENT_MISSING
 import ConfigConstants
 import ConfigConstants.CLOUD_AGENTPOOL
 import ConfigConstants.CLOUD_CREATED_BY_TAG
-import ConfigConstants.CLOUD_SETUPS_FILE
 import ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION
 import ConfigConstants.CLOUD_SSH_USERNAME
 import agent.AgentRegistry
@@ -15,11 +14,10 @@ import agent.AgentRegistryFactory
 import cloud.template.ProvisioningTemplateExtension
 import com.fasterxml.jackson.module.kotlin.convertValue
 import com.mitchellbosecke.pebble.PebbleEngine
+import db.SetupRegistryFactory
 import db.VMRegistry
 import db.VMRegistryFactory
 import helper.JsonUtils
-import helper.YamlUtils
-import helper.loadTemplate
 import io.vertx.core.Promise
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -38,7 +36,6 @@ import model.cloud.VM
 import model.setup.Setup
 import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
-import org.yaml.snakeyaml.Yaml
 import java.io.File
 import java.io.IOException
 import java.io.StringWriter
@@ -189,17 +186,7 @@ class CloudManager : CoroutineVerticle() {
     timeoutDestroyVM = config.getLong(ConfigConstants.CLOUD_TIMEOUTS_DESTROYVM, timeoutDestroyVM)
 
     // load setups file
-    val setupsFile = config.getString(CLOUD_SETUPS_FILE) ?: throw IllegalStateException(
-        "Missing configuration item `$CLOUD_SETUPS_FILE'")
-    // Use SnakeYAML to parse file and then Jackson to convert it to an
-    // object. This is a workaround for jackson-dataformats-text bug #98:
-    // https://github.com/FasterXML/jackson-dataformats-text/issues/98
-    val yaml = Yaml()
-    val l = yaml.loadTemplate<List<Any>>(File(setupsFile).readText(), mapOf(
-      "config" to config.map,
-      "env" to System.getenv()
-    ))
-    setups = YamlUtils.mapper.convertValue(l)
+    setups = SetupRegistryFactory.create(vertx).findSetups()
 
     // if sshUsername is null, check if all setups have an sshUsername
     if (sshUsername == null) {
@@ -210,15 +197,6 @@ class CloudManager : CoroutineVerticle() {
               "`${setup.id}' also does not have an SSH username.")
         }
       }
-    }
-
-    // check setups for duplicate IDs
-    val setupIds = mutableSetOf<String>()
-    for (setup in setups) {
-      if (setupIds.contains(setup.id)) {
-        throw IllegalArgumentException("Found duplicate setup ID: `${setup.id}'")
-      }
-      setupIds.add(setup.id)
     }
 
     // initialize registries
