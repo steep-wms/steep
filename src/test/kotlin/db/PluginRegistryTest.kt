@@ -24,6 +24,7 @@ import model.processchain.Argument
 import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import model.processchain.ProcessChain
+import model.workflow.ExecuteAction
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
@@ -241,6 +242,35 @@ class PluginRegistryTest {
     val adapter3 = ProcessChainAdapterPlugin("c", "file3.kts")
     val pr = PluginRegistry(listOf(adapter1, adapter2, adapter3))
     assertThat(pr.getProcessChainAdapters()).isEqualTo(listOf(adapter2, adapter3, adapter1))
+  }
+
+  @Test
+  fun compileDummyProcessChainConsistencyChecker(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val config = json {
+        obj(
+            ConfigConstants.PLUGINS to "src/**/db/dummyProcessChainConsistencyChecker.yaml"
+        )
+      }
+      PluginRegistryFactory.initialize(vertx, config)
+
+      val pr = PluginRegistryFactory.create()
+      val checkers = pr.getProcessChainConsistencyCheckers()
+      ctx.coVerify {
+        assertThat(checkers).hasSize(1)
+        val checker = checkers[0]
+
+        val pc1 = emptyList<Executable>()
+        val a = ExecuteAction(id = "foobar", service = "cp")
+        assertThat(checker.call(pc1, a, Workflow(), vertx)).isTrue
+
+        val pc2 = listOf(Executable(id = a.id, path = "cp", serviceId = a.service,
+            arguments = emptyList()))
+        assertThat(checker.call(pc2, a, Workflow(), vertx)).isFalse
+      }
+
+      ctx.completeNow()
+    }
   }
 
   /**

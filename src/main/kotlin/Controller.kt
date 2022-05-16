@@ -29,7 +29,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.Submission
 import model.plugins.call
+import model.processchain.Executable
 import model.processchain.ProcessChain
+import model.workflow.ExecuteAction
 import model.workflow.Workflow
 import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
@@ -258,10 +260,15 @@ class Controller : CoroutineVerticle() {
         return
       }
 
+      val consistencyCheckerPlugins = pluginRegistry.getProcessChainConsistencyCheckers()
+      val consistencyChecker: suspend (List<Executable>, ExecuteAction) -> Boolean = { processChain, a ->
+        consistencyCheckerPlugins.all { it.call(processChain, a, submission.workflow, vertx) }
+      }
+
       val generator = ProcessChainGenerator(submission.workflow,
           FilenameUtils.normalize("$tmpPath/${submission.id}"),
           FilenameUtils.normalize("$outPath/${submission.id}"),
-          metadataRegistry.findServices())
+          metadataRegistry.findServices(), consistencyChecker)
 
       // update default priority for new process chains if the submission's
       // priority has changed

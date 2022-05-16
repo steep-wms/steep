@@ -1,0 +1,5 @@
+# A process chain consistency checker that rejects an action if the process chain
+# already contains an executable with the same ID
+- name: dummyProcessChainConsistencyChecker
+  type: processChainConsistencyChecker
+  scriptFile: db/dummyProcessChainConsistencyChecker.kts

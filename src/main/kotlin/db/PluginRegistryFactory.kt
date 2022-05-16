@@ -9,11 +9,13 @@ import model.plugins.InitializerPlugin
 import model.plugins.OutputAdapterPlugin
 import model.plugins.Plugin
 import model.plugins.ProcessChainAdapterPlugin
+import model.plugins.ProcessChainConsistencyCheckerPlugin
 import model.plugins.ProgressEstimatorPlugin
 import model.plugins.RuntimePlugin
 import model.plugins.initializerPluginTemplate
 import model.plugins.outputAdapterPluginTemplate
 import model.plugins.processChainAdapterPluginTemplate
+import model.plugins.processChainConsistencyCheckerPluginTemplate
 import model.plugins.progressEstimatorPluginTemplate
 import model.plugins.runtimePluginTemplate
 import model.plugins.wrapPluginFunction
@@ -216,6 +218,8 @@ object PluginRegistryFactory {
           f as KFunction<List<Any>>, ::outputAdapterPluginTemplate.parameters))
       is ProcessChainAdapterPlugin -> plugin.copy(compiledFunction = wrapPluginFunction(
           f as KFunction<List<ProcessChain>>, ::processChainAdapterPluginTemplate.parameters))
+      is ProcessChainConsistencyCheckerPlugin -> plugin.copy(compiledFunction = wrapPluginFunction(
+          f as KFunction<Boolean>, ::processChainConsistencyCheckerPluginTemplate.parameters))
       is ProgressEstimatorPlugin -> plugin.copy(compiledFunction = wrapPluginFunction(
           f as KFunction<Double?>, ::progressEstimatorPluginTemplate.parameters))
       is RuntimePlugin -> plugin.copy(compiledFunction = wrapPluginFunction(

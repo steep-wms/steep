@@ -4,6 +4,7 @@ import model.plugins.InitializerPlugin
 import model.plugins.OutputAdapterPlugin
 import model.plugins.Plugin
 import model.plugins.ProcessChainAdapterPlugin
+import model.plugins.ProcessChainConsistencyCheckerPlugin
 import model.plugins.ProgressEstimatorPlugin
 import model.plugins.RuntimePlugin
 
@@ -18,6 +19,9 @@ class PluginRegistry(compiledPlugins: List<Plugin>) {
       .associateBy { it.supportedDataType }
   private val processChainAdapters = compiledPlugins
       .filterIsInstance<ProcessChainAdapterPlugin>()
+      .toResolved()
+  private val processChainConsistencyCheckers = compiledPlugins
+      .filterIsInstance<ProcessChainConsistencyCheckerPlugin>()
       .toResolved()
   private val progressEstimators = compiledPlugins.filterIsInstance<ProgressEstimatorPlugin>()
       .flatMap { p -> p.supportedServiceIds.map { it to p } }
@@ -49,4 +53,9 @@ class PluginRegistry(compiledPlugins: List<Plugin>) {
    * Get all process chain adapters
    */
   fun getProcessChainAdapters() = processChainAdapters
+
+  /**
+   * Get all process chain consistency checkers
+   */
+  fun getProcessChainConsistencyCheckers() = processChainConsistencyCheckers
 }
