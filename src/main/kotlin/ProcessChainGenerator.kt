@@ -31,10 +31,14 @@ import java.util.IdentityHashMap
  * @param workflow the workflow to convert to process chains
  * @param tmpPath a directory where temporary workflow results should be stored
  * @param outPath a directory where final workflow results should be stored
+ * @param consistencyChecker a function that decides whether an action is
+ * allowed to be added to a given list of executables/process chain or if a new
+ * list/process chain should be created
  * @param services service metadata
  */
 class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
     private val outPath: String, private val services: List<Service>,
+    private val consistencyChecker: suspend (List<Executable>, ExecuteAction) -> Boolean = { _, _ -> true },
     private val idGenerator: IDGenerator = UniqueID) {
   companion object {
     private val log = LoggerFactory.getLogger(ProcessChainGenerator::class.java)
@@ -69,7 +73,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
    * [Executable] that was executed successfully so dependencies between
    * [Action]s can be resolved correctly.
    */
-  fun generate(results: Map<String, List<Any>>? = null,
+  suspend fun generate(results: Map<String, List<Any>>? = null,
       executedExecutableIds: Set<String>? = null): List<ProcessChain> {
     // replace variable values with results
     results?.forEach { (key, value) ->
@@ -390,7 +394,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
    * Create process chains for all actions that are ready to be executed (i.e.
    * whose inputs are all available) and remove these actions from [actions].
    */
-  private fun createProcessChains(): List<ProcessChain> {
+  private suspend fun createProcessChains(): List<ProcessChain> {
     // build an index from input variables to actions
     val inputsToActions = IdentityHashMap<Variable, MutableList<ExecuteAction>>()
     val dependsOnToActions = mutableMapOf<String, MutableList<ExecuteAction>>()
@@ -421,6 +425,14 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
 
       var nextAction: ExecuteAction = action
       while (!actionsVisited.contains(nextAction)) {
+        // stop here if adding `nextAction` to `executables` would lead to
+        // inconsistencies that render the process chain inexecutable
+        if (!consistencyChecker.invoke(executables, nextAction)) {
+          // do not mark the action as visited so it can be added to a new
+          // process chain later
+          break
+        }
+
         // check if action is executable:
         // (a) check if all actions that this action depends on have already
         // been executed or are about to be executed in the process chain we

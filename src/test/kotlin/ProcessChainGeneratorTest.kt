@@ -8,12 +8,20 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
+import io.vertx.junit5.VertxExtension
+import io.vertx.junit5.VertxTestContext
+import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import model.plugins.OutputAdapterPlugin
+import model.processchain.Executable
 import model.processchain.ProcessChain
+import model.workflow.ExecuteAction
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
@@ -24,6 +32,7 @@ import java.util.stream.Stream
  * Tests for [ProcessChainGenerator]
  * @author Michel Kraemer
  */
+@ExtendWith(VertxExtension::class)
 class ProcessChainGeneratorTest {
   companion object {
     private data class T(val workflowName: String, val resultsName: String = workflowName)
@@ -334,10 +343,10 @@ class ProcessChainGeneratorTest {
     return YamlUtils.readValue(fixture)
   }
 
-  @ParameterizedTest
-  @MethodSource("argumentProvider")
-  fun testAll(workflowName: String, resultsName: String = workflowName,
-      persistState: Boolean = false, perResult: Boolean = false) {
+  private suspend fun doTestAll(workflowName: String, resultsName: String = workflowName,
+      persistState: Boolean = false, perResult: Boolean = false,
+      consistencyChecker: (List<Executable>, ExecuteAction) -> Boolean = { _, _ -> true },
+      shouldBeFinished: Boolean = true) {
     val workflow = readWorkflow(workflowName)
     val expectedChains = readProcessChains(resultsName)
 
@@ -346,7 +355,8 @@ class ProcessChainGeneratorTest {
 
     var json = JsonObject()
     val idgen = ConsecutiveID()
-    var generator = ProcessChainGenerator(workflow, "/tmp/", "/out/", services, idgen)
+    var generator = ProcessChainGenerator(workflow, "/tmp/", "/out/", services,
+        consistencyChecker, idgen)
     assertThat(generator.isFinished()).isFalse
 
     if (persistState) {
@@ -357,7 +367,8 @@ class ProcessChainGeneratorTest {
     var executedExecutableIds = setOf<String>()
     for (expected in expectedChains) {
       if (persistState) {
-        generator = ProcessChainGenerator(workflow, "/tmp/", "/out/", services, idgen)
+        generator = ProcessChainGenerator(workflow, "/tmp/", "/out/", services,
+            consistencyChecker, idgen)
         generator.loadState(json)
       }
 
@@ -388,13 +399,29 @@ class ProcessChainGeneratorTest {
     }
 
     if (persistState) {
-      generator = ProcessChainGenerator(workflow, "/tmp/", "/out/", services, idgen)
+      generator = ProcessChainGenerator(workflow, "/tmp/", "/out/", services,
+          consistencyChecker, idgen)
       generator.loadState(json)
     }
 
     val processChains = generator.generate(results, executedExecutableIds)
     assertThat(processChains).isEmpty()
-    assertThat(generator.isFinished()).isTrue
+    if (shouldBeFinished) {
+      assertThat(generator.isFinished()).isTrue
+    } else {
+      assertThat(generator.isFinished()).isFalse
+    }
+  }
+
+  @ParameterizedTest
+  @MethodSource("argumentProvider")
+  fun testAll(workflowName: String, resultsName: String = workflowName,
+      persistState: Boolean = false, perResult: Boolean = false,
+      vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      doTestAll(workflowName, resultsName, persistState, perResult)
+      ctx.completeNow()
+    }
   }
 
   /**
@@ -403,11 +430,14 @@ class ProcessChainGeneratorTest {
    */
   @ParameterizedTest
   @ValueSource(strings = ["false", "true"])
-  fun forEachYieldCardinalityError(persistState: Boolean) {
-    assertThatThrownBy {
-      testAll("forEachYieldCardinalityError", persistState = persistState)
-    }.isInstanceOf(IllegalStateException::class.java)
-        .hasMessageContaining("cardinality")
+  fun forEachYieldCardinalityError(persistState: Boolean, vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      assertThatThrownBy {
+        doTestAll("forEachYieldCardinalityError", persistState = persistState)
+      }.isInstanceOf(IllegalStateException::class.java)
+          .hasMessageContaining("cardinality")
+      ctx.completeNow()
+    }
   }
 
   /**
@@ -415,20 +445,48 @@ class ProcessChainGeneratorTest {
    */
   @ParameterizedTest
   @ValueSource(strings = ["false", "true"])
-  fun outputAdapter(persistState: Boolean) {
-    val pluginRegistry: PluginRegistry = mockk()
-    mockkObject(PluginRegistryFactory)
-    every { PluginRegistryFactory.create() } returns pluginRegistry
+  fun outputAdapter(persistState: Boolean, vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val pluginRegistry: PluginRegistry = mockk()
+      mockkObject(PluginRegistryFactory)
+      every { PluginRegistryFactory.create() } returns pluginRegistry
 
-    val p = OutputAdapterPlugin(name = "custom", scriptFile = "custom.kts",
-        supportedDataType = "custom")
-    every { pluginRegistry.findOutputAdapter(any()) } returns null
-    every { pluginRegistry.findOutputAdapter("custom") } returns p
+      val p = OutputAdapterPlugin(name = "custom", scriptFile = "custom.kts",
+          supportedDataType = "custom")
+      every { pluginRegistry.findOutputAdapter(any()) } returns null
+      every { pluginRegistry.findOutputAdapter("custom") } returns p
 
-    try {
-      testAll("outputAdapter", persistState = persistState)
-    } finally {
-      unmockkAll()
+      try {
+        doTestAll("outputAdapter", persistState = persistState)
+      } finally {
+        unmockkAll()
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if a process chain is split if the consistency checker returns `false`
+   */
+  @ParameterizedTest
+  @ValueSource(strings = ["false", "true"])
+  fun consistencyChecker(persistState: Boolean, vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      // let all actions through
+      doTestAll("consistencyChecker", "consistencyChecker", persistState = persistState)
+
+      // split after the first action
+      doTestAll("consistencyChecker", "consistencyChecker_split", persistState = persistState,
+          consistencyChecker = { executables, action ->
+            executables.isEmpty() || action.id != "cp2"
+          })
+
+      // don't let any action through
+      doTestAll("consistencyChecker", "consistencyChecker_false", persistState = persistState,
+          consistencyChecker = { _, _ -> false }, shouldBeFinished = false)
+
+      ctx.completeNow()
     }
   }
 }
