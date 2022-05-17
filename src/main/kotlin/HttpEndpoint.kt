@@ -337,7 +337,7 @@ class HttpEndpoint : CoroutineVerticle() {
             .setAddress(VM_REASON_CHANGED))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(VMS_DELETED)))
-    router.route("/eventbus/*").handler(sockJSHandler)
+    router.route("/eventbus/*").handler(BodyHandler.create()).handler(sockJSHandler)
 
     val baseRouter = Router.router(vertx)
     baseRouter.route("$basePath/*").subRouter(router)
