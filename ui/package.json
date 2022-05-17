@@ -45,6 +45,7 @@
     "sass": "^1.51.0",
     "sass-loader": "^12.6.0",
     "serve": "^13.0.2",
+    "sockjs-client": "^1.6.0",
     "spinkit": "^2.0.1",
     "svgo-loader": "^3.0.0",
     "unfetch": "^4.2.0",
