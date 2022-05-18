@@ -24,6 +24,7 @@ import java.time.Instant
 data class Submission(
     val id: String = UniqueID.next(),
     val workflow: Workflow,
+    val name: String? = workflow.name,
     @JsonInclude(JsonInclude.Include.NON_DEFAULT)
     val priority: Int = workflow.priority,
     val startTime: Instant? = null,

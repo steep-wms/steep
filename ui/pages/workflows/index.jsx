@@ -22,11 +22,12 @@ function WorkflowListItem({ item: workflow }) {
   return useMemo(() => {
     let href = "/workflows/[id]"
     let as = `/workflows/${workflow.id}`
+    let title = typeof workflow.name !== "undefined" ? workflow.name : workflow.id
 
     let progress = workflowToProgress(workflow)
 
     return <ListItem key={workflow.id} justAdded={workflow.justAdded}
-        deleted={workflow.deleted} linkHref={href} linkAs={as} title={workflow.id}
+        deleted={workflow.deleted} linkHref={href} linkAs={as} title={title}
         startTime={workflow.startTime} endTime={workflow.endTime}
         progress={progress} labels={workflow.requiredCapabilities} />
   }, [workflow])
