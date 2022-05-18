@@ -34,6 +34,37 @@ actions:
   await expect(status).toContainText("Success")
 })
 
+test("submit named workflow", async({ page, request }) => {
+  let name = "fred"
+  let workflow = `api: 4.5.0
+name: ${name}
+actions:
+  - type: execute
+    service: sleep
+    inputs:
+      - id: seconds
+        value: 1
+`
+
+  // submit workflow
+  let response = await request.post("/workflows", {
+    data: workflow
+  })
+  expect(response.status()).toBe(202)
+  let submissionId = (await response.json()).id
+
+  // visit page after the workflow has been submitted
+  await page.goto("/workflows")
+
+  // check if list contains new row for the workflow
+  let row = page.locator(`div.list-item:has(a:text("${name}"))`)
+  await expect(row).toBeVisible()
+
+  // check if list does not contain a row with the submission id
+  let rowNotPresent = page.locator(`div.list-item:has(a:text("${submissionId}"))`)
+  await expect(rowNotPresent).not.toBeVisible()
+})
+
 test("submit workflow and check details", async({ page, request }) => {
   // visit page before the workflow has been submitted
   // wait until the workflow list has been loaded
