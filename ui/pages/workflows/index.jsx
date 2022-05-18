@@ -22,7 +22,7 @@ function WorkflowListItem({ item: workflow }) {
   return useMemo(() => {
     let href = "/workflows/[id]"
     let as = `/workflows/${workflow.id}`
-    let title = typeof workflow.name !== "undefined" ? workflow.name : workflow.id
+    let title = workflow.name || workflow.id
 
     let progress = workflowToProgress(workflow)
 

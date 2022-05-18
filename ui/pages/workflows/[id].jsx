@@ -145,7 +145,7 @@ function WorkflowDetails({ id }) {
 
   if (workflows.items !== undefined && workflows.items.length > 0) {
     let w = workflows.items[0]
-    title = typeof w.name !== "undefined" ? w.name : w.id
+    title = w.name || w.id
 
     if (status === "ACCEPTED" || status === "RUNNING") {
       menu = (
