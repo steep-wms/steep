@@ -1,5 +1,4 @@
-api: 3.0.0
-vars: []
+api: 4.5.0
 actions:
   - type: execute
     service: docker_hello_world
