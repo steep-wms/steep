@@ -72,7 +72,7 @@ class SteepTest {
     val config = json {
       obj(
           ConfigConstants.AGENT_CAPABILTIIES to array("docker", "gpu"),
-          ConfigConstants.AGENT_BUSY_TIMEOUT to 1L,
+          ConfigConstants.AGENT_BUSY_TIMEOUT to "1s",
           ConfigConstants.AGENT_ID to agentId,
           ConfigConstants.LOGS_PROCESSCHAINS_ENABLED to true,
           ConfigConstants.LOGS_PROCESSCHAINS_PATH to processChainLogPath

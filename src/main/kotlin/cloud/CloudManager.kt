@@ -18,6 +18,7 @@ import db.SetupRegistryFactory
 import db.VMRegistry
 import db.VMRegistryFactory
 import helper.JsonUtils
+import helper.toDuration
 import io.vertx.core.Promise
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -180,10 +181,14 @@ class CloudManager : CoroutineVerticle() {
     poolAgentParams = JsonUtils.mapper.convertValue(
         config.getJsonArray(CLOUD_AGENTPOOL, JsonArray()))
 
-    timeoutSshReady = config.getLong(ConfigConstants.CLOUD_TIMEOUTS_SSHREADY, timeoutSshReady)
-    timeoutAgentReady = config.getLong(ConfigConstants.CLOUD_TIMEOUTS_AGENTREADY, timeoutAgentReady)
-    timeoutCreateVM = config.getLong(ConfigConstants.CLOUD_TIMEOUTS_CREATEVM, timeoutCreateVM)
-    timeoutDestroyVM = config.getLong(ConfigConstants.CLOUD_TIMEOUTS_DESTROYVM, timeoutDestroyVM)
+    timeoutSshReady = config.getString(
+        ConfigConstants.CLOUD_TIMEOUTS_SSHREADY)?.toDuration()?.toSeconds() ?: timeoutSshReady
+    timeoutAgentReady = config.getString(
+        ConfigConstants.CLOUD_TIMEOUTS_AGENTREADY)?.toDuration()?.toSeconds() ?: timeoutAgentReady
+    timeoutCreateVM = config.getString(
+        ConfigConstants.CLOUD_TIMEOUTS_CREATEVM)?.toDuration()?.toSeconds() ?: timeoutCreateVM
+    timeoutDestroyVM = config.getString(
+        ConfigConstants.CLOUD_TIMEOUTS_DESTROYVM)?.toDuration()?.toSeconds() ?: timeoutDestroyVM
 
     // load setups file
     setups = SetupRegistryFactory.create(vertx).findSetups()
@@ -257,8 +262,8 @@ class CloudManager : CoroutineVerticle() {
    * Start a periodic timer that synchronizes the VM registry with the Cloud
    */
   private fun syncTimer() {
-    val seconds = config.getLong(ConfigConstants.CLOUD_SYNC_INTERVAL, 120L)
-    vertx.setTimer(1000 * seconds) {
+    val milliseconds = config.getString(ConfigConstants.CLOUD_SYNC_INTERVAL, "2m").toDuration().toMillis()
+    vertx.setTimer(milliseconds) {
       launch {
         syncTimerStart()
       }
@@ -446,8 +451,8 @@ class CloudManager : CoroutineVerticle() {
    * Start a periodic timer that sends keep-alive messages to remote agents
    */
   private fun sendKeepAliveTimer() {
-    val seconds = config.getLong(ConfigConstants.CLOUD_KEEP_ALIVE_INTERVAL, 30L)
-    vertx.setTimer(1000 * seconds) {
+    val milliseconds = config.getString(ConfigConstants.CLOUD_KEEP_ALIVE_INTERVAL, "30s").toDuration().toMillis()
+    vertx.setTimer(milliseconds) {
       launch {
         sendKeepAliveTimerStart()
       }

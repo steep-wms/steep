@@ -51,6 +51,7 @@ import helper.RangeParser
 import helper.UniqueID
 import helper.WorkflowValidator
 import helper.YamlUtils
+import helper.toDuration
 import io.netty.handler.codec.http.HttpHeaderNames
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.Promise
@@ -414,7 +415,8 @@ class HttpEndpoint : CoroutineVerticle() {
     }
 
     // configure max age in seconds
-    val maxAge = config.getInteger(ConfigConstants.HTTP_CORS_MAX_AGE, -1)
+    val maxAge = config.getString(
+        ConfigConstants.HTTP_CORS_MAX_AGE)?.toDuration()?.toSeconds()?.toInt() ?: -1
     corsHandler.maxAgeSeconds(maxAge)
 
     return corsHandler

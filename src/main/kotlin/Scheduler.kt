@@ -18,6 +18,7 @@ import db.SubmissionRegistry.ProcessChainStatus.REGISTERED
 import db.SubmissionRegistry.ProcessChainStatus.RUNNING
 import db.SubmissionRegistry.ProcessChainStatus.SUCCESS
 import db.SubmissionRegistryFactory
+import helper.toDuration
 import io.prometheus.client.Gauge
 import io.vertx.core.Promise
 import io.vertx.core.json.JsonArray
@@ -120,9 +121,9 @@ class Scheduler : CoroutineVerticle() {
     agentRegistry = AgentRegistryFactory.create(vertx)
 
     // read configuration
-    val lookupInterval = config.getLong(SCHEDULER_LOOKUP_INTERVAL, 20000L)
-    val lookupOrphansInterval = config.getLong(SCHEDULER_LOOKUP_ORPHANS_INTERVAL, 300_000L)
-    val lookupOrphansInitialDelay = config.getLong(SCHEDULER_LOOKUP_ORPHANS_INITIAL_DELAY, 0L)
+    val lookupInterval = config.getString(SCHEDULER_LOOKUP_INTERVAL, "20s").toDuration().toMillis()
+    val lookupOrphansInterval = config.getString(SCHEDULER_LOOKUP_ORPHANS_INTERVAL, "5m").toDuration().toMillis()
+    val lookupOrphansInitialDelay = config.getString(SCHEDULER_LOOKUP_ORPHANS_INITIAL_DELAY, "0s").toDuration().toMillis()
 
     // periodically look for new process chains and execute them
     periodicLookupJob = launch {

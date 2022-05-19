@@ -65,16 +65,16 @@ steep:
         # - /data:/data
 
   controller:
-    lookupIntervalMilliseconds: 2000
+    lookupInterval: 2s
     lookupMaxErrors: 5
-    lookupOrphansIntervalMilliseconds: 300000
-    lookupOrphansInitialDelayMilliseconds: 0
+    lookupOrphansInterval: 5m
+    lookupOrphansInitialDelay: 0m
 
   scheduler:
     enabled: true
-    lookupIntervalMilliseconds: 20000
-    lookupOrphansIntervalMilliseconds: 300000
-    lookupOrphansInitialDelayMilliseconds: 0
+    lookupInterval: 20s
+    lookupOrphansInterval: 5m
+    lookupOrphansInitialDelay: 0s
 
   db:
     driver: inmemory
@@ -90,13 +90,13 @@ steep:
     setupsFile: conf/setups.yaml
     driver: openstack
     createdByTag: Steep
-    syncIntervalSeconds: 120
-    keepAliveIntervalSeconds: 30
+    syncInterval: 2m
+    keepAliveInterval: 30s
     timeouts:
-      sshReadySeconds: 300
-      agentReadySeconds: 300
-      createVMSeconds: 300
-      destroyVMSeconds: 300
+      sshReady: 5m
+      agentReady: 5m
+      createVM: 5m
+      destroyVM: 5m
 
     # agentPool:
     #   - capabilities:
@@ -153,4 +153,4 @@ setups:
     docker:
       image: steep/steep:unstable
     agent:
-      autoShutdownTimeoutMinutes: 30
+      autoShutdownTimeout: 30m
