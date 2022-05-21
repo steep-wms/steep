@@ -310,7 +310,9 @@ class Steep : CoroutineVerticle() {
                   "data" to buf.toString()
               )
             }
-            vertx.eventBus().request<Unit>(replyAddress, chunk).await()
+            vertx.eventBus().request<Unit>(replyAddress, chunk, deliveryOptionsOf(
+                codecName = CompressedJsonObjectMessageCodec.NAME
+            )).await()
           }
 
           // send end marker
