@@ -2,9 +2,10 @@ package model
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import helper.UniqueID
-import io.vertx.core.json.JsonArray
-import io.vertx.core.json.JsonObject
 import model.metadata.Service
+import model.workflow.Action
+import model.workflow.ExecuteAction
+import model.workflow.ForEachAction
 import model.workflow.Workflow
 import java.time.Instant
 
@@ -12,6 +13,7 @@ import java.time.Instant
  * A submission
  * @param id the submission's unique identifier
  * @param workflow the workflow to execute
+ * @param name the submission's name. Derived from the [workflow]'s name
  * @param priority the submission's priority. Derived from the [workflow]'s
  * priority [Workflow.priority] but can be overridden. Process chains generated
  * from submissions with higher priorities will be scheduled before those with
@@ -19,6 +21,8 @@ import java.time.Instant
  * @param startTime the time when the workflow was started
  * @param endTime the time when the workflow has finished
  * @param status the current execution status
+ * @param requiredCapabilities a set of strings specifying capabilities a host
+ * system must provide to be able to execute the workflow
  * @author Michel Kraemer
  */
 data class Submission(
@@ -29,7 +33,8 @@ data class Submission(
     val priority: Int = workflow.priority,
     val startTime: Instant? = null,
     val endTime: Instant? = null,
-    val status: Status = Status.ACCEPTED
+    val status: Status = Status.ACCEPTED,
+    val requiredCapabilities: Set<String> = emptySet()
 ) {
   enum class Status {
     ACCEPTED,
@@ -41,21 +46,20 @@ data class Submission(
   }
 
   companion object {
-    private fun collectRequiredCapabilities(actions: JsonArray,
+    private fun collectRequiredCapabilities(actions: List<Action>,
         serviceMetadata: Map<String, Service>): Set<String> {
       val result = mutableSetOf<String>()
-      for (i in 0 until actions.size()) {
-        val a = actions.getJsonObject(i)
-        when (a.getString("type")) {
-          "execute" -> {
-            val service = serviceMetadata[a.getString("service")]
+      for (a in actions) {
+        when (a) {
+          is ExecuteAction -> {
+            val service = serviceMetadata[a.service]
             if (service != null) {
               result.addAll(service.requiredCapabilities)
             }
           }
 
-          "for" -> result.addAll(collectRequiredCapabilities(
-              a.getJsonArray("actions"), serviceMetadata))
+          is ForEachAction -> result.addAll(collectRequiredCapabilities(
+              a.actions, serviceMetadata))
         }
       }
       return result
@@ -63,13 +67,11 @@ data class Submission(
 
     /**
      * Use the metadata of the given [services] to calculate a set of
-     * capabilities required to execute the given [submission]
+     * capabilities required to execute the given [workflow]
      */
-    fun collectRequiredCapabilities(submission: JsonObject, services: List<Service>): Set<String> {
+    fun collectRequiredCapabilities(workflow: Workflow, services: List<Service>): Set<String> {
       val serviceMetadata = services.associateBy { it.id }
-      val workflow = submission.getJsonObject("workflow")
-      val actions = workflow.getJsonArray("actions")
-      return collectRequiredCapabilities(actions, serviceMetadata)
+      return collectRequiredCapabilities(workflow.actions, serviceMetadata)
     }
   }
 }

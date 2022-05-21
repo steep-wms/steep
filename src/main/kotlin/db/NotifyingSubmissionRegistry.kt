@@ -6,7 +6,6 @@ import helper.JsonUtils
 import io.vertx.core.Vertx
 import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
 import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.obj
 import model.Submission
 import model.processchain.ProcessChain
@@ -20,19 +19,11 @@ import java.time.Instant
  */
 class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, private val vertx: Vertx) :
     SubmissionRegistry by delegate {
-  private val metadataRegistry = MetadataRegistryFactory.create(vertx)
-
   override suspend fun addSubmission(submission: Submission) {
     delegate.addSubmission(submission)
 
-    val services = metadataRegistry.findServices()
-
     vertx.eventBus().publish(AddressConstants.SUBMISSION_ADDED, {
       JsonUtils.toJson(submission.copy(workflow = Workflow())).also {
-        // add required capabilities
-        val reqCaps = Submission.collectRequiredCapabilities(it, services)
-        it.put("requiredCapabilities", jsonArrayOf(*(reqCaps.toTypedArray())))
-
         // do not serialize workflow
         it.remove("workflow")
       }
