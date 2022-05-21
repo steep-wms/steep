@@ -958,14 +958,9 @@ class HttpEndpoint : CoroutineVerticle() {
         }
 
         val total = submissionRegistry.countSubmissions(status)
-        val submissions = submissionRegistry.findSubmissionsRaw(status, size, offset, -1)
-
-        submissions.forEach { submission ->
-          // do not unnecessarily encode workflow to save time for large workflows
-          submission.remove("workflow")
-
-          amendSubmission(submission)
-        }
+        val submissions = submissionRegistry.findSubmissionsRaw(status, size,
+            offset, -1, excludeWorkflows = true)
+        submissions.forEach { amendSubmission(it) }
 
         val encodedJson = JsonUtils.mapper.writeValueAsString(submissions)
         ctx.response()

@@ -54,10 +54,12 @@ interface SubmissionRegistry : Registry {
    * @param offset the index of the first submission to return
    * @param order a positive number if the submissions should be returned in
    * ascending order, negative otherwise
+   * @param excludeWorkflows `true` if all workflows should be excluded from
+   * the result
    * @return all submissions
    */
   suspend fun findSubmissionsRaw(status: Submission.Status? = null, size: Int = -1,
-      offset: Int = 0, order: Int = 1): Collection<JsonObject>
+      offset: Int = 0, order: Int = 1, excludeWorkflows: Boolean = false): Collection<JsonObject>
 
   /**
    * Get a single submission from the registry

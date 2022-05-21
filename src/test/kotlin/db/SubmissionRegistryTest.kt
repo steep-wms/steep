@@ -179,6 +179,43 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun findSubmissionsWithoutWorkflow(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
+    val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
+    val s3 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addSubmission(s3)
+      val js1 = JsonUtils.toJson(s1)
+      val js2 = JsonUtils.toJson(s2)
+      val js3 = JsonUtils.toJson(s3)
+
+      val r1 = submissionRegistry.findSubmissionsRaw()
+      ctx.verify {
+        assertThat(r1).allMatch { it.containsKey("workflow") }
+        assertThat(r1).isEqualTo(listOf(js1, js2, js3))
+      }
+
+      val js1Without = js1.copy()
+      js1Without.remove("workflow")
+      val js2Without = js2.copy()
+      js2Without.remove("workflow")
+      val js3Without = js3.copy()
+      js3Without.remove("workflow")
+
+      val r2 = submissionRegistry.findSubmissionsRaw(excludeWorkflows = true)
+      ctx.verify {
+        assertThat(r2).noneMatch { it.containsKey("workflow") }
+        assertThat(r2).isEqualTo(listOf(js1Without, js2Without, js3Without))
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun findSubmissionIdsByStatus(vertx: Vertx, ctx: VertxTestContext) {
     val s1 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
     val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)

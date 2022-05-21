@@ -72,12 +72,16 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun findSubmissionsRaw(status: Submission.Status?, size: Int,
-      offset: Int, order: Int): Collection<JsonObject> {
+      offset: Int, order: Int, excludeWorkflows: Boolean): Collection<JsonObject> {
     val asc = if (order >= 0) "ASC" else "DESC"
     val limit = if (size < 0) "ALL" else size.toString()
 
     val statement = StringBuilder()
-    statement.append("SELECT $DATA FROM $SUBMISSIONS ")
+    if (excludeWorkflows) {
+      statement.append("SELECT $DATA #- '{$WORKFLOW}' FROM $SUBMISSIONS ")
+    } else {
+      statement.append("SELECT $DATA FROM $SUBMISSIONS ")
+    }
 
     val params = if (status != null) {
       statement.append("WHERE $DATA->'$STATUS'=$1 ")

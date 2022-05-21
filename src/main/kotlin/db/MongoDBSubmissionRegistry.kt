@@ -89,6 +89,8 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
           SEQUENCE to 0
       )
     }
+    private val SUBMISSION_EXCLUDES_WITH_WORKFLOW = SUBMISSION_EXCLUDES.copy()
+        .put(WORKFLOW, 0)
 
     /**
      * Fields to exclude when querying the `processChains` collection
@@ -196,7 +198,12 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   }
 
   override suspend fun findSubmissionsRaw(status: Submission.Status?, size: Int,
-      offset: Int, order: Int): Collection<JsonObject> {
+      offset: Int, order: Int, excludeWorkflows: Boolean): Collection<JsonObject> {
+    val excludes = if (excludeWorkflows) {
+      SUBMISSION_EXCLUDES_WITH_WORKFLOW
+    } else {
+      SUBMISSION_EXCLUDES
+    }
     val docs = collSubmissions.findAwait(JsonObject().also {
       if (status != null) {
         it.put(STATUS, status.toString())
@@ -205,7 +212,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       obj(
           SEQUENCE to order
       )
-    }, SUBMISSION_EXCLUDES)
+    }, excludes)
     docs.forEach { cleanSubmissionDocument(it) }
     return docs
   }

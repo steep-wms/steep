@@ -25,6 +25,7 @@ import io.mockk.slot
 import io.mockk.unmockkAll
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
+import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClient
 import io.vertx.ext.web.client.predicate.ResponsePredicate
@@ -324,10 +325,13 @@ class HttpEndpointTest {
     coEvery { metadataRegistry.findServices() } returns emptyList()
 
     val js1 = JsonUtils.toJson(s1)
+    js1.remove("workflow")
     val js2 = JsonUtils.toJson(s2)
+    js2.remove("workflow")
     val js3 = JsonUtils.toJson(s3)
+    js3.remove("workflow")
 
-    coEvery { submissionRegistry.findSubmissionsRaw(any(), any(), any(), any()) } returns
+    coEvery { submissionRegistry.findSubmissionsRaw(any(), any(), any(), any(), true) } returns
         listOf(js1, js2, js3)
     coEvery { submissionRegistry.countSubmissions() } returns 3
 
@@ -392,6 +396,7 @@ class HttpEndpointTest {
   fun getWorkflowsByStatus(vertx: Vertx, ctx: VertxTestContext) {
     val s3 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
     val js3 = JsonUtils.toJson(s3)
+    js3.remove("workflow")
 
     coEvery { submissionRegistry.countProcessChainsPerStatus(s3.id) } returns
         mapOf(ProcessChainStatus.SUCCESS to 1L)
@@ -399,7 +404,7 @@ class HttpEndpointTest {
     coEvery { metadataRegistry.findServices() } returns emptyList()
 
     coEvery { submissionRegistry.findSubmissionsRaw(Submission.Status.SUCCESS,
-        any(), any(), any()) } returns listOf(js3)
+        any(), any(), any(), true) } returns listOf(js3)
     coEvery { submissionRegistry.countSubmissions(Submission.Status.SUCCESS) } returns 1
 
     val client = WebClient.create(vertx)
@@ -499,20 +504,10 @@ class HttpEndpointTest {
         ExecuteAction(service = "a"),
         ForEachAction(actions = listOf(
             ExecuteAction(service = "b")
-        ), input = Variable(), enumerator = Variable())
-    )))
+        ), input = Variable(), enumerator = Variable()),
+    )), requiredCapabilities = setOf("cap1", "cap2", "cap3"))
     coEvery { submissionRegistry.countProcessChainsPerStatus(s1.id) } returns
         mapOf(ProcessChainStatus.REGISTERED to 1L)
-
-    coEvery { metadataRegistry.findServices() } returns listOf(
-        Service(id = "a", name = "name a", description = "", path = "",
-            runtime = "", parameters = emptyList(),
-            requiredCapabilities = setOf("cap1", "cap2")),
-        Service(id = "b", name = "name b", description = "", path = "",
-            runtime = "", parameters = emptyList(),
-            requiredCapabilities = setOf("cap1", "cap3"))
-    )
-
     coEvery { submissionRegistry.findSubmissionById(s1.id) } returns s1
 
     val client = WebClient.create(vertx)
@@ -757,6 +752,7 @@ class HttpEndpointTest {
           obj(
               "id" to s1.id,
               "status" to Submission.Status.RUNNING.toString(),
+              "requiredCapabilities" to array(),
               "runningProcessChains" to 1,
               "cancelledProcessChains" to 2,
               "succeededProcessChains" to 0,
@@ -784,6 +780,7 @@ class HttpEndpointTest {
           obj(
               "id" to s1.id,
               "status" to Submission.Status.RUNNING.toString(),
+              "requiredCapabilities" to array(),
               "runningProcessChains" to 1,
               "cancelledProcessChains" to 2,
               "succeededProcessChains" to 0,
@@ -886,7 +883,7 @@ class HttpEndpointTest {
   }
 
   private fun doPostWorkflow(vertx: Vertx, ctx: VertxTestContext, body: Buffer,
-      expectedWorkflow: Workflow) {
+      expectedWorkflow: Workflow, expectedRequiredCapabilities: List<String> = emptyList()) {
     val submissionSlot = slot<Submission>()
     coEvery { submissionRegistry.addSubmission(capture(submissionSlot)) } answers {
       ctx.verify {
@@ -910,7 +907,8 @@ class HttpEndpointTest {
           obj(
               "id" to submissionSlot.captured.id,
               "workflow" to JsonUtils.toJson(expectedWorkflow),
-              "status" to Submission.Status.ACCEPTED.toString()
+              "status" to Submission.Status.ACCEPTED.toString(),
+              "requiredCapabilities" to JsonArray(expectedRequiredCapabilities)
           )
         })
       }
@@ -924,6 +922,7 @@ class HttpEndpointTest {
    */
   @Test
   fun postWorkflow(vertx: Vertx, ctx: VertxTestContext) {
+    coEvery { metadataRegistry.findServices() } returns emptyList()
     val expected = Workflow()
     val buf = Buffer.buffer(JsonUtils.writeValueAsString(expected))
     doPostWorkflow(vertx, ctx, buf, expected)
@@ -934,9 +933,36 @@ class HttpEndpointTest {
    */
   @Test
   fun postWorkflowYaml(vertx: Vertx, ctx: VertxTestContext) {
+    coEvery { metadataRegistry.findServices() } returns emptyList()
     val expected = Workflow()
     val buf = Buffer.buffer(YamlUtils.mapper.writeValueAsString(expected))
     doPostWorkflow(vertx, ctx, buf, expected)
+  }
+
+  /**
+   * Test that required capabilities are calculated correctly when a
+   * submission is added to the
+   */
+  @Test
+  fun postWorkflowYamlRequiredCapabilities(vertx: Vertx, ctx: VertxTestContext) {
+    coEvery { metadataRegistry.findServices() } returns listOf(
+        Service(id = "a", name = "name a", description = "", path = "",
+            runtime = "", parameters = emptyList(),
+            requiredCapabilities = setOf("cap1", "cap2")),
+        Service(id = "b", name = "name b", description = "", path = "",
+            runtime = "", parameters = emptyList(),
+            requiredCapabilities = setOf("cap1", "cap3"))
+    )
+
+    val expected = Workflow(actions = listOf(
+        ExecuteAction(service = "a"),
+        ForEachAction(actions = listOf(
+            ExecuteAction(service = "b")
+        ), input = Variable(value = "foobar"), enumerator = Variable()),
+    ))
+
+    val buf = Buffer.buffer(YamlUtils.mapper.writeValueAsString(expected))
+    doPostWorkflow(vertx, ctx, buf, expected, listOf("cap1", "cap2", "cap3"))
   }
 
   /**
