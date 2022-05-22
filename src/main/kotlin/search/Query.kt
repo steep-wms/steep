@@ -4,11 +4,12 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 /**
- * A document type to search for
+ * An object type to search for and its [priority] in the search results.
+ * Objects will be sorted by priority in ascending order.
  */
-enum class Type {
-  PROCESS_CHAIN,
-  WORKFLOW
+enum class Type(val priority: Int) {
+  WORKFLOW(0),
+  PROCESS_CHAIN(1)
 }
 
 /**

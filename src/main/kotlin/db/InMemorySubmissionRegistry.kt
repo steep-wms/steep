@@ -12,6 +12,8 @@ import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitResult
 import model.Submission
 import model.processchain.ProcessChain
+import search.Query
+import search.SearchResult
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -596,4 +598,9 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
 
   override suspend fun getProcessChainErrorMessage(processChainId: String): String? =
       getProcessChainEntryById(processChainId).errorMessage
+
+  override suspend fun search(query: Query, size: Int, offset: Int,
+      order: Int): Collection<SearchResult> {
+    TODO("Not yet implemented")
+  }
 }

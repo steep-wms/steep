@@ -16,6 +16,12 @@ import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.Tuple
 import model.Submission
 import model.processchain.ProcessChain
+import search.Locator
+import search.Query
+import search.SearchResult
+import search.StringTerm
+import search.Term
+import search.Type
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
@@ -48,6 +54,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     private const val PRIORITY = "priority"
     private const val EXECUTABLES = "executables"
     private const val WORKFLOW = "workflow"
+    private const val NAME = "name"
   }
 
   /**
@@ -586,4 +593,157 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
   override suspend fun getProcessChainErrorMessage(processChainId: String): String? =
       getProcessChainColumn(processChainId, ERROR_MESSAGE) { it.getString(0) }
+
+  /**
+   * Escape a string so it can be used in a LIKE expression
+   */
+  private fun escapeLikeExpression(expr: String): String {
+    return expr.replace("\\", "\\\\").replace("_", "\\_").replace("%", "\\%")
+  }
+
+  /**
+   * Create a LIKE expression that compares [field] to a given [value]. Replaces
+   * [value] with a placeholder and puts the placeholder with its position into
+   * [params].
+   */
+  private fun makeLike(field: String, value: String, params: MutableMap<String, Int>): String {
+    val like = "%${escapeLikeExpression(value)}%"
+    val pos = params.computeIfAbsent(like) { params.size + 1 }
+    return "($field)::text LIKE $$pos"
+  }
+
+  /**
+   * Converts a locator to a column name or JSONB property name
+   */
+  private fun locatorToField(locator: Locator) = when (locator) {
+    Locator.ERROR_MESSAGE -> ERROR_MESSAGE
+    Locator.ID -> ID
+    Locator.NAME -> "$DATA->'$NAME'"
+    Locator.REQUIRED_CAPABILITIES -> "$DATA->'$REQUIRED_CAPABILITIES'"
+  }
+
+  /**
+   * Converts a locator to a property name in a [SearchResult] object
+   */
+  private fun locatorToResultName(locator: Locator) = when (locator) {
+    Locator.ERROR_MESSAGE -> "errorMessage"
+    Locator.ID -> "id"
+    Locator.NAME -> "name"
+    Locator.REQUIRED_CAPABILITIES -> "requiredCapabilities"
+  }
+
+  /**
+   * Creates an SQL WHERE expression from a [locator] and a [term]. Fills
+   * [params] with placeholders.
+   */
+  private fun makeFilter(locator: Locator, term: Term, params: MutableMap<String, Int>): String? {
+    return when (locator) {
+      Locator.ERROR_MESSAGE, Locator.ID, Locator.NAME /* submission only! */ -> {
+        when (term) {
+          is StringTerm -> makeLike(locatorToField(locator), term.value, params)
+          else -> null
+        }
+      }
+
+      Locator.REQUIRED_CAPABILITIES -> {
+        when (term) {
+          is StringTerm -> "EXISTS (SELECT FROM " +
+              "jsonb_array_elements_text(${locatorToField(locator)}) rc " +
+              "WHERE ${makeLike("rc", term.value, params)})"
+          else -> null
+        }
+      }
+    }
+  }
+
+  override suspend fun search(query: Query, size: Int, offset: Int,
+      order: Int): Collection<SearchResult> {
+    val asc = if (order >= 0) "ASC" else "DESC"
+    val desc = if (order >= 0) "DESC" else "ASC"
+    val limit = if (size < 0) "ALL" else size.toString()
+
+    // search in all places by default
+    val types = query.types.ifEmpty { Type.values().toSet() }
+    val locators = if (query.terms.isNotEmpty()) {
+      query.locators.ifEmpty { Locator.values().toSet() }
+    } else {
+      emptyList()
+    }
+
+    // make WHERE expressions for all combinations of terms and locators
+    val params = mutableMapOf<String, Int>()
+    val filters = mutableSetOf<String>()
+    for (term in query.terms) {
+      for (locator in locators) {
+        makeFilter(locator, term, params)?.let { filters.add(it) }
+      }
+    }
+
+    // make WHERE expressions for all filters
+    for (f in query.filters) {
+      makeFilter(f.first, f.second, params)?.let { filters.add(it) }
+    }
+
+    // determine which columns we need to return (always include ID)
+    val columns = mutableSetOf<String>(ID)
+    locators.mapTo(columns) {
+      "${locatorToField(it)} AS \"${locatorToResultName(it)}\""
+    }
+    query.filters.mapTo(columns) {
+      "${locatorToField(it.first)} AS \"${locatorToResultName(it.first)}\""
+    }
+
+    // return everything if query is empty
+    if (filters.isEmpty()) {
+      filters.add("true")
+    }
+
+    // create SELECT statements for all types
+    val statements = mutableSetOf<String>()
+    for (type in types) {
+      val table = when (type) {
+        Type.PROCESS_CHAIN -> PROCESS_CHAINS
+        Type.WORKFLOW -> SUBMISSIONS
+      }
+
+      // Add column that specifies how many WHERE expressions have matched.
+      // For each filter, add a 1 if it matched or a 0 if it didn't
+      val rank = filters.joinToString(
+          separator = "+",
+          transform = { "COALESCE(($it)::int,0)" }
+      )
+      statements.add(
+          "(SELECT " +
+              "${columns.joinToString(",")}," +
+              "(${rank}) AS rank," +
+              "${type.priority} AS typepriority," +
+              "'${type.name}' AS type " +
+              "FROM $table WHERE ${filters.joinToString(" OR ")} " +
+              "ORDER BY $SERIAL $asc" +
+          ")"
+      )
+    }
+
+    // We must have at least two SELECT statements. Otherwise, we'll get a
+    // syntax error
+    if (statements.size == 1) {
+      // Add a statement that never returns anything. Must have the same
+      // columns as a real statement.
+      statements.add("SELECT ${columns.joinToString(",")},0 AS rank," +
+          "0 AS typepriority,NULL AS type FROM $SUBMISSIONS WHERE FALSE")
+    }
+
+    // join all statements into one big statement
+    val statement = "(${statements.joinToString(" UNION ALL ")}) " +
+        "ORDER BY rank $desc,typepriority $asc LIMIT $limit OFFSET $offset"
+
+    val rs = client.preparedQuery(statement).execute(Tuple.from(params.keys.toList())).await()
+    return rs.map { row ->
+      val obj = row.toJson()
+      // remove auxiliary columns
+      obj.remove("rank")
+      obj.remove("typepriority")
+      JsonUtils.fromJson(obj)
+    }
+  }
 }

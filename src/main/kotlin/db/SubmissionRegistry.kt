@@ -3,6 +3,8 @@ package db
 import io.vertx.core.json.JsonObject
 import model.Submission
 import model.processchain.ProcessChain
+import search.Query
+import search.SearchResult
 import java.time.Instant
 
 /**
@@ -454,4 +456,12 @@ interface SubmissionRegistry : Registry {
    * @throws NoSuchElementException if the process chain does not exist
    */
   suspend fun getProcessChainErrorMessage(processChainId: String): String?
+
+  /**
+   * Searches the registry to find objects that match the given [query].
+   * A maximum number of [size] objects beginning from [offset] will be
+   * returned in ascending or descending [order].
+   */
+  suspend fun search(query: Query, size: Int = -1, offset: Int = 0,
+      order: Int = 1): Collection<SearchResult>
 }
