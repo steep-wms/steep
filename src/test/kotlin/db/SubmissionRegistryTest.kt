@@ -181,9 +181,11 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  fun findSubmissionsWithoutWorkflow(vertx: Vertx, ctx: VertxTestContext) {
-    val s1 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
-    val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
+  fun findSubmissionsExcludes(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING,
+        source = "foobar")
+    val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS,
+        source = "something else")
     val s3 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
 
     CoroutineScope(vertx.dispatcher()).launch {
@@ -197,20 +199,50 @@ abstract class SubmissionRegistryTest {
       val r1 = submissionRegistry.findSubmissionsRaw()
       ctx.verify {
         assertThat(r1).allMatch { it.containsKey("workflow") }
+        assertThat(r1).anyMatch { it.containsKey("source") }
         assertThat(r1).isEqualTo(listOf(js1, js2, js3))
       }
 
-      val js1Without = js1.copy()
-      js1Without.remove("workflow")
-      val js2Without = js2.copy()
-      js2Without.remove("workflow")
-      val js3Without = js3.copy()
-      js3Without.remove("workflow")
+      val js1WithoutWorkflow = js1.copy()
+      js1WithoutWorkflow.remove("workflow")
+      val js2WithoutWorkflow = js2.copy()
+      js2WithoutWorkflow.remove("workflow")
+      val js3WithoutWorkflow = js3.copy()
+      js3WithoutWorkflow.remove("workflow")
 
       val r2 = submissionRegistry.findSubmissionsRaw(excludeWorkflows = true)
       ctx.verify {
         assertThat(r2).noneMatch { it.containsKey("workflow") }
-        assertThat(r2).isEqualTo(listOf(js1Without, js2Without, js3Without))
+        assertThat(r2).anyMatch { it.containsKey("source") }
+        assertThat(r2).isEqualTo(listOf(js1WithoutWorkflow, js2WithoutWorkflow, js3WithoutWorkflow))
+      }
+
+      val js1WithoutSource = js1.copy()
+      js1WithoutSource.remove("source")
+      val js2WithoutSource = js2.copy()
+      js2WithoutSource.remove("source")
+      val js3WithoutSource = js3.copy()
+      js3WithoutSource.remove("source")
+
+      val r3 = submissionRegistry.findSubmissionsRaw(excludeSources = true)
+      ctx.verify {
+        assertThat(r3).allMatch { it.containsKey("workflow") }
+        assertThat(r3).noneMatch { it.containsKey("source") }
+        assertThat(r3).isEqualTo(listOf(js1WithoutSource, js2WithoutSource, js3WithoutSource))
+      }
+
+      val js1WithoutBoth = js1WithoutWorkflow.copy()
+      js1WithoutBoth.remove("source")
+      val js2WithoutBoth = js2WithoutWorkflow.copy()
+      js2WithoutBoth.remove("source")
+      val js3WithoutBoth = js3WithoutWorkflow.copy()
+      js3WithoutBoth.remove("source")
+
+      val r4 = submissionRegistry.findSubmissionsRaw(excludeWorkflows = true, excludeSources = true)
+      ctx.verify {
+        assertThat(r4).noneMatch { it.containsKey("workflow") }
+        assertThat(r4).noneMatch { it.containsKey("source") }
+        assertThat(r4).isEqualTo(listOf(js1WithoutBoth, js2WithoutBoth, js3WithoutBoth))
       }
 
       ctx.completeNow()

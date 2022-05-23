@@ -959,7 +959,7 @@ class HttpEndpoint : CoroutineVerticle() {
 
         val total = submissionRegistry.countSubmissions(status)
         val submissions = submissionRegistry.findSubmissionsRaw(status, size,
-            offset, -1, excludeWorkflows = true)
+            offset, -1, excludeWorkflows = true, excludeSources = true)
         submissions.forEach { amendSubmission(it) }
 
         val encodedJson = JsonUtils.mapper.writeValueAsString(submissions)
@@ -1108,13 +1108,15 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onPostWorkflow(ctx: RoutingContext) {
     // parse workflow
-    val workflowJson: Map<String, Any> = try {
-      val str = ctx.body().asString().trim()
-      if (str[0] == '{') {
+    val (workflowJson, source) = try {
+      val str = ctx.body().asString()
+      val first = str.indexOfFirst { !it.isWhitespace() }
+      val json: Map<String, Any> = if (str[first] == '{') {
         JsonUtils.readValue(str)
       } else {
         YamlUtils.readValue(str)
       }
+      json to str
     } catch (e: Exception) {
       renderError(ctx, 400, "Invalid workflow JSON: " + e.message)
       return
@@ -1175,7 +1177,8 @@ class HttpEndpoint : CoroutineVerticle() {
     launch {
       val reqCaps = Submission.collectRequiredCapabilities(workflow,
           metadataRegistry.findServices())
-      val submission = Submission(workflow = workflow, requiredCapabilities = reqCaps)
+      val submission = Submission(workflow = workflow,
+          requiredCapabilities = reqCaps, source = source)
 
       try {
         submissionRegistry.addSubmission(submission)

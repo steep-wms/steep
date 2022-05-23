@@ -300,7 +300,7 @@ class HttpEndpointTest {
    */
   @Test
   fun getWorkflows(vertx: Vertx, ctx: VertxTestContext) {
-    val s1 = Submission(workflow = Workflow())
+    val s1 = Submission(workflow = Workflow(), source = "actions: []")
     coEvery { submissionRegistry.countProcessChainsPerStatus(s1.id) } returns mapOf(
         ProcessChainStatus.REGISTERED to 1L,
         ProcessChainStatus.RUNNING to 2L,
@@ -309,7 +309,7 @@ class HttpEndpointTest {
         ProcessChainStatus.SUCCESS to 5L
     )
 
-    val s2 = Submission(workflow = Workflow())
+    val s2 = Submission(workflow = Workflow(), source = "actions: []")
     coEvery { submissionRegistry.countProcessChainsPerStatus(s2.id) } returns mapOf(
         ProcessChainStatus.REGISTERED to 11L,
         ProcessChainStatus.RUNNING to 12L,
@@ -326,13 +326,16 @@ class HttpEndpointTest {
 
     val js1 = JsonUtils.toJson(s1)
     js1.remove("workflow")
+    js1.remove("source")
     val js2 = JsonUtils.toJson(s2)
     js2.remove("workflow")
+    js2.remove("source")
     val js3 = JsonUtils.toJson(s3)
     js3.remove("workflow")
+    js3.remove("source")
 
-    coEvery { submissionRegistry.findSubmissionsRaw(any(), any(), any(), any(), true) } returns
-        listOf(js1, js2, js3)
+    coEvery { submissionRegistry.findSubmissionsRaw(any(), any(), any(), any(),
+        excludeWorkflows = true, excludeSources = true) } returns listOf(js1, js2, js3)
     coEvery { submissionRegistry.countSubmissions() } returns 3
 
     val client = WebClient.create(vertx)
@@ -394,9 +397,11 @@ class HttpEndpointTest {
    */
   @Test
   fun getWorkflowsByStatus(vertx: Vertx, ctx: VertxTestContext) {
-    val s3 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
+    val s3 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS,
+        source = "actions: []")
     val js3 = JsonUtils.toJson(s3)
     js3.remove("workflow")
+    js3.remove("source")
 
     coEvery { submissionRegistry.countProcessChainsPerStatus(s3.id) } returns
         mapOf(ProcessChainStatus.SUCCESS to 1L)
@@ -404,7 +409,7 @@ class HttpEndpointTest {
     coEvery { metadataRegistry.findServices() } returns emptyList()
 
     coEvery { submissionRegistry.findSubmissionsRaw(Submission.Status.SUCCESS,
-        any(), any(), any(), true) } returns listOf(js3)
+        any(), any(), any(), excludeWorkflows = true, excludeSources = true) } returns listOf(js3)
     coEvery { submissionRegistry.countSubmissions(Submission.Status.SUCCESS) } returns 1
 
     val client = WebClient.create(vertx)
@@ -445,7 +450,8 @@ class HttpEndpointTest {
    */
   @Test
   fun getWorkflowById(vertx: Vertx, ctx: VertxTestContext) {
-    val s1 = Submission(workflow = Workflow(priority = -10))
+    val source = "actions: []"
+    val s1 = Submission(workflow = Workflow(priority = -10), source = source)
     coEvery { submissionRegistry.countProcessChainsPerStatus(s1.id) } returns mapOf(
         ProcessChainStatus.REGISTERED to 1L,
         ProcessChainStatus.RUNNING to 2L,
@@ -486,7 +492,8 @@ class HttpEndpointTest {
                 "failedProcessChains" to 4,
                 "succeededProcessChains" to 5,
                 "totalProcessChains" to 15,
-                "requiredCapabilities" to array()
+                "requiredCapabilities" to array(),
+                "source" to source
             )
         })
       }
@@ -636,7 +643,9 @@ class HttpEndpointTest {
    */
   @Test
   fun putWorkflowById(vertx: Vertx, ctx: VertxTestContext) {
-    val s1 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
+    val source = "actions: []"
+    val s1 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING,
+        source = source)
 
     coEvery { submissionRegistry.findSubmissionById(s1.id) } returns s1
     coEvery { submissionRegistry.findSubmissionById("UNKNOWN") } returns null
@@ -753,6 +762,7 @@ class HttpEndpointTest {
               "id" to s1.id,
               "status" to Submission.Status.RUNNING.toString(),
               "requiredCapabilities" to array(),
+              "source" to source,
               "runningProcessChains" to 1,
               "cancelledProcessChains" to 2,
               "succeededProcessChains" to 0,
@@ -781,6 +791,7 @@ class HttpEndpointTest {
               "id" to s1.id,
               "status" to Submission.Status.RUNNING.toString(),
               "requiredCapabilities" to array(),
+              "source" to source,
               "runningProcessChains" to 1,
               "cancelledProcessChains" to 2,
               "succeededProcessChains" to 0,
@@ -908,7 +919,8 @@ class HttpEndpointTest {
               "id" to submissionSlot.captured.id,
               "workflow" to JsonUtils.toJson(expectedWorkflow),
               "status" to Submission.Status.ACCEPTED.toString(),
-              "requiredCapabilities" to JsonArray(expectedRequiredCapabilities)
+              "requiredCapabilities" to JsonArray(expectedRequiredCapabilities),
+              "source" to body.toString()
           )
         })
       }

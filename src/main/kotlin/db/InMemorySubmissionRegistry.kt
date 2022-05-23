@@ -101,7 +101,8 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   }
 
   override suspend fun findSubmissionsRaw(status: Submission.Status?, size: Int,
-      offset: Int, order: Int, excludeWorkflows: Boolean): List<JsonObject> {
+      offset: Int, order: Int, excludeWorkflows: Boolean,
+      excludeSources: Boolean): List<JsonObject> {
     val map = submissions.await()
     val values = awaitResult<List<String>> { map.values(it) }
     return values
@@ -115,6 +116,9 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
           val r = JsonUtils.toJson(entry.submission)
           if (excludeWorkflows) {
             r.remove("workflow")
+          }
+          if (excludeSources) {
+            r.remove("source")
           }
           r
         }

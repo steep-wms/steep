@@ -81,6 +81,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     private const val SEQUENCE = "sequence"
     private const val PRIORITY = "priority"
     private const val WORKFLOW = "workflow"
+    private const val SOURCE = "source"
 
     /**
      * Fields to exclude when querying the `submissions` collection
@@ -93,6 +94,11 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     }
     private val SUBMISSION_EXCLUDES_WITH_WORKFLOW = SUBMISSION_EXCLUDES.copy()
         .put(WORKFLOW, 0)
+    private val SUBMISSION_EXCLUDES_WITH_SOURCE = SUBMISSION_EXCLUDES.copy()
+        .put(SOURCE, 0)
+    private val SUBMISSION_EXCLUDES_WITH_WORKFLOW_AND_SOURCE = SUBMISSION_EXCLUDES.copy()
+        .put(WORKFLOW, 0)
+        .put(SOURCE, 0)
 
     /**
      * Fields to exclude when querying the `processChains` collection
@@ -200,9 +206,14 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   }
 
   override suspend fun findSubmissionsRaw(status: Submission.Status?, size: Int,
-      offset: Int, order: Int, excludeWorkflows: Boolean): Collection<JsonObject> {
-    val excludes = if (excludeWorkflows) {
+      offset: Int, order: Int, excludeWorkflows: Boolean,
+      excludeSources: Boolean): Collection<JsonObject> {
+    val excludes = if (excludeWorkflows && excludeSources) {
+      SUBMISSION_EXCLUDES_WITH_WORKFLOW_AND_SOURCE
+    } else if (excludeWorkflows) {
       SUBMISSION_EXCLUDES_WITH_WORKFLOW
+    } else if (excludeSources) {
+      SUBMISSION_EXCLUDES_WITH_SOURCE
     } else {
       SUBMISSION_EXCLUDES
     }

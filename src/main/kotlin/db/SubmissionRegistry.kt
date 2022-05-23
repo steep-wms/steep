@@ -58,10 +58,13 @@ interface SubmissionRegistry : Registry {
    * ascending order, negative otherwise
    * @param excludeWorkflows `true` if all workflows should be excluded from
    * the result
+   * @param excludeSources `true` if the all workflow sources should be excluded
+   * from the result
    * @return all submissions
    */
   suspend fun findSubmissionsRaw(status: Submission.Status? = null, size: Int = -1,
-      offset: Int = 0, order: Int = 1, excludeWorkflows: Boolean = false): Collection<JsonObject>
+      offset: Int = 0, order: Int = 1, excludeWorkflows: Boolean = false,
+      excludeSources: Boolean = false): Collection<JsonObject>
 
   /**
    * Get a single submission from the registry

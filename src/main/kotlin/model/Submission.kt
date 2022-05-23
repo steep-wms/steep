@@ -23,6 +23,9 @@ import java.time.Instant
  * @param status the current execution status
  * @param requiredCapabilities a set of strings specifying capabilities a host
  * system must provide to be able to execute the workflow
+ * @param source the original, unaltered workflow source as it was submitted
+ * through Steep's HTTP endpoint (may be `null` if the workflow was not
+ * submitted through the HTTP endpoint or if the source is unavailable)
  * @author Michel Kraemer
  */
 data class Submission(
@@ -34,7 +37,8 @@ data class Submission(
     val startTime: Instant? = null,
     val endTime: Instant? = null,
     val status: Status = Status.ACCEPTED,
-    val requiredCapabilities: Set<String> = emptySet()
+    val requiredCapabilities: Set<String> = emptySet(),
+    val source: String? = null
 ) {
   enum class Status {
     ACCEPTED,

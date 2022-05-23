@@ -55,6 +55,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     private const val EXECUTABLES = "executables"
     private const val WORKFLOW = "workflow"
     private const val NAME = "name"
+    private const val SOURCE = "source"
   }
 
   /**
@@ -79,16 +80,22 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun findSubmissionsRaw(status: Submission.Status?, size: Int,
-      offset: Int, order: Int, excludeWorkflows: Boolean): Collection<JsonObject> {
+      offset: Int, order: Int, excludeWorkflows: Boolean,
+      excludeSources: Boolean): Collection<JsonObject> {
     val asc = if (order >= 0) "ASC" else "DESC"
     val limit = if (size < 0) "ALL" else size.toString()
 
-    val statement = StringBuilder()
+    val excludesList = mutableListOf<String>()
     if (excludeWorkflows) {
-      statement.append("SELECT $DATA #- '{$WORKFLOW}' FROM $SUBMISSIONS ")
-    } else {
-      statement.append("SELECT $DATA FROM $SUBMISSIONS ")
+      excludesList.add(WORKFLOW)
     }
+    if (excludeSources) {
+      excludesList.add(SOURCE)
+    }
+    val excludes = excludesList.joinToString(" ", transform = {" #- '{$it}'"})
+
+    val statement = StringBuilder()
+    statement.append("SELECT $DATA$excludes FROM $SUBMISSIONS ")
 
     val params = if (status != null) {
       statement.append("WHERE $DATA->'$STATUS'=$1 ")
@@ -685,7 +692,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
 
     // determine which columns we need to return (always include ID)
-    val columns = mutableSetOf<String>(ID)
+    val columns = mutableSetOf(ID)
     locators.mapTo(columns) {
       "${locatorToField(it)} AS \"${locatorToResultName(it)}\""
     }
