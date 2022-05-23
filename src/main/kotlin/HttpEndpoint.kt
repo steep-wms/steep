@@ -1436,6 +1436,7 @@ class HttpEndpoint : CoroutineVerticle() {
             currentStatus != SubmissionRegistry.ProcessChainStatus.RUNNING) {
           // 422 Unprocessable Entity
           renderError(ctx, 422, "Cannot change priority of a finished process chain")
+          return@launch
         }
 
         if (status == SubmissionRegistry.ProcessChainStatus.CANCELLED) {
