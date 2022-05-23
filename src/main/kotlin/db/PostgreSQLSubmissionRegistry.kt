@@ -727,7 +727,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
               "${columns.joinToString(",")}," +
               "(${rank}) AS rank," +
               "${type.priority} AS typepriority," +
-              "'${type.name}' AS type " +
+              "'${type.type}' AS type " +
               "FROM $table WHERE ${filters.joinToString(" OR ")} " +
               "ORDER BY $SERIAL $asc" +
           ")"

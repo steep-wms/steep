@@ -1,5 +1,6 @@
 package search
 
+import com.fasterxml.jackson.annotation.JsonValue
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -7,20 +8,20 @@ import java.time.LocalDateTime
  * An object type to search for and its [priority] in the search results.
  * Objects will be sorted by priority in ascending order.
  */
-enum class Type(val priority: Int) {
-  WORKFLOW(0),
-  PROCESS_CHAIN(1)
+enum class Type(val priority: Int, @JsonValue val type: String) {
+  WORKFLOW(0, "workflow"),
+  PROCESS_CHAIN(1, "processChain")
 }
 
 /**
  * A location that should be searched
  */
-enum class Locator {
-  ERROR_MESSAGE,
-  ID,
-  NAME,
-  REQUIRED_CAPABILITIES,
-  SOURCE
+enum class Locator(@JsonValue val propertyName: String) {
+  ERROR_MESSAGE("errorMessage"),
+  ID("id"),
+  NAME("name"),
+  REQUIRED_CAPABILITIES("requiredCapabilities"),
+  SOURCE("source")
 }
 
 /**
