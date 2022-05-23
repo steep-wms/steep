@@ -72,12 +72,13 @@ class QueryCompilerTest {
         )
     ))
 
-    val q3 = QueryCompiler.compile("in:\"errormessage\" in:requiredcapability")
+    val q3 = QueryCompiler.compile("in:\"errormessage\" in:requiredcapability in:source")
     assertThat(q3).isEqualTo(Query(
         terms = emptySet(),
         locators = setOf(
             Locator.ERROR_MESSAGE,
-            Locator.REQUIRED_CAPABILITIES
+            Locator.REQUIRED_CAPABILITIES,
+            Locator.SOURCE
         )
     ))
   }

@@ -627,6 +627,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     Locator.ID -> ID
     Locator.NAME -> "$DATA->'$NAME'"
     Locator.REQUIRED_CAPABILITIES -> "$DATA->'$REQUIRED_CAPABILITIES'"
+    Locator.SOURCE -> "$DATA->'$SOURCE'"
   }
 
   /**
@@ -637,6 +638,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     Locator.ID -> "id"
     Locator.NAME -> "name"
     Locator.REQUIRED_CAPABILITIES -> "requiredCapabilities"
+    Locator.SOURCE -> "source"
   }
 
   /**
@@ -645,7 +647,8 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
    */
   private fun makeFilter(locator: Locator, term: Term, params: MutableMap<String, Int>): String? {
     return when (locator) {
-      Locator.ERROR_MESSAGE, Locator.ID, Locator.NAME /* submission only! */ -> {
+      Locator.ERROR_MESSAGE, Locator.ID, Locator.NAME /* submission only! */,
+      Locator.SOURCE /* submission only! */ -> {
         when (term) {
           is StringTerm -> makeLike(locatorToField(locator), term.value, params)
           else -> null

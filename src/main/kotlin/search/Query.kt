@@ -19,7 +19,8 @@ enum class Locator {
   ERROR_MESSAGE,
   ID,
   NAME,
-  REQUIRED_CAPABILITIES
+  REQUIRED_CAPABILITIES,
+  SOURCE
 }
 
 /**

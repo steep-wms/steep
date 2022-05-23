@@ -63,7 +63,8 @@ object QueryCompiler {
       "rc", "cap", "reqcap", "capability", "requiredcapability",
       "rcs", "caps", "reqcaps", "capabilities", "requiredcapabilities"
   )
-  private val ALL_ATTRIBUTES = listOf(ID, NAME) + ERROR + RCS
+  private val SOURCE = "source"
+  private val ALL_ATTRIBUTES = listOf(ID, NAME) + ERROR + RCS + listOf(SOURCE)
 
   // types
   private const val WORKFLOW = "workflow"
@@ -143,6 +144,7 @@ object QueryCompiler {
       NAME -> Locator.NAME
       in ERROR -> Locator.ERROR_MESSAGE
       in RCS -> Locator.REQUIRED_CAPABILITIES
+      in SOURCE -> Locator.SOURCE
       else -> throw IllegalStateException()
     }
   }

@@ -2242,7 +2242,8 @@ abstract class SubmissionRegistryTest {
   open fun searchTermsOnly(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
       val s = Submission(workflow = Workflow(name = "Elvis"),
-          requiredCapabilities = setOf("docker", "sleep"))
+          requiredCapabilities = setOf("docker", "sleep"),
+          source = "actions: []")
       val pc = ProcessChain(requiredCapabilities = setOf("foo", "bar"))
 
       val s2 = Submission(workflow = Workflow(name = "Should never match"),
@@ -2269,6 +2270,7 @@ abstract class SubmissionRegistryTest {
           assertThat(results[0].requiredCapabilities).isEqualTo(s.requiredCapabilities)
           assertThat(results[0].errorMessage).isEqualTo(expectedSubmissionError)
           assertThat(results[0].type).isEqualTo(Type.WORKFLOW)
+          assertThat(results[0].source).isEqualTo(s.source)
         }
 
         submissionRegistry.search(QueryCompiler.compile("foo bar")).toList().let { results ->
@@ -2278,6 +2280,7 @@ abstract class SubmissionRegistryTest {
           assertThat(results[0].requiredCapabilities).isEqualTo(pc.requiredCapabilities)
           assertThat(results[0].errorMessage).isEqualTo(expectedProcessChainError)
           assertThat(results[0].type).isEqualTo(Type.PROCESS_CHAIN)
+          assertThat(results[0].source).isNull()
         }
 
         submissionRegistry.search(QueryCompiler.compile("Elvis")).toList().let { results ->
@@ -2299,6 +2302,11 @@ abstract class SubmissionRegistryTest {
           assertThat(results).hasSize(2)
           assertThat(results[0].id).isEqualTo(s.id)
           assertThat(results[1].id).isEqualTo(pc.id)
+        }
+
+        submissionRegistry.search(QueryCompiler.compile("actions")).toList().let { results ->
+          assertThat(results).hasSize(1)
+          assertThat(results[0].id).isEqualTo(s.id)
         }
       }
 
@@ -2338,6 +2346,7 @@ abstract class SubmissionRegistryTest {
           assertThat(results[0].errorMessage).isNull()
           assertThat(results[0].name).isNull()
           assertThat(results[0].requiredCapabilities).isEqualTo(setOf("docker", "sleep"))
+          assertThat(results[0].source).isNull()
         }
 
         submissionRegistry.search(QueryCompiler.compile("ocke in:name")).toList().let { results ->
@@ -2352,6 +2361,7 @@ abstract class SubmissionRegistryTest {
           assertThat(results[0].errorMessage).isNull()
           assertThat(results[0].name).isEqualTo(s.name)
           assertThat(results[0].requiredCapabilities).isNull()
+          assertThat(results[0].source).isNull()
         }
 
         submissionRegistry.search(QueryCompiler.compile("docker in:error")).toList().let { results ->
