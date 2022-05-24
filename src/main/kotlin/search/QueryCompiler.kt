@@ -48,6 +48,7 @@ import java.time.LocalDateTime
  * * `error`, `errormessage`
  * * `rc`, `cap`, `reqcap`, `capability`, `requiredcapability`,
  *   `rcs`, `caps`, `reqcaps`, `capabilities`, `requiredcapabilities`
+ * * `source`
  *
  * @author Michel Kraemer
  */

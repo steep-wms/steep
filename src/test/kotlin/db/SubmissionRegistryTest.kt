@@ -2345,7 +2345,7 @@ abstract class SubmissionRegistryTest {
           assertThat(results[0].type).isEqualTo(Type.WORKFLOW)
           assertThat(results[0].errorMessage).isNull()
           assertThat(results[0].name).isNull()
-          assertThat(results[0].requiredCapabilities).isEqualTo(setOf("docker", "sleep"))
+          assertThat(results[0].requiredCapabilities).isEqualTo(s.requiredCapabilities)
           assertThat(results[0].source).isNull()
         }
 
@@ -2360,7 +2360,7 @@ abstract class SubmissionRegistryTest {
           assertThat(results[0].type).isEqualTo(Type.WORKFLOW)
           assertThat(results[0].errorMessage).isNull()
           assertThat(results[0].name).isEqualTo(s.name)
-          assertThat(results[0].requiredCapabilities).isNull()
+          assertThat(results[0].requiredCapabilities).isEqualTo(s.requiredCapabilities)
           assertThat(results[0].source).isNull()
         }
 
@@ -2415,7 +2415,7 @@ abstract class SubmissionRegistryTest {
           assertThat(results[0].type).isEqualTo(Type.WORKFLOW)
           assertThat(results[0].errorMessage).isNull()
           assertThat(results[0].name).isNull()
-          assertThat(results[0].requiredCapabilities).isEqualTo(setOf("docker", "sleep"))
+          assertThat(results[0].requiredCapabilities).isEqualTo(s.requiredCapabilities)
         }
 
         submissionRegistry.search(QueryCompiler.compile("name:ocke")).toList().let { results ->
@@ -2428,7 +2428,7 @@ abstract class SubmissionRegistryTest {
           assertThat(results[0].type).isEqualTo(Type.WORKFLOW)
           assertThat(results[0].errorMessage).isNull()
           assertThat(results[0].name).isEqualTo(s.name)
-          assertThat(results[0].requiredCapabilities).isNull()
+          assertThat(results[0].requiredCapabilities).isEqualTo(s.requiredCapabilities)
         }
 
         submissionRegistry.search(QueryCompiler.compile("error:docker")).toList().let { results ->

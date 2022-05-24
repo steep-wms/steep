@@ -31,7 +31,7 @@ data class SearchResult(
     /**
      * The required capabilities specified by the object
      */
-    val requiredCapabilities: Set<String>? = null,
+    val requiredCapabilities: Set<String> = emptySet(),
 
     /**
      * The objects original source

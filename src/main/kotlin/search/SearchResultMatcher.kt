@@ -223,11 +223,9 @@ object SearchResultMatcher {
       makeMatch(result.errorMessage, Locator.ERROR_MESSAGE, filters, matches,
           maxFragmentLength)
     }
-    if (result.requiredCapabilities != null) {
-      for (rc in result.requiredCapabilities) {
-        makeMatch(rc, Locator.REQUIRED_CAPABILITIES, filters, matches,
-            maxFragmentLength)
-      }
+    for (rc in result.requiredCapabilities) {
+      makeMatch(rc, Locator.REQUIRED_CAPABILITIES, filters, matches,
+          maxFragmentLength)
     }
     if (result.source != null) {
       makeMatch(result.source, Locator.SOURCE, filters, matches,

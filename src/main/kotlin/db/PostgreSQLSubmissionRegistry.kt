@@ -694,8 +694,13 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       makeFilter(f.first, f.second, params)?.let { filters.add(it) }
     }
 
-    // determine which columns we need to return (always include ID)
-    val columns = mutableSetOf(ID)
+    // determine which columns we need to return (always include ID and
+    // required capabilities)
+    val columns = mutableSetOf(
+        ID,
+        "${locatorToField(Locator.REQUIRED_CAPABILITIES)} AS " +
+            "\"${locatorToResultName(Locator.REQUIRED_CAPABILITIES)}\""
+    )
     locators.mapTo(columns) {
       "${locatorToField(it)} AS \"${locatorToResultName(it)}\""
     }
