@@ -1,6 +1,13 @@
 @import "css/variables";
 
 .list-page {
+  .list-container.loading {
+    // This should be large enough to contain 10 list rows. It is used to
+    // allow the browser to restore the scroll position when the user
+    // navigates back.
+    min-height: 100rem;
+  }
+
   .pagination {
     display: flex;
     justify-content: center;

@@ -80,7 +80,7 @@ function List({ Context, ListItem, subjects, path, pagination, pageSize,
     listItems = workflows.items.map(i => <ListItem key={i.id} item={i} />)
   }
 
-  return (<>
+  return (<div className={classNames("list-container", { loading: listItems === undefined })}>
     {listItems}
     {listItems && listItems.length === 0 && <>There are no {subjects}.</>}
     {error}
@@ -88,10 +88,10 @@ function List({ Context, ListItem, subjects, path, pagination, pageSize,
       <div className="pagination">
         <Pagination pageSize={pageSize} pageOffset={pageOffset}
           pageTotal={pageTotal + workflows.added} onChangeOffset={reset} />
-        <style jsx>{styles}</style>
       </div>
     )}
-  </>)
+    <style jsx>{styles}</style>
+  </div>)
 }
 
 const ListPage = (props) => {

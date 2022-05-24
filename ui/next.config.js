@@ -36,7 +36,10 @@ const config = {
   experimental: {
     // Set esmExternals to 'loose' to allow highlight-worker.js web worker to be
     // imported. Without this, we'll get an exception.
-    esmExternals: "loose"
+    esmExternals: "loose",
+
+    // restore scroll position when user navigates back
+    scrollRestoration: true
   },
 
   // list pages to export
