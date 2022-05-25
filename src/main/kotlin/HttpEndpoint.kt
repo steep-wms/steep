@@ -92,6 +92,8 @@ import model.cloud.VM
 import model.workflow.Workflow
 import org.apache.commons.text.WordUtils
 import org.slf4j.LoggerFactory
+import search.QueryCompiler
+import search.SearchResultMatcher
 import java.util.regex.Pattern
 import kotlin.math.max
 import com.github.zafarkhaja.semver.Version as SemVersion
@@ -190,6 +192,11 @@ class HttpEndpoint : CoroutineVerticle() {
     router.get("/new/workflow")
         .produces("text/html")
         .handler(this::onNewWorkflow)
+
+    router.get("/search")
+        .produces("application/json")
+        .produces("text/html")
+        .handler(this::onGetSearch)
 
     router.get("/services")
         .produces("application/json")
@@ -854,6 +861,45 @@ class HttpEndpoint : CoroutineVerticle() {
       .putHeader("content-type", "application/json")
       .setStatusCode(statusCode.code())
       .end(result.put("health", allComponentsHealthy).encode())
+  }
+
+  /**
+   * Search registry based on a user-defined query
+   * @param ctx the routing context
+   */
+  private fun onGetSearch(ctx: RoutingContext) {
+    if (prefersHtml(ctx)) {
+      renderAsset("ui/search/index.html", ctx.response())
+    } else {
+      val q = ctx.request().getParam("q") ?: ""
+      val offset = max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
+      val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
+
+      launch {
+        val query = QueryCompiler.compile(q)
+        val searchResults = submissionRegistry.search(query, size = size, offset = offset)
+
+        val result = JsonArray()
+        for (sr in searchResults) {
+          val matches = SearchResultMatcher.toMatch(sr, query)
+          val ro = jsonObjectOf(
+              "id" to sr.id,
+              "type" to sr.type,
+              "requiredCapabilities" to sr.requiredCapabilities
+          )
+          if (matches.isNotEmpty()) {
+            ro.put("matches", matches)
+          }
+          result.add(ro)
+        }
+
+        ctx.response()
+            .putHeader("content-type", "application/json")
+            .putHeader("x-page-size", size.toString())
+            .putHeader("x-page-offset", offset.toString())
+            .end(result.encode())
+      }
+    }
   }
 
   /**

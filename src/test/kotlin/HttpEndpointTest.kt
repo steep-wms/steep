@@ -61,7 +61,11 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import search.QueryCompiler
+import search.SearchResult
+import search.Type
 import java.net.ServerSocket
+import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
@@ -2147,4 +2151,98 @@ class HttpEndpointTest {
   @Test
   fun getHealthFailingVms(vertx: Vertx, ctx: VertxTestContext) =
     getHealthWithEnabledRegistries(vertx, ctx, vms = false)
+
+  /**
+   * Test that the search endpoint returns a list of results
+   */
+  @Test
+  fun getSearch(vertx: Vertx, ctx: VertxTestContext) {
+    val id1 = UniqueID.next()
+    val id2 = UniqueID.next()
+    val queryStr = "foo bar"
+    val encodedQuery = URLEncoder.encode(queryStr, StandardCharsets.UTF_8)
+    val query = QueryCompiler.compile(queryStr)
+
+    val results = listOf(
+        SearchResult(
+            id = id1,
+            type = Type.WORKFLOW,
+            requiredCapabilities = setOf("foo", "bar")
+        ),
+        SearchResult(
+            id = id2,
+            type = Type.PROCESS_CHAIN
+        )
+    )
+
+    coEvery { submissionRegistry.search(QueryCompiler.compile(""),
+        any(), any(), any()) } returns emptyList()
+    coEvery { submissionRegistry.search(query,
+        size = 10, offset = 0, order = any()) } returns results
+
+    val client = WebClient.create(vertx)
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        // return no results
+        val response = client.get(port, "localhost", "/search")
+            .`as`(BodyCodec.jsonArray())
+            .expect(ResponsePredicate.SC_OK)
+            .expect(ResponsePredicate.JSON)
+            .send()
+            .await()
+
+        assertThat(response.headers()["x-page-size"]).isEqualTo("10")
+        assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
+        assertThat(response.body()).isEqualTo(jsonArrayOf())
+      }
+
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/search?q=$encodedQuery")
+            .`as`(BodyCodec.jsonArray())
+            .expect(ResponsePredicate.SC_OK)
+            .expect(ResponsePredicate.JSON)
+            .send()
+            .await()
+
+        assertThat(response.headers()["x-page-size"]).isEqualTo("10")
+        assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
+        assertThat(response.body()).isEqualTo(jsonArrayOf(
+            jsonObjectOf(
+                "id" to id1,
+                "type" to "workflow",
+                "requiredCapabilities" to jsonArrayOf("foo", "bar"),
+                "matches" to jsonArrayOf(
+                    jsonObjectOf(
+                        "locator" to "requiredCapabilities",
+                        "fragment" to "foo",
+                        "termMatches" to jsonArrayOf(
+                            jsonObjectOf(
+                                "term" to "foo",
+                                "indices" to jsonArrayOf(0)
+                            )
+                        )
+                    ),
+                    jsonObjectOf(
+                        "locator" to "requiredCapabilities",
+                        "fragment" to "bar",
+                        "termMatches" to jsonArrayOf(
+                            jsonObjectOf(
+                                "term" to "bar",
+                                "indices" to jsonArrayOf(0)
+                            )
+                        )
+                    )
+                )
+            ),
+            jsonObjectOf(
+                "id" to id2,
+                "type" to "processChain",
+                "requiredCapabilities" to jsonArrayOf()
+            )
+        ))
+      }
+
+      ctx.completeNow()
+    }
+  }
 }
