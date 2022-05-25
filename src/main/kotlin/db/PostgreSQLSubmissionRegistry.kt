@@ -645,21 +645,31 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
    * Creates an SQL WHERE expression from a [locator] and a [term]. Fills
    * [params] with placeholders.
    */
-  private fun makeFilter(locator: Locator, term: Term, params: MutableMap<String, Int>): String? {
+  private fun makeFilter(locator: Locator, term: Term, type: Type,
+      params: MutableMap<String, Int>): String? {
     return when (locator) {
-      Locator.ERROR_MESSAGE, Locator.ID, Locator.NAME /* submission only! */,
-      Locator.SOURCE /* submission only! */ -> {
+      Locator.ERROR_MESSAGE, Locator.ID -> {
         when (term) {
           is StringTerm -> makeLike(locatorToField(locator), term.value, params)
           else -> null
         }
       }
 
+      // submission only!
+      Locator.NAME, Locator.SOURCE -> {
+        if (type == Type.WORKFLOW) {
+          when (term) {
+            is StringTerm -> makeLike(locatorToField(locator), term.value, params)
+            else -> null
+          }
+        } else {
+          null
+        }
+      }
+
       Locator.REQUIRED_CAPABILITIES -> {
         when (term) {
-          is StringTerm -> "EXISTS (SELECT FROM " +
-              "jsonb_array_elements_text(${locatorToField(locator)}) rc " +
-              "WHERE ${makeLike("rc", term.value, params)})"
+          is StringTerm -> makeLike("rcs_to_string(${locatorToField(locator)})", term.value, params)
           else -> null
         }
       }
@@ -684,20 +694,6 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       emptyList()
     }
 
-    // make WHERE expressions for all combinations of terms and locators
-    val params = mutableMapOf<String, Int>()
-    val filters = mutableSetOf<String>()
-    for (term in query.terms) {
-      for (locator in locators) {
-        makeFilter(locator, term, params)?.let { filters.add(it) }
-      }
-    }
-
-    // make WHERE expressions for all filters
-    for (f in query.filters) {
-      makeFilter(f.first, f.second, params)?.let { filters.add(it) }
-    }
-
     // determine which columns we need to return (always include ID and
     // required capabilities)
     val columns = mutableSetOf(
@@ -712,17 +708,31 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       "${locatorToField(it.first)} AS \"${locatorToResultName(it.first)}\""
     }
 
-    // return everything if query is empty
-    if (filters.isEmpty()) {
-      filters.add("true")
-    }
-
     // create SELECT statements for all types
     val statements = mutableSetOf<String>()
+    val params = mutableMapOf<String, Int>()
     for (type in types) {
       val table = when (type) {
         Type.PROCESS_CHAIN -> PROCESS_CHAINS
         Type.WORKFLOW -> SUBMISSIONS
+      }
+
+      // make WHERE expressions for all combinations of terms and locators
+      val filters = mutableSetOf<String>()
+      for (term in query.terms) {
+        for (locator in locators) {
+          makeFilter(locator, term, type, params)?.let { filters.add(it) }
+        }
+      }
+
+      // make WHERE expressions for all filters
+      for (f in query.filters) {
+        makeFilter(f.first, f.second, type, params)?.let { filters.add(it) }
+      }
+
+      // skip type if there are no filters
+      if (filters.isEmpty()) {
+        continue
       }
 
       // Add column that specifies how many WHERE expressions have matched.
@@ -741,6 +751,11 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
               "ORDER BY $SERIAL $asc" +
           ")"
       )
+    }
+
+    if (statements.isEmpty()) {
+      // nothing to do
+      return emptyList()
     }
 
     // We must have at least two SELECT statements. Otherwise, we'll get a
