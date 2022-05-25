@@ -616,7 +616,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   private fun makeLike(field: String, value: String, params: MutableMap<String, Int>): String {
     val like = "%${escapeLikeExpression(value)}%"
     val pos = params.computeIfAbsent(like) { params.size + 1 }
-    return "($field)::text LIKE $$pos"
+    return "($field)::text ILIKE $$pos"
   }
 
   /**

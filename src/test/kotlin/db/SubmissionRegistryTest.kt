@@ -2283,7 +2283,7 @@ abstract class SubmissionRegistryTest {
           assertThat(results[0].source).isNull()
         }
 
-        submissionRegistry.search(QueryCompiler.compile("Elvis")).toList().let { results ->
+        submissionRegistry.search(QueryCompiler.compile("ELVis")).toList().let { results ->
           assertThat(results).hasSize(1)
           assertThat(results[0].id).isEqualTo(s.id)
         }
