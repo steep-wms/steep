@@ -694,12 +694,13 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       emptyList()
     }
 
-    // determine which columns we need to return (always include ID and
-    // required capabilities)
+    // determine which columns we need to return (always include ID,
+    // required capabilities, serial)
     val columns = mutableSetOf(
         ID,
         "${locatorToField(Locator.REQUIRED_CAPABILITIES)} AS " +
-            "\"${locatorToResultName(Locator.REQUIRED_CAPABILITIES)}\""
+            "\"${locatorToResultName(Locator.REQUIRED_CAPABILITIES)}\"",
+        SERIAL
     )
     locators.mapTo(columns) {
       "${locatorToField(it)} AS \"${locatorToResultName(it)}\""
@@ -748,7 +749,6 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
               "${type.priority} AS typepriority," +
               "'${type.type}' AS type " +
               "FROM $table WHERE ${filters.joinToString(" OR ")} " +
-              "ORDER BY $SERIAL $asc" +
           ")"
       )
     }
@@ -758,23 +758,15 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       return emptyList()
     }
 
-    // We must have at least two SELECT statements. Otherwise, we'll get a
-    // syntax error
-    if (statements.size == 1) {
-      // Add a statement that never returns anything. Must have the same
-      // columns as a real statement.
-      statements.add("SELECT ${columns.joinToString(",")},0 AS rank," +
-          "0 AS typepriority,NULL AS type FROM $SUBMISSIONS WHERE FALSE")
-    }
-
     // join all statements into one big statement
     val statement = "(${statements.joinToString(" UNION ALL ")}) " +
-        "ORDER BY rank $desc,typepriority $asc LIMIT $limit OFFSET $offset"
+        "ORDER BY rank $desc,typepriority $asc,$SERIAL $asc LIMIT $limit OFFSET $offset"
 
     val rs = client.preparedQuery(statement).execute(Tuple.from(params.keys.toList())).await()
     return rs.map { row ->
       val obj = row.toJson()
       // remove auxiliary columns
+      obj.remove(SERIAL)
       obj.remove("rank")
       obj.remove("typepriority")
       JsonUtils.fromJson(obj)
