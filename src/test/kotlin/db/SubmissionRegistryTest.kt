@@ -2203,14 +2203,12 @@ abstract class SubmissionRegistryTest {
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChains(listOf(pc), s.id)
 
-      // empty query should return all objects
+      // empty query should not return any object
       val results = submissionRegistry.search(
           QueryCompiler.compile("")).toList()
 
       ctx.verify {
-        assertThat(results).hasSize(2)
-        assertThat(results[0].id).isEqualTo(s.id)
-        assertThat(results[1].id).isEqualTo(pc.id)
+        assertThat(results).isEmpty()
       }
 
       ctx.completeNow()

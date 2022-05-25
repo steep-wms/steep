@@ -668,6 +668,10 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
   override suspend fun search(query: Query, size: Int, offset: Int,
       order: Int): Collection<SearchResult> {
+    if (query == Query()) {
+      return emptyList()
+    }
+
     val asc = if (order >= 0) "ASC" else "DESC"
     val desc = if (order >= 0) "DESC" else "ASC"
     val limit = if (size < 0) "ALL" else size.toString()
