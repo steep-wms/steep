@@ -52,6 +52,7 @@ const config = {
       "/new/workflow": { page: "/new/workflow" },
       "/processchains": { page: "/processchains" },
       "/processchains/[id].html": { page: "/processchains/[id]" },
+      "/search": { page: "/search" },
       "/services": { page: "/services" },
       "/services/[id].html": { page: "/services/[id]" },
       "/vms": { page: "/vms" },

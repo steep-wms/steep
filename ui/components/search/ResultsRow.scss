@@ -1,0 +1,47 @@
+@import "css/variables";
+
+.results-row {
+  padding: $spacer * 2 0;
+}
+
+.results-row + .results-row {
+  border-top: 1px solid $gray-300;
+}
+
+.results-row-title {
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.results-row-icon {
+  margin-right: $spacer / 2;
+}
+
+.results-row-info {
+  font-size: $font-size-sm;
+  color: $gray-600;
+}
+
+.results-highlight {
+  background-color: #fff39e;
+  border-radius: $border-radius / 2;
+}
+
+.results-row-error-message, .results-row-source {
+  margin: $spacer / 2 0 $spacer / 4 0;
+  font-size: $font-size-sm;
+  white-space: pre;
+
+  :global(.hljs), :global(pre) {
+    background: $gray-700;
+    color: #fff;
+    border-radius: $border-radius;
+    margin: 0;
+
+    .results-highlight {
+      color: $gray-700;
+    }
+  }
+}

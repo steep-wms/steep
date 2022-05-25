@@ -18,6 +18,11 @@
     border-color: $error;
   }
 
+  &.small {
+    padding: $spacer / 2;
+    margin: 0;
+  }
+
   :global(*):first-child {
     margin-top: 0;
   }

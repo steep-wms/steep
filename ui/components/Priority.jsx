@@ -99,7 +99,7 @@ const Priority = ({ value = 0, editable, onChange, subjectShort, subjectLong }) 
         <span className="number">{formatPriority(value)}</span> <span className="icon"><Edit2 size="1em" /></span>
       </span>
 
-      <input className="priority-input" ref={inputRef}
+      <input className="priority-input small" ref={inputRef}
         onBlur={() => stopEditing()} type="number" value={inputValue}
         onChange={e => setInputValue(e.target.value)} onKeyDown={onInputKeyDown} />
 

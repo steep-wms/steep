@@ -1,0 +1,7 @@
+@import "css/variables";
+
+.results-container {
+  margin-top: $spacer;
+  display: flex;
+  flex-direction: column;
+}

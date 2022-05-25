@@ -1,7 +1,7 @@
 import classNames from "classnames"
 import Link from "next/link"
 import styles from "./Sidebar.scss"
-import { Grid, Link as LinkIcon, Pocket, Send, Server } from "react-feather"
+import { Grid, Link as LinkIcon, Pocket, Search, Send, Server } from "react-feather"
 import { useState } from "react"
 import SteepLogo from "../assets/steep-logo.svg"
 import SteepIcon from "../assets/steep-icon.svg"
@@ -43,6 +43,7 @@ const Sidebar = () => {
           <NavItem href="/agents/" icon={<Pocket />} text="Agents" />
           <NavItem href="/vms/" icon={<Server />} text="VMs" />
           <NavItem href="/services/" icon={<Grid />} text="Services" />
+          <NavItem href="/search/" icon={<Search />} text="Search" />
         </nav>
       </div>
       <style jsx>{styles}</style>

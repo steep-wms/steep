@@ -1,0 +1,31 @@
+@import "css/variables";
+
+.search-container {
+  margin-top: $spacer * 2.6;
+
+  &.loading {
+    // This should be large enough to contain at least 10 list rows. It is used
+    // to allow the browser to restore the scroll position when the user
+    // navigates back.
+    min-height: 300rem;
+  }
+}
+
+.search-input-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  left: $spacer * 0.75;
+  margin-bottom: 1px;
+}
+
+input {
+  width: 40rem;
+  max-width: 100%;
+  padding-left: $spacer * 2.5;
+}
