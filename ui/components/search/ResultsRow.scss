@@ -20,6 +20,9 @@
 }
 
 .results-row-info {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
   font-size: $font-size-sm;
   color: $gray-600;
 }
@@ -43,5 +46,36 @@
     .results-highlight {
       color: $gray-700;
     }
+  }
+}
+
+.status {
+  :global(svg) {
+    height: 1rem;
+    margin-bottom: 2px;
+  }
+
+  &.accepted :global(svg), &.registered :global(svg) {
+    stroke: $gray-600;
+  }
+
+  &.running :global(svg) {
+    stroke: $gray-600;
+  }
+
+  &.cancelled :global(svg) {
+    stroke: $gray-500;
+  }
+
+  &.partial-success :global(svg) {
+    stroke: $warning;
+  }
+
+  &.success :global(svg) {
+    stroke: $success;
+  }
+
+  &.error :global(svg) {
+    stroke: $error;
   }
 }

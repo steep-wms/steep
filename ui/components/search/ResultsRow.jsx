@@ -1,7 +1,9 @@
 import Alert from "../../components/Alert"
 import Label from "../../components/Label"
 import Link from "next/link"
-import { Link as LinkIcon, Send } from "react-feather"
+import { AlertCircle, CheckCircle, Coffee, Delete, Link as LinkIcon, RotateCw,
+  Send, XCircle } from "react-feather"
+import classNames from "classnames"
 import styles from "./ResultsRow.scss"
 
 // coalesce the given positions (i.e. recursively merge overlapping ranges)
@@ -62,7 +64,7 @@ function highlight(str, positions) {
   return <span>{tokens}</span>
 }
 
-function highlightMatch(match) {
+function highlightMatch(match, fragment = match.fragment) {
   let positions = []
   for (let tm of match.termMatches) {
     for (let i of tm.indices) {
@@ -71,7 +73,63 @@ function highlightMatch(match) {
   }
   positions = normalizePositions(positions)
 
-  return highlight(match.fragment, positions)
+  return highlight(fragment, positions)
+}
+
+function Status({ status, statusMatch }) {
+  let text
+  let cls
+  let statusIcon
+  switch (status) {
+    case "ACCEPTED":
+      statusIcon = <Coffee />
+      text = "Accepted"
+      cls = "accepted"
+      break
+
+    case "REGISTERED":
+      statusIcon = <Coffee />
+      text = "Registered"
+      cls = "registered"
+      break
+
+    case "RUNNING":
+      statusIcon = <RotateCw />
+      text = "Running"
+      cls = "running"
+      break
+
+    case "CANCELLED":
+      statusIcon = <Delete />
+      text = "Cancelled"
+      cls = "cancelled"
+      break
+
+    case "PARTIAL_SUCCESS":
+      statusIcon = <AlertCircle />
+      text = "Partial success"
+      cls = "partial-success"
+      break
+
+    case "SUCCESS":
+      statusIcon = <CheckCircle />
+      text = "Success"
+      cls = "success"
+      break
+
+    default:
+      statusIcon = <XCircle />
+      text = "Error"
+      cls = "error"
+      break
+  }
+
+  if (statusMatch) {
+    text = highlightMatch(statusMatch, text)
+  }
+
+  return <span className={classNames("status", cls)}>{statusIcon}{text}
+      <style jsx>{styles}</style></span>
 }
 
 const ResultsRow = ({ result }) => {
@@ -129,6 +187,8 @@ const ResultsRow = ({ result }) => {
     </div>
   }
 
+  let statusMatch = result.matches.find(m => m.locator === "status")
+
   return (<>
     <div className="results-row">
       <div className="results-row-title">
@@ -143,6 +203,7 @@ const ResultsRow = ({ result }) => {
       {source}
       <div className="results-row-info">
         {type && <>{type}</>}
+        <Status status={result.status} statusMatch={statusMatch} />
       </div>
     </div>
     <style jsx>{styles}</style>
