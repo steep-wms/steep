@@ -2,13 +2,6 @@
 
 .search-container {
   margin-top: $spacer * 2.6;
-
-  &.loading {
-    // This should be large enough to contain at least 10 list rows. It is used
-    // to allow the browser to restore the scroll position when the user
-    // navigates back.
-    min-height: 300rem;
-  }
 }
 
 .search-input-container {
