@@ -616,18 +616,22 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   private fun makeLike(field: String, value: String, params: MutableMap<String, Int>): String {
     val like = "%${escapeLikeExpression(value)}%"
     val pos = params.computeIfAbsent(like) { params.size + 1 }
-    return "($field)::text ILIKE $$pos"
+    return "$field ILIKE $$pos"
   }
 
   /**
-   * Converts a locator to a column name or JSONB property name
+   * Converts a [locator] to a column name or JSONB property name
    */
-  private fun locatorToField(locator: Locator) = when (locator) {
+  private fun locatorToField(locator: Locator, type: Type) = when (locator) {
     Locator.ERROR_MESSAGE -> ERROR_MESSAGE
     Locator.ID -> ID
-    Locator.NAME -> "$DATA->'$NAME'"
+    Locator.NAME -> "$DATA->>'$NAME'"
     Locator.REQUIRED_CAPABILITIES -> "$DATA->'$REQUIRED_CAPABILITIES'"
-    Locator.SOURCE -> "$DATA->'$SOURCE'"
+    Locator.SOURCE -> "$DATA->>'$SOURCE'"
+    Locator.STATUS -> when (type) {
+      Type.WORKFLOW -> "$DATA->>'$STATUS'"
+      Type.PROCESS_CHAIN -> STATUS
+    }
   }
 
   /**
@@ -639,6 +643,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     Locator.NAME -> "name"
     Locator.REQUIRED_CAPABILITIES -> "requiredCapabilities"
     Locator.SOURCE -> "source"
+    Locator.STATUS -> "status"
   }
 
   /**
@@ -648,9 +653,9 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   private fun makeFilter(locator: Locator, term: Term, type: Type,
       params: MutableMap<String, Int>): String? {
     return when (locator) {
-      Locator.ERROR_MESSAGE, Locator.ID -> {
+      Locator.ERROR_MESSAGE, Locator.ID, Locator.STATUS -> {
         when (term) {
-          is StringTerm -> makeLike(locatorToField(locator), term.value, params)
+          is StringTerm -> makeLike(locatorToField(locator, type), term.value, params)
           else -> null
         }
       }
@@ -659,7 +664,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       Locator.NAME, Locator.SOURCE -> {
         if (type == Type.WORKFLOW) {
           when (term) {
-            is StringTerm -> makeLike(locatorToField(locator), term.value, params)
+            is StringTerm -> makeLike(locatorToField(locator, type), term.value, params)
             else -> null
           }
         } else {
@@ -669,7 +674,8 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
       Locator.REQUIRED_CAPABILITIES -> {
         when (term) {
-          is StringTerm -> makeLike("rcs_to_string(${locatorToField(locator)})", term.value, params)
+          is StringTerm -> makeLike("rcs_to_string(${locatorToField(locator, type)})",
+              term.value, params)
           else -> null
         }
       }
@@ -694,21 +700,6 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       emptyList()
     }
 
-    // determine which columns we need to return (always include ID,
-    // required capabilities, serial)
-    val columns = mutableSetOf(
-        ID,
-        "${locatorToField(Locator.REQUIRED_CAPABILITIES)} AS " +
-            "\"${locatorToResultName(Locator.REQUIRED_CAPABILITIES)}\"",
-        SERIAL
-    )
-    locators.mapTo(columns) {
-      "${locatorToField(it)} AS \"${locatorToResultName(it)}\""
-    }
-    query.filters.mapTo(columns) {
-      "${locatorToField(it.first)} AS \"${locatorToResultName(it.first)}\""
-    }
-
     // create SELECT statements for all types
     val statements = mutableSetOf<String>()
     val params = mutableMapOf<String, Int>()
@@ -717,6 +708,31 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         Type.PROCESS_CHAIN -> PROCESS_CHAINS
         Type.WORKFLOW -> SUBMISSIONS
       }
+
+      // determine which columns we need to return (always include ID,
+      // required capabilities, status)
+      val locatorToColumns = mutableMapOf(
+          Locator.ID to ID,
+          Locator.REQUIRED_CAPABILITIES to
+              "${locatorToField(Locator.REQUIRED_CAPABILITIES, type)} AS " +
+              "\"${locatorToResultName(Locator.REQUIRED_CAPABILITIES)}\"",
+          Locator.STATUS to "${locatorToField(Locator.STATUS, type)} AS " +
+              "\"${locatorToResultName(Locator.STATUS)}\"",
+      )
+      for (l in locators) {
+        if (!locatorToColumns.contains(l)) {
+          locatorToColumns[l] = "${locatorToField(l, type)} AS \"${locatorToResultName(l)}\""
+        }
+      }
+      for ((l, _) in query.filters) {
+        if (!locatorToColumns.contains(l)) {
+          locatorToColumns[l] = "${locatorToField(l, type)} AS \"${locatorToResultName(l)}\""
+        }
+      }
+      val columns = locatorToColumns.values.toMutableList()
+
+      // always include serial too
+      columns.add(SERIAL)
 
       // make WHERE expressions for all combinations of terms and locators
       val filters = mutableSetOf<String>()

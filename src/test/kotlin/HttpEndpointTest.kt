@@ -2167,11 +2167,13 @@ class HttpEndpointTest {
         SearchResult(
             id = id1,
             type = Type.WORKFLOW,
-            requiredCapabilities = setOf("foo", "bar")
+            requiredCapabilities = setOf("foo", "bar"),
+            status = Submission.Status.SUCCESS.name
         ),
         SearchResult(
             id = id2,
-            type = Type.PROCESS_CHAIN
+            type = Type.PROCESS_CHAIN,
+            status = SubmissionRegistry.ProcessChainStatus.ERROR.name
         )
     )
 
@@ -2211,6 +2213,7 @@ class HttpEndpointTest {
                 "id" to id1,
                 "type" to "workflow",
                 "requiredCapabilities" to jsonArrayOf("foo", "bar"),
+                "status" to "SUCCESS",
                 "matches" to jsonArrayOf(
                     jsonObjectOf(
                         "locator" to "requiredCapabilities",
@@ -2238,6 +2241,7 @@ class HttpEndpointTest {
                 "id" to id2,
                 "type" to "processChain",
                 "requiredCapabilities" to jsonArrayOf(),
+                "status" to "ERROR",
                 "matches" to jsonArrayOf()
             )
         ))

@@ -21,7 +21,10 @@ enum class Locator(@JsonValue val propertyName: String) {
   ID("id"),
   NAME("name"),
   REQUIRED_CAPABILITIES("requiredCapabilities"),
-  SOURCE("source")
+  SOURCE("source"),
+  STATUS("status")
+  // startTime
+  // endTime
 }
 
 /**

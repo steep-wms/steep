@@ -1,5 +1,6 @@
 package search
 
+import model.Submission
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -16,7 +17,8 @@ class SearchResultMatcherTest {
             "contains line breaks \n" +
             "and that is longer than 100 characters so we can " +
             "create a shorter fragment",
-        requiredCapabilities = setOf("docker", "sleep")
+        requiredCapabilities = setOf("docker", "sleep"),
+        status = Submission.Status.SUCCESS.name
     )
 
     val m1 = SearchResultMatcher.toMatch(r, QueryCompiler.compile("very line docker"), 100)
@@ -78,6 +80,17 @@ class SearchResultMatcherTest {
             termMatches = listOf(
                 TermMatch("can", indices = listOf(71)),
                 TermMatch("characters", indices = listOf(54))
+            )
+        )
+    ))
+
+    val m4 = SearchResultMatcher.toMatch(r, QueryCompiler.compile("uccess"), 100)
+    assertThat(m4).isEqualTo(listOf(
+        Match(
+            locator = Locator.STATUS,
+            fragment = "SUCCESS",
+            termMatches = listOf(
+                TermMatch("uccess", indices = listOf(1))
             )
         )
     ))

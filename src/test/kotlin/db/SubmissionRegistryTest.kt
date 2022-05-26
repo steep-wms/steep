@@ -2241,7 +2241,7 @@ abstract class SubmissionRegistryTest {
     CoroutineScope(vertx.dispatcher()).launch {
       val s = Submission(workflow = Workflow(name = "Elvis"),
           requiredCapabilities = setOf("docker", "sleep"),
-          source = "actions: []")
+          source = "actions: []", status = Submission.Status.SUCCESS)
       val pc = ProcessChain(requiredCapabilities = setOf("foo", "bar"))
 
       val s2 = Submission(workflow = Workflow(name = "Should never match"),
@@ -2265,6 +2265,7 @@ abstract class SubmissionRegistryTest {
           assertThat(results).hasSize(1)
           assertThat(results[0].id).isEqualTo(s.id)
           assertThat(results[0].name).isEqualTo(s.name)
+          assertThat(results[0].status).isEqualTo(s.status.name)
           assertThat(results[0].requiredCapabilities).isEqualTo(s.requiredCapabilities)
           assertThat(results[0].errorMessage).isEqualTo(expectedSubmissionError)
           assertThat(results[0].type).isEqualTo(Type.WORKFLOW)
@@ -2275,6 +2276,7 @@ abstract class SubmissionRegistryTest {
           assertThat(results).hasSize(1)
           assertThat(results[0].id).isEqualTo(pc.id)
           assertThat(results[0].name).isNull()
+          assertThat(results[0].status).isEqualTo(SubmissionRegistry.ProcessChainStatus.REGISTERED.name)
           assertThat(results[0].requiredCapabilities).isEqualTo(pc.requiredCapabilities)
           assertThat(results[0].errorMessage).isEqualTo(expectedProcessChainError)
           assertThat(results[0].type).isEqualTo(Type.PROCESS_CHAIN)
@@ -2303,6 +2305,11 @@ abstract class SubmissionRegistryTest {
         }
 
         submissionRegistry.search(QueryCompiler.compile("actions")).toList().let { results ->
+          assertThat(results).hasSize(1)
+          assertThat(results[0].id).isEqualTo(s.id)
+        }
+
+        submissionRegistry.search(QueryCompiler.compile("succ")).toList().let { results ->
           assertThat(results).hasSize(1)
           assertThat(results[0].id).isEqualTo(s.id)
         }

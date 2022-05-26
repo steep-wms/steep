@@ -231,6 +231,8 @@ object SearchResultMatcher {
       makeMatch(result.source, Locator.SOURCE, filters, matches,
           maxFragmentLength)
     }
+    makeMatch(result.status, Locator.STATUS, filters, matches,
+        maxFragmentLength)
 
     return matches
   }

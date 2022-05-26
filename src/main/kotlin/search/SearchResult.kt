@@ -36,5 +36,11 @@ data class SearchResult(
     /**
      * The objects original source
      */
-    val source: String? = null
+    val source: String? = null,
+
+    /**
+     * The object's status (the meaning of this string depends on the
+     * object's [type])
+     */
+    val status: String
 )

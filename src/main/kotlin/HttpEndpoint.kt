@@ -885,7 +885,8 @@ class HttpEndpoint : CoroutineVerticle() {
           val ro = jsonObjectOf(
               "id" to sr.id,
               "type" to sr.type,
-              "requiredCapabilities" to sr.requiredCapabilities
+              "requiredCapabilities" to sr.requiredCapabilities,
+              "status" to sr.status
           )
           ro.put("matches", matches)
           result.add(ro)
