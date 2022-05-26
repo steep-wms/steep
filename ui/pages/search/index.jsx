@@ -48,6 +48,11 @@ const Search = () => {
 
   useEffect(() => {
     setInputValue(router.query.q || "")
+    if (router.query.q) {
+      inputRef.current.blur()
+    } else {
+      inputRef.current.focus()
+    }
   }, [router.query.q])
 
   function onInputKeyDown(e) {
