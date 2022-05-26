@@ -75,7 +75,9 @@ object QueryCompiler {
    * Compile the given [query]
    */
   fun compile(query: String): Query {
-    val parts = QuotedStringSplitter.split(query)
+    // non-breaking space (0x0a) is a reserved character used by the
+    // PostgreSQLSubmissionRegistry as a separator between required capabilities
+    val parts = QuotedStringSplitter.split(query.replace('\u00a0', ' '))
 
     val terms = mutableSetOf<Term>()
     val filters = mutableSetOf<Pair<Locator, Term>>()
