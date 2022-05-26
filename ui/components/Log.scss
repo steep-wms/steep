@@ -7,14 +7,14 @@
 
 .pre {
   border-radius: $border-radius;
-  padding: $spacer / 2 0;
+  padding: $spacer * 0.5 0;
   margin-top: 0;
   flex: 1;
   max-width: 100%;
 
   .code {
     height: calc(100% - #{$spacer});
-    margin: $spacer / 2 $spacer;
+    margin: $spacer * 0.5 $spacer;
     display: block;
     overflow: auto;
     color: #fff;

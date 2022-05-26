@@ -16,7 +16,7 @@
 }
 
 .results-row-icon {
-  margin-right: $spacer / 2;
+  margin-right: $spacer * 0.5;
 }
 
 .results-row-info {
@@ -29,11 +29,11 @@
 
 .results-highlight {
   background-color: #fff39e;
-  border-radius: $border-radius / 2;
+  border-radius: $border-radius * 0.5;
 }
 
 .results-row-error-message, .results-row-source {
-  margin: $spacer / 2 0 $spacer / 4 0;
+  margin: $spacer * 0.5 0 $spacer * 0.25 0;
   font-size: $font-size-sm;
   white-space: pre;
 

@@ -52,8 +52,8 @@
   :global(.alert) {
     white-space: pre;
     overflow-x: auto;
-    margin-top: $spacer / 2;
-    margin-bottom: $spacer / 2;
+    margin-top: $spacer * 0.5;
+    margin-bottom: $spacer * 0.5;
   }
 
   &.deleted {

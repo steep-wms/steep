@@ -76,7 +76,7 @@
 
     :global(ul) {
       background-color: #fff;
-      margin: $spacer / 4 0 0 0;
+      margin: $spacer * 0.25 0 0 0;
       list-style-type: none;
 
       color: $gray-700;
@@ -88,7 +88,7 @@
 
       :global(li) {
         display: block;
-        padding: $spacer / 4 1em;
+        padding: $spacer * 0.25 1em;
         cursor: pointer;
 
         &:hover {

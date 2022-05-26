@@ -69,7 +69,7 @@ footer {
         }
 
         &:not(:first-child) {
-          margin-left: $spacer / 2;
+          margin-left: $spacer * 0.5;
         }
       }
     }

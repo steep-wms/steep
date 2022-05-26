@@ -35,7 +35,7 @@
   .feather {
     height: 3rem;
     width: auto;
-    margin-right: $spacer / 2;
+    margin-right: $spacer * 0.5;
 
     &.creating {
       stroke: $gray-600;
