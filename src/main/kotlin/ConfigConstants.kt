@@ -185,7 +185,7 @@ object ConfigConstants {
    * The number of seconds the results of a preflight request can be cached in
    * a preflight result cache.
    */
-  const val HTTP_CORS_MAX_AGE = "steep.http.cors.maxAge"
+  const val HTTP_CORS_MAX_AGE_SECONDS = "steep.http.cors.maxAgeSeconds"
 
   /**
    * `true` if the controller should be enabled. Set this value to `false` if
