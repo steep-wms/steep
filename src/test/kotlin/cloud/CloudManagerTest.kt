@@ -11,6 +11,7 @@ import db.VMRegistryFactory
 import helper.LazyJsonObjectMessageCodec
 import helper.UniqueID
 import helper.YamlUtils
+import helper.toDuration
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -61,8 +62,8 @@ class CloudManagerTest {
     private const val MY_OLD_VM = "MY_OLD_VM"
     private const val MY_OLD_VOLUME = "MY_OLD_VOLUME"
     private const val CREATED_BY_TAG = "CloudManagerTest"
-    private const val SYNC_INTERVAL = 2
-    private const val KEEP_ALIVE_INTERVAL = 1
+    private const val SYNC_INTERVAL = "2s"
+    private const val KEEP_ALIVE_INTERVAL = "1s"
     private const val AZ01 = "az-01"
     private const val AZ02 = "az-02"
     private const val DUMMY_TEXT = "THIS IS A DUMMY TEXT"
@@ -771,7 +772,7 @@ class CloudManagerTest {
     fun tryCreateMin(vertx: Vertx, ctx: VertxTestContext) {
       CoroutineScope(vertx.dispatcher()).launch {
         // give the CloudManager enough time to call sync() at least two times
-        delay(SYNC_INTERVAL * 2 * 1000L)
+        delay(SYNC_INTERVAL.toDuration().toMillis() * 2)
 
         ctx.coVerify {
           coVerify(exactly = 2) {
@@ -920,7 +921,7 @@ class CloudManagerTest {
     fun tryCreateMin(vertx: Vertx, ctx: VertxTestContext) {
       CoroutineScope(vertx.dispatcher()).launch {
         // give the CloudManager enough time to call sync() at least once
-        delay(SYNC_INTERVAL * 2 * 1000L)
+        delay(SYNC_INTERVAL.toDuration().toMillis() * 2)
 
         ctx.coVerify {
           coVerify(exactly = 2) {

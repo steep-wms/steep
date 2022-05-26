@@ -11,6 +11,7 @@ import helper.JsonUtils
 import helper.LazyJsonObjectMessageCodec
 import helper.UniqueID
 import helper.loadTemplate
+import helper.toDuration
 import io.micrometer.core.instrument.Clock
 import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
@@ -194,7 +195,8 @@ suspend fun main() {
   // Look for orphaned entries in the remote agent registry from time to time.
   // Such entries may happen if there is a network failure during deregistration
   // of an agent.
-  val lookupOrphansInterval = conf.getLong(ConfigConstants.CLUSTER_LOOKUP_ORPHANS_INTERVAL, 300_000L) // 5 minutes
+  val lookupOrphansInterval = conf.getString(ConfigConstants.CLUSTER_LOOKUP_ORPHANS_INTERVAL, "5m")
+      .toDuration().toMillis()
   val remoteAgentRegistry = RemoteAgentRegistry(vertx)
   CoroutineScope(vertx.dispatcher()).launch {
     while (true) {
