@@ -2167,6 +2167,7 @@ class HttpEndpointTest {
         SearchResult(
             id = id1,
             type = Type.WORKFLOW,
+            name = "Elvis",
             requiredCapabilities = setOf("foo", "bar"),
             status = Submission.Status.SUCCESS.name
         ),
@@ -2212,6 +2213,7 @@ class HttpEndpointTest {
             jsonObjectOf(
                 "id" to id1,
                 "type" to "workflow",
+                "name" to "Elvis",
                 "requiredCapabilities" to jsonArrayOf("foo", "bar"),
                 "status" to "SUCCESS",
                 "matches" to jsonArrayOf(

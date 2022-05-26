@@ -888,6 +888,9 @@ class HttpEndpoint : CoroutineVerticle() {
               "requiredCapabilities" to sr.requiredCapabilities,
               "status" to sr.status
           )
+          if (sr.name != null) {
+            ro.put("name", sr.name)
+          }
           ro.put("matches", matches)
           result.add(ro)
         }

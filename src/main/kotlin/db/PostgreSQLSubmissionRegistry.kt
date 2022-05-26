@@ -719,6 +719,14 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
           Locator.STATUS to "${locatorToField(Locator.STATUS, type)} AS " +
               "\"${locatorToResultName(Locator.STATUS)}\"",
       )
+      if (type == Type.WORKFLOW) {
+        // always include submission name
+        locatorToColumns[Locator.NAME] = "${locatorToField(Locator.NAME, type)} AS " +
+            "\"${locatorToResultName(Locator.NAME)}\""
+      } else {
+        // other types don't have a name but we must still specify the column
+        locatorToColumns[Locator.NAME] = "NULL AS ${locatorToResultName(Locator.NAME)}"
+      }
       for (l in locators) {
         if (!locatorToColumns.contains(l)) {
           locatorToColumns[l] = "${locatorToField(l, type)} AS \"${locatorToResultName(l)}\""

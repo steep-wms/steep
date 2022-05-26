@@ -2349,7 +2349,7 @@ abstract class SubmissionRegistryTest {
           assertThat(results[0].id).isEqualTo(s.id)
           assertThat(results[0].type).isEqualTo(Type.WORKFLOW)
           assertThat(results[0].errorMessage).isNull()
-          assertThat(results[0].name).isNull()
+          assertThat(results[0].name).isEqualTo(s.name)
           assertThat(results[0].requiredCapabilities).isEqualTo(s.requiredCapabilities)
           assertThat(results[0].source).isNull()
         }
@@ -2360,7 +2360,6 @@ abstract class SubmissionRegistryTest {
 
         submissionRegistry.search(QueryCompiler.compile("foo in:name")).toList().let { results ->
           assertThat(results).hasSize(1)
-          assertThat(results[0].id).isEqualTo(s.id)
           assertThat(results[0].id).isEqualTo(s.id)
           assertThat(results[0].type).isEqualTo(Type.WORKFLOW)
           assertThat(results[0].errorMessage).isNull()
@@ -2419,7 +2418,7 @@ abstract class SubmissionRegistryTest {
           assertThat(results[0].id).isEqualTo(s.id)
           assertThat(results[0].type).isEqualTo(Type.WORKFLOW)
           assertThat(results[0].errorMessage).isNull()
-          assertThat(results[0].name).isNull()
+          assertThat(results[0].name).isEqualTo(s.name)
           assertThat(results[0].requiredCapabilities).isEqualTo(s.requiredCapabilities)
         }
 
