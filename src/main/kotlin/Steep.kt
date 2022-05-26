@@ -8,6 +8,7 @@ import db.SubmissionRegistry
 import helper.CompressedJsonObjectMessageCodec
 import helper.JsonUtils
 import helper.Shell
+import helper.toDuration
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.Message
 import io.vertx.core.impl.NoStackTraceThrowable
@@ -72,10 +73,10 @@ class Steep : CoroutineVerticle() {
   private var lastExecuteTime = Instant.now()
 
   override suspend fun start() {
-    busyTimeout = Duration.ofSeconds(config.getLong(
-        ConfigConstants.AGENT_BUSY_TIMEOUT, 60L))
-    autoShutdownTimeout = Duration.ofMinutes(config.getLong(
-        ConfigConstants.AGENT_AUTO_SHUTDOWN_TIMEOUT, 0))
+    busyTimeout = config.getString(
+        ConfigConstants.AGENT_BUSY_TIMEOUT, "1m").toDuration()
+    autoShutdownTimeout = config.getString(
+        ConfigConstants.AGENT_AUTO_SHUTDOWN_TIMEOUT, "0m").toDuration()
     agentId = config.getString(ConfigConstants.AGENT_ID) ?:
         throw IllegalStateException("Missing configuration item " +
             "`${ConfigConstants.AGENT_ID}'")
