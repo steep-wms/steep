@@ -2237,7 +2237,8 @@ class HttpEndpointTest {
             jsonObjectOf(
                 "id" to id2,
                 "type" to "processChain",
-                "requiredCapabilities" to jsonArrayOf()
+                "requiredCapabilities" to jsonArrayOf(),
+                "matches" to jsonArrayOf()
             )
         ))
       }
