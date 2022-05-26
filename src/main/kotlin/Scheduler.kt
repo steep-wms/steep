@@ -121,9 +121,12 @@ class Scheduler : CoroutineVerticle() {
     agentRegistry = AgentRegistryFactory.create(vertx)
 
     // read configuration
-    val lookupInterval = config.getString(SCHEDULER_LOOKUP_INTERVAL, "20s").toDuration().toMillis()
-    val lookupOrphansInterval = config.getString(SCHEDULER_LOOKUP_ORPHANS_INTERVAL, "5m").toDuration().toMillis()
-    val lookupOrphansInitialDelay = config.getString(SCHEDULER_LOOKUP_ORPHANS_INITIAL_DELAY, "0s").toDuration().toMillis()
+    val lookupInterval = config.getString(SCHEDULER_LOOKUP_INTERVAL, "20s")
+        .toDuration().toMillis()
+    val lookupOrphansInterval = config.getString(SCHEDULER_LOOKUP_ORPHANS_INTERVAL, "5m")
+        .toDuration().toMillis()
+    val lookupOrphansInitialDelay = config.getString(SCHEDULER_LOOKUP_ORPHANS_INITIAL_DELAY, "0s")
+        .toDuration().toMillis()
 
     // periodically look for new process chains and execute them
     periodicLookupJob = launch {

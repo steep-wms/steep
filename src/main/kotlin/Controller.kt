@@ -105,12 +105,13 @@ class Controller : CoroutineVerticle() {
           "`$OUT_PATH'. Point both configuration items to different locations.")
     }
 
-    lookupInterval = config.getString(CONTROLLER_LOOKUP_INTERVAL)?.toDuration()?.toMillis() ?: lookupInterval
+    lookupInterval = config.getString(CONTROLLER_LOOKUP_INTERVAL)
+        ?.toDuration()?.toMillis() ?: lookupInterval
     lookupMaxErrors = config.getLong(CONTROLLER_LOOKUP_MAXERRORS, lookupMaxErrors)
-    lookupOrphansInterval = config.getString(CONTROLLER_LOOKUP_ORPHANS_INTERVAL)?.toDuration()?.toMillis() ?:
-        lookupOrphansInterval
-    val lookupOrphansInitialDelay = config.getString(CONTROLLER_LOOKUP_ORPHANS_INITIAL_DELAY)?.toDuration()?.toMillis() ?:
-        DEFAULT_LOOKUP_ORPHANS_INITIAL_DELAY
+    lookupOrphansInterval = config.getString(CONTROLLER_LOOKUP_ORPHANS_INTERVAL)
+        ?.toDuration()?.toMillis() ?: lookupOrphansInterval
+    val lookupOrphansInitialDelay = config.getString(CONTROLLER_LOOKUP_ORPHANS_INITIAL_DELAY)
+        ?.toDuration()?.toMillis() ?: DEFAULT_LOOKUP_ORPHANS_INITIAL_DELAY
 
     // periodically look for new submissions and execute them
     periodicLookupJob = launch {

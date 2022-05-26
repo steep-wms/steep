@@ -117,7 +117,7 @@ object ConfigConstants {
   /**
    * The interval at which the [Main] thread looks for orphaned entries in the
    * remote agent registry. Such entries may happen if there is a network
-   * failure during deregistration of an agent. The time can be specified
+   * failure during deregistration of an agent. The interval is specified
    * as a human-readable duration (see [helper.toDuration]).
    */
   const val CLUSTER_LOOKUP_ORPHANS_INTERVAL = "steep.cluster.lookupOrphansInterval"
@@ -182,9 +182,8 @@ object ConfigConstants {
   const val HTTP_CORS_EXPOSE_HEADERS = "steep.http.cors.exposeHeaders"
 
   /**
-   * The duration the results of a preflight request can be cached in
-   * a preflight result cache. The time can be specified
-   * as a human-readable duration (see [helper.toDuration]).
+   * The number of seconds the results of a preflight request can be cached in
+   * a preflight result cache.
    */
   const val HTTP_CORS_MAX_AGE = "steep.http.cors.maxAge"
 
@@ -196,7 +195,7 @@ object ConfigConstants {
 
   /**
    * The interval at which the controller looks for accepted submissions.
-   * The time can be specified as a human-readable duration (see [helper.toDuration]).
+   * Specified as a human-readable duration (see [helper.toDuration]).
    */
   const val CONTROLLER_LOOKUP_INTERVAL = "steep.controller.lookupInterval"
 
@@ -209,17 +208,16 @@ object ConfigConstants {
   /**
    * The interval at which the controller looks for orphaned running
    * submissions (i.e. submissions that are in the status `RUNNING' but that
-   * are currently not being processed by any [Controller]). The time can
-   * be specified as a human-readable duration (see [helper.toDuration]).
+   * are currently not being processed by any [Controller]). Specified as a
+   * human-readable duration (see [helper.toDuration]).
    */
   const val CONTROLLER_LOOKUP_ORPHANS_INTERVAL = "steep.controller.lookupOrphansInterval"
 
   /**
-   * The duration the controller should wait after startup before
-   * it looks for orphaned running submissions for the first time. This property
-   * is useful if you want to implement a rolling update from one Steep
-   * instance to another. The time can be specified
-   * as a human-readable duration (see [helper.toDuration]).
+   * The time the controller should wait after startup before it looks for
+   * orphaned running submissions for the first time. This property is useful
+   * if you want to implement a rolling update from one Steep instance to
+   * another. Specified as a human-readable duration (see [helper.toDuration]).
    */
   const val CONTROLLER_LOOKUP_ORPHANS_INITIAL_DELAY = "steep.controller.lookupOrphansInitialDelay"
 
@@ -231,8 +229,7 @@ object ConfigConstants {
 
   /**
    * The interval in which the scheduler looks for registered process chains.
-   * The time can be specified as a human-readable duration
-   * (see [helper.toDuration]).
+   * Specified as a human-readable duration (see [helper.toDuration]).
    */
   const val SCHEDULER_LOOKUP_INTERVAL = "steep.scheduler.lookupInterval"
 
@@ -242,19 +239,19 @@ object ConfigConstants {
    * that are currently not being processed by any [Scheduler]). Note that
    * the scheduler also always looks for orphaned process chains when it detects
    * that another scheduler instance has just left the cluster (regardless of
-   * the configured interval). The time can be specified as a human-readable
+   * the configured interval). The interval is specified as a human-readable
    * duration (see [helper.toDuration]).
    */
   const val SCHEDULER_LOOKUP_ORPHANS_INTERVAL = "steep.scheduler.lookupOrphansInterval"
 
   /**
-   * The duration the scheduler should wait after startup before
-   * it looks for orphaned running process chains for the first time. This
-   * property is useful if you want to implement a rolling update from one Steep
-   * instance to another. Note that the scheduler also looks for orphaned
-   * process chains when another scheduler instance has just left the cluster,
-   * even if the initial delay has not passed by yet. The time can be specified
-   * as a human-readable duration (see [helper.toDuration]).
+   * The time the scheduler should wait after startup before it looks for
+   * orphaned running process chains for the first time. This property is
+   * useful if you want to implement a rolling update from one Steep instance
+   * to another. Note that the scheduler also looks for orphaned process chains
+   * when another scheduler instance has just left the cluster, even if the
+   * initial delay has not passed by yet. The time is specified as a
+   * human-readable duration (see [helper.toDuration]).
    */
   const val SCHEDULER_LOOKUP_ORPHANS_INITIAL_DELAY = "steep.scheduler.lookupOrphansInitialDelay"
 
@@ -281,17 +278,15 @@ object ConfigConstants {
   const val AGENT_INSTANCES = "steep.agent.instances"
 
   /**
-   * The duration an agent should remain idle until it shuts itself
-   * down gracefully. By default, this value is `0`, which means the agent
-   * never shuts itself down. The time can be specified
-   * as a human-readable duration (see [helper.toDuration]).
+   * The time an agent should remain idle until it shuts itself down
+   * gracefully. By default, this value is `0`, which means the agent never
+   * shuts itself down. Specified as a human-readable duration (see [helper.toDuration]).
    */
   const val AGENT_AUTO_SHUTDOWN_TIMEOUT = "steep.agent.autoShutdownTimeout"
 
   /**
-   * The duration that should pass before an idle agent decides
-   * that it is not busy anymore. The time can be specified
-   * as a human-readable duration (see [helper.toDuration]).
+   * The time that should pass before an idle agent decides that it is not
+   * busy anymore. Specified as a human-readable duration (see [helper.toDuration]).
    */
   const val AGENT_BUSY_TIMEOUT = "steep.agent.busyTimeout"
 
@@ -354,50 +349,46 @@ object ConfigConstants {
   const val CLOUD_SETUPS_FILE = "steep.cloud.setupsFile"
 
   /**
-   * The duration that should pass before the Cloud manager syncs
-   * its internal state with the Cloud again. The time can be specified
-   * as a human-readable duration (see [helper.toDuration]).
+   * The time that should pass before the Cloud manager syncs its internal
+   * state with the Cloud again. Specified as a human-readable duration
+   * (see [helper.toDuration]).
    */
   const val CLOUD_SYNC_INTERVAL = "steep.cloud.syncInterval"
 
   /**
-   * The duration that should pass before the Cloud manager sends
-   * keep-alive messages to a minimum of remote agents again (so that they
-   * do not shut down themselves). See [model.setup.Setup.minVMs].
-   * The time can be specified as a human-readable duration
-   * (see [helper.toDuration]).
+   * The time that should pass before the Cloud manager sends keep-alive
+   * messages to a minimum of remote agents again (so that they do not shut
+   * down themselves). See [model.setup.Setup.minVMs]. Specified as a
+   * human-readable duration (see [helper.toDuration]).
    */
   const val CLOUD_KEEP_ALIVE_INTERVAL = "steep.cloud.keepAliveInterval"
 
   /**
-   * The maximum duration the cloud manager should try to log in to a
-   * new VM via SSH. The cloud manager will make a login attempt every 2
-   * seconds until it is successful or until the maximum duration has
-   * passed, in which case it will destroy the VM. The time can be specified
-   * as a human-readable duration (see [helper.toDuration]).
+   * The maximum time the cloud manager should try to log in to a new VM via
+   * SSH. The cloud manager will make a login attempt every 2 seconds until it
+   * is successful or until the maximum duration has passed, in which case it
+   * will destroy the VM. Specified as a human-readable duration (see
+   * [helper.toDuration]).
    */
   const val CLOUD_TIMEOUTS_SSHREADY = "steep.cloud.timeouts.sshReady"
 
   /**
-   * The maximum duration the cloud manager should wait for an agent
-   * on a new VM to become available (i.e. how long a new Steep instance may
-   * take to register with the cluster) before it destroys the VM again.
-   * The time can be specified as a human-readable duration
-   * (see [helper.toDuration]).
+   * The maximum time the cloud manager should wait for an agent on a new VM to
+   * become available (i.e. how long a new Steep instance may take to register
+   * with the cluster) before it destroys the VM again. Specified as a
+   * human-readable duration (see [helper.toDuration]).
    */
   const val CLOUD_TIMEOUTS_AGENTREADY = "steep.cloud.timeouts.agentReady"
 
   /**
-   * The maximum duration that creating a VM may take before it is
-   * aborted with an error. The time can be specified
-   * as a human-readable duration (see [helper.toDuration]).
+   * The maximum time that creating a VM may take before it is aborted with
+   * an error. Specified as a human-readable duration (see [helper.toDuration]).
    */
   const val CLOUD_TIMEOUTS_CREATEVM = "steep.cloud.timeouts.createVM"
 
   /**
-   * The maximum duration that destroying a VM may take before it is
-   * aborted with an error. The time can be specified
-   * as a human-readable duration (see [helper.toDuration]).
+   * The maximum time that destroying a VM may take before it is aborted with
+   * an error. Specified as a human-readable duration (see [helper.toDuration]).
    */
   const val CLOUD_TIMEOUTS_DESTROYVM = "steep.cloud.timeouts.destroyVM"
 

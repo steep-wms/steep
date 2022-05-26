@@ -68,7 +68,7 @@ steep:
     lookupInterval: 2s
     lookupMaxErrors: 5
     lookupOrphansInterval: 5m
-    lookupOrphansInitialDelay: 0m
+    lookupOrphansInitialDelay: 0s
 
   scheduler:
     enabled: true

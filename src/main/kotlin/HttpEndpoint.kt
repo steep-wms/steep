@@ -422,8 +422,7 @@ class HttpEndpoint : CoroutineVerticle() {
     }
 
     // configure max age in seconds
-    val maxAge = config.getString(
-        ConfigConstants.HTTP_CORS_MAX_AGE)?.toDuration()?.toSeconds()?.toInt() ?: -1
+    val maxAge = config.getInteger(ConfigConstants.HTTP_CORS_MAX_AGE, -1)
     corsHandler.maxAgeSeconds(maxAge)
 
     return corsHandler

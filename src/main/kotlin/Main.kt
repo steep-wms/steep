@@ -195,7 +195,8 @@ suspend fun main() {
   // Look for orphaned entries in the remote agent registry from time to time.
   // Such entries may happen if there is a network failure during deregistration
   // of an agent.
-  val lookupOrphansInterval = conf.getString(ConfigConstants.CLUSTER_LOOKUP_ORPHANS_INTERVAL, "5m").toDuration().toMillis()
+  val lookupOrphansInterval = conf.getString(ConfigConstants.CLUSTER_LOOKUP_ORPHANS_INTERVAL, "5m")
+      .toDuration().toMillis()
   val remoteAgentRegistry = RemoteAgentRegistry(vertx)
   CoroutineScope(vertx.dispatcher()).launch {
     while (true) {
