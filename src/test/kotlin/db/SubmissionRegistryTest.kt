@@ -2512,8 +2512,8 @@ abstract class SubmissionRegistryTest {
           assertThat(results[0].id).isEqualTo(s.id)
           assertThat(results[1].id).isEqualTo(pc.id)
           assertThat(results[2].id).isEqualTo(s2.id)
-          assertThat(results[3].id).isEqualTo(pc2.id)
-          assertThat(results[4].id).isEqualTo(pc3.id)
+          assertThat(results[3].id).isEqualTo(pc3.id)
+          assertThat(results[4].id).isEqualTo(pc2.id)
         }
 
         submissionRegistry.search(QueryCompiler.compile("foo bar docker sleep"),
@@ -2522,8 +2522,8 @@ abstract class SubmissionRegistryTest {
           assertThat(results[4].id).isEqualTo(s.id)
           assertThat(results[3].id).isEqualTo(pc.id)
           assertThat(results[2].id).isEqualTo(s2.id)
-          assertThat(results[1].id).isEqualTo(pc2.id)
-          assertThat(results[0].id).isEqualTo(pc3.id)
+          assertThat(results[1].id).isEqualTo(pc3.id)
+          assertThat(results[0].id).isEqualTo(pc2.id)
         }
 
         submissionRegistry.search(QueryCompiler.compile("foo bar docker sleep"),
@@ -2537,8 +2537,8 @@ abstract class SubmissionRegistryTest {
             size = 3, offset = 2).toList().let { results ->
           assertThat(results).hasSize(3)
           assertThat(results[0].id).isEqualTo(s2.id)
-          assertThat(results[1].id).isEqualTo(pc2.id)
-          assertThat(results[2].id).isEqualTo(pc3.id)
+          assertThat(results[1].id).isEqualTo(pc3.id)
+          assertThat(results[2].id).isEqualTo(pc2.id)
         }
 
         submissionRegistry.search(QueryCompiler.compile("foo bar docker sleep"),

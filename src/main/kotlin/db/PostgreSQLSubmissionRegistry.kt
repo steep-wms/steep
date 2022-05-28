@@ -622,12 +622,18 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   /**
    * Converts a [locator] to a column name or JSONB property name
    */
-  private fun locatorToField(locator: Locator, type: Type) = when (locator) {
+  private fun locatorToField(locator: Locator, type: Type): String? = when (locator) {
     Locator.ERROR_MESSAGE -> ERROR_MESSAGE
     Locator.ID -> ID
-    Locator.NAME -> "$DATA->>'$NAME'"
+    Locator.NAME -> when (type) {
+      Type.WORKFLOW -> "$DATA->>'$NAME'"
+      Type.PROCESS_CHAIN -> null
+    }
     Locator.REQUIRED_CAPABILITIES -> "$DATA->'$REQUIRED_CAPABILITIES'"
-    Locator.SOURCE -> "$DATA->>'$SOURCE'"
+    Locator.SOURCE -> when (type) {
+      Type.WORKFLOW -> "$DATA->>'$SOURCE'"
+      Type.PROCESS_CHAIN -> null
+    }
     Locator.STATUS -> when (type) {
       Type.WORKFLOW -> "$DATA->>'$STATUS'"
       Type.PROCESS_CHAIN -> STATUS
@@ -653,9 +659,22 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   private fun makeFilter(locator: Locator, term: Term, type: Type,
       params: MutableMap<String, Int>): String? {
     return when (locator) {
-      Locator.ERROR_MESSAGE, Locator.ID, Locator.STATUS -> {
+      Locator.ERROR_MESSAGE, Locator.ID -> {
         when (term) {
-          is StringTerm -> makeLike(locatorToField(locator, type), term.value, params)
+          is StringTerm -> locatorToField(locator, type)?.let { f ->
+            makeLike(f, term.value, params) }
+          else -> null
+        }
+      }
+
+      Locator.STATUS -> {
+        when (term) {
+          is StringTerm -> (when (type) {
+            Type.WORKFLOW -> Submission.Status.values().find {
+              it.name.contains(term.value, true) }?.name
+            Type.PROCESS_CHAIN -> ProcessChainStatus.values().find {
+              it.name.contains(term.value, true) }?.name
+          })?.let { status -> locatorToField(locator, type)?.let { f -> "$f='$status'" } }
           else -> null
         }
       }
@@ -664,7 +683,8 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       Locator.NAME, Locator.SOURCE -> {
         if (type == Type.WORKFLOW) {
           when (term) {
-            is StringTerm -> makeLike(locatorToField(locator, type), term.value, params)
+            is StringTerm -> locatorToField(locator, type)?.let { f ->
+              makeLike(f, term.value, params) }
             else -> null
           }
         } else {
@@ -684,6 +704,14 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
   override suspend fun search(query: Query, size: Int, offset: Int,
       order: Int): Collection<SearchResult> {
+    // TODO make configurable
+    // The maximum number of rows to return for each term or query filter
+    // (sorted by SERIAL, descending, so the newest rows will be preferred).
+    // Lower values might yield incorrect results (missing combinations of
+    // terms/filters), higher values might impact performance (especially
+    // if a term matches a large number of rows)
+    val maxSubMatches = 1000
+
     if (query == Query()) {
       return emptyList()
     }
@@ -700,8 +728,8 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       emptyList()
     }
 
-    // create SELECT statements for all types
-    val statements = mutableSetOf<String>()
+    // create SELECT statements for all types and all conditions
+    val substatements = mutableSetOf<String>()
     val params = mutableMapOf<String, Int>()
     for (type in types) {
       val table = when (type) {
@@ -709,90 +737,79 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         Type.WORKFLOW -> SUBMISSIONS
       }
 
-      // determine which columns we need to return (always include ID,
-      // required capabilities, status)
-      val locatorToColumns = mutableMapOf(
-          Locator.ID to ID,
-          Locator.REQUIRED_CAPABILITIES to
-              "${locatorToField(Locator.REQUIRED_CAPABILITIES, type)} AS " +
-              "\"${locatorToResultName(Locator.REQUIRED_CAPABILITIES)}\"",
-          Locator.STATUS to "${locatorToField(Locator.STATUS, type)} AS " +
-              "\"${locatorToResultName(Locator.STATUS)}\"",
-      )
-      if (type == Type.WORKFLOW) {
-        // always include submission name
-        locatorToColumns[Locator.NAME] = "${locatorToField(Locator.NAME, type)} AS " +
-            "\"${locatorToResultName(Locator.NAME)}\""
-      } else {
-        // other types don't have a name but we must still specify the column
-        locatorToColumns[Locator.NAME] = "NULL AS ${locatorToResultName(Locator.NAME)}"
-      }
-      for (l in locators) {
-        if (!locatorToColumns.contains(l)) {
-          locatorToColumns[l] = "${locatorToField(l, type)} AS \"${locatorToResultName(l)}\""
-        }
-      }
-      for ((l, _) in query.filters) {
-        if (!locatorToColumns.contains(l)) {
-          locatorToColumns[l] = "${locatorToField(l, type)} AS \"${locatorToResultName(l)}\""
-        }
-      }
-      val columns = locatorToColumns.values.toMutableList()
-
-      // always include serial too
-      columns.add(SERIAL)
-
-      // make WHERE expressions for all combinations of terms and locators
-      val filters = mutableSetOf<String>()
+      // make a SELECT statement for each term
       for (term in query.terms) {
+        val filters = mutableSetOf<String>()
         for (locator in locators) {
           makeFilter(locator, term, type, params)?.let { filters.add(it) }
         }
+        if (filters.isNotEmpty()) {
+          substatements.add("SELECT $ID,$SERIAL,${type.priority} AS type FROM $table " +
+              "WHERE ${filters.joinToString(" OR ")} " +
+              "ORDER BY $SERIAL $desc LIMIT $maxSubMatches")
+        }
       }
 
-      // make WHERE expressions for all filters
+      // make a SELECT statement for each filter
       for (f in query.filters) {
-        makeFilter(f.first, f.second, type, params)?.let { filters.add(it) }
+        val where = makeFilter(f.first, f.second, type, params)
+        if (where != null) {
+          substatements.add("SELECT $ID,$SERIAL,${type.priority} AS type FROM $table " +
+              "WHERE $where " +
+              "ORDER BY $SERIAL $desc LIMIT $maxSubMatches")
+        }
       }
-
-      // skip type if there are no filters
-      if (filters.isEmpty()) {
-        continue
-      }
-
-      // Add column that specifies how many WHERE expressions have matched.
-      // For each filter, add a 1 if it matched or a 0 if it didn't
-      val rank = filters.joinToString(
-          separator = "+",
-          transform = { "COALESCE(($it)::int,0)" }
-      )
-      statements.add(
-          "(SELECT " +
-              "${columns.joinToString(",")}," +
-              "(${rank}) AS rank," +
-              "${type.priority} AS typepriority," +
-              "'${type.type}' AS type " +
-              "FROM $table WHERE ${filters.joinToString(" OR ")} " +
-          ")"
-      )
     }
 
-    if (statements.isEmpty()) {
+    if (substatements.isEmpty()) {
       // nothing to do
       return emptyList()
     }
 
-    // join all statements into one big statement
-    val statement = "(${statements.joinToString(" UNION ALL ")}) " +
-        "ORDER BY rank $desc,typepriority $asc,$SERIAL $asc LIMIT $limit OFFSET $offset"
+    // determine which columns we need to return (some fields are mandatory
+    // in SearchResults)
+    val columns = mutableSetOf(Locator.ID, Locator.NAME,
+        Locator.REQUIRED_CAPABILITIES, Locator.STATUS)
+    for (l in locators) {
+      columns.add(l)
+    }
+    for ((l, _) in query.filters) {
+      columns.add(l)
+    }
+
+    // union all sub-statements, group the results by ID, count the number of
+    // matches per row, and sort by this count
+    val withStatement =
+        "WITH results AS ((${substatements.joinToString(") UNION ALL (")}))," +
+        "ranking AS (SELECT $ID,$SERIAL,type,COUNT(*) AS rank FROM results " +
+        "GROUP BY ($ID,$SERIAL,type) ORDER BY COUNT(*) $desc, type $asc,$SERIAL $desc " +
+        "LIMIT $limit OFFSET $offset) "
+
+    // now that we have the IDs of the rows to return, fetch the actual data
+    val statements = mutableSetOf<String>()
+    for (type in types) {
+      val table = when (type) {
+        Type.PROCESS_CHAIN -> PROCESS_CHAINS
+        Type.WORKFLOW -> SUBMISSIONS
+      }
+      val tcs = columns.map { l ->
+        val f = locatorToField(l, type)
+        val c = if (f == null) "NULL" else "$table.$f"
+        "$c AS \"${locatorToResultName(l)}\""
+      }
+      statements.add("SELECT ${tcs.joinToString(",")},ranking.rank,ranking.serial,ranking.type " +
+          "FROM $table JOIN ranking ON $table.$ID = ranking.$ID")
+    }
+
+    val statement = "$withStatement ${statements.joinToString(" UNION ALL ")} " +
+        "ORDER BY rank $desc,type $asc,$SERIAL $desc"
 
     val rs = client.preparedQuery(statement).execute(Tuple.from(params.keys.toList())).await()
     return rs.map { row ->
       val obj = row.toJson()
       // remove auxiliary columns
-      obj.remove(SERIAL)
       obj.remove("rank")
-      obj.remove("typepriority")
+      obj.remove(SERIAL)
       JsonUtils.fromJson(obj)
     }
   }
