@@ -14,6 +14,7 @@ import model.Submission
 import model.processchain.ProcessChain
 import search.Query
 import search.SearchResult
+import search.Type
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -605,6 +606,10 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
 
   override suspend fun search(query: Query, size: Int, offset: Int,
       order: Int): Collection<SearchResult> {
+    TODO("Not yet implemented")
+  }
+
+  override suspend fun searchCount(query: Query, type: Type, estimate: Boolean): Long {
     TODO("Not yet implemented")
   }
 }

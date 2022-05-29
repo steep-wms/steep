@@ -798,15 +798,13 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         for (locator in locators) {
           makeWhere(locator, term, type, params)?.let { whereTerms.add(it) }
         }
-        if (whereTerms.isNotEmpty() || whereFilters.isNotEmpty()) {
+        if (whereTerms.isNotEmpty()) {
           val joinedWhereTerms = "(${whereTerms.joinToString(" OR ")})"
           val joinedWhereFilters = "(${whereFilters.joinToString(" AND ")})"
-          val where = if (whereTerms.isNotEmpty() && whereFilters.isNotEmpty()) {
+          val where = if (whereFilters.isNotEmpty()) {
             "$joinedWhereTerms AND $joinedWhereFilters"
-          } else if (whereTerms.isNotEmpty()) {
-            joinedWhereTerms
           } else {
-            joinedWhereFilters
+            joinedWhereTerms
           }
           substatements.add("SELECT $ID,$SERIAL,${type.priority} AS type FROM $table " +
               "WHERE $where ORDER BY $SERIAL $desc LIMIT $maxSubMatches")
@@ -871,6 +869,63 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       obj.remove("rank")
       obj.remove(SERIAL)
       JsonUtils.fromJson(obj)
+    }
+  }
+
+  override suspend fun searchCount(query: Query, type: Type, estimate: Boolean): Long {
+    // search in all places by default
+    val locators = if (query.terms.isNotEmpty()) {
+      query.locators.ifEmpty { Locator.values().toSet() }
+    } else {
+      emptyList()
+    }
+
+    val table = when (type) {
+      Type.PROCESS_CHAIN -> PROCESS_CHAINS
+      Type.WORKFLOW -> SUBMISSIONS
+    }
+
+    val params = mutableMapOf<String, Int>()
+
+    // make a WHERE expression for each filter
+    val whereFilters = mutableSetOf<String>()
+    for (f in query.filters) {
+      makeWhere(f.first, f.second, type, params)?.let { whereFilters.add(it) }
+    }
+
+    // make a WHERE expression for each term/location combination
+    val whereTerms = mutableSetOf<String>()
+    for (term in query.terms) {
+      for (locator in locators) {
+        makeWhere(locator, term, type, params)?.let { whereTerms.add(it) }
+      }
+    }
+
+    if (whereTerms.isEmpty() && whereFilters.isEmpty()) {
+      // nothing to do
+      return 0L
+    }
+
+    val joinedWhereTerms = "(${whereTerms.joinToString(" OR ")})"
+    val joinedWhereFiltersAnd = "(${whereFilters.joinToString(" AND ")})"
+    val joinedWhereFiltersOr = "(${whereFilters.joinToString(" OR ")})"
+    val where = if (whereTerms.isNotEmpty() && whereFilters.isNotEmpty()) {
+      "($joinedWhereTerms AND $joinedWhereFiltersAnd) OR $joinedWhereFiltersOr"
+    } else if (whereTerms.isNotEmpty()) {
+      joinedWhereTerms
+    } else {
+      joinedWhereFiltersOr
+    }
+
+    return if (estimate) {
+      val statement = "EXPLAIN (FORMAT JSON, TIMING FALSE) SELECT 1 from $table WHERE $where"
+      val rs = client.preparedQuery(statement).execute(Tuple.from(params.keys.toList())).await()
+      rs?.firstOrNull()?.getJsonArray(0)?.getJsonObject(0)?.getJsonObject("Plan")
+          ?.getLong("Plan Rows") ?: 0L
+    } else {
+      val statement = "SELECT COUNT(*) FROM $table WHERE $where"
+      val rs = client.preparedQuery(statement).execute(Tuple.from(params.keys.toList())).await()
+      rs?.firstOrNull()?.getLong(0) ?: 0L
     }
   }
 }

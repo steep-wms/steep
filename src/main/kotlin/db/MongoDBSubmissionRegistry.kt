@@ -44,6 +44,7 @@ import model.processchain.ProcessChain
 import org.slf4j.LoggerFactory
 import search.Query
 import search.SearchResult
+import search.Type
 import java.nio.ByteBuffer
 import java.time.Instant
 import java.time.format.DateTimeFormatter.ISO_INSTANT
@@ -859,6 +860,10 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   override suspend fun search(query: Query, size: Int, offset: Int,
       order: Int): Collection<SearchResult> {
+    TODO("Not yet implemented")
+  }
+
+  override suspend fun searchCount(query: Query, type: Type, estimate: Boolean): Long {
     TODO("Not yet implemented")
   }
 }

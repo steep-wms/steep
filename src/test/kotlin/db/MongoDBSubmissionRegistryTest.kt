@@ -31,4 +31,6 @@ class MongoDBSubmissionRegistryTest : MongoDBTest, SubmissionRegistryTest() {
   override fun searchRanking(vertx: Vertx, ctx: VertxTestContext) {}
   @Test @Disabled
   override fun searchOrder(vertx: Vertx, ctx: VertxTestContext) {}
+  @Test @Disabled
+  override fun searchCount(vertx: Vertx, ctx: VertxTestContext) {}
 }

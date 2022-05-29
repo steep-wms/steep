@@ -2610,4 +2610,78 @@ abstract class SubmissionRegistryTest {
       ctx.completeNow()
     }
   }
+
+  @Test
+  open fun searchCount(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val s = Submission(workflow = Workflow(name = "foo"))
+      val pc = ProcessChain(requiredCapabilities = setOf("foo", "bar"))
+
+      val s2 = Submission(workflow = Workflow(name = "bar"))
+      val pc2 = ProcessChain()
+      val pc3 = ProcessChain(requiredCapabilities = setOf("foo"))
+
+      submissionRegistry.addSubmission(s)
+      submissionRegistry.addProcessChains(listOf(pc), s.id)
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addProcessChains(listOf(pc2, pc3), s2.id)
+
+      val query1 = QueryCompiler.compile("foo bar")
+      val exactWorkflows1 = submissionRegistry.searchCount(query1, Type.WORKFLOW, false)
+      val exactProcessChains1 = submissionRegistry.searchCount(query1, Type.PROCESS_CHAIN, false)
+
+      assertThat(exactWorkflows1).isEqualTo(2)
+      assertThat(exactProcessChains1).isEqualTo(2)
+
+      // Don't compare estimates. Different systems might return different results.
+      // Just execute the methods to make sure they don't throw an exception.
+      submissionRegistry.searchCount(query1, Type.WORKFLOW, true)
+      submissionRegistry.searchCount(query1, Type.PROCESS_CHAIN, true)
+
+      val query2 = QueryCompiler.compile("foo")
+      val exactWorkflows2 = submissionRegistry.searchCount(query2, Type.WORKFLOW, false)
+      val exactProcessChains2 = submissionRegistry.searchCount(query2, Type.PROCESS_CHAIN, false)
+
+      assertThat(exactWorkflows2).isEqualTo(1)
+      assertThat(exactProcessChains2).isEqualTo(2)
+
+      submissionRegistry.searchCount(query2, Type.WORKFLOW, true)
+      submissionRegistry.searchCount(query2, Type.PROCESS_CHAIN, true)
+
+      val query3 = QueryCompiler.compile("foo in:rcs")
+      val exactWorkflows3 = submissionRegistry.searchCount(query3, Type.WORKFLOW, false)
+      val exactProcessChains3 = submissionRegistry.searchCount(query3, Type.PROCESS_CHAIN, false)
+
+      assertThat(exactWorkflows3).isEqualTo(0)
+      assertThat(exactProcessChains3).isEqualTo(2)
+
+      submissionRegistry.searchCount(query3, Type.WORKFLOW, true)
+      submissionRegistry.searchCount(query3, Type.PROCESS_CHAIN, true)
+
+      val query4 = QueryCompiler.compile("name:bar")
+      val exactWorkflows4 = submissionRegistry.searchCount(query4, Type.WORKFLOW, false)
+      val exactProcessChains4 = submissionRegistry.searchCount(query4, Type.PROCESS_CHAIN, false)
+
+      assertThat(exactWorkflows4).isEqualTo(1)
+      assertThat(exactProcessChains4).isEqualTo(0)
+
+      submissionRegistry.searchCount(query4, Type.WORKFLOW, true)
+      submissionRegistry.searchCount(query4, Type.PROCESS_CHAIN, true)
+
+      val query5 = QueryCompiler.compile("")
+      val exactWorkflows5 = submissionRegistry.searchCount(query5, Type.WORKFLOW, false)
+      val exactProcessChains5 = submissionRegistry.searchCount(query5, Type.PROCESS_CHAIN, false)
+
+      assertThat(exactWorkflows5).isEqualTo(0)
+      assertThat(exactProcessChains5).isEqualTo(0)
+
+      val estimateWorkflows5 = submissionRegistry.searchCount(query5, Type.WORKFLOW, true)
+      val estimateProcessChains5 = submissionRegistry.searchCount(query5, Type.PROCESS_CHAIN, true)
+
+      assertThat(estimateWorkflows5).isEqualTo(0)
+      assertThat(estimateProcessChains5).isEqualTo(0)
+
+      ctx.completeNow()
+    }
+  }
 }

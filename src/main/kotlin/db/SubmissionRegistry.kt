@@ -5,6 +5,7 @@ import model.Submission
 import model.processchain.ProcessChain
 import search.Query
 import search.SearchResult
+import search.Type
 import java.time.Instant
 
 /**
@@ -467,4 +468,10 @@ interface SubmissionRegistry : Registry {
    */
   suspend fun search(query: Query, size: Int = -1, offset: Int = 0,
       order: Int = 1): Collection<SearchResult>
+
+  /**
+   * Count all objects that match the given [query] and are of the given [type].
+   * Provides a quick/rough [estimate] or an exact count.
+   */
+  suspend fun searchCount(query: Query, type: Type, estimate: Boolean): Long
 }
