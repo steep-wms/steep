@@ -8,7 +8,8 @@ const DetailPage = ({ breadcrumbs, title, subtitle, menu, deleted = false,
     footerNoTopMargin = false, children }) => (
   <Page title={title} footerNoTopMargin={footerNoTopMargin}>
     {title && <div className={classNames("detail-page-title", { deleted })}>
-      <h1 className="no-margin-bottom">{title}</h1>{menu && <DropDown title="Actions">{menu}</DropDown>}
+      <h1 className="no-margin-bottom">{title}</h1>{menu &&
+        <div className="drop-down-container"><DropDown title="Actions">{menu}</DropDown></div>}
     </div>}
     {subtitle && <p className="detail-page-subtitle">{subtitle}</p>}
     {breadcrumbs && <Breadcrumbs breadcrumbs={breadcrumbs} />}

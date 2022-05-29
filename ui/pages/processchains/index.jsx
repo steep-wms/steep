@@ -63,7 +63,7 @@ const ProcessChains = () => {
   return (
     <ListPage title="Process chains" Context={ProcessChainContext}
       ListItem={ProcessChainListItem} subjects="process chains" path="processchains"
-      filters={FILTERS} breadcrumbs={breadcrumbs} />
+      filters={FILTERS} breadcrumbs={breadcrumbs} search="processchain" />
   )
 }
 

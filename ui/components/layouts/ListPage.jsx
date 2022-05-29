@@ -5,6 +5,7 @@ import DropDown from "../DropDown"
 import Notification from "../Notification"
 import Page from "./Page"
 import Pagination from "../Pagination"
+import QuickSearch from "../QuickSearch"
 import { useCallback, useContext, useEffect, useMemo, useState } from "react"
 import styles from "./ListPage.scss"
 import fetcher from "../lib/json-fetcher"
@@ -212,6 +213,11 @@ const ListPage = (props) => {
     })
   }
 
+  let search
+  if (props.search !== undefined) {
+    search = <QuickSearch type={props.search} />
+  }
+
   let filterDropDownElements = []
   if (props.filters !== undefined) {
     props.filters.forEach((f, i) => {
@@ -237,13 +243,18 @@ const ListPage = (props) => {
       <div className="list-page">
         <div className={classNames("list-page-title", { "no-margin-bottom": props.breadcrumbs })}>
           <h1 className="no-margin-bottom">{props.title}</h1>
-          {filterDropDownElements.length > 0 && (
-            <DropDown title="Filter" right primary={hasEnabledFilters}>
-              <ul className={classNames("filter-list", { "has-enabled-filters": hasEnabledFilters })}>
-                {filterDropDownElements}
-              </ul>
-            </DropDown>
-          )}
+          <div className="title-right">
+            <div className="search-container">
+              {search}
+            </div>
+            {filterDropDownElements.length > 0 && (
+              <DropDown title="Filter" right primary={hasEnabledFilters}>
+                <ul className={classNames("filter-list", { "has-enabled-filters": hasEnabledFilters })}>
+                  {filterDropDownElements}
+                </ul>
+              </DropDown>
+            )}
+          </div>
         </div>
         {props.breadcrumbs && <div className="breadcrumbs"><Breadcrumbs breadcrumbs={props.breadcrumbs} /></div>}
         <props.Context.Provider pageSize={pageSize} shouldAddItem={shouldAddItem} reducers={[reducer]}>

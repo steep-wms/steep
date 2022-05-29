@@ -36,7 +36,7 @@ function WorkflowListItem({ item: workflow }) {
 const Workflows = () => (
   <ListPage title="Workflows" Context={WorkflowContext}
       ListItem={WorkflowListItem} subjects="workflows" path="workflows"
-      filters={FILTERS} />
+      filters={FILTERS} search="workflow" />
 )
 
 export default Workflows

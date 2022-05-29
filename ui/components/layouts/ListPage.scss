@@ -36,3 +36,17 @@
     }
   }
 }
+
+.title-right {
+  display: flex;
+  flex-direction: row;
+  margin-top: 2rem;
+  align-items: center;
+  gap: 1rem;
+}
+
+.search-container {
+  @media (max-width: $md) {
+    display: none;
+  }
+}
