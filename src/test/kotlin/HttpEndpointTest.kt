@@ -2182,13 +2182,26 @@ class HttpEndpointTest {
         any(), any(), any()) } returns emptyList()
     coEvery { submissionRegistry.search(query,
         size = 10, offset = 0, order = any()) } returns results
+    coEvery { submissionRegistry.search(query,
+        size = 0, offset = 0, order = any()) } returns emptyList()
+
+    coEvery { submissionRegistry.searchCount(QueryCompiler.compile(""),
+        any(), any()) } returns 0L
+    coEvery { submissionRegistry.searchCount(query, Type.WORKFLOW,
+        false) } returns 1L
+    coEvery { submissionRegistry.searchCount(query, Type.PROCESS_CHAIN,
+        false) } returns 1L
+    coEvery { submissionRegistry.searchCount(query, Type.WORKFLOW,
+        true) } returns 2L
+    coEvery { submissionRegistry.searchCount(query, Type.PROCESS_CHAIN,
+        true) } returns 3L
 
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         // return no results
         val response = client.get(port, "localhost", "/search")
-            .`as`(BodyCodec.jsonArray())
+            .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
@@ -2196,12 +2209,59 @@ class HttpEndpointTest {
 
         assertThat(response.headers()["x-page-size"]).isEqualTo("10")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
-        assertThat(response.body()).isEqualTo(jsonArrayOf())
+        assertThat(response.headers()["x-page-total"]).isEqualTo("0")
+        assertThat(response.body()).isEqualTo(jsonObjectOf(
+            "counts" to jsonObjectOf(
+                "workflow" to 0L,
+                "processChain" to 0L,
+                "total" to 0L
+            ),
+            "results" to jsonArrayOf()
+        ))
       }
+
+      val expectedResults = jsonArrayOf(
+          jsonObjectOf(
+              "id" to id1,
+              "type" to "workflow",
+              "name" to "Elvis",
+              "requiredCapabilities" to jsonArrayOf("foo", "bar"),
+              "status" to "SUCCESS",
+              "matches" to jsonArrayOf(
+                  jsonObjectOf(
+                      "locator" to "requiredCapabilities",
+                      "fragment" to "foo",
+                      "termMatches" to jsonArrayOf(
+                          jsonObjectOf(
+                              "term" to "foo",
+                              "indices" to jsonArrayOf(0)
+                          )
+                      )
+                  ),
+                  jsonObjectOf(
+                      "locator" to "requiredCapabilities",
+                      "fragment" to "bar",
+                      "termMatches" to jsonArrayOf(
+                          jsonObjectOf(
+                              "term" to "bar",
+                              "indices" to jsonArrayOf(0)
+                          )
+                      )
+                  )
+              )
+          ),
+          jsonObjectOf(
+              "id" to id2,
+              "type" to "processChain",
+              "requiredCapabilities" to jsonArrayOf(),
+              "status" to "ERROR",
+              "matches" to jsonArrayOf()
+          )
+      )
 
       ctx.coVerify {
         val response = client.get(port, "localhost", "/search?q=$encodedQuery")
-            .`as`(BodyCodec.jsonArray())
+            .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
@@ -2209,43 +2269,95 @@ class HttpEndpointTest {
 
         assertThat(response.headers()["x-page-size"]).isEqualTo("10")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
-        assertThat(response.body()).isEqualTo(jsonArrayOf(
-            jsonObjectOf(
-                "id" to id1,
-                "type" to "workflow",
-                "name" to "Elvis",
-                "requiredCapabilities" to jsonArrayOf("foo", "bar"),
-                "status" to "SUCCESS",
-                "matches" to jsonArrayOf(
-                    jsonObjectOf(
-                        "locator" to "requiredCapabilities",
-                        "fragment" to "foo",
-                        "termMatches" to jsonArrayOf(
-                            jsonObjectOf(
-                                "term" to "foo",
-                                "indices" to jsonArrayOf(0)
-                            )
-                        )
-                    ),
-                    jsonObjectOf(
-                        "locator" to "requiredCapabilities",
-                        "fragment" to "bar",
-                        "termMatches" to jsonArrayOf(
-                            jsonObjectOf(
-                                "term" to "bar",
-                                "indices" to jsonArrayOf(0)
-                            )
-                        )
-                    )
-                )
+        assertThat(response.headers()["x-page-total"]).isEqualTo("2")
+        assertThat(response.body()).isEqualTo(jsonObjectOf(
+            "counts" to jsonObjectOf(
+                "workflow" to 1L,
+                "processChain" to 1L,
+                "total" to 2L
             ),
-            jsonObjectOf(
-                "id" to id2,
-                "type" to "processChain",
-                "requiredCapabilities" to jsonArrayOf(),
-                "status" to "ERROR",
-                "matches" to jsonArrayOf()
-            )
+            "results" to expectedResults
+        ))
+      }
+
+      ctx.coVerify {
+        client.get(port, "localhost", "/search?q=$encodedQuery&count=invalid")
+            .expect(ResponsePredicate.SC_BAD_REQUEST)
+            .send()
+            .await()
+      }
+
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/search?q=$encodedQuery&count=none")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .expect(ResponsePredicate.JSON)
+            .send()
+            .await()
+
+        assertThat(response.headers()["x-page-size"]).isEqualTo("10")
+        assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
+        assertThat(response.headers()["x-page-total"]).isNull()
+        assertThat(response.body()).isEqualTo(jsonObjectOf(
+            "results" to expectedResults
+        ))
+      }
+
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/search?q=$encodedQuery&count=none&size=0")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .expect(ResponsePredicate.JSON)
+            .send()
+            .await()
+
+        assertThat(response.headers()["x-page-size"]).isEqualTo("0")
+        assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
+        assertThat(response.headers()["x-page-total"]).isNull()
+        assertThat(response.body()).isEqualTo(jsonObjectOf(
+            "results" to jsonArrayOf()
+        ))
+      }
+
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/search?q=$encodedQuery&count=estimate&size=0")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .expect(ResponsePredicate.JSON)
+            .send()
+            .await()
+
+        assertThat(response.headers()["x-page-size"]).isEqualTo("0")
+        assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
+        assertThat(response.headers()["x-page-total"]).isEqualTo("5")
+        assertThat(response.body()).isEqualTo(jsonObjectOf(
+            "counts" to jsonObjectOf(
+                "workflow" to 2L,
+                "processChain" to 3L,
+                "total" to 5L
+            ),
+            "results" to jsonArrayOf()
+        ))
+      }
+
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/search?q=$encodedQuery&count=exact&size=0")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .expect(ResponsePredicate.JSON)
+            .send()
+            .await()
+
+        assertThat(response.headers()["x-page-size"]).isEqualTo("0")
+        assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
+        assertThat(response.headers()["x-page-total"]).isEqualTo("2")
+        assertThat(response.body()).isEqualTo(jsonObjectOf(
+            "counts" to jsonObjectOf(
+                "workflow" to 1L,
+                "processChain" to 1L,
+                "total" to 2L
+            ),
+            "results" to jsonArrayOf()
         ))
       }
 

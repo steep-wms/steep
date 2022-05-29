@@ -84,6 +84,8 @@ import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.toReceiveChannel
 import io.vertx.micrometer.PrometheusScrapingHandler
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.Submission
@@ -94,6 +96,7 @@ import org.apache.commons.text.WordUtils
 import org.slf4j.LoggerFactory
 import search.QueryCompiler
 import search.SearchResultMatcher
+import search.Type
 import java.util.regex.Pattern
 import kotlin.math.max
 import com.github.zafarkhaja.semver.Version as SemVersion
@@ -874,12 +877,32 @@ class HttpEndpoint : CoroutineVerticle() {
       val q = ctx.request().getParam("q") ?: ""
       val offset = max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
       val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
+      val count = ctx.request().getParam("count", "estimate").lowercase()
+
+      if (count != "none" && count != "estimate" && count != "exact") {
+        renderError(ctx, 400, "Parameter `count' must be one of `none', " +
+            "`estimate', or `exact'")
+        return
+      }
 
       launch {
         val query = QueryCompiler.compile(q)
-        val searchResults = submissionRegistry.search(query, size = size, offset = offset)
+        val countJobs = if (count != "none") {
+          Type.values().map { type ->
+            async {
+              type to submissionRegistry.searchCount(query, type, count == "estimate")
+            }
+          }
+        } else {
+          emptyList()
+        }
 
-        val result = JsonArray()
+        val searchResults = submissionRegistry.search(query, size = size, offset = offset)
+        val counts = countJobs.awaitAll()
+
+        var countedWorkflows = 0L
+        var countedProcessChains = 0L
+        val results = JsonArray()
         for (sr in searchResults) {
           val matches = SearchResultMatcher.toMatch(sr, query)
           val ro = jsonObjectOf(
@@ -892,14 +915,43 @@ class HttpEndpoint : CoroutineVerticle() {
             ro.put("name", sr.name)
           }
           ro.put("matches", matches)
-          result.add(ro)
+          results.add(ro)
+
+          when (sr.type) {
+            Type.WORKFLOW -> countedWorkflows++
+            Type.PROCESS_CHAIN -> countedProcessChains++
+          }
         }
+
+        var total = 0L
+        val result = JsonObject()
+        if (count != "none") {
+          val countsObj = JsonObject()
+          for (c in counts) {
+            val v = when (c.first) {
+              Type.WORKFLOW -> if (countedWorkflows + countedProcessChains < size ||
+                  countedWorkflows > c.second) countedWorkflows else c.second
+              Type.PROCESS_CHAIN -> if (countedWorkflows + countedProcessChains < size ||
+                  countedProcessChains > c.second) countedProcessChains else c.second
+            }
+            countsObj.put(c.first.type, v)
+            total += v
+          }
+          countsObj.put("total", total)
+          result.put("counts", countsObj)
+        }
+        result.put("results", results)
 
         ctx.response()
             .putHeader("content-type", "application/json")
             .putHeader("x-page-size", size.toString())
             .putHeader("x-page-offset", offset.toString())
-            .end(result.encode())
+
+        if (count != "none") {
+          ctx.response().putHeader("x-page-total", total.toString())
+        }
+
+        ctx.response().end(result.encode())
       }
     }
   }
