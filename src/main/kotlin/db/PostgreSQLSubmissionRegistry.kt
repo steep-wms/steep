@@ -704,12 +704,61 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
   override suspend fun search(query: Query, size: Int, offset: Int,
       order: Int): Collection<SearchResult> {
+    // *************************************************************************
+    //   STOP! DON'T TOUCH THIS CODE UNLESS YOU KNOW EXACTLY WHAT YOU'RE DOING
+    //
+    // The SQL statement generated here has been optimized for performance!
+    // Days worth of effort have been put into this. Several different
+    // strategies including full-text search, word similarity, various indexes
+    // (GIN vs. GIST), and various approaches to the SQL statement have been
+    // evaluated.
+    //
+    // The general idea here is to (a) reduce I/O operations during the query,
+    // (b) to give the PostgreSQL query planner the possibility to make best
+    // use of indexes, and (c) to reduce the number of computations and rows
+    // that need to be sorted during the search.
+    //
+    // Approach:
+    // * The statement is split into three parts. The first two parts are WITH
+    //   queries (CTEs = Common Table Expressions).
+    // * The first CTE fetches the IDs of the rows that match the given
+    //   criteria. It does not fetch any data to reduce the number of buffers
+    //   read (I/O) and to reduce the memory needed for the subsequent sort
+    //   operations. All IDs are put into a union set.
+    // * Note that results for each of the criteria are already limited to
+    //   `maxSubMatches` here. This limits the size of the union set, which
+    //   could otherwise become very large if there are many matching rows.
+    //   Sorting would then take too long and too much memory would be needed.
+    //   However, this might yield incorrect results (see remark below, so
+    //   `maxSubMatches` is a tradeoff here.
+    // * The second CTE takes the union set and counts how often each ID
+    //   appears in it, i.e. how many criteria have matched. The counts are
+    //   then sorted and the result is limited to the `size` argument passed
+    //   to this method.
+    // * The main part of the query then takes the remaining IDs and fetches
+    //   the row data for them. The result needs to be sorted again because
+    //   the join operation might change the order.
+    //
+    // *************************************************************************
+
     // TODO make configurable
     // The maximum number of rows to return for each term or query filter
     // (sorted by SERIAL, descending, so the newest rows will be preferred).
     // Lower values might yield incorrect results (missing combinations of
     // terms/filters), higher values might impact performance (especially
-    // if a term matches a large number of rows)
+    // if a term matches a large number of rows).
+    // Example for a situation that could lead to incorrect results: A query
+    // contains criteria A and B. The first 1000 rows match criteria A, the
+    // next 1000 rows match both criteria A and B. Normally, you would expect
+    // that the rows matching both criteria should be picked first, but in this
+    // case, this doesn't work. The result set for A is limited to 1000 and
+    // A will not be counted for the next 1000 rows. So, all rows get a rank
+    // of 1 matching criterion. Sorted by rank and serial, the first 1000 rows
+    // (matching only A) will stay at the top.
+    // Solution for this: Either increase `maxSubMatches` or include a filter
+    // in the query that matches B. Filters are like AND-expressions, so with
+    // a filter, the first 1000 rows will actually not be included in the
+    // result at all.
     val maxSubMatches = 1000
 
     if (query == Query()) {
