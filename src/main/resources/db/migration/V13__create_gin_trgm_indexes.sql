@@ -14,10 +14,8 @@ CREATE INDEX IF NOT EXISTS submissions_id_gin_idx ON submissions USING gin(id gi
 CREATE INDEX IF NOT EXISTS submissions_errormessage_gin_idx ON submissions USING gin(errorMessage gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS submissions_name_gin_idx ON submissions USING gin((data->>'name') gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS submissions_source_gin_idx ON submissions USING gin((data->>'source') gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS submissions_status_gin_idx ON submissions USING gin((data->>'status') gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS submissions_requiredCapabilities_gin_idx ON submissions USING gin(rcs_to_string(data->'requiredCapabilities') gin_trgm_ops);
 
 CREATE INDEX IF NOT EXISTS processchains_id_gin_idx ON processchains USING gin(id gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS processchains_errormessage_gin_idx ON processchains USING gin(errorMessage gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS processchains_status_gin_idx ON processchains USING gin(status gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS processchains_requiredCapabilities_gin_idx ON processchains USING gin(rcs_to_string(data->'requiredCapabilities') gin_trgm_ops);
