@@ -656,7 +656,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
    * Creates an SQL WHERE expression from a [locator] and a [term]. Fills
    * [params] with placeholders.
    */
-  private fun makeFilter(locator: Locator, term: Term, type: Type,
+  private fun makeWhere(locator: Locator, term: Term, type: Type,
       params: MutableMap<String, Int>): String? {
     return when (locator) {
       Locator.ERROR_MESSAGE, Locator.ID -> {
@@ -786,27 +786,38 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         Type.WORKFLOW -> SUBMISSIONS
       }
 
+      // make a WHERE expression for each filter
+      val whereFilters = mutableSetOf<String>()
+      for (f in query.filters) {
+        makeWhere(f.first, f.second, type, params)?.let { whereFilters.add(it) }
+      }
+
       // make a SELECT statement for each term
       for (term in query.terms) {
-        val filters = mutableSetOf<String>()
+        val whereTerms = mutableSetOf<String>()
         for (locator in locators) {
-          makeFilter(locator, term, type, params)?.let { filters.add(it) }
+          makeWhere(locator, term, type, params)?.let { whereTerms.add(it) }
         }
-        if (filters.isNotEmpty()) {
+        if (whereTerms.isNotEmpty() || whereFilters.isNotEmpty()) {
+          val joinedWhereTerms = "(${whereTerms.joinToString(" OR ")})"
+          val joinedWhereFilters = "(${whereFilters.joinToString(" AND ")})"
+          val where = if (whereTerms.isNotEmpty() && whereFilters.isNotEmpty()) {
+            "$joinedWhereTerms AND $joinedWhereFilters"
+          } else if (whereTerms.isNotEmpty()) {
+            joinedWhereTerms
+          } else {
+            joinedWhereFilters
+          }
           substatements.add("SELECT $ID,$SERIAL,${type.priority} AS type FROM $table " +
-              "WHERE ${filters.joinToString(" OR ")} " +
-              "ORDER BY $SERIAL $desc LIMIT $maxSubMatches")
+              "WHERE $where ORDER BY $SERIAL $desc LIMIT $maxSubMatches")
         }
       }
 
       // make a SELECT statement for each filter
-      for (f in query.filters) {
-        val where = makeFilter(f.first, f.second, type, params)
-        if (where != null) {
-          substatements.add("SELECT $ID,$SERIAL,${type.priority} AS type FROM $table " +
-              "WHERE $where " +
-              "ORDER BY $SERIAL $desc LIMIT $maxSubMatches")
-        }
+      for (where in whereFilters) {
+        substatements.add("SELECT $ID,$SERIAL,${type.priority} AS type FROM $table " +
+            "WHERE $where " +
+            "ORDER BY $SERIAL $desc LIMIT $maxSubMatches")
       }
     }
 
@@ -832,7 +843,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         "WITH results AS ((${substatements.joinToString(") UNION ALL (")}))," +
         "ranking AS (SELECT $ID,$SERIAL,type,COUNT(*) AS rank FROM results " +
         "GROUP BY ($ID,$SERIAL,type) ORDER BY COUNT(*) $desc, type $asc,$SERIAL $desc " +
-        "LIMIT $limit OFFSET $offset) "
+        "LIMIT $limit OFFSET $offset)"
 
     // now that we have the IDs of the rows to return, fetch the actual data
     val statements = mutableSetOf<String>()

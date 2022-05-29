@@ -2489,6 +2489,63 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  open fun searchRanking(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val s1 = Submission(workflow = Workflow(name = "foo"),
+          requiredCapabilities = setOf("docker", "sleep"))
+      val pc = ProcessChain(requiredCapabilities = setOf("foo", "bar"))
+
+      val s2 = Submission(workflow = Workflow(name = "foo"),
+          requiredCapabilities = setOf())
+      val pc2 = ProcessChain(requiredCapabilities = setOf("foo"))
+      val pc3 = ProcessChain(requiredCapabilities = setOf("foo"))
+
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addProcessChains(listOf(pc), s1.id)
+
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addProcessChains(listOf(pc2, pc3), s2.id)
+
+      ctx.coVerify {
+        submissionRegistry.search(QueryCompiler.compile("foo bar")).toList().let { results ->
+          assertThat(results.map { it.id }).containsExactly(
+              pc.id, // matches best
+              s2.id, // newer than s1
+              s1.id,
+              pc3.id, // newer than pc2
+              pc2.id
+          )
+        }
+
+        submissionRegistry.search(QueryCompiler.compile("foo bar rcs:docker")).toList().let { results ->
+          assertThat(results.map { it.id }).containsExactly(
+              s1.id // the only item that matches
+          )
+        }
+
+        submissionRegistry.search(QueryCompiler.compile("docker rcs:foo")).toList().let { results ->
+          assertThat(results.map { it.id }).containsExactly(
+              pc3.id,
+              pc2.id,
+              pc.id
+              // submission s1 matches `docker` but does not include `foo` in rcs
+          )
+        }
+
+        submissionRegistry.search(QueryCompiler.compile("bar rcs:foo")).toList().let { results ->
+          assertThat(results.map { it.id }).containsExactly(
+              pc.id, // matches best
+              pc3.id, // newer than pc2
+              pc2.id
+          )
+        }
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   open fun searchOrder(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
       val s = Submission(workflow = Workflow(name = "foo"),
