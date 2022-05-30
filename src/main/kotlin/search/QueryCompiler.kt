@@ -122,13 +122,25 @@ object QueryCompiler {
   }
 
   private fun parseTerm(term: String): Term {
-    return DATE_REGEX.matchEntire(term)?.let { dateMatch ->
+    val (operator, operatorLen) = if (term.startsWith("<=")) {
+      Operator.LTE to 2
+    } else if (term.startsWith("<")) {
+      Operator.LT to 1
+    } else if (term.startsWith(">=")) {
+      Operator.GTE to 2
+    } else if (term.startsWith(">")) {
+      Operator.GT to 1
+    } else {
+      Operator.EQ to 0
+    }
+
+    return DATE_REGEX.matchEntire(term.substring(operatorLen))?.let { dateMatch ->
       DateTerm(LocalDate.of(
           dateMatch.groupValues[1].toInt(),
           dateMatch.groupValues[2].toInt(),
           dateMatch.groupValues[3].toInt()
-      ))
-    } ?: DATETIME_REGEX.matchEntire(term)?.let { dateTimeMatch ->
+      ), operator)
+    } ?: DATETIME_REGEX.matchEntire(term.substring(operatorLen))?.let { dateTimeMatch ->
       DateTimeTerm(LocalDateTime.of(
           dateTimeMatch.groupValues[1].toInt(),
           dateTimeMatch.groupValues[2].toInt(),
@@ -136,7 +148,7 @@ object QueryCompiler {
           dateTimeMatch.groupValues[4].toInt(),
           dateTimeMatch.groupValues[5].toInt(),
           if (dateTimeMatch.groupValues[7].isNotBlank()) dateTimeMatch.groupValues[7].toInt() else 0
-      ))
+      ), operator)
     } ?: run {
       StringTerm(term)
     }

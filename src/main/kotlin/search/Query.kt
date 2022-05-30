@@ -28,12 +28,42 @@ enum class Locator(@JsonValue val propertyName: String) {
 }
 
 /**
+ * Comparison operators
+ */
+enum class Operator {
+  /**
+   * Less than
+   */
+  LT,
+
+  /**
+   * Less than or equal to
+   */
+  LTE,
+
+  /**
+   * Equal to
+   */
+  EQ,
+
+  /**
+   * Greater than or equal to
+   */
+  GTE,
+
+  /**
+   * Greater than
+   */
+  GT
+}
+
+/**
  * Search terms
  */
 sealed interface Term
 data class StringTerm(val value: String) : Term
-data class DateTerm(val value: LocalDate) : Term
-data class DateTimeTerm(val value: LocalDateTime) : Term
+data class DateTerm(val value: LocalDate, val operator: Operator = Operator.EQ) : Term
+data class DateTimeTerm(val value: LocalDateTime, val operator: Operator = Operator.EQ) : Term
 
 /**
  * A search query
