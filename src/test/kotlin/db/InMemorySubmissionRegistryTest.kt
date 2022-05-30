@@ -32,4 +32,6 @@ class InMemorySubmissionRegistryTest : SubmissionRegistryTest() {
   override fun searchOrder(vertx: Vertx, ctx: VertxTestContext) {}
   @Test @Disabled
   override fun searchCount(vertx: Vertx, ctx: VertxTestContext) {}
+  @Test @Disabled
+  override fun searchDateTime(vertx: Vertx, ctx: VertxTestContext) {}
 }

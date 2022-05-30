@@ -3,6 +3,7 @@ package search
 import com.fasterxml.jackson.annotation.JsonValue
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneId
 
 /**
  * An object type to search for and its [priority] in the search results.
@@ -22,9 +23,9 @@ enum class Locator(@JsonValue val propertyName: String) {
   NAME("name"),
   REQUIRED_CAPABILITIES("requiredCapabilities"),
   SOURCE("source"),
-  STATUS("status")
-  // startTime
-  // endTime
+  STATUS("status"),
+  START_TIME("startTime"),
+  END_TIME("endTime")
 }
 
 /**
@@ -62,8 +63,15 @@ enum class Operator {
  */
 sealed interface Term
 data class StringTerm(val value: String) : Term
-data class DateTerm(val value: LocalDate, val operator: Operator = Operator.EQ) : Term
-data class DateTimeTerm(val value: LocalDateTime, val operator: Operator = Operator.EQ) : Term
+data class DateTerm(val value: LocalDate,
+    val timeZone: ZoneId = ZoneId.systemDefault(),
+    val operator: Operator = Operator.EQ
+) : Term
+data class DateTimeTerm(val value: LocalDateTime,
+    val timeZone: ZoneId = ZoneId.systemDefault(),
+    val withSecondPrecision: Boolean = true,
+    val operator: Operator = Operator.EQ
+) : Term
 
 /**
  * A search query

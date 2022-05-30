@@ -21,9 +21,12 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import search.Query
 import search.QueryCompiler
 import search.Type
 import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 /**
  * Tests for all [SubmissionRegistry] implementations
@@ -2619,70 +2622,205 @@ abstract class SubmissionRegistryTest {
       submissionRegistry.addSubmission(s2)
       submissionRegistry.addProcessChains(listOf(pc2, pc3), s2.id)
 
-      val query1 = QueryCompiler.compile("foo bar")
-      val exactWorkflows1 = submissionRegistry.searchCount(query1, Type.WORKFLOW, false)
-      val exactProcessChains1 = submissionRegistry.searchCount(query1, Type.PROCESS_CHAIN, false)
+      ctx.coVerify {
+        val query1 = QueryCompiler.compile("foo bar")
+        val exactWorkflows1 = submissionRegistry.searchCount(query1, Type.WORKFLOW, false)
+        val exactProcessChains1 = submissionRegistry.searchCount(query1, Type.PROCESS_CHAIN, false)
 
-      assertThat(exactWorkflows1).isEqualTo(2)
-      assertThat(exactProcessChains1).isEqualTo(2)
+        assertThat(exactWorkflows1).isEqualTo(2)
+        assertThat(exactProcessChains1).isEqualTo(2)
 
-      // Don't compare estimates. Different systems might return different results.
-      // Just execute the methods to make sure they don't throw an exception.
-      submissionRegistry.searchCount(query1, Type.WORKFLOW, true)
-      submissionRegistry.searchCount(query1, Type.PROCESS_CHAIN, true)
+        // Don't compare estimates. Different systems might return different results.
+        // Just execute the methods to make sure they don't throw an exception.
+        submissionRegistry.searchCount(query1, Type.WORKFLOW, true)
+        submissionRegistry.searchCount(query1, Type.PROCESS_CHAIN, true)
 
-      val query2 = QueryCompiler.compile("foo")
-      val exactWorkflows2 = submissionRegistry.searchCount(query2, Type.WORKFLOW, false)
-      val exactProcessChains2 = submissionRegistry.searchCount(query2, Type.PROCESS_CHAIN, false)
+        val query2 = QueryCompiler.compile("foo")
+        val exactWorkflows2 = submissionRegistry.searchCount(query2, Type.WORKFLOW, false)
+        val exactProcessChains2 = submissionRegistry.searchCount(query2, Type.PROCESS_CHAIN, false)
 
-      assertThat(exactWorkflows2).isEqualTo(1)
-      assertThat(exactProcessChains2).isEqualTo(2)
+        assertThat(exactWorkflows2).isEqualTo(1)
+        assertThat(exactProcessChains2).isEqualTo(2)
 
-      submissionRegistry.searchCount(query2, Type.WORKFLOW, true)
-      submissionRegistry.searchCount(query2, Type.PROCESS_CHAIN, true)
+        submissionRegistry.searchCount(query2, Type.WORKFLOW, true)
+        submissionRegistry.searchCount(query2, Type.PROCESS_CHAIN, true)
 
-      val query3 = QueryCompiler.compile("foo in:rcs")
-      val exactWorkflows3 = submissionRegistry.searchCount(query3, Type.WORKFLOW, false)
-      val exactProcessChains3 = submissionRegistry.searchCount(query3, Type.PROCESS_CHAIN, false)
+        val query3 = QueryCompiler.compile("foo in:rcs")
+        val exactWorkflows3 = submissionRegistry.searchCount(query3, Type.WORKFLOW, false)
+        val exactProcessChains3 = submissionRegistry.searchCount(query3, Type.PROCESS_CHAIN, false)
 
-      assertThat(exactWorkflows3).isEqualTo(0)
-      assertThat(exactProcessChains3).isEqualTo(2)
+        assertThat(exactWorkflows3).isEqualTo(0)
+        assertThat(exactProcessChains3).isEqualTo(2)
 
-      submissionRegistry.searchCount(query3, Type.WORKFLOW, true)
-      submissionRegistry.searchCount(query3, Type.PROCESS_CHAIN, true)
+        submissionRegistry.searchCount(query3, Type.WORKFLOW, true)
+        submissionRegistry.searchCount(query3, Type.PROCESS_CHAIN, true)
 
-      val query4 = QueryCompiler.compile("name:bar")
-      val exactWorkflows4 = submissionRegistry.searchCount(query4, Type.WORKFLOW, false)
-      val exactProcessChains4 = submissionRegistry.searchCount(query4, Type.PROCESS_CHAIN, false)
+        val query4 = QueryCompiler.compile("name:bar")
+        val exactWorkflows4 = submissionRegistry.searchCount(query4, Type.WORKFLOW, false)
+        val exactProcessChains4 = submissionRegistry.searchCount(query4, Type.PROCESS_CHAIN, false)
 
-      assertThat(exactWorkflows4).isEqualTo(1)
-      assertThat(exactProcessChains4).isEqualTo(0)
+        assertThat(exactWorkflows4).isEqualTo(1)
+        assertThat(exactProcessChains4).isEqualTo(0)
 
-      submissionRegistry.searchCount(query4, Type.WORKFLOW, true)
-      submissionRegistry.searchCount(query4, Type.PROCESS_CHAIN, true)
+        submissionRegistry.searchCount(query4, Type.WORKFLOW, true)
+        submissionRegistry.searchCount(query4, Type.PROCESS_CHAIN, true)
 
-      val query5 = QueryCompiler.compile("")
-      val exactWorkflows5 = submissionRegistry.searchCount(query5, Type.WORKFLOW, false)
-      val exactProcessChains5 = submissionRegistry.searchCount(query5, Type.PROCESS_CHAIN, false)
+        val query5 = QueryCompiler.compile("")
+        val exactWorkflows5 = submissionRegistry.searchCount(query5, Type.WORKFLOW, false)
+        val exactProcessChains5 = submissionRegistry.searchCount(query5, Type.PROCESS_CHAIN, false)
 
-      assertThat(exactWorkflows5).isEqualTo(0)
-      assertThat(exactProcessChains5).isEqualTo(0)
+        assertThat(exactWorkflows5).isEqualTo(0)
+        assertThat(exactProcessChains5).isEqualTo(0)
 
-      val estimateWorkflows5 = submissionRegistry.searchCount(query5, Type.WORKFLOW, true)
-      val estimateProcessChains5 = submissionRegistry.searchCount(query5, Type.PROCESS_CHAIN, true)
+        val estimateWorkflows5 = submissionRegistry.searchCount(query5, Type.WORKFLOW, true)
+        val estimateProcessChains5 = submissionRegistry.searchCount(query5, Type.PROCESS_CHAIN, true)
 
-      assertThat(estimateWorkflows5).isEqualTo(0)
-      assertThat(estimateProcessChains5).isEqualTo(0)
+        assertThat(estimateWorkflows5).isEqualTo(0)
+        assertThat(estimateProcessChains5).isEqualTo(0)
 
-      val query6 = QueryCompiler.compile("doesnotexist rcs:foo")
-      val exactWorkflows6 = submissionRegistry.searchCount(query6, Type.WORKFLOW, false)
-      val exactProcessChains6 = submissionRegistry.searchCount(query6, Type.PROCESS_CHAIN, false)
+        val query6 = QueryCompiler.compile("doesnotexist rcs:foo")
+        val exactWorkflows6 = submissionRegistry.searchCount(query6, Type.WORKFLOW, false)
+        val exactProcessChains6 = submissionRegistry.searchCount(query6, Type.PROCESS_CHAIN, false)
 
-      assertThat(exactWorkflows6).isEqualTo(0)
-      assertThat(exactProcessChains6).isEqualTo(0)
+        assertThat(exactWorkflows6).isEqualTo(0)
+        assertThat(exactProcessChains6).isEqualTo(0)
 
-      submissionRegistry.searchCount(query6, Type.WORKFLOW, true)
-      submissionRegistry.searchCount(query6, Type.PROCESS_CHAIN, true)
+        submissionRegistry.searchCount(query6, Type.WORKFLOW, true)
+        submissionRegistry.searchCount(query6, Type.PROCESS_CHAIN, true)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  open fun searchDateTime(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val s1 = Submission(workflow = Workflow())
+      val pc1 = ProcessChain(requiredCapabilities = setOf("2022-05-30"))
+
+      val s2 = Submission(workflow = Workflow(name = "2022-05-30"))
+      val pc2 = ProcessChain()
+
+      submissionRegistry.addSubmission(s1)
+      submissionRegistry.addProcessChains(listOf(pc1), s1.id)
+      submissionRegistry.addSubmission(s2)
+      submissionRegistry.addProcessChains(listOf(pc2), s2.id)
+
+      val zoneId = ZoneId.systemDefault()
+      submissionRegistry.setSubmissionStartTime(s1.id,
+          LocalDateTime.of(2022, 5, 30, 21, 49, 12).atZone(zoneId).toInstant())
+      submissionRegistry.setSubmissionEndTime(s1.id,
+          LocalDateTime.of(2022, 5, 31, 10, 52, 36).atZone(zoneId).toInstant())
+      submissionRegistry.setSubmissionStartTime(s2.id,
+          LocalDateTime.of(2022, 6, 1, 10, 11, 12).atZone(zoneId).toInstant())
+      submissionRegistry.setSubmissionEndTime(s2.id,
+          LocalDateTime.of(2022, 6, 5, 11, 12, 13).atZone(zoneId).toInstant())
+      submissionRegistry.setProcessChainStartTime(pc2.id,
+          LocalDateTime.of(2022, 6, 1, 10, 11, 15).atZone(zoneId).toInstant())
+      submissionRegistry.setProcessChainEndTime(pc2.id,
+          LocalDateTime.of(2022, 6, 5, 11, 12, 10).atZone(zoneId).toInstant())
+
+      ctx.coVerify {
+        submissionRegistry.search(QueryCompiler.compile("2022-05-30",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).hasSize(1)
+          assertThat(results[0].id).isEqualTo(s1.id)
+        }
+
+        submissionRegistry.search(QueryCompiler.compile("2022-06-01T10:11",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).hasSize(2)
+          assertThat(results[0].id).isEqualTo(s2.id)
+          assertThat(results[1].id).isEqualTo(pc2.id)
+        }
+
+        submissionRegistry.search(QueryCompiler.compile("2022-06-01T10:11:15",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).hasSize(1)
+          assertThat(results[0].id).isEqualTo(pc2.id)
+        }
+
+        submissionRegistry.search(QueryCompiler.compile("2022-06-01T10:11:16",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).isEmpty()
+        }
+
+        submissionRegistry.search(QueryCompiler.compile(">2022-06-01T10:11:13",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).hasSize(2)
+          assertThat(results[0].id).isEqualTo(s2.id)
+          assertThat(results[1].id).isEqualTo(pc2.id)
+        }
+
+        submissionRegistry.search(QueryCompiler.compile(">=2022-06-01T10:11:13",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).hasSize(2)
+          assertThat(results[0].id).isEqualTo(s2.id)
+          assertThat(results[1].id).isEqualTo(pc2.id)
+        }
+
+        submissionRegistry.search(QueryCompiler.compile(">2022-06-05T11:12:10",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).hasSize(1)
+          assertThat(results[0].id).isEqualTo(s2.id)
+        }
+
+        submissionRegistry.search(QueryCompiler.compile(">=2022-06-05T11:12:10",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).hasSize(2)
+          assertThat(results[0].id).isEqualTo(s2.id)
+          assertThat(results[1].id).isEqualTo(pc2.id)
+        }
+
+        submissionRegistry.search(QueryCompiler.compile(">2022-06-05",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).isEmpty()
+        }
+
+        submissionRegistry.search(QueryCompiler.compile("<2022-06-01",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).hasSize(1)
+          assertThat(results[0].id).isEqualTo(s1.id)
+        }
+
+        submissionRegistry.search(QueryCompiler.compile("<=2022-06-01",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).hasSize(3)
+          assertThat(results[0].id).isEqualTo(s2.id)
+          assertThat(results[1].id).isEqualTo(s1.id)
+          assertThat(results[2].id).isEqualTo(pc2.id)
+        }
+
+        submissionRegistry.search(QueryCompiler.compile("<2022-05-31 >=2022-06-05T11:12:13",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).hasSize(2)
+          assertThat(results[0].id).isEqualTo(s2.id)
+          assertThat(results[1].id).isEqualTo(s1.id)
+        }
+
+        submissionRegistry.search(QueryCompiler.compile("start:2022-05-30",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).hasSize(1)
+          assertThat(results[0].id).isEqualTo(s1.id)
+        }
+
+        submissionRegistry.search(QueryCompiler.compile("start:2022-05-31",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).isEmpty()
+        }
+
+        submissionRegistry.search(QueryCompiler.compile("end:2022-05-30",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).isEmpty()
+        }
+
+        submissionRegistry.search(QueryCompiler.compile("end:2022-05-31",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).hasSize(1)
+          assertThat(results[0].id).isEqualTo(s1.id)
+        }
+      }
 
       ctx.completeNow()
     }

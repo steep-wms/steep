@@ -36,12 +36,12 @@ class QueryCompilerTest {
     val q = QueryCompiler.compile("foo 2022-05-20 2022-05-20T12:09 " +
         "2022-05-20T12:09:13 \"2022-05-20\" a2022-05-20 2022-05-20b " +
         "2022-05-20T 2022-05-20T12 2022-05-20T12: 2022-05-20T12:9 " +
-        "<2022-05-30 <=2022-05-30T13:10 >=2022-05-30 >2022-05-30T13:10")
+        "<2022-05-30 <=2022-05-30T13:10 >=2022-05-30 >2022-05-30T13:10:00")
     assertThat(q).isEqualTo(Query(terms = setOf(
         StringTerm("foo"),
         DateTerm(LocalDate.of(2022, 5, 20)),
-        DateTimeTerm(LocalDateTime.of(2022, 5, 20, 12, 9)),
-        DateTimeTerm(LocalDateTime.of(2022, 5, 20, 12, 9, 13)),
+        DateTimeTerm(LocalDateTime.of(2022, 5, 20, 12, 9), withSecondPrecision = false),
+        DateTimeTerm(LocalDateTime.of(2022, 5, 20, 12, 9, 13), withSecondPrecision = true),
         StringTerm("2022-05-20"),
         StringTerm("a2022-05-20"),
         StringTerm("2022-05-20b"),
@@ -49,10 +49,21 @@ class QueryCompilerTest {
         StringTerm("2022-05-20T12"),
         StringTerm("2022-05-20T12:"),
         StringTerm("2022-05-20T12:9"),
-        DateTerm(LocalDate.of(2022, 5, 30), Operator.LT),
-        DateTimeTerm(LocalDateTime.of(2022, 5, 30, 13, 10), Operator.LTE),
-        DateTerm(LocalDate.of(2022, 5, 30), Operator.GTE),
-        DateTimeTerm(LocalDateTime.of(2022, 5, 30, 13, 10), Operator.GT)
+        DateTerm(LocalDate.of(2022, 5, 30), operator = Operator.LT),
+        DateTimeTerm(LocalDateTime.of(2022, 5, 30, 13, 10), withSecondPrecision = false,
+            operator = Operator.LTE),
+        DateTerm(LocalDate.of(2022, 5, 30), operator = Operator.GTE),
+        DateTimeTerm(LocalDateTime.of(2022, 5, 30, 13, 10, 0), withSecondPrecision = true,
+            operator = Operator.GT)
+    )))
+  }
+
+  @Test
+  fun invalidDateTime() {
+    val q = QueryCompiler.compile("foo 2022-05-40")
+    assertThat(q).isEqualTo(Query(terms = setOf(
+        StringTerm("foo"),
+        StringTerm("2022-05-40")
     )))
   }
 
@@ -116,7 +127,8 @@ class QueryCompilerTest {
 
   @Test
   fun filter() {
-    val q = QueryCompiler.compile("foo name:elvis ID:1234 name:2022-05-20")
+    val q = QueryCompiler.compile("foo name:elvis ID:1234 name:2022-05-20 " +
+        "startTime:>2022-05-30 endTime:2022-05-30")
     assertThat(q).isEqualTo(Query(
         terms = setOf(
             StringTerm("foo")
@@ -124,7 +136,9 @@ class QueryCompilerTest {
         filters = setOf(
             Locator.NAME to StringTerm("elvis"),
             Locator.ID to StringTerm("1234"),
-            Locator.NAME to DateTerm(LocalDate.of(2022, 5, 20))
+            Locator.NAME to DateTerm(LocalDate.of(2022, 5, 20)),
+            Locator.START_TIME to DateTerm(LocalDate.of(2022, 5, 30), operator = Operator.GT),
+            Locator.END_TIME to DateTerm(LocalDate.of(2022, 5, 30))
         )
     ))
   }

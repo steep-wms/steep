@@ -16,14 +16,19 @@ import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.Tuple
 import model.Submission
 import model.processchain.ProcessChain
+import search.DateTerm
+import search.DateTimeTerm
 import search.Locator
+import search.Operator
 import search.Query
 import search.SearchResult
 import search.StringTerm
 import search.Term
 import search.Type
 import java.time.Instant
+import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter.ISO_INSTANT
+import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
 
 /**
@@ -610,14 +615,38 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   /**
+   * Checks if [params] contains [value], and if it does, returns its position.
+   * Otherwise, creates a new position, puts it into [params] and returns it
+   */
+  private fun makeParam(value: Any, params: MutableMap<Any, Int>): Int =
+      params.computeIfAbsent(value) { params.size + 1 }
+
+  /**
    * Create a LIKE expression that compares [field] to a given [value]. Replaces
    * [value] with a placeholder and puts the placeholder with its position into
    * [params].
    */
-  private fun makeLike(field: String, value: String, params: MutableMap<String, Int>): String {
+  private fun makeLike(field: String, value: String, params: MutableMap<Any, Int>): String {
     val like = "%${escapeLikeExpression(value)}%"
-    val pos = params.computeIfAbsent(like) { params.size + 1 }
-    return "$field ILIKE $$pos"
+    return "$field ILIKE $${makeParam(like, params)}"
+  }
+
+  /**
+   * Create an expression that compares a timestamp stored in a [field] with
+   * the given [start] time and [endExclusive] time. Puts the placeholder with
+   * its position into [params].
+   */
+  private fun makeTimestampComparison(field: String, start: OffsetDateTime,
+      endExclusive: OffsetDateTime, operator: Operator,
+      params: MutableMap<Any, Int>): String {
+    val f = "($field)::timestamptz"
+    return when (operator) {
+      Operator.LT -> "$f<$" + makeParam(start, params)
+      Operator.LTE -> "$f<$" + makeParam(endExclusive, params)
+      Operator.EQ -> "($f>=$${makeParam(start, params)} AND $f<$${makeParam(endExclusive, params)})"
+      Operator.GTE -> "$f>=$" + makeParam(start, params)
+      Operator.GT -> "$f>=$" + makeParam(endExclusive, params)
+    }
   }
 
   /**
@@ -639,6 +668,14 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       Type.WORKFLOW -> "$DATA->>'$STATUS'"
       Type.PROCESS_CHAIN -> STATUS
     }
+    Locator.START_TIME -> when (type) {
+      Type.WORKFLOW -> "$DATA->>'$START_TIME'"
+      Type.PROCESS_CHAIN -> START_TIME
+    }
+    Locator.END_TIME -> when (type) {
+      Type.WORKFLOW -> "$DATA->>'$END_TIME'"
+      Type.PROCESS_CHAIN -> END_TIME
+    }
   }
 
   /**
@@ -651,6 +688,8 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     Locator.REQUIRED_CAPABILITIES -> "requiredCapabilities"
     Locator.SOURCE -> "source"
     Locator.STATUS -> "status"
+    Locator.START_TIME -> "startTime"
+    Locator.END_TIME -> "endTime"
   }
 
   /**
@@ -658,7 +697,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
    * [params] with placeholders.
    */
   private fun makeWhere(locator: Locator, term: Term, type: Type,
-      params: MutableMap<String, Int>): String? {
+      params: MutableMap<Any, Int>): String? {
     return when (locator) {
       Locator.ERROR_MESSAGE, Locator.ID -> {
         when (term) {
@@ -698,6 +737,35 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
           is StringTerm -> makeLike("rcs_to_string(${locatorToField(locator, type)})",
               term.value, params)
           else -> null
+        }
+      }
+
+      Locator.START_TIME, Locator.END_TIME -> {
+        locatorToField(locator, type)?.let { f ->
+          when (term) {
+            is DateTerm -> makeTimestampComparison(f,
+                term.value.atStartOfDay(term.timeZone).toOffsetDateTime(),
+                term.value.plusDays(1).atStartOfDay(term.timeZone).toOffsetDateTime(),
+                term.operator, params)
+            is DateTimeTerm -> {
+              if (term.withSecondPrecision) {
+                makeTimestampComparison(f,
+                    term.value.truncatedTo(ChronoUnit.SECONDS)
+                        .atZone(term.timeZone).toOffsetDateTime(),
+                    term.value.truncatedTo(ChronoUnit.SECONDS).plusSeconds(1)
+                        .atZone(term.timeZone).toOffsetDateTime(),
+                    term.operator, params)
+              } else {
+                makeTimestampComparison(f,
+                    term.value.truncatedTo(ChronoUnit.MINUTES)
+                        .atZone(term.timeZone).toOffsetDateTime(),
+                    term.value.truncatedTo(ChronoUnit.MINUTES).plusMinutes(1)
+                        .atZone(term.timeZone).toOffsetDateTime(),
+                    term.operator, params)
+              }
+            }
+            else -> null
+          }
         }
       }
     }
@@ -780,7 +848,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
     // create SELECT statements for all types and all conditions
     val substatements = mutableSetOf<String>()
-    val params = mutableMapOf<String, Int>()
+    val params = mutableMapOf<Any, Int>()
     for (type in types) {
       val table = when (type) {
         Type.PROCESS_CHAIN -> PROCESS_CHAINS
@@ -892,7 +960,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       Type.WORKFLOW -> SUBMISSIONS
     }
 
-    val params = mutableMapOf<String, Int>()
+    val params = mutableMapOf<Any, Int>()
 
     // make a WHERE expression for each filter
     val whereFilters = mutableSetOf<String>()

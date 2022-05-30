@@ -1,8 +1,10 @@
 package search
 
 import org.apache.commons.text.StringEscapeUtils
+import java.time.DateTimeException
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneId
 
 /**
  * Compiles search queries to [Query] objects
@@ -66,16 +68,19 @@ object QueryCompiler {
   )
   private const val SOURCE = "source"
   private const val STATUS = "status"
-  private val ALL_ATTRIBUTES = listOf(ID, NAME, SOURCE, STATUS) + ERROR + RCS
+  private val START_TIME = listOf("starttime", "start")
+  private val END_TIME = listOf("endtime", "end")
+  private val ALL_ATTRIBUTES = listOf(ID, NAME, SOURCE, STATUS) + ERROR + RCS +
+      START_TIME + END_TIME
 
   // types
   private const val WORKFLOW = "workflow"
   private const val PROCESSCHAIN = "processchain"
 
   /**
-   * Compile the given [query]
+   * Compile the given [query]. Use the given [timeZone] to parse dates and times.
    */
-  fun compile(query: String): Query {
+  fun compile(query: String, timeZone: ZoneId = ZoneId.systemDefault()): Query {
     // non-breaking space (0x0a) is a reserved character used by the
     // PostgreSQLSubmissionRegistry as a separator between required capabilities
     val parts = QuotedStringSplitter.split(query.replace('\u00a0', ' '))
@@ -98,14 +103,15 @@ object QueryCompiler {
             when (key.lowercase()) {
               "in" -> locators.add(parseLocator(value))
               "is" -> types.add(parseType(value))
-              in ALL_ATTRIBUTES -> filters.add(parseLocator(key) to parseTerm(value))
+              in ALL_ATTRIBUTES -> filters.add(
+                  parseLocator(key) to parseTerm(value, timeZone))
               else -> throw IllegalStateException()
             }
           } else {
             throw IllegalStateException()
           }
         } catch (e: IllegalStateException) {
-          terms.add(parseTerm(p.first))
+          terms.add(parseTerm(p.first, timeZone))
         }
       }
     }
@@ -121,7 +127,7 @@ object QueryCompiler {
     }
   }
 
-  private fun parseTerm(term: String): Term {
+  private fun parseTerm(term: String, timeZone: ZoneId): Term {
     val (operator, operatorLen) = if (term.startsWith("<=")) {
       Operator.LTE to 2
     } else if (term.startsWith("<")) {
@@ -135,20 +141,29 @@ object QueryCompiler {
     }
 
     return DATE_REGEX.matchEntire(term.substring(operatorLen))?.let { dateMatch ->
-      DateTerm(LocalDate.of(
-          dateMatch.groupValues[1].toInt(),
-          dateMatch.groupValues[2].toInt(),
-          dateMatch.groupValues[3].toInt()
-      ), operator)
+      try {
+        DateTerm(LocalDate.of(
+            dateMatch.groupValues[1].toInt(),
+            dateMatch.groupValues[2].toInt(),
+            dateMatch.groupValues[3].toInt()
+        ), timeZone, operator)
+      } catch (e: DateTimeException) {
+        StringTerm(term)
+      }
     } ?: DATETIME_REGEX.matchEntire(term.substring(operatorLen))?.let { dateTimeMatch ->
-      DateTimeTerm(LocalDateTime.of(
-          dateTimeMatch.groupValues[1].toInt(),
-          dateTimeMatch.groupValues[2].toInt(),
-          dateTimeMatch.groupValues[3].toInt(),
-          dateTimeMatch.groupValues[4].toInt(),
-          dateTimeMatch.groupValues[5].toInt(),
-          if (dateTimeMatch.groupValues[7].isNotBlank()) dateTimeMatch.groupValues[7].toInt() else 0
-      ), operator)
+      try {
+        val withSecondPrecision = dateTimeMatch.groupValues[7].isNotBlank()
+        DateTimeTerm(LocalDateTime.of(
+            dateTimeMatch.groupValues[1].toInt(),
+            dateTimeMatch.groupValues[2].toInt(),
+            dateTimeMatch.groupValues[3].toInt(),
+            dateTimeMatch.groupValues[4].toInt(),
+            dateTimeMatch.groupValues[5].toInt(),
+            if (withSecondPrecision) dateTimeMatch.groupValues[7].toInt() else 0
+        ), timeZone, withSecondPrecision, operator)
+      } catch (e: DateTimeException) {
+        StringTerm(term)
+      }
     } ?: run {
       StringTerm(term)
     }
@@ -162,6 +177,8 @@ object QueryCompiler {
       in RCS -> Locator.REQUIRED_CAPABILITIES
       in SOURCE -> Locator.SOURCE
       in STATUS -> Locator.STATUS
+      in START_TIME -> Locator.START_TIME
+      in END_TIME -> Locator.END_TIME
       else -> throw IllegalStateException()
     }
   }

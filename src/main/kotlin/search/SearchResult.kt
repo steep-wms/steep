@@ -1,5 +1,7 @@
 package search
 
+import java.time.Instant
+
 /**
  * Result of a search performed with a [Query]. Contains information about a
  * found object. Some attributes may be `null`, which means the object either
@@ -42,5 +44,15 @@ data class SearchResult(
      * The object's status (the meaning of this string depends on the
      * object's [type])
      */
-    val status: String
+    val status: String,
+
+    /**
+     * The object's start time
+     */
+    val startTime: Instant? = null,
+
+    /**
+     * The object's end time
+     */
+    val endTime: Instant? = null
 )
