@@ -23,6 +23,7 @@ import search.StringTerm
 import search.Term
 import search.Type
 import java.time.Instant
+import java.time.format.DateTimeFormatter.ISO_INSTANT
 import java.util.concurrent.TimeUnit
 
 /**
@@ -501,21 +502,21 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
   override suspend fun setProcessChainStartTime(processChainId: String, startTime: Instant?) {
     updateColumn(PROCESS_CHAINS, processChainId, START_TIME,
-        JsonUtils.writeValueAsString(startTime))
+        startTime?.let { ISO_INSTANT.format(it) })
   }
 
   override suspend fun getProcessChainStartTime(processChainId: String): Instant? =
       getProcessChainColumn(processChainId, START_TIME) { it.getString(0)?.let { s ->
-        JsonUtils.mapper.readValue(s, Instant::class.java) } }
+        Instant.from(ISO_INSTANT.parse(s)) } }
 
   override suspend fun setProcessChainEndTime(processChainId: String, endTime: Instant?) {
     updateColumn(PROCESS_CHAINS, processChainId, END_TIME,
-        JsonUtils.writeValueAsString(endTime))
+        endTime?.let { ISO_INSTANT.format(it) })
   }
 
   override suspend fun getProcessChainEndTime(processChainId: String): Instant? =
       getProcessChainColumn(processChainId, END_TIME) { it.getString(0)?.let { s ->
-        JsonUtils.mapper.readValue(s, Instant::class.java) } }
+        Instant.from(ISO_INSTANT.parse(s)) } }
 
   override suspend fun getProcessChainSubmissionId(processChainId: String): String {
     return processChainSubmissionIds.getIfPresent(processChainId) ?: run {
