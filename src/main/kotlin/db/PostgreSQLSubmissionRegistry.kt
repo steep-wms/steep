@@ -793,6 +793,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       }
 
       // make a SELECT statement for each term
+      var substatementsAdded = false
       for (term in query.terms) {
         val whereTerms = mutableSetOf<String>()
         for (locator in locators) {
@@ -808,14 +809,19 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
           }
           substatements.add("SELECT $ID,$SERIAL,${type.priority} AS type FROM $table " +
               "WHERE $where ORDER BY $SERIAL $desc LIMIT $maxSubMatches")
+          substatementsAdded = true
         }
       }
 
-      // make a SELECT statement for each filter
-      for (where in whereFilters) {
-        substatements.add("SELECT $ID,$SERIAL,${type.priority} AS type FROM $table " +
-            "WHERE $where " +
-            "ORDER BY $SERIAL $desc LIMIT $maxSubMatches")
+      // make a SELECT statement for each filter (but only if there aren't any
+      // substatements for this type yet - i.e. if there are no terms or if the
+      // term/locator combinations did not lead to any substatement)
+      if (!substatementsAdded) {
+        for (where in whereFilters) {
+          substatements.add("SELECT $ID,$SERIAL,${type.priority} AS type FROM $table " +
+              "WHERE $where " +
+              "ORDER BY $SERIAL $desc LIMIT $maxSubMatches")
+        }
       }
     }
 
@@ -910,7 +916,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     val joinedWhereFiltersAnd = "(${whereFilters.joinToString(" AND ")})"
     val joinedWhereFiltersOr = "(${whereFilters.joinToString(" OR ")})"
     val where = if (whereTerms.isNotEmpty() && whereFilters.isNotEmpty()) {
-      "($joinedWhereTerms AND $joinedWhereFiltersAnd) OR $joinedWhereFiltersOr"
+      "$joinedWhereTerms AND $joinedWhereFiltersAnd"
     } else if (whereTerms.isNotEmpty()) {
       joinedWhereTerms
     } else {

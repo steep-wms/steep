@@ -2524,19 +2524,12 @@ abstract class SubmissionRegistryTest {
         }
 
         submissionRegistry.search(QueryCompiler.compile("docker rcs:foo")).toList().let { results ->
-          assertThat(results.map { it.id }).containsExactly(
-              pc3.id,
-              pc2.id,
-              pc.id
-              // submission s1 matches `docker` but does not include `foo` in rcs
-          )
+          assertThat(results.map { it.id }).isEmpty()
         }
 
         submissionRegistry.search(QueryCompiler.compile("bar rcs:foo")).toList().let { results ->
           assertThat(results.map { it.id }).containsExactly(
-              pc.id, // matches best
-              pc3.id, // newer than pc2
-              pc2.id
+              pc.id
           )
         }
       }
@@ -2680,6 +2673,16 @@ abstract class SubmissionRegistryTest {
 
       assertThat(estimateWorkflows5).isEqualTo(0)
       assertThat(estimateProcessChains5).isEqualTo(0)
+
+      val query6 = QueryCompiler.compile("doesnotexist rcs:foo")
+      val exactWorkflows6 = submissionRegistry.searchCount(query6, Type.WORKFLOW, false)
+      val exactProcessChains6 = submissionRegistry.searchCount(query6, Type.PROCESS_CHAIN, false)
+
+      assertThat(exactWorkflows6).isEqualTo(0)
+      assertThat(exactProcessChains6).isEqualTo(0)
+
+      submissionRegistry.searchCount(query6, Type.WORKFLOW, true)
+      submissionRegistry.searchCount(query6, Type.PROCESS_CHAIN, true)
 
       ctx.completeNow()
     }
