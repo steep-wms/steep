@@ -25,3 +25,41 @@ export function hasAnyTypeExpression(query) {
   let parts = query.match(pattern)
   return parts.some(p => p.toLowerCase().startsWith("is:") && p.length > 3)
 }
+
+function getLocatorAliases(locator) {
+  if (locator === "rcs") {
+    return ["rc", "cap", "reqcap", "capability", "requiredcapability",
+    "rcs", "caps", "reqcaps", "capabilities", "requiredcapabilities"]
+  } else if (locator === "error") {
+    return ["error", "errormessage"]
+  }
+  return [locator]
+}
+
+function isLocator(part, locator) {
+  let aliases = getLocatorAliases(locator)
+  let lp = part.toLowerCase()
+  for (let a of aliases) {
+    let lt = a.toLowerCase()
+    if (lp === `in:${lt}` || lp === `in:"${lt}"` || lp === `in:'${lt}'`) {
+      return true
+    }
+  }
+  return false
+}
+
+export function hasLocator(query, locator) {
+  let parts = query.match(pattern)
+  return parts.some(p => isLocator(p, locator))
+}
+
+export function toggleLocator(query, locator) {
+  if (!hasLocator(query, locator)) {
+    query = query + ` in:${locator}`
+  } else {
+    let parts = query.match(pattern)
+    parts = parts.filter(p => !isLocator(p, locator))
+    query = parts.join(" ")
+  }
+  return query
+}

@@ -1,13 +1,12 @@
 import Alert from "../../components/Alert"
 import Examples from "../../components/search/Examples"
 import Label from "../../components/Label"
-import Link from "next/link"
 import Page from "../../components/layouts/Page"
 import Results from "../../components/search/Results"
 import fetcher from "../../components/lib/json-fetcher"
 import { hasAnyTypeExpression, hasTypeExpression,
-    removeAllTypeExpressions } from "../../components/lib/search-query"
-import { Search as SearchIcon } from "react-feather"
+    removeAllTypeExpressions, hasLocator, toggleLocator } from "../../components/lib/search-query"
+import { Check, ChevronRight, Search as SearchIcon } from "react-feather"
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/router"
 import { useSWRConfig } from "swr"
@@ -95,6 +94,30 @@ const Search = () => {
     }
   }, [router.query.q])
 
+  function pushQuery(newInputValue) {
+    console.log(newInputValue)
+    let params = new URLSearchParams()
+    let query
+    if (newInputValue) {
+      query = "q=" + newInputValue
+      params.append("q", newInputValue)
+    } else {
+      query = undefined
+    }
+    let newKey = makeKey(params)
+    let newCountKey = makeExactCountKey(params)
+    cache.delete(newCountKey)
+    cache.delete(newKey)
+    if (router.query.q === newInputValue) {
+      mutate()
+    } else {
+      router.push({
+        pathname: router.pathname,
+        query
+      })
+    }
+  }
+
   function onInputKeyDown(e) {
     if (e.keyCode === 13) {
       if (router.query.q === inputValue) {
@@ -102,22 +125,7 @@ const Search = () => {
         cache.delete(key)
         mutate()
       } else {
-        let params = new URLSearchParams()
-        let query
-        if (inputValue) {
-          query = "q=" + inputValue
-          params.append("q", inputValue)
-        } else {
-          query = undefined
-        }
-        let newKey = makeKey(params)
-        let newCountKey = makeExactCountKey(params)
-        cache.delete(newCountKey)
-        cache.delete(newKey)
-        router.push({
-          pathname: router.pathname,
-          query
-        })
+        pushQuery(inputValue)
       }
     }
   }
@@ -145,25 +153,61 @@ const Search = () => {
         </div>
         <div className="search-body-container">
           {body}
-          {results && results.results.length > 0 && <div className="sidebar">
+          {results && <div className="sidebar">
             <ul>
-              <li className={classNames({ active: !hasAnyTypeExpression(router.query.q) })}>
-                <div><Link href={`/search?q=${encodeURIComponent(
-                  removeAllTypeExpressions(router.query.q))}`}><a>All</a></Link></div>
+              <li className={classNames({ active: !hasAnyTypeExpression(router.query.q) })}
+                  onClick={() => pushQuery(removeAllTypeExpressions(router.query.q))}>
+                <div className="active-icon"><ChevronRight size="1rem"/></div>
+                <div className="name">All</div>
                 {counts && <div className="label">
                   <Label small>{formatCount(counts.total)}</Label></div>}
               </li>
-              <li className={classNames({ active: hasTypeExpression(router.query.q, "workflow") })}>
-                <div><Link href={`/search?q=${encodeURIComponent(
-                  removeAllTypeExpressions(router.query.q) + " is:workflow")}`}><a>Workflows</a></Link></div>
+              <li className={classNames({ active: hasTypeExpression(router.query.q, "workflow") })}
+                  onClick={() => pushQuery(removeAllTypeExpressions(router.query.q) + " is:workflow")}>
+                <div className="active-icon"><ChevronRight size="1rem"/></div>
+                <div className="name">Workflows</div>
                 {counts && <div className="label">
                   <Label small>{formatCount(counts.workflow)}</Label></div>}
               </li>
-              <li className={classNames({ active: hasTypeExpression(router.query.q, "processchain") })}>
-                <div><Link href={`/search?q=${encodeURIComponent(
-                  removeAllTypeExpressions(router.query.q) + " is:processchain")}`}><a>Process Chains</a></Link></div>
+              <li className={classNames({ active: hasTypeExpression(router.query.q, "processchain") })}
+                  onClick={() => pushQuery(removeAllTypeExpressions(router.query.q) + " is:processchain")}>
+                <div className="active-icon"><ChevronRight size="1rem"/></div>
+                <div className="name">Process Chains</div>
                 {counts && <div className="label">
                   <Label small>{formatCount(counts.processChain)}</Label></div>}
+              </li>
+            </ul>
+            <ul>
+              <li className="heading">Search in:</li>
+              <li className={classNames({ active: hasLocator(router.query.q, "id") })}
+                  onClick={() => pushQuery(toggleLocator(router.query.q, "id"))}>
+                <div className="active-icon"><Check size="0.85rem"/></div>
+                <div className="name">ID</div>
+              </li>
+              <li className={classNames({ active: hasLocator(router.query.q, "name") })}
+                  onClick={() => pushQuery(toggleLocator(router.query.q, "name"))}>
+                <div className="active-icon"><Check size="0.85rem"/></div>
+                <div className="name">Name</div>
+              </li>
+              <li className={classNames({ active: hasLocator(router.query.q, "status") })}
+                  onClick={() => pushQuery(toggleLocator(router.query.q, "status"))}>
+                <div className="active-icon"><Check size="0.85rem"/></div>
+                <div className="name">Status</div>
+              </li>
+              <li className={classNames({ active: hasLocator(router.query.q, "source") })}
+                  onClick={() => pushQuery(toggleLocator(router.query.q, "source"))}>
+                <div className="active-icon"><Check size="0.85rem"/></div>
+                <div className="name">Source</div>
+              </li>
+              <li className={classNames({ active: hasLocator(router.query.q, "rcs") })}
+                  onClick={() => pushQuery(toggleLocator(router.query.q, "rcs"))}>
+                <div className="active-icon"><Check size="0.85rem"/></div>
+                <div className="name">Required Capabilities</div>
+              </li>
+              <li className={classNames({ active: hasLocator(router.query.q, "error") })}
+                  onClick={() => pushQuery(toggleLocator(router.query.q, "error"))}>
+                <div className="active-icon"><Check size="0.85rem"/></div>
+                <div className="name">Error</div>
               </li>
             </ul>
           </div>}
