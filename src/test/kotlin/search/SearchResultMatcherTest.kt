@@ -95,4 +95,18 @@ class SearchResultMatcherTest {
         )
     ))
   }
+
+  @Test
+  fun emptyTerm() {
+    val r = SearchResult("abcdefghijklnmop", Type.WORKFLOW,
+        requiredCapabilities = setOf("docker", "sleep"),
+        status = Submission.Status.SUCCESS.name
+    )
+
+    val m1 = SearchResultMatcher.toMatch(r, QueryCompiler.compile("\"\""), 100)
+    assertThat(m1).isEmpty()
+
+    val m2 = SearchResultMatcher.toMatch(r, QueryCompiler.compile("rcs:"), 100)
+    assertThat(m2).isEmpty()
+  }
 }

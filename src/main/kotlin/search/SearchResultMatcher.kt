@@ -32,6 +32,9 @@ object SearchResultMatcher {
   private fun findTermMatches(propertyValue: String, terms: List<String>): List<TermMatch> {
     val termMatches = mutableListOf<TermMatch>()
     for (t in terms) {
+      if (t.isEmpty()) {
+        continue
+      }
       val indices = mutableListOf<Int>()
       var s = 0
       do {
