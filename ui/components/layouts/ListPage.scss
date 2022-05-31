@@ -46,6 +46,8 @@
 }
 
 .search-container {
+  width: 14rem;
+
   @media (max-width: $md) {
     display: none;
   }

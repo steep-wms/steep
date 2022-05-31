@@ -10,22 +10,6 @@
   gap: $spacer * 2;
 }
 
-.search-input-container {
-  align-items: center;
-  position: relative;
-}
-
-.search-icon {
-  position: absolute;
-  left: $spacer * 0.75;
-  margin-bottom: 1px;
-}
-
-input {
-  max-width: 100%;
-  padding-left: $spacer * 2.5;
-}
-
 .sidebar {
   margin-top: 2rem;
   display: flex;

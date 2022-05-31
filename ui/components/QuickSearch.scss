@@ -9,6 +9,12 @@
   }
 }
 
+.search-icon {
+  position: absolute;
+  left: $spacer * 0.75;
+  margin-bottom: 1px;
+}
+
 .slash-icon, .close-icon {
   position: absolute;
 }
@@ -44,7 +50,11 @@
 }
 
 input {
-  width: 14rem;
+  width: 100%;
+
+  &.has-search-icon {
+    padding-left: 2.5rem;
+  }
 }
 
 .quicksearch-container {

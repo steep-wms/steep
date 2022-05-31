@@ -3,11 +3,12 @@ import Examples from "../../components/search/Examples"
 import Label from "../../components/Label"
 import Page from "../../components/layouts/Page"
 import Pagination from "../../components/Pagination"
+import QuickSearch from "../../components/QuickSearch"
 import Results from "../../components/search/Results"
 import fetcher from "../../components/lib/json-fetcher"
 import { hasAnyTypeExpression, hasTypeExpression,
     removeAllTypeExpressions, hasLocator, toggleLocator } from "../../components/lib/search-query"
-import { Check, ChevronRight, Search as SearchIcon } from "react-feather"
+import { ArrowRight, Check } from "react-feather"
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/router"
 import { useSWRConfig } from "swr"
@@ -109,7 +110,7 @@ const Search = () => {
     let newCountKey = makeExactCountKey(params)
     cache.delete(newCountKey)
     cache.delete(newKey)
-    if (router.query.q === newInputValue && pageOffset === 0) {
+    if (router.query.q === newInputValue && !pageOffset) {
       mutate()
     } else {
       router.push({
@@ -119,15 +120,13 @@ const Search = () => {
     }
   }
 
-  function onInputKeyDown(e) {
-    if (e.keyCode === 13) {
-      if (router.query.q === inputValue && pageOffset === 0) {
-        cache.delete(countsKey)
-        cache.delete(key)
-        mutate()
-      } else {
-        pushQuery(inputValue)
-      }
+  function onInputEnter() {
+    if (router.query.q === inputValue && !pageOffset) {
+      cache.delete(countsKey)
+      cache.delete(key)
+      mutate()
+    } else {
+      pushQuery(inputValue)
     }
   }
 
@@ -159,11 +158,9 @@ const Search = () => {
     <Page title="Search">
       <div className="search-container">
         <div className="search-input-container">
-          <div className="search-icon"><SearchIcon /></div>
-          <input type="text" placeholder="Search &hellip;"
-            value={inputValue} ref={inputRef} onKeyDown={onInputKeyDown}
-            onChange={e => setInputValue(e.target.value)}
-            role="search"></input>
+          <QuickSearch searchIcon={true} onEscape={() => {}}
+            onEnter={() => onInputEnter()} onChange={v => setInputValue(v)}
+            initialValue={router.query.q} ref={inputRef} />
         </div>
         <div className="search-body-container">
           {body}
@@ -171,21 +168,21 @@ const Search = () => {
             <ul>
               <li className={classNames({ active: !hasAnyTypeExpression(router.query.q) })}
                   onClick={() => pushQuery(removeAllTypeExpressions(router.query.q))}>
-                <div className="active-icon"><ChevronRight size="1rem"/></div>
+                <div className="active-icon"><ArrowRight size="1rem"/></div>
                 <div className="name">All</div>
                 {counts && <div className="label">
                   <Label small>{formatCount(counts.total)}</Label></div>}
               </li>
               <li className={classNames({ active: hasTypeExpression(router.query.q, "workflow") })}
                   onClick={() => pushQuery(removeAllTypeExpressions(router.query.q) + " is:workflow")}>
-                <div className="active-icon"><ChevronRight size="1rem"/></div>
+                <div className="active-icon"><ArrowRight size="1rem"/></div>
                 <div className="name">Workflows</div>
                 {counts && <div className="label">
                   <Label small>{formatCount(counts.workflow)}</Label></div>}
               </li>
               <li className={classNames({ active: hasTypeExpression(router.query.q, "processchain") })}
                   onClick={() => pushQuery(removeAllTypeExpressions(router.query.q) + " is:processchain")}>
-                <div className="active-icon"><ChevronRight size="1rem"/></div>
+                <div className="active-icon"><ArrowRight size="1rem"/></div>
                 <div className="name">Process Chains</div>
                 {counts && <div className="label">
                   <Label small>{formatCount(counts.processChain)}</Label></div>}

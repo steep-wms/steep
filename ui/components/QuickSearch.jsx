@@ -1,21 +1,25 @@
 import styles from "./QuickSearch.scss"
-import { useEffect, useRef, useState } from "react"
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
 import { useRouter } from "next/router"
 import { addTypeExpression } from "./lib/search-query"
-import { XCircle } from "react-feather"
+import { Search, XCircle } from "react-feather"
+import classNames from "classnames"
 
-const QuickSearch = ({ type }) => {
-  const ref = useRef()
-  const [value, setValue] = useState("")
+const QuickSearch = forwardRef(({ type, searchIcon = false, onEnter, onEscape,
+    onChange, initialValue = "" }, ref) => {
+  const innerRef = useRef()
+  useImperativeHandle(ref, () => innerRef.current)
+
+  const [value, setValue] = useState(initialValue)
   const [focus, setFocus] = useState(false)
   const router = useRouter()
 
-  function onDocumentKeyDown(e) {
-    if (e.key === "/" && !ref.current.matches(":focus")) {
-      ref.current.focus()
+  const onDocumentKeyDown = useCallback((e) => {
+    if (e.key === "/" && !innerRef.current.matches(":focus")) {
+      innerRef.current.focus()
       e.preventDefault()
     }
-  }
+  }, [innerRef])
 
   useEffect(() => {
     document.addEventListener("keydown", onDocumentKeyDown)
@@ -23,44 +27,64 @@ const QuickSearch = ({ type }) => {
     return () => {
       document.removeEventListener("keydown", onDocumentKeyDown)
     }
-  }, [])
+  }, [onDocumentKeyDown])
+
+  useEffect(() => {
+    setValue(initialValue)
+  }, [initialValue])
+
+  onEnter = onEnter || function () {
+    let query
+    if (value) {
+      query = "q=" + addTypeExpression(value, type)
+    } else {
+      query = undefined
+    }
+    router.push({
+      pathname: "/search",
+      query
+    })
+  }
+
+  onEscape = onEscape || function () {
+    setValue("")
+    innerRef.current.blur()
+  }
 
   function onInputKeyDown(e) {
     if (e.keyCode === 13) {
-      let query
-      if (value) {
-        query = "q=" + addTypeExpression(value, type)
-      } else {
-        query = undefined
-      }
-      router.push({
-        pathname: "/search",
-        query
-      })
+      onEnter(e)
     } else if (e.keyCode === 27) {
-      setValue("")
-      ref.current.blur()
+      onEscape(e)
     }
   }
 
   function onCancel() {
     setValue("")
     setTimeout(() => {
-      ref.current.focus()
+      innerRef.current.focus()
     })
+  }
+
+  function doOnChange(e) {
+    setValue(e.target.value)
+    if (onChange) {
+      onChange(e.target.value)
+    }
   }
 
   return (<>
     <div className="quicksearch-container">
       <input type="text" placeholder="Search &hellip;" value={value}
-        onChange={e => setValue(e.target.value)} onKeyDown={onInputKeyDown}
-        ref={ref} role="search" onFocus={() => setFocus(true)}
-        onBlur={() => setFocus(false)} />
+        onChange={e => doOnChange(e)} onKeyDown={onInputKeyDown}
+        ref={innerRef} role="search" onFocus={() => setFocus(true)}
+        onBlur={() => setFocus(false)} className={classNames({ "has-search-icon": searchIcon })} />
+      {searchIcon && <div className="search-icon"><Search /></div>}
       {focus || <div className="slash-icon">/</div>}
       {focus && value && <div className="close-icon"><XCircle size="1rem" onMouseDown={() => onCancel()} /></div>}
     </div>
     <style jsx>{styles}</style>
   </>)
-}
+})
 
 export default QuickSearch
