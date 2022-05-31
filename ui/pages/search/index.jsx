@@ -2,6 +2,7 @@ import Alert from "../../components/Alert"
 import Examples from "../../components/search/Examples"
 import Label from "../../components/Label"
 import Page from "../../components/layouts/Page"
+import Pagination from "../../components/Pagination"
 import Results from "../../components/search/Results"
 import fetcher from "../../components/lib/json-fetcher"
 import { hasAnyTypeExpression, hasTypeExpression,
@@ -96,7 +97,6 @@ const Search = () => {
   }, [router.query.q])
 
   function pushQuery(newInputValue) {
-    console.log(newInputValue)
     let params = new URLSearchParams()
     let query
     if (newInputValue) {
@@ -109,7 +109,7 @@ const Search = () => {
     let newCountKey = makeExactCountKey(params)
     cache.delete(newCountKey)
     cache.delete(newKey)
-    if (router.query.q === newInputValue) {
+    if (router.query.q === newInputValue && pageOffset === 0) {
       mutate()
     } else {
       router.push({
@@ -121,7 +121,7 @@ const Search = () => {
 
   function onInputKeyDown(e) {
     if (e.keyCode === 13) {
-      if (router.query.q === inputValue) {
+      if (router.query.q === inputValue && pageOffset === 0) {
         cache.delete(countsKey)
         cache.delete(key)
         mutate()
@@ -129,6 +129,19 @@ const Search = () => {
         pushQuery(inputValue)
       }
     }
+  }
+
+  function onChangeOffset(offset) {
+    const newParams = new URLSearchParams([...Array.from(params.entries())])
+    if (offset > 0) {
+      params.append("offset", offset)
+    } else {
+      params.delete("offset")
+    }
+    let newKey = makeKey(newParams)
+    let newCountKey = makeExactCountKey(newParams)
+    cache.delete(newCountKey)
+    cache.delete(newKey)
   }
 
   let body
@@ -222,6 +235,13 @@ const Search = () => {
               </li>
             </ul>
           </div>}
+          {counts && counts.total > 0 && (
+            <div className="pagination">
+              <Pagination pageSize={pageSize} pageOffset={pageOffset}
+                pageTotal={Math.min(1000, counts.total)}
+                onChangeOffset={onChangeOffset} />
+            </div>
+          )}
         </div>
       </div>
       <style jsx>{styles}</style>

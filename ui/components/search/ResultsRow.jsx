@@ -142,7 +142,6 @@ function Time({ startTime, endTime, startTimeMatch, endTimeMatch }) {
   if (startTime) {
     s = formatIsoLocalDateTime(startTime).replace("T", " ")
     if (startTimeMatch) {
-      console.log(startTimeMatch)
       s = highlight(s, [[0, s.length]])
     }
   }
