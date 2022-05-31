@@ -901,8 +901,8 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
     // determine which columns we need to return (some fields are mandatory
     // in SearchResults)
-    val columns = mutableSetOf(Locator.ID, Locator.NAME,
-        Locator.REQUIRED_CAPABILITIES, Locator.STATUS)
+    val columns = mutableSetOf(Locator.ID, Locator.NAME, Locator.STATUS,
+        Locator.REQUIRED_CAPABILITIES, Locator.START_TIME, Locator.END_TIME)
     for (l in locators) {
       columns.add(l)
     }

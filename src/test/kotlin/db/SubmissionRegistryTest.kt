@@ -21,7 +21,6 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import search.Query
 import search.QueryCompiler
 import search.Type
 import java.time.Instant
@@ -2242,9 +2241,12 @@ abstract class SubmissionRegistryTest {
   @Test
   open fun searchTermsOnly(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
+      val startTime = Instant.now()
+      val endTime = Instant.now().plusSeconds(10)
       val s = Submission(workflow = Workflow(name = "Elvis"),
           requiredCapabilities = setOf("docker", "sleep"),
-          source = "actions: []", status = Submission.Status.SUCCESS)
+          source = "actions: []", status = Submission.Status.SUCCESS,
+          startTime = startTime, endTime = endTime)
       val pc = ProcessChain(requiredCapabilities = setOf("foo", "bar"))
 
       val s2 = Submission(workflow = Workflow(name = "Should never match"),
@@ -2263,6 +2265,8 @@ abstract class SubmissionRegistryTest {
       val expectedProcessChainError = "crash"
       submissionRegistry.setProcessChainErrorMessage(pc.id, expectedProcessChainError)
 
+      submissionRegistry.setProcessChainStartTime(pc.id, startTime)
+
       ctx.coVerify {
         submissionRegistry.search(QueryCompiler.compile("docker")).toList().let { results ->
           assertThat(results).hasSize(1)
@@ -2273,6 +2277,8 @@ abstract class SubmissionRegistryTest {
           assertThat(results[0].errorMessage).isEqualTo(expectedSubmissionError)
           assertThat(results[0].type).isEqualTo(Type.WORKFLOW)
           assertThat(results[0].source).isEqualTo(s.source)
+          assertThat(results[0].startTime).isEqualTo(s.startTime)
+          assertThat(results[0].endTime).isEqualTo(s.endTime)
         }
 
         submissionRegistry.search(QueryCompiler.compile("foo bar")).toList().let { results ->
@@ -2284,6 +2290,8 @@ abstract class SubmissionRegistryTest {
           assertThat(results[0].errorMessage).isEqualTo(expectedProcessChainError)
           assertThat(results[0].type).isEqualTo(Type.PROCESS_CHAIN)
           assertThat(results[0].source).isNull()
+          assertThat(results[0].startTime).isEqualTo(startTime)
+          assertThat(results[0].endTime).isNull()
         }
 
         submissionRegistry.search(QueryCompiler.compile("ELVis")).toList().let { results ->
@@ -2708,10 +2716,10 @@ abstract class SubmissionRegistryTest {
       submissionRegistry.addProcessChains(listOf(pc2), s2.id)
 
       val zoneId = ZoneId.systemDefault()
-      submissionRegistry.setSubmissionStartTime(s1.id,
-          LocalDateTime.of(2022, 5, 30, 21, 49, 12).atZone(zoneId).toInstant())
-      submissionRegistry.setSubmissionEndTime(s1.id,
-          LocalDateTime.of(2022, 5, 31, 10, 52, 36).atZone(zoneId).toInstant())
+      val s1StartTime = LocalDateTime.of(2022, 5, 30, 21, 49, 12).atZone(zoneId).toInstant()
+      val s1EndTime = LocalDateTime.of(2022, 5, 31, 10, 52, 36).atZone(zoneId).toInstant()
+      submissionRegistry.setSubmissionStartTime(s1.id, s1StartTime)
+      submissionRegistry.setSubmissionEndTime(s1.id, s1EndTime)
       submissionRegistry.setSubmissionStartTime(s2.id,
           LocalDateTime.of(2022, 6, 1, 10, 11, 12).atZone(zoneId).toInstant())
       submissionRegistry.setSubmissionEndTime(s2.id,
@@ -2726,6 +2734,8 @@ abstract class SubmissionRegistryTest {
             timeZone = zoneId)).toList().let { results ->
           assertThat(results).hasSize(1)
           assertThat(results[0].id).isEqualTo(s1.id)
+          assertThat(results[0].startTime).isEqualTo(s1StartTime)
+          assertThat(results[0].endTime).isEqualTo(s1EndTime)
         }
 
         submissionRegistry.search(QueryCompiler.compile("2022-06-01T10:11",
