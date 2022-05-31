@@ -2,7 +2,10 @@ package search
 
 import java.lang.Integer.max
 import java.lang.Integer.min
+import java.time.Instant
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeFormatter.ISO_INSTANT
+import java.time.temporal.ChronoUnit
 import kotlin.math.ceil
 
 /**
@@ -15,15 +18,32 @@ import kotlin.math.ceil
  * @author Michel Kraemer
  */
 object SearchResultMatcher {
-  const val DEFAULT_MAX_FRAGMENT_LENGTH = 100
+  private const val DEFAULT_MAX_FRAGMENT_LENGTH = 100
+
+  private fun operatorToString(op: Operator) = when (op) {
+    Operator.LT -> "<"
+    Operator.LTE -> "<="
+    Operator.EQ -> ""
+    Operator.GTE -> ">="
+    Operator.GT -> ">"
+  }
 
   /**
    * Convert a [term] to its string representation
    */
   private fun termToString(term: Term) = when (term) {
     is StringTerm -> term.value
-    is DateTerm -> term.value.format(DateTimeFormatter.ISO_LOCAL_DATE)
-    is DateTimeTerm -> term.value.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+    is DateTerm -> operatorToString(term.operator) +
+        term.value.format(DateTimeFormatter.ISO_LOCAL_DATE)
+    is DateTimeTerm -> {
+      val r = operatorToString(term.operator) +
+          term.value.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+      if (term.withSecondPrecision) {
+        r
+      } else {
+        r.substring(0, r.length - 3)
+      }
+    }
   }
 
   /**
@@ -47,6 +67,57 @@ object SearchResultMatcher {
 
       if (indices.isNotEmpty()) {
         termMatches.add(TermMatch(t, indices))
+      }
+    }
+    return termMatches
+  }
+
+  /**
+   * Compare the given [propertyValue] representing a date/time with the
+   * given [terms] and find all matches
+   */
+  private fun findTermMatches(propertyValue: Instant, terms: Collection<Term>): List<TermMatch> {
+    val termMatches = mutableListOf<TermMatch>()
+    for (t in terms) {
+      val (range, operator) = when (t) {
+        is DateTerm ->
+          (
+              t.value.atStartOfDay(t.timeZone).toInstant() to
+              t.value.plusDays(1).atStartOfDay(t.timeZone).toInstant()
+          ) to t.operator
+        is DateTimeTerm -> {
+          if (t.withSecondPrecision) {
+            (
+                t.value.truncatedTo(ChronoUnit.SECONDS)
+                    .atZone(t.timeZone).toInstant() to
+                t.value.truncatedTo(ChronoUnit.SECONDS).plusSeconds(1)
+                    .atZone(t.timeZone).toInstant()
+            ) to t.operator
+          } else {
+            (
+                t.value.truncatedTo(ChronoUnit.MINUTES)
+                    .atZone(t.timeZone).toInstant() to
+                t.value.truncatedTo(ChronoUnit.MINUTES).plusMinutes(1)
+                    .atZone(t.timeZone).toInstant()
+            ) to t.operator
+          }
+        }
+        else -> continue
+      }
+
+      val isMatch = when (operator) {
+        Operator.LT -> propertyValue.isBefore(range.first)
+        Operator.LTE -> propertyValue.isBefore(range.second)
+        Operator.EQ -> propertyValue == range.first ||
+            (propertyValue.isAfter(range.first) && propertyValue.isBefore(range.second))
+        Operator.GTE -> propertyValue == range.first ||
+            propertyValue.isAfter(range.first)
+        Operator.GT -> propertyValue == range.second ||
+            propertyValue.isAfter(range.second)
+      }
+
+      if (isMatch) {
+        termMatches.add(TermMatch(termToString(t), emptyList()))
       }
     }
     return termMatches
@@ -155,7 +226,7 @@ object SearchResultMatcher {
   private fun makeMatch(propertyValue: String, locator: Locator,
       filters: Map<Locator, Set<Term>>, matches: MutableList<Match>,
       maxFragmentLength: Int) {
-    val terms = filters[locator]?.map(this::termToString) ?: return
+    val terms = filters[locator]?.filterIsInstance<StringTerm>()?.map(this::termToString) ?: return
     val termMatches = findTermMatches(propertyValue, terms)
     if (termMatches.isEmpty()) {
       return
@@ -192,6 +263,19 @@ object SearchResultMatcher {
     }
 
     matches.add(Match(locator, fragment, termMatchesWithin))
+  }
+
+  /**
+   * Create a [Match] object for the given parameters. Put the [Match] object
+   * into [matches]. If the match could not be created, do nothing.
+   */
+  private fun makeMatch(propertyValue: Instant, locator: Locator,
+      filters: Map<Locator, Set<Term>>, matches: MutableList<Match>) {
+    val terms = filters[locator] ?: return
+    val termMatches = findTermMatches(propertyValue, terms)
+    if (termMatches.isNotEmpty()) {
+      matches.add(Match(locator, ISO_INSTANT.format(propertyValue), termMatches))
+    }
   }
 
   /**
@@ -236,6 +320,12 @@ object SearchResultMatcher {
     }
     makeMatch(result.status, Locator.STATUS, filters, matches,
         maxFragmentLength)
+    if (result.startTime != null) {
+      makeMatch(result.startTime, Locator.START_TIME, filters, matches)
+    }
+    if (result.endTime != null) {
+      makeMatch(result.endTime, Locator.END_TIME, filters, matches)
+    }
 
     return matches
   }
