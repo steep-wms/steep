@@ -68,6 +68,9 @@ import java.net.ServerSocket
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter.ISO_INSTANT
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
 
@@ -2163,18 +2166,23 @@ class HttpEndpointTest {
     val encodedQuery = URLEncoder.encode(queryStr, StandardCharsets.UTF_8)
     val query = QueryCompiler.compile(queryStr)
 
+    val serverZoneId = ZoneId.systemDefault()
+    val startTime = LocalDateTime.of(2022, 5, 31, 7, 2).atZone(serverZoneId).toInstant()
+    val endTime = LocalDateTime.of(2022, 5, 31, 8, 10).atZone(serverZoneId).toInstant()
     val results = listOf(
         SearchResult(
             id = id1,
             type = Type.WORKFLOW,
             name = "Elvis",
             requiredCapabilities = setOf("foo", "bar"),
-            status = Submission.Status.SUCCESS.name
+            status = Submission.Status.SUCCESS.name,
+            startTime = startTime,
+            endTime = endTime
         ),
         SearchResult(
             id = id2,
             type = Type.PROCESS_CHAIN,
-            status = SubmissionRegistry.ProcessChainStatus.ERROR.name
+            status = ProcessChainStatus.ERROR.name
         )
     )
 
@@ -2227,6 +2235,8 @@ class HttpEndpointTest {
               "name" to "Elvis",
               "requiredCapabilities" to jsonArrayOf("foo", "bar"),
               "status" to "SUCCESS",
+              "startTime" to ISO_INSTANT.format(startTime),
+              "endTime" to ISO_INSTANT.format(endTime),
               "matches" to jsonArrayOf(
                   jsonObjectOf(
                       "locator" to "requiredCapabilities",
@@ -2288,7 +2298,8 @@ class HttpEndpointTest {
       }
 
       ctx.coVerify {
-        val response = client.get(port, "localhost", "/search?q=$encodedQuery&count=none")
+        val response = client.get(port, "localhost",
+              "/search?q=$encodedQuery&count=none")
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
@@ -2304,7 +2315,8 @@ class HttpEndpointTest {
       }
 
       ctx.coVerify {
-        val response = client.get(port, "localhost", "/search?q=$encodedQuery&count=none&size=0")
+        val response = client.get(port, "localhost",
+              "/search?q=$encodedQuery&count=none&size=0")
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
@@ -2320,7 +2332,8 @@ class HttpEndpointTest {
       }
 
       ctx.coVerify {
-        val response = client.get(port, "localhost", "/search?q=$encodedQuery&count=estimate&size=0")
+        val response = client.get(port, "localhost",
+              "/search?q=$encodedQuery&count=estimate&size=0")
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
@@ -2341,7 +2354,8 @@ class HttpEndpointTest {
       }
 
       ctx.coVerify {
-        val response = client.get(port, "localhost", "/search?q=$encodedQuery&count=exact&size=0")
+        val response = client.get(port, "localhost",
+              "/search?q=$encodedQuery&count=exact&size=0")
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
@@ -2359,6 +2373,118 @@ class HttpEndpointTest {
             ),
             "results" to jsonArrayOf()
         ))
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that the search endpoint returns a list of results according to a
+   * given time zone
+   */
+  @Test
+  fun getSearchTimeZone(vertx: Vertx, ctx: VertxTestContext) {
+    val id1 = UniqueID.next()
+
+    val serverZoneId = ZoneId.of("Europe/Berlin")
+    val startTime = LocalDateTime.of(2022, 5, 31, 7, 2).atZone(serverZoneId).toInstant()
+    val endTime = LocalDateTime.of(2022, 5, 31, 8, 10).atZone(serverZoneId).toInstant()
+    val results = listOf(
+        SearchResult(
+            id = id1,
+            type = Type.WORKFLOW,
+            status = Submission.Status.SUCCESS.name,
+            startTime = startTime,
+            endTime = endTime
+        )
+    )
+
+    val query = "2022-05-31T07:02"
+    coEvery { submissionRegistry.search(QueryCompiler.compile(query,
+        serverZoneId), any(), any(), any()) } returns results
+    coEvery { submissionRegistry.searchCount(QueryCompiler.compile(query,
+        serverZoneId), Type.WORKFLOW, any()) } returns 1L
+    coEvery { submissionRegistry.searchCount(QueryCompiler.compile(query,
+        serverZoneId), Type.PROCESS_CHAIN, any()) } returns 0L
+    coEvery { submissionRegistry.search(QueryCompiler.compile(query,
+        ZoneId.of("America/Vancouver")), any(), any(), any()) } returns emptyList()
+    coEvery { submissionRegistry.searchCount(QueryCompiler.compile(query,
+        ZoneId.of("America/Vancouver")), any(), any()) } returns 0L
+
+    val client = WebClient.create(vertx)
+    CoroutineScope(vertx.dispatcher()).launch {
+      val expectedResults = jsonArrayOf(
+          jsonObjectOf(
+              "id" to id1,
+              "type" to "workflow",
+              "status" to "SUCCESS",
+              "requiredCapabilities" to jsonArrayOf(),
+              "startTime" to ISO_INSTANT.format(startTime),
+              "endTime" to ISO_INSTANT.format(endTime),
+              "matches" to jsonArrayOf(
+                  jsonObjectOf(
+                      "locator" to "startTime",
+                      "fragment" to ISO_INSTANT.format(startTime),
+                      "termMatches" to jsonArrayOf(
+                          jsonObjectOf(
+                              "term" to query
+                          )
+                      )
+                  )
+              )
+          )
+      )
+
+      ctx.coVerify {
+        val response = client.get(port, "localhost",
+            "/search?q=$query&timeZone=Europe/Berlin")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .expect(ResponsePredicate.JSON)
+            .send()
+            .await()
+
+        assertThat(response.headers()["x-page-size"]).isEqualTo("10")
+        assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
+        assertThat(response.headers()["x-page-total"]).isEqualTo("1")
+        assertThat(response.body()).isEqualTo(jsonObjectOf(
+            "counts" to jsonObjectOf(
+                "workflow" to 1L,
+                "processChain" to 0L,
+                "total" to 1L
+            ),
+            "results" to expectedResults
+        ))
+      }
+
+      ctx.coVerify {
+        val response = client.get(port, "localhost",
+            "/search?q=$query&timeZone=America/Vancouver")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .expect(ResponsePredicate.JSON)
+            .send()
+            .await()
+
+        assertThat(response.headers()["x-page-size"]).isEqualTo("10")
+        assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
+        assertThat(response.headers()["x-page-total"]).isEqualTo("0")
+        assertThat(response.body()).isEqualTo(jsonObjectOf(
+            "counts" to jsonObjectOf(
+                "workflow" to 0L,
+                "processChain" to 0L,
+                "total" to 0L
+            ),
+            "results" to jsonArrayOf()
+        ))
+      }
+
+      ctx.coVerify {
+        client.get(port, "localhost", "/search?q=$query&timeZone=invalid")
+            .expect(ResponsePredicate.SC_BAD_REQUEST)
+            .send()
+            .await()
       }
 
       ctx.completeNow()

@@ -97,6 +97,9 @@ import org.slf4j.LoggerFactory
 import search.QueryCompiler
 import search.SearchResultMatcher
 import search.Type
+import java.time.DateTimeException
+import java.time.ZoneId
+import java.time.zone.ZoneRulesException
 import java.util.regex.Pattern
 import kotlin.math.max
 import com.github.zafarkhaja.semver.Version as SemVersion
@@ -877,16 +880,26 @@ class HttpEndpoint : CoroutineVerticle() {
       val q = ctx.request().getParam("q") ?: ""
       val offset = max(0, ctx.request().getParam("offset")?.toIntOrNull() ?: 0)
       val size = ctx.request().getParam("size")?.toIntOrNull() ?: 10
-      val count = ctx.request().getParam("count", "estimate").lowercase()
 
+      val count = ctx.request().getParam("count", "estimate").lowercase()
       if (count != "none" && count != "estimate" && count != "exact") {
         renderError(ctx, 400, "Parameter `count' must be one of `none', " +
             "`estimate', or `exact'")
         return
       }
 
+      val timeZone = try {
+        ctx.request().getParam("timeZone")?.let { ZoneId.of(it) } ?: ZoneId.systemDefault()
+      } catch (e: ZoneRulesException) {
+        renderError(ctx, 400, "Unknown timezone")
+        return
+      } catch (e: DateTimeException) {
+        renderError(ctx, 400, "Invalid timezone")
+        return
+      }
+
       launch {
-        val query = QueryCompiler.compile(q)
+        val query = QueryCompiler.compile(q, timeZone)
         val countJobs = if (count != "none") {
           Type.values().map { type ->
             async {
@@ -913,6 +926,12 @@ class HttpEndpoint : CoroutineVerticle() {
           )
           if (sr.name != null) {
             ro.put("name", sr.name)
+          }
+          if (sr.startTime != null) {
+            ro.put("startTime", sr.startTime)
+          }
+          if (sr.endTime != null) {
+            ro.put("endTime", sr.endTime)
           }
           ro.put("matches", matches)
           results.add(ro)
@@ -951,7 +970,7 @@ class HttpEndpoint : CoroutineVerticle() {
           ctx.response().putHeader("x-page-total", total.toString())
         }
 
-        ctx.response().end(result.encode())
+        ctx.response().end(JsonUtils.mapper.writeValueAsString(result))
       }
     }
   }
