@@ -8,6 +8,10 @@ export function formatDate(date) {
   return dayjs(date).format("dddd, D MMMM YYYY, h:mm:ss a")
 }
 
+export function formatIsoLocalDateTime(date) {
+  return dayjs(date).format("YYYY-MM-DDTHH:mm:ss")
+}
+
 export function formatDuration(startTime, endTime) {
   let diff = dayjs(endTime).diff(dayjs(startTime))
   return dayjs.duration(diff).humanize()

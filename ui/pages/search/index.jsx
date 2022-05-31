@@ -29,6 +29,7 @@ const Search = () => {
   const router = useRouter()
   const [inputValue, setInputValue] = useState("")
   const inputRef = useRef()
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
 
   let pageOffset = router.query.offset || undefined
   if (pageOffset !== undefined) {
@@ -51,10 +52,10 @@ const Search = () => {
   }
 
   function makeKey(params) {
-    return `${process.env.baseUrl}/search?${params.toString()}`
+    return `${process.env.baseUrl}/search?${params.toString()}&timeZone=${tz}`
   }
   function makeExactCountKey(params) {
-    return `${process.env.baseUrl}/search?${params.toString()}&size=0&count=exact`
+    return `${process.env.baseUrl}/search?${params.toString()}&size=0&count=exact&timeZone=${tz}`
   }
 
   let key = makeKey(params)
@@ -207,7 +208,17 @@ const Search = () => {
               <li className={classNames({ active: hasLocator(router.query.q, "error") })}
                   onClick={() => pushQuery(toggleLocator(router.query.q, "error"))}>
                 <div className="active-icon"><Check size="0.85rem"/></div>
-                <div className="name">Error</div>
+                <div className="name">Error Message</div>
+              </li>
+              <li className={classNames({ active: hasLocator(router.query.q, "start") })}
+                  onClick={() => pushQuery(toggleLocator(router.query.q, "start"))}>
+                <div className="active-icon"><Check size="0.85rem"/></div>
+                <div className="name">Start Time</div>
+              </li>
+              <li className={classNames({ active: hasLocator(router.query.q, "end") })}
+                  onClick={() => pushQuery(toggleLocator(router.query.q, "end"))}>
+                <div className="active-icon"><Check size="0.85rem"/></div>
+                <div className="name">End Time</div>
               </li>
             </ul>
           </div>}

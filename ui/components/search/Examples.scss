@@ -2,16 +2,21 @@
 
 .examples {
   margin-top: 1rem;
-  display: inline-grid;
+  display: grid;
   grid-template-columns: repeat(2, 1fr);
 
   @media (max-width: $md) {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
   }
 }
 
 .example {
   margin-top: $spacer * 2;
+
+  &.combined {
+    grid-column-end: span 2;
+  }
 }
 
 .example-title {

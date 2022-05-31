@@ -1,6 +1,7 @@
 import Link from "next/link"
 import Label from "../Label"
 import styles from "./Examples.scss"
+import dayjs from "dayjs"
 
 const Examples = () => {
   return (<>
@@ -39,6 +40,19 @@ const Examples = () => {
       </div>
 
       <div className="example">
+        <div className="example-title">Date/Time:</div>
+        <div><Link href={`/search?q=${dayjs(Date.now()).format("YYYY-MM-DD")}`}>
+          <a><Label>{dayjs(Date.now()).format("YYYY-MM-DD")}</Label></a>
+        </Link></div>
+        <div><Link href={`/search?q=<${dayjs(Date.now()).format("YYYY-MM-DDTHH:mm")}`}>
+          <a><Label>&lt;{dayjs(Date.now()).format("YYYY-MM-DDTHH:mm")}</Label></a>
+        </Link></div>
+        <div><Link href={`/search?q=start:>=${dayjs(new Date() - 3600000).format("YYYY-MM-DDTHH:mm:ss")}`}>
+          <a><Label>start:&gt;={dayjs(new Date() - 3600000).format("YYYY-MM-DDTHH:mm:ss")}</Label></a>
+        </Link></div>
+      </div>
+
+      <div className="example combined">
         <div className="example-title">Combined:</div>
         <div><Link href="/search?q=filename+in:source+is:workflow+rcs:highmemory">
           <a><Label>filename in:source is:workflow rcs:highmemory</Label></a>

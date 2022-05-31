@@ -1,8 +1,9 @@
 import Alert from "../../components/Alert"
 import Label from "../../components/Label"
 import Link from "next/link"
-import { AlertCircle, CheckCircle, Coffee, Delete, Link as LinkIcon, RotateCw,
-  Send, XCircle } from "react-feather"
+import { formatIsoLocalDateTime } from "../../components/lib/date-time-utils"
+import { AlertCircle, Clock, CheckCircle, Coffee, Delete, Link as LinkIcon,
+  RotateCw, Send, XCircle } from "react-feather"
 import classNames from "classnames"
 import styles from "./ResultsRow.scss"
 
@@ -132,6 +133,34 @@ function Status({ status, statusMatch }) {
       <style jsx>{styles}</style></span>
 }
 
+function Time({ startTime, endTime, startTimeMatch, endTimeMatch }) {
+  if (!startTime && !endTime) {
+    return false
+  }
+
+  let s
+  if (startTime) {
+    s = formatIsoLocalDateTime(startTime).replace("T", " ")
+    if (startTimeMatch) {
+      console.log(startTimeMatch)
+      s = highlight(s, [[0, s.length]])
+    }
+  }
+
+  let e
+  if (endTime) {
+    e = formatIsoLocalDateTime(endTime).replace("T", " ")
+    if (endTimeMatch) {
+      e = highlight(e, [[0, e.length]])
+    }
+  }
+
+  return <span className="time">
+    <Clock />{s}{e && <> &ndash; {e}</>}
+    <style jsx>{styles}</style>
+  </span>
+}
+
 const ResultsRow = ({ result }) => {
   let idMatch = result.matches.find(m => m.locator === "id")
   let id = idMatch ? highlightMatch(idMatch) : result.id
@@ -188,6 +217,8 @@ const ResultsRow = ({ result }) => {
   }
 
   let statusMatch = result.matches.find(m => m.locator === "status")
+  let startTimeMatch = result.matches.find(m => m.locator === "startTime")
+  let endTimeMatch = result.matches.find(m => m.locator === "endTime")
 
   return (<>
     <div className="results-row">
@@ -204,6 +235,8 @@ const ResultsRow = ({ result }) => {
       <div className="results-row-info">
         {type && <>{type}</>}
         <Status status={result.status} statusMatch={statusMatch} />
+        <Time startTime={result.startTime} endTime={result.endTime}
+          startTimeMatch={startTimeMatch} endTimeMatch={endTimeMatch} />
       </div>
     </div>
     <style jsx>{styles}</style>

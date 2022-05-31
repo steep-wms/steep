@@ -32,6 +32,10 @@ function getLocatorAliases(locator) {
     "rcs", "caps", "reqcaps", "capabilities", "requiredcapabilities"]
   } else if (locator === "error") {
     return ["error", "errormessage"]
+  } else if (locator === "start") {
+    return ["start", "starttime"]
+  } else if (locator === "end") {
+    return ["end", "endtime"]
   }
   return [locator]
 }
