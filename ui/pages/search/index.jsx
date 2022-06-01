@@ -87,6 +87,18 @@ const Search = () => {
   }, {
     dedupingInterval: 100
   })
+  let pageTotal
+  if (counts) {
+    if (hasTypeExpression(router.query.q, "workflow")) {
+      pageTotal = counts.workflow
+    } else if (hasTypeExpression(router.query.q, "processchain")) {
+      pageTotal = counts.processChain
+    } else {
+      pageTotal = counts.total
+    }
+    // limit results to 1000 - any number above that is an estimate anyhow
+    pageTotal = Math.min(1000, pageTotal)
+  }
 
   useEffect(() => {
     setInputValue(router.query.q || "")
@@ -235,8 +247,7 @@ const Search = () => {
           {counts && counts.total > 0 && (
             <div className="pagination">
               <Pagination pageSize={pageSize} pageOffset={pageOffset}
-                pageTotal={Math.min(1000, counts.total)}
-                onChangeOffset={onChangeOffset} />
+                pageTotal={pageTotal} onChangeOffset={onChangeOffset} />
             </div>
           )}
         </div>
