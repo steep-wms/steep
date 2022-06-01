@@ -93,6 +93,7 @@ import model.Version
 import model.cloud.VM
 import model.workflow.Workflow
 import org.apache.commons.text.WordUtils
+import org.parboiled.errors.ParserRuntimeException
 import org.slf4j.LoggerFactory
 import search.QueryCompiler
 import search.SearchResultMatcher
@@ -899,7 +900,13 @@ class HttpEndpoint : CoroutineVerticle() {
       }
 
       launch {
-        val query = QueryCompiler.compile(q, timeZone)
+        val query = try {
+          QueryCompiler.compile(q, timeZone)
+        } catch (e: ParserRuntimeException) {
+          renderError(ctx, 400, e.message)
+          return@launch
+        }
+
         val countJobs = if (count != "none") {
           Type.values().map { type ->
             async {

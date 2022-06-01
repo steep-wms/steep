@@ -33,6 +33,22 @@ class QueryCompilerTest {
   }
 
   @Test
+  fun quotedTerms() {
+    val q = QueryCompiler.compile("\"foo\" 'bar' \"heLLo wOrld\" " +
+        "\"fo\\\"o\" 'b\\'ar' don't ' \"bla")
+    assertThat(q).isEqualTo(Query(terms = setOf(
+        StringTerm("foo"),
+        StringTerm("bar"),
+        StringTerm("heLLo wOrld"),
+        StringTerm("fo\"o"),
+        StringTerm("b'ar"),
+        StringTerm("don't"),
+        StringTerm("'"),
+        StringTerm("\"bla")
+    )))
+  }
+
+  @Test
   fun dateTime() {
     val q = QueryCompiler.compile("foo 2022-05-20 2022-05-20T12:09 " +
         "2022-05-20T12:09:13 \"2022-05-20\" a2022-05-20 2022-05-20b " +
@@ -163,7 +179,7 @@ class QueryCompilerTest {
   @Test
   fun filter() {
     val q = QueryCompiler.compile("foo name:elvis ID:1234 name:2022-05-20 " +
-        "startTime:>2022-05-30 endTime:2022-05-30")
+        "startTime:>2022-05-30 endTime:2022-05-30 name:\"Hello World\"")
     assertThat(q).isEqualTo(Query(
         terms = setOf(
             StringTerm("foo")
@@ -173,7 +189,8 @@ class QueryCompilerTest {
             Locator.ID to StringTerm("1234"),
             Locator.NAME to DateTerm(LocalDate.of(2022, 5, 20)),
             Locator.START_TIME to DateTerm(LocalDate.of(2022, 5, 30), operator = Operator.GT),
-            Locator.END_TIME to DateTerm(LocalDate.of(2022, 5, 30))
+            Locator.END_TIME to DateTerm(LocalDate.of(2022, 5, 30)),
+            Locator.NAME to StringTerm("Hello World")
         )
     ))
   }
