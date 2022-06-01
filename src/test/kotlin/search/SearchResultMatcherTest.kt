@@ -189,5 +189,38 @@ class SearchResultMatcherTest {
           )
       ))
     }
+
+    run {
+      val m = SearchResultMatcher.toMatch(r, QueryCompiler.compile("2022-05-31..2022-06-01"))
+      assertThat(m).isEqualTo(listOf(
+          Match(
+              locator = Locator.START_TIME,
+              fragment = ISO_INSTANT.format(startTime),
+              termMatches = listOf(
+                  TermMatch("2022-05-31..2022-06-01", indices = emptyList())
+              )
+          ),
+          Match(
+              locator = Locator.END_TIME,
+              fragment = ISO_INSTANT.format(endTime),
+              termMatches = listOf(
+                  TermMatch("2022-05-31..2022-06-01", indices = emptyList())
+              )
+          )
+      ))
+    }
+
+    run {
+      val m = SearchResultMatcher.toMatch(r, QueryCompiler.compile("2022-05-31T07:54..2022-06-01T07:55:05"))
+      assertThat(m).isEqualTo(listOf(
+          Match(
+              locator = Locator.END_TIME,
+              fragment = ISO_INSTANT.format(endTime),
+              termMatches = listOf(
+                  TermMatch("2022-05-31T07:54..2022-06-01T07:55:05", indices = emptyList())
+              )
+          )
+      ))
+    }
   }
 }

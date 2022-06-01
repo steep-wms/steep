@@ -3,6 +3,7 @@ package search
 import com.fasterxml.jackson.annotation.JsonValue
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.ZoneId
 
 /**
@@ -71,6 +72,15 @@ data class DateTimeTerm(val value: LocalDateTime,
     val timeZone: ZoneId = ZoneId.systemDefault(),
     val withSecondPrecision: Boolean = true,
     val operator: Operator = Operator.EQ
+) : Term
+data class DateTimeRangeTerm(
+    val fromInclusiveDate: LocalDate,
+    val fromInclusiveTime: LocalTime?,
+    val fromWithSecondPrecision: Boolean,
+    val toInclusiveDate: LocalDate,
+    val toInclusiveTime: LocalTime?,
+    val toWithSecondPrecision: Boolean,
+    val timeZone: ZoneId = ZoneId.systemDefault()
 ) : Term
 
 /**

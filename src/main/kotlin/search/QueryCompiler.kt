@@ -4,6 +4,7 @@ import org.apache.commons.text.StringEscapeUtils
 import java.time.DateTimeException
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.ZoneId
 
 /**
@@ -23,6 +24,12 @@ import java.time.ZoneId
  *
  * A string in the form `yyyy-MM-dd'T'HH:mm[:ss]` (e.g. `2022-05-20T16:36` or
  * `2022-05-20T16:36:12`
+ *
+ * **Time range**
+ *
+ * A string in the form `yyyy-MM-dd['T'HH:mm[:ss]]..yyyy-MM-dd['T'HH:mm[:ss]]`
+ * representing an inclusive time range (e.g. `2022-05-20..2022-05-21` or
+ * `2022-05-20T16:36..2022-05-20T16:37`).
  *
  * **Locator**
  *
@@ -51,12 +58,16 @@ import java.time.ZoneId
  * * `rc`, `cap`, `reqcap`, `capability`, `requiredcapability`,
  *   `rcs`, `caps`, `reqcaps`, `capabilities`, `requiredcapabilities`
  * * `source`
+ * * `start`, `startTime`
+ * * `end`, `endTime`
  *
  * @author Michel Kraemer
  */
 object QueryCompiler {
   private val DATE_REGEX = """(\d{4})-(\d{2})-(\d{2})""".toRegex()
   private val DATETIME_REGEX = """(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(:(\d{2}))?""".toRegex()
+  private const val TIMERANGE_REGEX_PART = """(\d{4})-(\d{2})-(\d{2})(T(\d{2}):(\d{2})(:(\d{2}))?)?"""
+  private val TIMERANGE_REGEX = """$TIMERANGE_REGEX_PART\.\.$TIMERANGE_REGEX_PART""".toRegex()
 
   // attributes
   private const val ID = "id"
@@ -161,6 +172,47 @@ object QueryCompiler {
             dateTimeMatch.groupValues[5].toInt(),
             if (withSecondPrecision) dateTimeMatch.groupValues[7].toInt() else 0
         ), timeZone, withSecondPrecision, operator)
+      } catch (e: DateTimeException) {
+        StringTerm(term)
+      }
+    } ?: TIMERANGE_REGEX.matchEntire(term)?.let { timeRangeMatch ->
+      try {
+        val fromDate = LocalDate.of(
+            timeRangeMatch.groupValues[1].toInt(),
+            timeRangeMatch.groupValues[2].toInt(),
+            timeRangeMatch.groupValues[3].toInt(),
+        )
+
+        val toDate = LocalDate.of(
+            timeRangeMatch.groupValues[9].toInt(),
+            timeRangeMatch.groupValues[10].toInt(),
+            timeRangeMatch.groupValues[11].toInt(),
+        )
+
+        val (fromTime, fromWithSecondPrecision) = if (timeRangeMatch.groupValues[4].isNotBlank()) {
+          val s = timeRangeMatch.groupValues[8].isNotBlank()
+          LocalTime.of(
+              timeRangeMatch.groupValues[5].toInt(),
+              timeRangeMatch.groupValues[6].toInt(),
+              if (s) timeRangeMatch.groupValues[8].toInt() else 0
+          ) to s
+        } else {
+          null to false
+        }
+
+        val (toTime, toWithSecondPrecision) = if (timeRangeMatch.groupValues[12].isNotBlank()) {
+          val s = timeRangeMatch.groupValues[16].isNotBlank()
+          LocalTime.of(
+              timeRangeMatch.groupValues[13].toInt(),
+              timeRangeMatch.groupValues[14].toInt(),
+              if (s) timeRangeMatch.groupValues[16].toInt() else 0
+          ) to s
+        } else {
+          null to false
+        }
+
+        DateTimeRangeTerm(fromDate, fromTime, fromWithSecondPrecision,
+            toDate, toTime, toWithSecondPrecision, timeZone)
       } catch (e: DateTimeException) {
         StringTerm(term)
       }

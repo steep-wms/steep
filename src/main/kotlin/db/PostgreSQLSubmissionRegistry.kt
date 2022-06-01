@@ -17,6 +17,7 @@ import io.vertx.sqlclient.Tuple
 import model.Submission
 import model.processchain.ProcessChain
 import search.DateTerm
+import search.DateTimeRangeTerm
 import search.DateTimeTerm
 import search.Locator
 import search.Operator
@@ -747,6 +748,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
                 term.value.atStartOfDay(term.timeZone).toOffsetDateTime(),
                 term.value.plusDays(1).atStartOfDay(term.timeZone).toOffsetDateTime(),
                 term.operator, params)
+
             is DateTimeTerm -> {
               if (term.withSecondPrecision) {
                 makeTimestampComparison(f,
@@ -764,6 +766,35 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
                     term.operator, params)
               }
             }
+
+            is DateTimeRangeTerm -> {
+              val start = (if (term.fromInclusiveTime != null) {
+                (if (term.fromWithSecondPrecision) {
+                  term.fromInclusiveDate.atTime(term.fromInclusiveTime)
+                      .truncatedTo(ChronoUnit.SECONDS)
+                } else {
+                  term.fromInclusiveDate.atTime(term.fromInclusiveTime)
+                      .truncatedTo(ChronoUnit.MINUTES)
+                }).atZone(term.timeZone)
+              } else {
+                term.fromInclusiveDate.atStartOfDay(term.timeZone)
+              }).toOffsetDateTime()
+
+              val endExclusive = (if (term.toInclusiveTime != null) {
+                (if (term.toWithSecondPrecision) {
+                  term.toInclusiveDate.atTime(term.toInclusiveTime)
+                      .truncatedTo(ChronoUnit.SECONDS).plusSeconds(1)
+                } else {
+                  term.toInclusiveDate.atTime(term.toInclusiveTime)
+                      .truncatedTo(ChronoUnit.MINUTES).plusMinutes(1)
+                }).atZone(term.timeZone)
+              } else {
+                term.toInclusiveDate.plusDays(1).atStartOfDay(term.timeZone)
+              }).toOffsetDateTime()
+
+              makeTimestampComparison(f, start, endExclusive, Operator.EQ, params)
+            }
+
             else -> null
           }
         }

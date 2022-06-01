@@ -4,6 +4,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 
 /**
  * Tests for the [QueryCompiler]
@@ -60,10 +61,44 @@ class QueryCompilerTest {
 
   @Test
   fun invalidDateTime() {
-    val q = QueryCompiler.compile("foo 2022-05-40")
+    val q = QueryCompiler.compile("foo 2022-05-40 2022-13-01T12:01 2022-05-30T40:01")
     assertThat(q).isEqualTo(Query(terms = setOf(
         StringTerm("foo"),
-        StringTerm("2022-05-40")
+        StringTerm("2022-05-40"),
+        StringTerm("2022-13-01T12:01"),
+        StringTerm("2022-05-30T40:01")
+    )))
+  }
+
+  @Test
+  fun timeRange() {
+    val q = QueryCompiler.compile("foo 2022-05-20..2022-05-21 " +
+        "2022-05-20T12:05..2022-05-21T13:10 " +
+        "2022-05-20T12:05:09..2022-05-21T13:10:01 " +
+        "2022-05-20..2022-05-21T13:10:01 " +
+        "2022-05-20..2022-05-21T13:10 " +
+        "2022-05-20T12:05:09..2022-05-21 " +
+        "2022-05-20T12:05..2022-05-21 " +
+        "start:2022-05-20..2022-05-21")
+    assertThat(q).isEqualTo(Query(terms = setOf(
+        StringTerm("foo"),
+        DateTimeRangeTerm(LocalDate.of(2022, 5, 20), null, false,
+            LocalDate.of(2022, 5, 21), null, false),
+        DateTimeRangeTerm(LocalDate.of(2022, 5, 20), LocalTime.of(12, 5), false,
+            LocalDate.of(2022, 5, 21), LocalTime.of(13, 10), false),
+        DateTimeRangeTerm(LocalDate.of(2022, 5, 20), LocalTime.of(12, 5, 9), true,
+            LocalDate.of(2022, 5, 21), LocalTime.of(13, 10, 1), true),
+        DateTimeRangeTerm(LocalDate.of(2022, 5, 20), null, false,
+            LocalDate.of(2022, 5, 21), LocalTime.of(13, 10, 1), true),
+        DateTimeRangeTerm(LocalDate.of(2022, 5, 20), null, false,
+            LocalDate.of(2022, 5, 21), LocalTime.of(13, 10), false),
+        DateTimeRangeTerm(LocalDate.of(2022, 5, 20), LocalTime.of(12, 5, 9), true,
+            LocalDate.of(2022, 5, 21), null, false),
+        DateTimeRangeTerm(LocalDate.of(2022, 5, 20), LocalTime.of(12, 5), false,
+            LocalDate.of(2022, 5, 21), null, false)
+    ), filters = setOf(
+        Locator.START_TIME to DateTimeRangeTerm(LocalDate.of(2022, 5, 20), null, false,
+            LocalDate.of(2022, 5, 21), null, false)
     )))
   }
 

@@ -2830,6 +2830,37 @@ abstract class SubmissionRegistryTest {
           assertThat(results).hasSize(1)
           assertThat(results[0].id).isEqualTo(s1.id)
         }
+
+        submissionRegistry.search(QueryCompiler.compile("2022-05-30..2022-05-31",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).hasSize(1)
+          assertThat(results[0].id).isEqualTo(s1.id)
+        }
+
+        submissionRegistry.search(QueryCompiler.compile("2022-05-31T10:52:36..2022-06-01T10:11:12",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).hasSize(2)
+          assertThat(results[0].id).isEqualTo(s2.id)
+          assertThat(results[1].id).isEqualTo(s1.id)
+        }
+
+        submissionRegistry.search(QueryCompiler.compile("2022-05-31T10:52:37..2022-06-01T10:11:12",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).hasSize(1)
+          assertThat(results[0].id).isEqualTo(s2.id)
+        }
+
+        submissionRegistry.search(QueryCompiler.compile("2022-05-31T10:52:37..2022-06-01T10:11:11",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).isEmpty()
+        }
+
+        submissionRegistry.search(QueryCompiler.compile("2022-06-01..2022-06-05T23:00:00",
+            timeZone = zoneId)).toList().let { results ->
+          assertThat(results).hasSize(2)
+          assertThat(results[0].id).isEqualTo(s2.id)
+          assertThat(results[1].id).isEqualTo(pc2.id)
+        }
       }
 
       ctx.completeNow()

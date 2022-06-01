@@ -7,19 +7,6 @@ const Examples = () => {
   return (<>
     <div className="examples">
       <div className="example">
-        <div className="example-title">Attributes:</div>
-        <div><Link href="/search?q=highmemory+in:requiredcapabilities">
-          <a><Label>highmemory in:requiredcapabilities</Label></a>
-        </Link></div>
-        <div><Link href="/search?q=rcs:highmemory">
-          <a><Label>rcs:highmemory</Label></a>
-        </Link></div>
-        <div><Link href="/search?q=filename+status:error">
-          <a><Label>filename status:error</Label></a>
-        </Link></div>
-      </div>
-
-      <div className="example">
         <div className="example-title">Terms:</div>
         <div><Link href="/search?q=filename+highmemory">
           <a><Label>filename highmemory</Label></a>
@@ -40,6 +27,19 @@ const Examples = () => {
       </div>
 
       <div className="example">
+        <div className="example-title">Attributes:</div>
+        <div><Link href="/search?q=highmemory+in:requiredcapabilities">
+          <a><Label>highmemory in:requiredcapabilities</Label></a>
+        </Link></div>
+        <div><Link href="/search?q=rcs:highmemory">
+          <a><Label>rcs:highmemory</Label></a>
+        </Link></div>
+        <div><Link href="/search?q=filename+status:error">
+          <a><Label>filename status:error</Label></a>
+        </Link></div>
+      </div>
+
+      <div className="example">
         <div className="example-title">Date/Time:</div>
         <div><Link href={`/search?q=${dayjs(Date.now()).format("YYYY-MM-DD")}`}>
           <a><Label>{dayjs(Date.now()).format("YYYY-MM-DD")}</Label></a>
@@ -49,6 +49,9 @@ const Examples = () => {
         </Link></div>
         <div><Link href={`/search?q=start:>=${dayjs(new Date() - 3600000).format("YYYY-MM-DDTHH:mm:ss")}`}>
           <a><Label>start:&gt;={dayjs(new Date() - 3600000).format("YYYY-MM-DDTHH:mm:ss")}</Label></a>
+        </Link></div>
+        <div><Link href={`/search?q=${dayjs(new Date() - 86400000).format("YYYY-MM-DD")}..${dayjs(Date.now()).format("YYYY-MM-DD")}`}>
+          <a><Label>{dayjs(new Date() - 86400000).format("YYYY-MM-DD")}..{dayjs(Date.now()).format("YYYY-MM-DD")}</Label></a>
         </Link></div>
       </div>
 

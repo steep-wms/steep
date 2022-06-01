@@ -44,6 +44,31 @@ object SearchResultMatcher {
         r.substring(0, r.length - 3)
       }
     }
+    is DateTimeRangeTerm -> {
+      val start = if (term.fromInclusiveTime != null) {
+        val r = term.fromInclusiveDate.atTime(term.fromInclusiveTime)
+            .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        if (term.fromWithSecondPrecision) {
+          r
+        } else {
+          r.substring(0, r.length - 3)
+        }
+      } else {
+        term.fromInclusiveDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+      }
+      val end = if (term.toInclusiveTime != null) {
+        val r = term.toInclusiveDate.atTime(term.toInclusiveTime)
+            .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        if (term.toWithSecondPrecision) {
+          r
+        } else {
+          r.substring(0, r.length - 3)
+        }
+      } else {
+        term.toInclusiveDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+      }
+      "$start..$end"
+    }
   }
 
   /**
@@ -85,6 +110,7 @@ object SearchResultMatcher {
               t.value.atStartOfDay(t.timeZone).toInstant() to
               t.value.plusDays(1).atStartOfDay(t.timeZone).toInstant()
           ) to t.operator
+
         is DateTimeTerm -> {
           if (t.withSecondPrecision) {
             (
@@ -102,6 +128,35 @@ object SearchResultMatcher {
             ) to t.operator
           }
         }
+
+        is DateTimeRangeTerm -> {
+          val start = (if (t.fromInclusiveTime != null) {
+            (if (t.fromWithSecondPrecision) {
+              t.fromInclusiveDate.atTime(t.fromInclusiveTime)
+                  .truncatedTo(ChronoUnit.SECONDS)
+            } else {
+              t.fromInclusiveDate.atTime(t.fromInclusiveTime)
+                  .truncatedTo(ChronoUnit.MINUTES)
+            }).atZone(t.timeZone)
+          } else {
+            t.fromInclusiveDate.atStartOfDay(t.timeZone)
+          }).toInstant()
+
+          val endExclusive = (if (t.toInclusiveTime != null) {
+            (if (t.toWithSecondPrecision) {
+              t.toInclusiveDate.atTime(t.toInclusiveTime)
+                  .truncatedTo(ChronoUnit.SECONDS).plusSeconds(1)
+            } else {
+              t.toInclusiveDate.atTime(t.toInclusiveTime)
+                  .truncatedTo(ChronoUnit.MINUTES).plusMinutes(1)
+            }).atZone(t.timeZone)
+          } else {
+            t.toInclusiveDate.plusDays(1).atStartOfDay(t.timeZone)
+          }).toInstant()
+
+          (start to endExclusive) to Operator.EQ
+        }
+
         else -> continue
       }
 
