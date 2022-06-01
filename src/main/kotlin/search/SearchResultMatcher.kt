@@ -74,7 +74,8 @@ object SearchResultMatcher {
   /**
    * Search the given [propertyValue] and find all indices of all [terms]
    */
-  private fun findTermMatches(propertyValue: String, terms: List<String>): List<TermMatch> {
+  private fun findTermMatches(propertyValue: String, terms: List<String>,
+      maxMatches: Int): List<TermMatch> {
     val termMatches = mutableListOf<TermMatch>()
     for (t in terms) {
       if (t.isEmpty()) {
@@ -92,6 +93,9 @@ object SearchResultMatcher {
 
       if (indices.isNotEmpty()) {
         termMatches.add(TermMatch(t, indices))
+        if (termMatches.size == maxMatches) {
+          break
+        }
       }
     }
     return termMatches
@@ -187,32 +191,23 @@ object SearchResultMatcher {
   }
 
   /**
-   * Coalesce the given [ranges] (i.e. recursively merge overlapping ranges)
+   * Coalesce and sort the given [ranges] (i.e. recursively merge overlapping ranges)
    */
-  private fun coalesceRanges(ranges: List<Pair<Int, Int>>): List<Pair<Int, Int>> {
-    val result = mutableListOf<Pair<Int, Int>>()
-    var anymerged = false
-    for (p in ranges) {
-      var merged = false
-      for ((i, r) in result.withIndex()) {
-        if ((p.first >= r.first && p.first <= r.second) ||
-            (p.second >= r.first && p.second <= r.second)) {
-          val nf = min(r.first, p.first)
-          val ns = max(r.second, p.second)
-          result[i] = nf to ns
-          merged = true
-          anymerged = true
-          break
-        }
-      }
-      if (!merged) {
-        result.add(p)
+  private fun coalesceAndSortRanges(ranges: List<Pair<Int, Int>>): List<Pair<Int, Int>> {
+    val sortedRanges = ranges.sortedBy { it.first }.toMutableList()
+
+    var last = 0
+    for (i in 1 until sortedRanges.size) {
+      if (sortedRanges[last].second >= sortedRanges[i].first) {
+        sortedRanges[last] = sortedRanges[last].copy(
+            second = max(sortedRanges[last].second, sortedRanges[i].second))
+      } else {
+        last++
+        sortedRanges[last] = sortedRanges[i]
       }
     }
-    if (anymerged) {
-      return coalesceRanges(result)
-    }
-    return result
+
+    return sortedRanges.subList(0, last + 1)
   }
 
   /**
@@ -282,13 +277,13 @@ object SearchResultMatcher {
       filters: Map<Locator, Set<Term>>, matches: MutableList<Match>,
       maxFragmentLength: Int) {
     val terms = filters[locator]?.filterIsInstance<StringTerm>()?.map(this::termToString) ?: return
-    val termMatches = findTermMatches(propertyValue, terms)
+    val termMatches = findTermMatches(propertyValue, terms, maxFragmentLength)
     if (termMatches.isEmpty()) {
       return
     }
 
     // make fragment
-    val ranges = coalesceRanges(termMatchesToRanges(termMatches)).sortedBy { it.first }
+    val ranges = coalesceAndSortRanges(termMatchesToRanges(termMatches))
     var (start, end) = makeFragment(propertyValue, ranges, maxFragmentLength)
     while (start < propertyValue.length && propertyValue[start].isWhitespace()) start++
     while (end > start && propertyValue[end - 1].isWhitespace()) end--
