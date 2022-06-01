@@ -69,7 +69,11 @@ object QueryCompiler {
   fun compile(query: String, timeZone: ZoneId = ZoneId.systemDefault()): Query {
     // non-breaking space (0x0a) is a reserved character used by the
     // PostgreSQLSubmissionRegistry as a separator between required capabilities
-    val normalizedQuery = query.replace('\u00a0', ' ')
+    val normalizedQuery = query.replace('\u00a0', ' ').trim()
+
+    if (normalizedQuery.isEmpty()) {
+      return Query()
+    }
 
     val parser = Parboiled.createParser(QueryParser::class.java, timeZone)
     val parsingResult = ReportingParseRunner<QueryParser.QueryParserNode>(
