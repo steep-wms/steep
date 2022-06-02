@@ -194,4 +194,37 @@ class QueryCompilerTest {
         )
     ))
   }
+
+  @Test
+  fun order() {
+    val expectedResult = Query(
+        terms = setOf(
+            StringTerm("foo")
+        ),
+        locators = setOf(
+            Locator.STATUS
+        ),
+        types = setOf(
+            Type.WORKFLOW
+        )
+    )
+
+    val q1 = QueryCompiler.compile("foo in:status is:workflow")
+    assertThat(q1).isEqualTo(expectedResult)
+
+    val q2 = QueryCompiler.compile("foo is:workflow in:status")
+    assertThat(q2).isEqualTo(expectedResult)
+
+    val q3 = QueryCompiler.compile("is:workflow foo in:status")
+    assertThat(q3).isEqualTo(expectedResult)
+
+    val q4 = QueryCompiler.compile("is:workflow in:status foo")
+    assertThat(q4).isEqualTo(expectedResult)
+
+    val q5 = QueryCompiler.compile("in:status is:workflow foo")
+    assertThat(q5).isEqualTo(expectedResult)
+
+    val q6 = QueryCompiler.compile("in:status foo is:workflow")
+    assertThat(q6).isEqualTo(expectedResult)
+  }
 }

@@ -242,7 +242,8 @@ open class QueryParser(private val timeZone: ZoneId) : BaseParser<QueryParser.Qu
                 ),
                 push(QueryParserNode(type = Type.PROCESS_CHAIN))
             )
-        )
+        ),
+        ws()
     )
   }
 
