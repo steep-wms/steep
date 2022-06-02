@@ -1,5 +1,6 @@
 import ListPage from "../../components/layouts/ListPage"
 import ListItem from "../../components/ListItem"
+import Tooltip from "../../components/Tooltip"
 import WorkflowContext from "../../components/workflows/WorkflowContext"
 import { useMemo } from "react"
 import Link from "next/link"
@@ -38,7 +39,9 @@ function WorkflowListItem({ item: workflow }) {
 
 const Workflows = () => {
   let additionalButtons = <>
-    <Link href="/new/workflow"><a className="plus-button"><PlusSquare /></a></Link>
+    <Tooltip title="New workflow &hellip;">
+      <Link href="/new/workflow"><a className="plus-button"><PlusSquare /></a></Link>
+    </Tooltip>
     <style jsx>{styles}</style>
   </>
 
