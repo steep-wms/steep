@@ -244,6 +244,7 @@ const ListPage = (props) => {
         <div className={classNames("list-page-title", { "no-margin-bottom": props.breadcrumbs })}>
           <h1 className="no-margin-bottom">{props.title}</h1>
           <div className="title-right">
+            {props.additionalButtons}
             <div className="search-container">
               {search}
             </div>
