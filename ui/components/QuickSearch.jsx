@@ -47,7 +47,7 @@ const QuickSearch = forwardRef(({ type, searchIcon = false, onEnter, onEscape,
   }
 
   onEscape = onEscape || function () {
-    setValue("")
+    doSetValue("")
     innerRef.current.blur()
   }
 
@@ -60,17 +60,21 @@ const QuickSearch = forwardRef(({ type, searchIcon = false, onEnter, onEscape,
   }
 
   function onCancel() {
-    setValue("")
+    doSetValue("")
     setTimeout(() => {
       innerRef.current.focus()
     })
   }
 
-  function doOnChange(e) {
-    setValue(e.target.value)
+  function doSetValue(newValue) {
+    setValue(newValue)
     if (onChange) {
-      onChange(e.target.value)
+      onChange(newValue)
     }
+  }
+
+  function doOnChange(e) {
+    doSetValue(e.target.value)
   }
 
   return (<>
