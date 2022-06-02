@@ -49,11 +49,15 @@
   }
 }
 
-.status, .time {
+.status, .time, .ongoing-icon {
   :global(svg) {
     height: 1em;
-    margin-bottom: 2px;
+    margin-bottom: 3px;
   }
+}
+
+.ongoing-icon :global(svg) {
+  width: 1em;
 }
 
 .status {

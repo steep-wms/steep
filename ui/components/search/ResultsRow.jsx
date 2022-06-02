@@ -155,7 +155,7 @@ function Time({ startTime, endTime, startTimeMatch, endTimeMatch }) {
   }
 
   return <span className="time">
-    <Clock />{s}{e && <> &ndash; {e}</>}
+    <Clock />{s} .. {e || <span className="ongoing-icon"><RotateCw /></span> }
     <style jsx>{styles}</style>
   </span>
 }
