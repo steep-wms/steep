@@ -14,7 +14,11 @@ const App = ({ Component, pageProps }) => {
     }
 
     return () => {
-      eb.close()
+      try {
+        eb.close()
+      } catch (e) {
+        console.warn("Could not close event bus", e)
+      }
     }
   }, [])
 
