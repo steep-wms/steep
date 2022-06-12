@@ -2,7 +2,7 @@ import Alert from "../../components/Alert"
 import DetailPage from "../../components/layouts/DetailPage"
 import classNames from "classnames"
 import fetcher from "../../components/lib/json-fetcher"
-import stringify from "../../components/lib/yaml-stringify"
+import submissionToSource from "../../components/lib/submission-source"
 import Editor, { useMonaco } from "@monaco-editor/react"
 import { useEffect, useRef, useState } from "react"
 import { Circle } from "react-feather"
@@ -48,7 +48,7 @@ const Submit = () => {
   useEffect(() => {
     if (router.query.from !== undefined) {
       fetcher(`${process.env.baseUrl}/workflows/${router.query.from}`).then(response => {
-        setValue(stringify(response.workflow))
+        setValue(submissionToSource(response).yaml)
         setReady(true)
         if (editorRef.current && monaco) {
           editorRef.current.setSelection(new monaco.Selection(0, 0, 0, 0))

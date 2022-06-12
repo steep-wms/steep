@@ -13,6 +13,7 @@ import LiveDuration from "../../components/LiveDuration"
 import Priority from "../../components/Priority"
 import WorkflowContext from "../../components/workflows/WorkflowContext"
 import { formatDate, formatDurationTitle } from "../../components/lib/date-time-utils"
+import submissionToSource from "../../components/lib/submission-source"
 import workflowToProgress from "../../components/workflows/workflow-to-progress"
 import fetcher from "../../components/lib/json-fetcher"
 import styles from "./[id].scss"
@@ -74,12 +75,14 @@ function WorkflowDetails({ id }) {
     endTime = w.endTime
     requiredCapabilities = w.requiredCapabilities
     priority = w.priority
-    workflowSource = w.workflow
+    workflowSource = submissionToSource(w)
     deleted = !!w.deleted
     status = w.status
   }
 
-  const codeBox = useMemo(() => <CodeBox json={workflowSource} />, [workflowSource])
+  const codeBox = useMemo(() => (workflowSource &&
+      <CodeBox json={workflowSource.json} yaml={workflowSource.yaml} />),
+      [workflowSource])
 
   const breadcrumbs = useMemo(() => [
     <Link href="/workflows/" key="workflows"><a>Workflows</a></Link>,

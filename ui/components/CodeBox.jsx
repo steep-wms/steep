@@ -9,7 +9,7 @@ import { Clipboard as ClipboardIcon } from "react-feather"
 const COPY = "Copy to clipboard"
 const COPIED = "Copied!"
 
-const CodeBox = ({ json }) => {
+const CodeBox = ({ json, yaml = undefined }) => {
   const jsonRef = useRef()
   const yamlRef = useRef()
   const yamlStrRef = useRef()
@@ -24,7 +24,7 @@ const CodeBox = ({ json }) => {
 
   let str = JSON.stringify(json, undefined, 2)
   if (yamlStrRef.current === undefined) {
-    yamlStrRef.current = stringify(json)
+    yamlStrRef.current = yaml || stringify(json)
   }
   let yamlStr = yamlStrRef.current
 
