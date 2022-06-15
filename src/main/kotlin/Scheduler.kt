@@ -462,13 +462,19 @@ class Scheduler : CoroutineVerticle() {
 
       // ask all scheduler instances which process chains they are currently executing
       val allRunningProcessChains = mutableSetOf<String>()
+      allRunningProcessChains.addAll(runningProcessChainIds) // always consider our own process chains
       val keysPromise = Promise.promise<Set<String>>()
       schedulers.keys(keysPromise)
       for (scheduler in keysPromise.future().await()) {
-        val address = "$SCHEDULER_PREFIX$scheduler$SCHEDULER_RUNNING_PROCESS_CHAINS_SUFFIX"
-        val ids = vertx.eventBus().request<JsonArray>(address, null).await()
-        for (id in ids.body()) {
-          allRunningProcessChains.add(id.toString())
+        if (scheduler == agentId) {
+          // no need to send a message to `this` (we've already added
+          // `runningProcessChainIds` to `allRunningProcessChains` above)
+        } else {
+          val address = "$SCHEDULER_PREFIX$scheduler$SCHEDULER_RUNNING_PROCESS_CHAINS_SUFFIX"
+          val ids = vertx.eventBus().request<JsonArray>(address, null).await()
+          for (id in ids.body()) {
+            allRunningProcessChains.add(id.toString())
+          }
         }
       }
 
