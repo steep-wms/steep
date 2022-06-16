@@ -12,6 +12,9 @@ const App = ({ Component, pageProps }) => {
     eb.onopen = () => {
       setEventBus(eb)
     }
+    eb.onclose = () => {
+      setEventBus(undefined)
+    }
 
     return () => {
       try {
