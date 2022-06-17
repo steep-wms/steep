@@ -145,6 +145,25 @@ object ConfigConstants {
       "steep.cluster.hazelcast.placementGroupName"
 
   /**
+   * `true` if this instance should be a [Hazelcast lite member](https://docs.hazelcast.com/hazelcast/5.1/maintain-cluster/lite-members).
+   * Lite members do not own any in-memory data. They are mainly used for
+   * compute-intensive tasks. With regard to Steep, an instance with a
+   * [Controller] and a [Scheduler] should not be a lite member, because these
+   * components heavily rely on internal state. A Steep instance that only
+   * contains an [agent.Agent] and therefore only executes services, however,
+   * could be a lite member.
+   *
+   * Your cluster cannot consist of only lite members. Otherwise, it is not
+   * able to maintain internal state at all.
+   *
+   * Note that since lite members cannot keep data, they are not suitable to
+   * keep backups either. See [CLUSTER_HAZELCAST_PLACEMENT_GROUP_NAME] for more
+   * information. For reasons of reliability, a cluster should contain at least
+   * three full (i.e. non-lite) members.
+   */
+  const val CLUSTER_HAZELCAST_LITE_MEMBER = "steep.cluster.hazelcast.liteMember"
+
+  /**
    * The interval at which the [Main] thread looks for orphaned entries in the
    * remote agent registry. Such entries may happen if there is a network
    * failure during deregistration of an agent. The interval is specified

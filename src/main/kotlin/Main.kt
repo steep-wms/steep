@@ -146,6 +146,12 @@ suspend fun main() {
     hazelcastConfig.memberAttributeConfig.setAttribute(PARTITION_GROUP_PLACEMENT, placementGroupName)
   }
 
+  // configure lite member
+  val liteMember = conf.getBoolean(ConfigConstants.CLUSTER_HAZELCAST_LITE_MEMBER, false)
+  if (liteMember) {
+    hazelcastConfig.isLiteMember = true
+  }
+
   // configure event bus
   val mgr = HazelcastClusterManager(hazelcastConfig)
   val options = VertxOptions().setClusterManager(mgr)
