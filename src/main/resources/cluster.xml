@@ -23,16 +23,26 @@
         </join>
     </network>
 
+    <!-- Be a little bit more conservative about backups. The default is one
+         synchronous backup, but we also define an additional asynchronous backup -->
+    <map name="default">
+        <backup-count>1</backup-count>
+        <async-backup-count>1</async-backup-count>
+    </map>
+
     <!-- DEFAULT CONFIGURATION FOR VERT.X - DO NOT CHANGE! -->
     <multimap name="__vertx.subs">
         <backup-count>1</backup-count>
+        <async-backup-count>1</async-backup-count> <!-- added -->
         <value-collection-type>SET</value-collection-type>
     </multimap>
     <map name="__vertx.haInfo">
         <backup-count>1</backup-count>
+        <async-backup-count>1</async-backup-count> <!-- added -->
     </map>
     <map name="__vertx.nodeInfo">
         <backup-count>1</backup-count>
+        <async-backup-count>1</async-backup-count> <!-- added -->
     </map>
     <cp-subsystem>
         <cp-member-count>0</cp-member-count>
