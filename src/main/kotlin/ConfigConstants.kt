@@ -115,6 +115,36 @@ object ConfigConstants {
       "steep.cluster.hazelcast.restoreMembersOnStartup.defaultPort"
 
   /**
+   * An optional name specifying in which group this Hazelcast member should
+   * be placed. Steep uses distributed maps ([com.hazelcast.map.IMap]) to share
+   * data between instances. Data in these maps is partitioned (i.e. distributed
+   * to the individual cluster members). In a large cluster, no member keeps
+   * all the data. Most nodes only keep a small fraction of the data (a
+   * partition).
+   *
+   * To make sure data is not lost if a member goes down, Hazelcast uses
+   * backups to distribute copies of the data across the cluster. By specifying
+   * a placement group, you can control how Hazelcast distributes these backups.
+   * Hazelcast will always prefer creating backups in a group that does not own
+   * the data, so that if all members of a group go down, the other group still
+   * has all the backup data.
+   *
+   * Examples for sensible groups are racks, data centers, or availability zones.
+   *
+   * For more information, see the following links:
+   *
+   * * https://docs.hazelcast.com/hazelcast/5.1/architecture/data-partitioning
+   * * https://docs.hazelcast.com/hazelcast/5.1/clusters/partition-group-configuration
+   * * https://docs.hazelcast.com/hazelcast/5.1/data-structures/backing-up-maps
+   *
+   * Note that if you configure a placement group name, all members in your
+   * cluster must also have a placement group name. Otherwise, you will
+   * receive an exception about mismatching configuration on startup.
+   */
+  const val CLUSTER_HAZELCAST_PLACEMENT_GROUP_NAME =
+      "steep.cluster.hazelcast.placementGroupName"
+
+  /**
    * The interval at which the [Main] thread looks for orphaned entries in the
    * remote agent registry. Such entries may happen if there is a network
    * failure during deregistration of an agent. The interval is specified

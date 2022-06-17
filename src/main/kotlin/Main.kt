@@ -4,6 +4,8 @@ import ch.qos.logback.classic.joran.JoranConfigurator
 import cloud.CloudManager
 import com.hazelcast.cluster.MembershipAdapter
 import com.hazelcast.cluster.MembershipEvent
+import com.hazelcast.config.PartitionGroupConfig
+import com.hazelcast.spi.partitiongroup.PartitionGroupMetaData.PARTITION_GROUP_PLACEMENT
 import db.PluginRegistryFactory
 import db.VMRegistryFactory
 import helper.CompressedJsonObjectMessageCodec
@@ -135,6 +137,14 @@ suspend fun main() {
 
   hazelcastConfig.memberAttributeConfig.setAttribute(ATTR_AGENT_ID, agentId)
   hazelcastConfig.memberAttributeConfig.setAttribute(ATTR_AGENT_INSTANCES, instances.toString())
+
+  // configure placement groups
+  val placementGroupName = conf.getString(ConfigConstants.CLUSTER_HAZELCAST_PLACEMENT_GROUP_NAME)
+  if (placementGroupName != null) {
+    hazelcastConfig.partitionGroupConfig.isEnabled = true
+    hazelcastConfig.partitionGroupConfig.groupType = PartitionGroupConfig.MemberGroupType.PLACEMENT_AWARE
+    hazelcastConfig.memberAttributeConfig.setAttribute(PARTITION_GROUP_PLACEMENT, placementGroupName)
+  }
 
   // configure event bus
   val mgr = HazelcastClusterManager(hazelcastConfig)
