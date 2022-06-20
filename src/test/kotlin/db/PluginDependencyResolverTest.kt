@@ -15,6 +15,7 @@ class PluginDependencyResolverTest {
   private data class DummyPlugin(override val name: String,
       override val dependsOn: List<String>,
       override val scriptFile: String = "foobar.kt",
+      override val version: String? = null,
       override val compiledFunction: KFunction<*> = throwPluginNeedsCompile<Any>()) : DependentPlugin
 
   /**

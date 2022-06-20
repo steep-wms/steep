@@ -23,6 +23,7 @@ import kotlin.reflect.full.callSuspend
 data class ProcessChainAdapterPlugin(
     override val name: String,
     override val scriptFile: String,
+    override val version: String? = null,
     override val dependsOn: List<String> = emptyList(),
 
     /**

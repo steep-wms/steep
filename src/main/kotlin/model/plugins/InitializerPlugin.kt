@@ -19,6 +19,7 @@ import kotlin.reflect.full.callSuspend
 data class InitializerPlugin(
     override val name: String,
     override val scriptFile: String,
+    override val version: String? = null,
     override val dependsOn: List<String> = emptyList(),
 
     /**

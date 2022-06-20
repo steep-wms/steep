@@ -2,4 +2,5 @@
 - name: fileOrEmptyList
   type: outputAdapter
   scriptFile: conf/plugins/fileOrEmptyList.kt
+  version: 1.0.0
   supportedDataType: fileOrEmptyList
