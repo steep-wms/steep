@@ -3,6 +3,7 @@ package db
 import ConfigConstants
 import assertThatThrownBy
 import coVerify
+import com.github.zafarkhaja.semver.ParseException
 import helper.DefaultOutputCollector
 import helper.UniqueID
 import io.vertx.core.Vertx
@@ -405,6 +406,47 @@ class PluginRegistryTest {
           PluginRegistryFactory.initialize(vertx, config)
         }.isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContainingAll("executables", "model.processchain.Executable")
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Make sure a plugin with an invalid semantic version cannot be loaded
+   */
+  @Test
+  fun invalidPluginVersion(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val config = json {
+        obj(
+            ConfigConstants.PLUGINS to "src/**/db/invalidPluginVersion.yaml"
+        )
+      }
+      ctx.coVerify {
+        assertThatThrownBy {
+          PluginRegistryFactory.initialize(vertx, config)
+        }.isInstanceOf(ParseException::class.java)
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Make sure a plugin with an empty version string cannot be loaded
+   */
+  @Test
+  fun emptyPluginVersion(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val config = json {
+        obj(
+            ConfigConstants.PLUGINS to "src/**/db/emptyPluginVersion.yaml"
+        )
+      }
+      ctx.coVerify {
+        assertThatThrownBy {
+          PluginRegistryFactory.initialize(vertx, config)
+        }.isInstanceOf(IllegalStateException::class.java)
+            .hasMessageContainingAll("Version", "dummyOutputAdapter", "must not be empty")
       }
       ctx.completeNow()
     }

@@ -36,7 +36,7 @@ interface Plugin {
   val scriptFile: String
 
   /**
-   * The version number of the plugin
+   * The plugin's version
    */
   val version: String?
 

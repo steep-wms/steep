@@ -1,0 +1,6 @@
+# An output adapter with an invalid semantic version
+- name: dummyOutputAdapter
+  type: outputAdapter
+  scriptFile: db/dummyOutputAdapter.kts
+  supportedDataType: dummy
+  version: 1.a

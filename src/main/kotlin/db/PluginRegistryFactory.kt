@@ -1,6 +1,7 @@
 package db
 
 import ConfigConstants
+import com.github.zafarkhaja.semver.Version
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -114,6 +115,18 @@ object PluginRegistryFactory {
     val plugins = (object : AbstractFileRegistry() {
       suspend fun find(): List<Plugin> = find(pathList, vertx)
     }).find()
+
+    // check version numbers
+    for (p in plugins) {
+      val v = p.version
+      if (v != null) {
+        if (v.isBlank()) {
+          throw IllegalStateException("Version of plugin `${p.name}' must not be empty")
+        }
+        // let it throw if the version number does not follow semver rules
+        Version.valueOf(v)
+      }
+    }
 
     val cacheEnabled = config.getBoolean(ConfigConstants.CACHE_PLUGINS_ENABLED, false)
     val pluginCachePath = config.getString(ConfigConstants.CACHE_PLUGINS_PATH, ".cache/plugins")
