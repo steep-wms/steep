@@ -8,8 +8,12 @@ import com.mongodb.reactivestreams.client.MongoDatabase
 import helper.findOneAndUpdateAwait
 import helper.updateOneAwait
 import io.vertx.core.json.JsonObject
+import io.vertx.ext.mongo.impl.codec.json.JsonObjectCodec
 import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
+import java.time.Instant
+import java.time.format.DateTimeFormatter.ISO_INSTANT
 
 /**
  * Base class for registries that access a MongoDB database
@@ -112,5 +116,36 @@ open class MongoDBRegistry(connectionString: String) : Registry {
           }
       )
     })
+  }
+
+  /**
+   * Convert a Java [Instant] to a BSON timestamp
+   */
+  protected fun instantToTimestamp(instant: Instant?): JsonObject? {
+    if (instant == null) {
+      return null
+    }
+    return jsonObjectOf(JsonObjectCodec.TIMESTAMP_FIELD to jsonObjectOf(
+        JsonObjectCodec.TIMESTAMP_TIME_FIELD to instant.epochSecond,
+        JsonObjectCodec.TIMESTAMP_INCREMENT_FIELD to instant.nano
+    ))
+  }
+
+  /**
+   * Convert a BSON [timestamp] to a Java [Instant]
+   */
+  protected fun timestampToInstant(timestamp: Any?): Instant? {
+    if (timestamp == null) {
+      return null
+    }
+    if (timestamp is String) {
+      // backwards compatibility
+      return Instant.from(ISO_INSTANT.parse(timestamp))
+    }
+    val o = timestamp as JsonObject
+    val tsf = o.getJsonObject(JsonObjectCodec.TIMESTAMP_FIELD)
+    val t = tsf.getLong(JsonObjectCodec.TIMESTAMP_TIME_FIELD)
+    val i = tsf.getLong(JsonObjectCodec.TIMESTAMP_INCREMENT_FIELD)
+    return Instant.ofEpochSecond(t, i)
   }
 }

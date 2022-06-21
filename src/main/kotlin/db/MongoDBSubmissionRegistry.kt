@@ -179,6 +179,14 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     doc.remove(ID)
     doc.put(SEQUENCE, sequence)
 
+    // store startTime and endTime as BSON timestamps
+    submission.startTime?.let { st ->
+      doc.put(START_TIME, instantToTimestamp(st))
+    }
+    submission.endTime?.let { et ->
+      doc.put(END_TIME, instantToTimestamp(et))
+    }
+
     // Make sure there's always a priority even if it's 0 (we configured Jackson
     // to not serialize 0's by default). Otherwise, we can't sort correctly.
     doc.getJsonObject(WORKFLOW)?.put(PRIORITY, submission.workflow.priority)
@@ -191,6 +199,14 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     document.remove(SEQUENCE)
     document.put(ID, document.getString(INTERNAL_ID))
     document.remove(INTERNAL_ID)
+
+    // convert BSON timestamps to ISO strings
+    document.getJsonObject(START_TIME)?.let { st ->
+      document.put(START_TIME, ISO_INSTANT.format(timestampToInstant(st)))
+    }
+    document.getJsonObject(END_TIME)?.let { et ->
+      document.put(END_TIME, ISO_INSTANT.format(timestampToInstant(et)))
+    }
 
     // remove priority that we only added for sorting (see [addSubmission])
     if (document.getJsonObject(WORKFLOW)?.getInteger(PRIORITY) == 0) {
@@ -312,11 +328,11 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   }
 
   override suspend fun setSubmissionStartTime(submissionId: String, startTime: Instant) {
-    updateField(collSubmissions, submissionId, START_TIME, startTime)
+    updateField(collSubmissions, submissionId, START_TIME, instantToTimestamp(startTime))
   }
 
   override suspend fun setSubmissionEndTime(submissionId: String, endTime: Instant) {
-    updateField(collSubmissions, submissionId, END_TIME, endTime)
+    updateField(collSubmissions, submissionId, END_TIME, instantToTimestamp(endTime))
   }
 
   override suspend fun setSubmissionStatus(submissionId: String,
@@ -414,25 +430,13 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   override suspend fun deleteSubmissionsFinishedBefore(timestamp: Instant): Collection<String> {
     // find IDs of submissions whose end time is before the given timestamp
-    val submissionIDs1 = collSubmissions.aggregateAwait(listOf(json {
-      obj(
-          "\$project" to obj(
-              END_TIME to obj(
-                  "\$toLong" to obj(
-                      "\$toDate" to "\$$END_TIME"
-                  )
-              )
-          )
-      )
-    }, json {
-      obj(
-          "\$match" to obj(
-              END_TIME to obj(
-                  "\$lt" to timestamp.toEpochMilli()
-              )
-          )
-      )
-    })).map { it.getString(INTERNAL_ID) }
+    val submissionIDs1 = collSubmissions.findAwait(jsonObjectOf(
+        END_TIME to jsonObjectOf(
+            "\$lt" to instantToTimestamp(timestamp)
+        )
+    ), projection = jsonObjectOf(
+        INTERNAL_ID to 1
+    )).map { it.getString(INTERNAL_ID) }
 
     // find IDs of finished submissions that do not have an endTime but
     // whose ID was created before the given timestamp (this will also
@@ -698,21 +702,21 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   }
 
   override suspend fun setProcessChainStartTime(processChainId: String, startTime: Instant?) {
-    updateField(collProcessChains, processChainId, START_TIME, startTime)
+    updateField(collProcessChains, processChainId, START_TIME, instantToTimestamp(startTime))
   }
 
   override suspend fun getProcessChainStartTime(processChainId: String): Instant? =
-      getProcessChainField<String?>(processChainId, START_TIME)?.let {
-        Instant.from(ISO_INSTANT.parse(it))
+      getProcessChainField<Any?>(processChainId, START_TIME)?.let {
+        timestampToInstant(it)
       }
 
   override suspend fun setProcessChainEndTime(processChainId: String, endTime: Instant?) {
-    updateField(collProcessChains, processChainId, END_TIME, endTime)
+    updateField(collProcessChains, processChainId, END_TIME, instantToTimestamp(endTime))
   }
 
   override suspend fun getProcessChainEndTime(processChainId: String): Instant? =
-      getProcessChainField<String?>(processChainId, END_TIME)?.let {
-        Instant.from(ISO_INSTANT.parse(it))
+      getProcessChainField<Any?>(processChainId, END_TIME)?.let {
+        timestampToInstant(it)
       }
 
   override suspend fun getProcessChainSubmissionId(processChainId: String): String =
