@@ -126,7 +126,7 @@ object ConfigConstants {
    * backups to distribute copies of the data across the cluster. By specifying
    * a placement group, you can control how Hazelcast distributes these backups.
    * Hazelcast will always prefer creating backups in a group that does not own
-   * the data, so that if all members of a group go down, the other group still
+   * the data so that if all members of a group go down, the other group still
    * has all the backup data.
    *
    * Examples for sensible groups are racks, data centers, or availability zones.
@@ -277,7 +277,7 @@ object ConfigConstants {
   const val SCHEDULER_ENABLED = "steep.scheduler.enabled"
 
   /**
-   * The interval in which the scheduler looks for registered process chains.
+   * The interval at which the scheduler looks for registered process chains.
    * Specified as a human-readable duration (see [helper.toDuration]).
    */
   const val SCHEDULER_LOOKUP_INTERVAL = "steep.scheduler.lookupInterval"

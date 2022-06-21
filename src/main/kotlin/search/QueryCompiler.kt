@@ -22,7 +22,7 @@ import java.time.ZoneId
  * **Date time**
  *
  * A string in the form `yyyy-MM-dd'T'HH:mm[:ss]` (e.g. `2022-05-20T16:36` or
- * `2022-05-20T16:36:12`
+ * `2022-05-20T16:36:12`)
  *
  * **Time range**
  *
