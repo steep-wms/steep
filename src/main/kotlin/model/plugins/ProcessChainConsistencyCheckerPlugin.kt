@@ -31,6 +31,7 @@ import kotlin.reflect.full.callSuspend
 data class ProcessChainConsistencyCheckerPlugin(
     override val name: String,
     override val scriptFile: String,
+    override val version: String? = null,
     override val dependsOn: List<String> = emptyList(),
 
     /**

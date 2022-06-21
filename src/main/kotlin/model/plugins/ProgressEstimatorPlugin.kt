@@ -25,6 +25,7 @@ import kotlin.reflect.full.callSuspend
 data class ProgressEstimatorPlugin(
     override val name: String,
     override val scriptFile: String,
+    override val version: String? = null,
 
     /**
      * A list of IDs of the services this estimator plugin supports

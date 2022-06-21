@@ -22,6 +22,7 @@ import kotlin.reflect.full.callSuspend
 data class OutputAdapterPlugin(
     override val name: String,
     override val scriptFile: String,
+    override val version: String? = null,
 
     /**
      * The output data type this plugin supports

@@ -20,6 +20,7 @@ import kotlin.reflect.KFunction
 data class RuntimePlugin(
     override val name: String,
     override val scriptFile: String,
+    override val version: String? = null,
 
     /**
      * The name of the supported runtime environment

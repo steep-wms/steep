@@ -161,9 +161,9 @@ class PluginRegistryTest {
    */
   @Test
   fun findOutputAdapter() {
-    val adapter1 = OutputAdapterPlugin("a", "file.kts", "dataType")
-    val adapter2 = OutputAdapterPlugin("b", "file2.kts", "dataType")
-    val adapter3 = OutputAdapterPlugin("c", "file3.kts", "custom")
+    val adapter1 = OutputAdapterPlugin("a", "file.kts", supportedDataType = "dataType")
+    val adapter2 = OutputAdapterPlugin("b", "file2.kts", supportedDataType = "dataType")
+    val adapter3 = OutputAdapterPlugin("c", "file3.kts", supportedDataType = "custom")
     val pr = PluginRegistry(listOf(adapter1, adapter2, adapter3))
     assertThat(pr.findOutputAdapter("dataType")).isSameAs(adapter2)
     assertThat(pr.findOutputAdapter("wrongDataType")).isNull()
@@ -361,9 +361,9 @@ class PluginRegistryTest {
    */
   @Test
   fun findRuntime() {
-    val adapter1 = RuntimePlugin("a", "file.kts", "ssh")
-    val adapter2 = RuntimePlugin("b", "file2.kts", "ssh")
-    val adapter3 = RuntimePlugin("c", "file3.kts", "http")
+    val adapter1 = RuntimePlugin("a", "file.kts", supportedRuntime = "ssh")
+    val adapter2 = RuntimePlugin("b", "file2.kts", supportedRuntime = "ssh")
+    val adapter3 = RuntimePlugin("c", "file3.kts", supportedRuntime = "http")
     val pr = PluginRegistry(listOf(adapter1, adapter2, adapter3))
     assertThat(pr.findRuntime("ssh")).isSameAs(adapter2)
     assertThat(pr.findRuntime("wrongRuntime")).isNull()
