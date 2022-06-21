@@ -18,8 +18,7 @@ data class Match(
     val fragment: String,
 
     /**
-     * A list of matches within [fragment]. Start and end positions of matched
-     * terms are relative to the fragment.
+     * A list of matches within [fragment]
      */
     val termMatches: List<TermMatch>
 )
