@@ -1,6 +1,7 @@
 package db
 
 import ConfigConstants
+import com.github.zafarkhaja.semver.ParseException
 import com.github.zafarkhaja.semver.Version
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
@@ -123,8 +124,13 @@ object PluginRegistryFactory {
         if (v.isBlank()) {
           throw IllegalStateException("Version of plugin `${p.name}' must not be empty")
         }
-        // let it throw if the version number does not follow semver rules
-        Version.valueOf(v)
+        try {
+          // throws if the version number does not follow semver rules
+          Version.valueOf(v)
+        } catch (e: ParseException) {
+          throw IllegalStateException("Version of plugin `${p.name}' must " +
+              "follow the semantic versioning specification", e)
+        }
       }
     }
 

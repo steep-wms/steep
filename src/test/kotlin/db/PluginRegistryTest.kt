@@ -425,7 +425,10 @@ class PluginRegistryTest {
       ctx.coVerify {
         assertThatThrownBy {
           PluginRegistryFactory.initialize(vertx, config)
-        }.isInstanceOf(ParseException::class.java)
+        }.isInstanceOf(IllegalStateException::class.java)
+            .hasMessageContainingAll("Version", "dummyOutputAdapter",
+                "must follow the semantic versioning")
+            .hasCauseInstanceOf(ParseException::class.java)
       }
       ctx.completeNow()
     }
