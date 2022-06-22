@@ -1292,7 +1292,49 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   }
 
   override suspend fun searchCount(query: Query, type: Type, estimate: Boolean): Long {
-    // TODO
-    return 0L
+    if (query == Query()) {
+      return 0L
+    }
+
+    // search in all places by default
+    val locators = if (query.terms.isNotEmpty()) {
+      query.locators.ifEmpty { Locator.values().toSet() }
+    } else {
+      emptyList()
+    }
+
+    // make a condition for each filter
+    val filters = JsonArray()
+    for (f in query.filters) {
+      makeCondition(f.first, f.second, type, false)?.let { filters.add(it) }
+    }
+
+    // make a condition for each term
+    val terms = JsonArray()
+    for (term in query.terms) {
+      for (locator in locators) {
+        makeCondition(locator, term, type, false)?.let { terms.add(it) }
+      }
+    }
+
+    val match = jsonObjectOf()
+    if (!terms.isEmpty) {
+      match.put("\$or", terms)
+    }
+    if (!filters.isEmpty) {
+      match.put("\$and", filters)
+    }
+
+    if (match.isEmpty) {
+      // nothing to do
+      return 0L
+    }
+
+    val coll = when (type) {
+      Type.WORKFLOW -> collSubmissions
+      Type.PROCESS_CHAIN -> collProcessChains
+    }
+
+    return coll.countDocumentsAwait(match)
   }
 }
