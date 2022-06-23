@@ -31,7 +31,7 @@ object SearchResultMatcher {
   /**
    * Convert a [term] to its string representation
    */
-  private fun termToString(term: Term) = when (term) {
+  fun termToString(term: Term) = when (term) {
     is StringTerm -> term.value
     is DateTerm -> operatorToString(term.operator) +
         term.value.format(DateTimeFormatter.ISO_LOCAL_DATE)

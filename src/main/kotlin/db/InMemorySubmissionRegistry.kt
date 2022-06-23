@@ -12,8 +12,11 @@ import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitResult
 import model.Submission
 import model.processchain.ProcessChain
+import search.Locator
+import search.Match
 import search.Query
 import search.SearchResult
+import search.SearchResultMatcher
 import search.Type
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
@@ -69,6 +72,12 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       val submission: Submission,
       val results: Map<String, List<Any>>? = null,
       val errorMessage: String? = null
+  )
+
+  private data class InternalSearchResult(
+      val serial: Int,
+      val result: SearchResult,
+      val matches: List<Match>
   )
 
   private val processChainEntryID = AtomicInteger()
@@ -604,12 +613,97 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   override suspend fun getProcessChainErrorMessage(processChainId: String): String? =
       getProcessChainEntryById(processChainId).errorMessage
 
+  private suspend fun searchSubmissions(query: Query, locators: Set<Locator>):
+      List<InternalSearchResult> {
+    val map = submissions.await()
+    val values = awaitResult<List<String>> { map.values(it) }
+    return values
+        .map { JsonUtils.readValue<SubmissionEntry>(it) }
+        .map { s -> s.serial to SearchResult(s.submission.id, Type.WORKFLOW,
+            s.submission.name, if (locators.contains(Locator.ERROR_MESSAGE))
+              s.errorMessage else null, s.submission.requiredCapabilities,
+            if (locators.contains(Locator.SOURCE)) s.submission.source else null,
+            s.submission.status.name, s.submission.startTime, s.submission.endTime) }
+        .map { (serial, r) -> InternalSearchResult(serial, r,
+            SearchResultMatcher.toMatch(r, query)) }
+        .filter { it.matches.isNotEmpty() }
+  }
+
+  private suspend fun searchProcessChains(query: Query, locators: Set<Locator>):
+      List<InternalSearchResult> {
+    val map = processChains.await()
+    val values = awaitResult<List<String>> { map.values(it) }
+    return values
+        .map { JsonUtils.readValue<ProcessChainEntry>(it) }
+        .map { pc -> pc.serial to SearchResult(pc.processChain.id, Type.PROCESS_CHAIN,
+            null, if (locators.contains(Locator.ERROR_MESSAGE))
+              pc.errorMessage else null, pc.processChain.requiredCapabilities, null,
+            pc.status.name, pc.startTime, pc.endTime) }
+        .map { (serial, r) -> InternalSearchResult(serial, r,
+            SearchResultMatcher.toMatch(r, query)) }
+        .filter { it.matches.isNotEmpty() }
+  }
+
+  private suspend fun searchUnsorted(query: Query): List<InternalSearchResult> {
+    // search in all places by default
+    val types = query.types.ifEmpty { Type.values().toSet() }
+    val locators = if (query.terms.isNotEmpty()) {
+      query.locators.ifEmpty { Locator.values().toSet() }
+    } else {
+      emptySet()
+    } + query.filters.map { it.first }
+
+    // search for submissions
+    val matchedSubmissions = if (types.contains(Type.WORKFLOW)) {
+      searchSubmissions(query, locators)
+    } else {
+      emptyList()
+    }
+
+    // search for process chains
+    val matchedProcessChains = if (types.contains(Type.PROCESS_CHAIN)) {
+      searchProcessChains(query, locators)
+    } else {
+      emptyList()
+    }
+
+    val allResults = matchedSubmissions + matchedProcessChains
+
+    // only keep those objects that have matches from terms AND filters
+    val queryTermsStr = query.terms.map { SearchResultMatcher.termToString(it) }.toSet()
+    val filterTermsStr = query.filters.map { SearchResultMatcher.termToString(it.second) }.toSet()
+    return allResults.filter { r ->
+      (queryTermsStr.isEmpty() || r.matches.any { m -> m.termMatches.any { tm -> queryTermsStr.contains(tm.term) } }) &&
+          (filterTermsStr.isEmpty() || r.matches.any { m -> m.termMatches.any { tm -> filterTermsStr.contains(tm.term) } })
+    }
+  }
+
   override suspend fun search(query: Query, size: Int, offset: Int,
       order: Int): Collection<SearchResult> {
-    TODO("Not yet implemented")
+    if (query == Query() || size == 0) {
+      return emptyList()
+    }
+
+    val sortedResults = searchUnsorted(query).sortedWith(compareByDescending<InternalSearchResult> { sr ->
+      sr.matches.flatMap { it.termMatches }.map { it.term }.distinct().size * order
+    }.thenBy{ it.result.type.priority * order }.thenByDescending { it.serial * order })
+
+    val offsetResults = if (offset > 0) {
+      sortedResults.drop(offset)
+    } else {
+      sortedResults
+    }
+
+    val limitedResults = if (size >= 0) {
+      offsetResults.take(size)
+    } else {
+      offsetResults
+    }
+
+    return limitedResults.map { it.result }
   }
 
   override suspend fun searchCount(query: Query, type: Type, estimate: Boolean): Long {
-    TODO("Not yet implemented")
+    return searchUnsorted(query.copy(types = setOf(type))).size.toLong()
   }
 }
