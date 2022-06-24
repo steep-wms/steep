@@ -63,6 +63,10 @@ jobs:
           name: steep-install
           path: build/install
 
+      # permissions are lost during artifact upload/download
+      - name: Make steep launcher executable again
+        run: chmod +x build/install/steep/bin/steep
+
       - name: Build Docker image
         run: |
           docker build -t steep/steep .
