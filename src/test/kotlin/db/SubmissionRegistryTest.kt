@@ -2197,7 +2197,7 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  open fun searchEmpty(vertx: Vertx, ctx: VertxTestContext) {
+  fun searchEmpty(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
       val s = Submission(workflow = Workflow())
       val pc = ProcessChain()
@@ -2226,7 +2226,7 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  open fun searchNoMatch(vertx: Vertx, ctx: VertxTestContext) {
+  fun searchNoMatch(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
       val s = Submission(workflow = Workflow(name = "Elvis"),
           requiredCapabilities = setOf("docker", "sleep"))
@@ -2247,7 +2247,7 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  open fun searchTermsOnly(vertx: Vertx, ctx: VertxTestContext) {
+  fun searchTermsOnly(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
       val startTime = Instant.now()
       val endTime = Instant.now().plusSeconds(10)
@@ -2339,7 +2339,7 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  open fun searchLocators(vertx: Vertx, ctx: VertxTestContext) {
+  fun searchLocators(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
       val s = Submission(workflow = Workflow(name = "foo"),
           requiredCapabilities = setOf("docker", "sleep"))
@@ -2409,7 +2409,7 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  open fun searchFilters(vertx: Vertx, ctx: VertxTestContext) {
+  fun searchFilters(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
       val s = Submission(workflow = Workflow(name = "foo"),
           requiredCapabilities = setOf("docker", "sleep"))
@@ -2465,7 +2465,7 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  open fun searchType(vertx: Vertx, ctx: VertxTestContext) {
+  fun searchType(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
       val s = Submission(workflow = Workflow(name = "foo"),
           requiredCapabilities = setOf("docker", "sleep"))
@@ -2508,7 +2508,7 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  open fun searchRanking(vertx: Vertx, ctx: VertxTestContext) {
+  fun searchRanking(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
       val s1 = Submission(workflow = Workflow(name = "foo"),
           requiredCapabilities = setOf("docker", "sleep"))
@@ -2558,7 +2558,7 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  open fun searchOrder(vertx: Vertx, ctx: VertxTestContext) {
+  fun searchOrder(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
       val s = Submission(workflow = Workflow(name = "foo"),
           requiredCapabilities = setOf("docker", "sleep"))
@@ -2624,7 +2624,7 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  open fun searchCount(vertx: Vertx, ctx: VertxTestContext) {
+  fun searchCount(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
       val s = Submission(workflow = Workflow(name = "foo"))
       val pc = ProcessChain(requiredCapabilities = setOf("foo", "bar"))
@@ -2710,7 +2710,7 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  open fun searchDateTime(vertx: Vertx, ctx: VertxTestContext) {
+  fun searchDateTime(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
       val s1 = Submission(workflow = Workflow())
       val pc1 = ProcessChain(requiredCapabilities = setOf("2022-05-30"))
