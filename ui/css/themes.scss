@@ -33,8 +33,6 @@
 
   --gray-600-hover: #{darken($-gray-600, 10%)};
 
-  --gray-700-alpha: #{adjust-color($-gray-700, $alpha: -0.5)};
-
   --bg: rgb(255 255 255);
   --fg: var(#{--gray-700});
   --fg-on-light: var(--fg);
@@ -42,6 +40,7 @@
 
   --code-bg: var(--gray-700);
   --code-fg: var(--bg);
+  --code-bg-alpha: #{adjust-color($-gray-700, $alpha: -0.5)};
 
   --border-color: var(--gray-300);
 
@@ -83,8 +82,6 @@
 
   --gray-600-hover: #{lighten($-gray-600, 10%)};
 
-  --gray-700-alpha: #{adjust-color($-gray-700, $alpha: -0.5)};
-
   --bg: #1a202c;
   --fg: var(--gray-500);
   --fg-on-light: var(--bg);
@@ -92,6 +89,7 @@
 
   --code-bg: var(--gray-100);
   --code-fg: var(--fg);
+  --code-bg-alpha: #{adjust-color($-gray-100, $alpha: -0.5)};
 
   --border-color: var(--gray-100);
 
