@@ -2,6 +2,7 @@
 @import "nprogress/nprogress";
 @import "css/mixins";
 @import "css/zenburn";
+@import "css/themes";
 
 html {
   box-sizing: border-box;
@@ -31,12 +32,18 @@ body {
   font-family: "Roboto", sans-serif;
   font-weight: 300;
   line-height: $line-height-base;
-  color: $gray-700;
+  color: var(--fg);
+  background-color: var(--bg);
+
+  &[data-theme-transition="true"] {
+    transition: background-color 0.15s ease-in-out;
+  }
 }
 
 h1, h2, h3, h4, h5 {
   margin: 2rem 0 2rem 0;
   font-weight: 400;
+  color: var(--heading-fg);
 }
 
 h1 {
@@ -105,11 +112,11 @@ h6 {
 
 a {
   text-decoration: none;
-  color: $primary;
+  color: var(--primary);
 
   &:hover {
     text-decoration: underline;
-    color: darken($primary, 10%);
+    color: var(--primary-dark)
   }
 }
 
@@ -123,13 +130,13 @@ a {
   cursor: pointer;
   transition: background-color 0.15s ease-in-out;
 
-  background-color: $gray-600;
-  color: #fff;
+  background-color: var(--gray-600);
+  color: var(--bg);
 
   &:hover {
-    background-color: darken($gray-600, 10%);
+    background-color: var(--gray-600-hover);
     text-decoration: none;
-    color: #fff;
+    color: var(--bg);
   }
 
   .feather {
@@ -143,20 +150,20 @@ a {
   }
 
   &.primary {
-    background-color: $primary;
+    background-color: var(--primary);
 
     &:hover {
-      background-color: darken($primary, 10%);
+      background-color: var(--primary-dark)
     }
   }
 
   &:disabled {
     cursor: default;
-    background-color: $gray-600;
-    color: $gray-300;
+    background-color: var(--gray-600);
+    color: var(--gray-300);
 
     &:hover {
-      background-color: $gray-600;
+      background-color: var(--gray-600);
     }
   }
 }
@@ -171,20 +178,20 @@ svg {
 }
 
 .btn-primary {
-  background-color: $primary;
-  color: #fff;
+  background-color: var(--primary);
+  color: var(--bg);
 
   &:hover {
-    background-color: darken($primary, 10%);
+    background-color: var(--primary-dark)
   }
 }
 
 .btn-error {
-  background-color: $error;
-  color: #fff;
+  background-color: var(--error);
+  color: var(--bg);
 
   &:hover {
-    background-color: darken($error, 10%);
+    background-color: var(--error-dark);
   }
 }
 
@@ -209,28 +216,29 @@ code, pre {
 }
 
 #nprogress .bar {
-  background: $primary;
+  background: var(--primary);
 }
 
 #nprogress .peg {
-  box-shadow: 0 0 10px $primary, 0 0 5px $primary;
+  box-shadow: 0 0 10px var(--primary), 0 0 5px var(--primary);
 }
 
 #nprogress .spinner-icon {
-  border-top-color: $primary;
-  border-left-color: $primary;
+  border-top-color: var(--primary);
+  border-left-color: var(--primary);
 }
 
 input {
   font-weight: 300;
-  color: $gray-700;
-  border: 1px solid $gray-300;
+  color: var(--gray-700);
+  background-color: var(--bg);
+  border: 1px solid var(--border-color);
   border-radius: $border-radius;
   outline: none;
   padding: .5rem;
 
   &:focus {
-    border-color: $gray-500;
+    border-color: var(--gray-500);
   }
 
   &.small {

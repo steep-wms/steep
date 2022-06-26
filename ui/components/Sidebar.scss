@@ -10,12 +10,13 @@ aside, .sidebar {
 }
 
 .sidebar {
-  background-color: $gray-100;
-  padding-top: $spacer * 2;
+  background-color: var(--gray-100);
+  padding: $spacer * 2 0;
   position: fixed;
   height: 100vh;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
 
   .sidebar-logo {
     text-align: center;
@@ -71,27 +72,27 @@ aside, .sidebar {
     }
 
     .nav-item-link {
-      color: $gray-800;
+      color: var(--gray-800);
       display: flex;
       width: 100%;
       align-items: center;
 
       &:hover {
         text-decoration: none;
-        color: $gray-600;
+        color: var(--gray-600);
       }
 
       &:hover {
         @media (max-width: $lg) {
-          color: $gray-800;
-          background-color: $gray-300;
+          color: var(--gray-800);
+          background-color: var(--gray-300);
 
           .nav-item-text {
             position: absolute;
             top: 0;
             left: 100%;
             white-space: nowrap;
-            background-color: $gray-300;
+            background-color: var(--gray-300);
             display: flex;
             height: 100%;
             align-items: center;
@@ -112,5 +113,20 @@ aside, .sidebar {
         }
       }
     }
+  }
+}
+
+.sidebar-main {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-footer {
+  margin-left: $spacer * 2.5;
+  display: flex;
+
+  @media (max-width: $lg) {
+    justify-content: center;
+    margin-left: 0;
   }
 }

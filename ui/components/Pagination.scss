@@ -17,7 +17,7 @@
       padding: .5rem .75rem;
 
       &:hover {
-        background-color: $gray-200;
+        background-color: var(--gray-200);
         text-decoration: none;
       }
 
@@ -28,7 +28,7 @@
     }
 
     &.disabled {
-      color: $gray-600;
+      color: var(--gray-600);
       padding: .5rem .75rem;
 
       @media (max-width: $sm) {
@@ -38,8 +38,8 @@
     }
 
     &.active .page-link {
-      background-color: $primary;
-      color: #fff;
+      background-color: var(--primary);
+      color: var(--bg);
     }
   }
 }

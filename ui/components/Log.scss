@@ -1,8 +1,8 @@
 @import "css/variables";
 
 .pre {
-  background: $gray-700;
-  color: #fff;
+  background: var(--gray-700);
+  color: var(--bg);
 }
 
 .pre {
@@ -17,7 +17,7 @@
     margin: $spacer * 0.5 $spacer;
     display: block;
     overflow: auto;
-    color: #fff;
+    color: var(--bg);
   }
 }
 
@@ -25,12 +25,12 @@
   position: absolute;
   top: $spacer;
   right: $spacer;
-  color: #fff;
+  color: var(--bg);
   cursor: pointer;
   display: none;
 
   :hover {
-    color: $gray-300;
+    color: var(--gray-300);
   }
 
   &.visible {

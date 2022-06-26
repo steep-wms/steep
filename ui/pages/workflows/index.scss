@@ -1,9 +1,7 @@
-@import "css/variables";
-
 .plus-button {
-  color: $gray-600;
+  color: var(--gray-600);
 
   &:hover {
-    color: $gray-800;
+    color: var(--gray-800);
   }
 }

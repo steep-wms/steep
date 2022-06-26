@@ -2,6 +2,7 @@ import EventBusContext from "../components/lib/EventBusContext"
 import EventBus from "@vertx/eventbus-bridge-client.js"
 import { useEffect, useState } from "react"
 import styles from "../css/main.scss?type=global"
+import SettingsContext from "../components/lib/SettingsContext"
 
 const App = ({ Component, pageProps }) => {
   const [eventBus, setEventBus] = useState()
@@ -27,7 +28,9 @@ const App = ({ Component, pageProps }) => {
 
   return (
     <EventBusContext.Provider value={eventBus}>
-      <Component {...pageProps} />
+      <SettingsContext.Provider>
+        <Component {...pageProps} />
+      </SettingsContext.Provider>
       <style jsx>{styles}</style>
     </EventBusContext.Provider>
   )

@@ -19,7 +19,7 @@
   ul {
     margin: 0;
     padding: 0.5rem 0;
-    border: 1px solid $gray-300;
+    border: 1px solid var(--border-color);
     border-radius: $border-radius;
   }
 
@@ -37,7 +37,7 @@
       cursor: pointer;
 
       &:hover {
-        background-color: $gray-100;
+        background-color: var(--gray-100);
       }
     }
 

@@ -13,12 +13,12 @@
 .detail-page-subtitle {
   margin: 0;
   font-size: 1.2rem;
-  color: $gray-600;
+  color: var(--gray-600);
 }
 
 .detail-page-divider {
   border: none;
-  border-top: 1px solid $gray-300;
+  border-top: 1px solid var(--border-color);
   height: 0;
   margin: $spacer 0;
 }

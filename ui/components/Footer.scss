@@ -9,14 +9,14 @@ footer {
   }
 
   .footer-content {
-    border-top: 1px solid $gray-300;
+    border-top: 1px solid var(--border-color);
     margin: 0 $spacer;
     padding: 2em 0 2em 0;
     text-align: right;
     font-size: $font-size-sm;
 
     a {
-      color: $gray-700;
+      color: var(--gray-700);
     }
 
     .footer-row {

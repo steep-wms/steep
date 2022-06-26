@@ -4,8 +4,8 @@
   cursor: pointer;
 
   .number {
-    color: $primary;
-    border-bottom: 1px dashed $primary;
+    color: var(--primary);
+    border-bottom: 1px dashed var(--primary);
   }
 
   .icon {

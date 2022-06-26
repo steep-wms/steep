@@ -1,0 +1,8 @@
+.switch-button {
+  cursor: pointer;
+  display: none;
+
+  &.visible {
+    display: inline;
+  }
+}

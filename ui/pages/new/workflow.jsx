@@ -3,47 +3,86 @@ import DetailPage from "../../components/layouts/DetailPage"
 import classNames from "classnames"
 import fetcher from "../../components/lib/json-fetcher"
 import submissionToSource from "../../components/lib/submission-source"
+import SettingsContext from "../../components/lib/SettingsContext"
 import Editor, { useMonaco } from "@monaco-editor/react"
-import { useEffect, useRef, useState } from "react"
+import Color from "color"
+import { useCallback, useContext, useEffect, useRef, useState } from "react"
 import { Circle } from "react-feather"
 import { useRouter } from "next/router"
 import styles from "./workflow.scss"
 
 const Submit = () => {
+  const settings = useContext(SettingsContext.State)
+
   const [ready, setReady] = useState(false)
   const [value, setValue] = useState()
   const [error, setError] = useState()
   const router = useRouter()
 
   const editorRef = useRef()
+  const themeDefaultRef = useRef()
+  const themeDarkRef = useRef()
   const monaco = useMonaco()
+
+  function getThemeColor(rootStyle, name) {
+    return Color(rootStyle.getPropertyValue(name)).hex()
+  }
+
+  const defineTheme = useCallback((name, backgroundColor, foregroundColor,
+      lineHighlightBorderColor, editorLineNumberColor) => {
+    monaco.editor.defineTheme(name, {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "comment", foreground: "7f9f7f" },
+        { token: "keyword", foreground: "e3ceab" },
+        { token: "number", foreground: "8cd0d3" },
+        { token: "type", foreground: "ffffff" },
+        { token: "operators", foreground: "ffffff" },
+        { token: "string", foreground: "cc9393" }
+      ],
+      colors: {
+        "editor.background": backgroundColor,
+        "editor.foreground": foregroundColor,
+        "editor.lineHighlightBorder": lineHighlightBorderColor,
+        "editorLineNumber.foreground": editorLineNumberColor,
+        "editor.selectionBackground": "#6590cc",
+        "editor.inactiveSelectionBackground": "#5580bb",
+        "scrollbar.shadow": backgroundColor
+      }
+    })
+  }, [monaco])
 
   useEffect(() => {
     if (monaco) {
-      monaco.editor.defineTheme("steep", {
-        base: "vs-dark",
-        inherit: true,
-        rules: [
-          { token: "comment", foreground: "7f9f7f" },
-          { token: "keyword", foreground: "e3ceab" },
-          { token: "number", foreground: "8cd0d3" },
-          { token: "type", foreground: "ffffff" },
-          { token: "operators", foreground: "ffffff" },
-          { token: "string", foreground: "cc9393" }
-        ],
-        colors: {
-          "editor.background": "#495057",
-          "editor.foreground": "#ffffff",
-          "editor.lineHighlightBorder": "#424950",
-          "editorLineNumber.foreground": "#6c757d",
-          "editor.selectionBackground": "#6590cc",
-          "editor.inactiveSelectionBackground": "#5580bb",
-          "scrollbar.shadow": "#495057"
-        }
-      })
-      monaco.editor.setTheme("steep")
+      let defaultStyle = window.getComputedStyle(themeDefaultRef.current)
+      let darkStyle = window.getComputedStyle(themeDarkRef.current)
+
+      defineTheme("steep-default",
+        getThemeColor(defaultStyle, "--code-bg"),
+        getThemeColor(defaultStyle, "--code-fg"),
+        getThemeColor(defaultStyle, "--gray-700"),
+        getThemeColor(defaultStyle, "--gray-600")
+      )
+
+      defineTheme("steep-dark",
+        getThemeColor(darkStyle, "--code-bg"),
+        getThemeColor(darkStyle, "--code-fg"),
+        getThemeColor(darkStyle, "--gray-700"),
+        getThemeColor(darkStyle, "--gray-200")
+      )
     }
-  }, [monaco])
+  }, [monaco, defineTheme])
+
+  useEffect(() => {
+    if (monaco) {
+      // change theme in next tick - we need to make sure the theme has already
+      // been defined in the other useEffect hook above
+      setTimeout(() => {
+        monaco.editor.setTheme(`steep-${settings.theme}`)
+      }, 0)
+    }
+  }, [monaco, settings.theme])
 
   useEffect(() => {
     if (router.query.from !== undefined) {
@@ -115,6 +154,8 @@ const Submit = () => {
 
   return (
     <DetailPage title="New workflow" footerNoTopMargin={true}>
+      <div data-theme="default" ref={themeDefaultRef}></div>
+      <div data-theme="dark" ref={themeDarkRef}></div>
       <div className={classNames("editor-container", { "with-error": error !== undefined })}>
         {error && <div>
           <Alert error>{error}</Alert>

@@ -21,7 +21,7 @@
 }
 
 .list-item-progress-box {
-  border: 1px solid $gray-300;
+  border: 1px solid var(--border-color);
   border-radius: $border-radius;
   padding: $spacer * 0.75 $spacer $spacer * 0.75 $spacer * 1.25;
   display: flex;
@@ -38,42 +38,42 @@
     margin-right: $spacer * 0.5;
 
     &.creating {
-      stroke: $gray-600;
+      stroke: var(--gray-600);
       animation: list-item-spin 4s linear infinite;
     }
 
     &.provisioning, &.leaving, &.destroying {
-      stroke: $gray-600;
+      stroke: var(--gray-600);
       animation: list-item-pulse 2s linear infinite;
     }
 
     &.up {
-      stroke: $primary;
+      stroke: var(--primary);
     }
 
     &.accepted {
-      stroke: $gray-600;
+      stroke: var(--gray-600);
     }
 
     &.running {
-      stroke: $gray-600;
+      stroke: var(--gray-600);
       animation: list-item-spin 4s linear infinite;
     }
 
     &.cancelled, &.idle, &.destroyed {
-      stroke: $gray-500;
+      stroke: var(--gray-500);
     }
 
     &.partial-success {
-      stroke: $warning;
+      stroke: var(--warning);
     }
 
     &.success {
-      stroke: $success;
+      stroke: var(--success);
     }
 
     &.error, &.left {
-      stroke: $error;
+      stroke: var(--error);
     }
   }
 

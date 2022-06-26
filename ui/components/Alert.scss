@@ -1,21 +1,21 @@
 @import "../css/variables";
 
 .alert {
-  background-color: $gray-100;
+  background-color: var(--gray-100);
   padding: $spacer;
   margin: $spacer * 1.5 0;
   border-left: 9px solid transparent;
 
   &.info {
-    border-color: $primary;
+    border-color: var(--primary);
   }
 
   &.warning {
-    border-color: $warning;
+    border-color: var(--warning);
   }
 
   &.error {
-    border-color: $error;
+    border-color: var(--error);
   }
 
   &.small {

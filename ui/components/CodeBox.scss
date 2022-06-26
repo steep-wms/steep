@@ -15,21 +15,21 @@
       padding: .5rem 1rem;
       border-top-left-radius: $border-radius;
       border-top-right-radius: $border-radius;
-      border: 1px solid $gray-300;
+      border: 1px solid var(--border-color);
       border-bottom: none;
       z-index: 0;
       transition: background-color 0.15s ease-in-out;
       margin-right: -1px;
 
       &:not(.active):hover {
-        background-color: $gray-300;
+        background-color: var(--gray-300);
       }
 
       &.active {
         transition: none;
-        background-color: $gray-700;
-        border-color: $gray-700;
-        color: #fff;
+        background-color: var(--code-bg);
+        border-color: var(--code-bg);
+        color: var(--code-fg);
         z-index: 1;
       }
     }
@@ -47,11 +47,11 @@
     position: absolute;
     top: $spacer;
     right: $spacer;
-    color: #fff;
+    color: var(--code-fg);
     cursor: pointer;
 
     :hover {
-      color: $gray-300;
+      color: var(--gray-300);
     }
   }
 
@@ -60,8 +60,8 @@
   }
 
   :global(.hljs), :global(pre) {
-    background: $gray-700;
-    color: #fff;
+    background: var(--code-bg);
+    color: var(--code-fg);
   }
 
   :global(pre) {
@@ -83,6 +83,6 @@
   padding: .5rem 1rem;
   flex: 1;
   text-align: right;
-  color: $error;
+  color: var(--error);
   font-weight: 400;
 }

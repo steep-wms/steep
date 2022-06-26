@@ -5,7 +5,7 @@
 }
 
 .results-row + .results-row {
-  border-top: 1px solid $gray-300;
+  border-top: 1px solid var(--border-color);
 }
 
 .results-row-title {
@@ -24,11 +24,12 @@
   flex-direction: row;
   gap: 1rem;
   font-size: $font-size-sm;
-  color: $gray-600;
+  color: var(--gray-600);
 }
 
 .results-highlight {
   background-color: #fff39e;
+  color: var(--fg-on-light);
   border-radius: $border-radius * 0.5;
 }
 
@@ -38,13 +39,13 @@
   white-space: pre;
 
   :global(.hljs), :global(pre) {
-    background: $gray-700;
-    color: #fff;
+    background: var(--code-bg);
+    color: var(--code-fg);
     border-radius: $border-radius;
     margin: 0;
 
     .results-highlight {
-      color: $gray-700;
+      color: var(--code-bg);
     }
   }
 }
@@ -62,26 +63,26 @@
 
 .status {
   &.accepted :global(svg), &.registered :global(svg) {
-    stroke: $gray-600;
+    stroke: var(--gray-600);
   }
 
   &.running :global(svg) {
-    stroke: $gray-600;
+    stroke: var(--gray-600);
   }
 
   &.cancelled :global(svg) {
-    stroke: $gray-500;
+    stroke: var(--gray-500);
   }
 
   &.partial-success :global(svg) {
-    stroke: $warning;
+    stroke: var(--warning);
   }
 
   &.success :global(svg) {
-    stroke: $success;
+    stroke: var(--success);
   }
 
   &.error :global(svg) {
-    stroke: $error;
+    stroke: var(--error);
   }
 }

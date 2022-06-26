@@ -1,0 +1,95 @@
+@use "sass:color";
+
+:root, [data-theme="default"]  {
+  $-primary: #1d71b8;
+  $-success: #1a6;
+  $-warning: #ffa46c;
+  $-error: #ff546c;
+
+  $-gray-100: #f8f9fa;
+  $-gray-200: #e9ecef;
+  $-gray-300: #dee2e6;
+  $-gray-400: #ced4da;
+  $-gray-500: #adb5bd;
+  $-gray-600: #6c757d;
+  $-gray-700: #495057;
+  $-gray-800: #3c3c3b;
+
+  --primary: #{$-primary};
+  --primary-dark: #{darken($-primary, 10%)};
+  --success: #{$-success};
+  --warning: #{$-warning};
+  --error: #{$-error};
+  --error-dark: #{darken($-error, 10%)};
+
+  --gray-100: #{$-gray-100};
+  --gray-200: #{$-gray-200};
+  --gray-300: #{$-gray-300};
+  --gray-400: #{$-gray-400};
+  --gray-500: #{$-gray-500};
+  --gray-600: #{$-gray-600};
+  --gray-700: #{$-gray-700};
+  --gray-800: #{$-gray-800};
+
+  --gray-600-hover: #{darken($-gray-600, 10%)};
+
+  --gray-700-alpha: #{adjust-color($-gray-700, $alpha: -0.5)};
+
+  --bg: rgb(255 255 255);
+  --fg: var(#{--gray-700});
+  --fg-on-light: var(--fg);
+  --heading-fg: var(--fg);
+
+  --code-bg: var(--gray-700);
+  --code-fg: var(--bg);
+
+  --border-color: var(--gray-300);
+}
+
+[data-theme="dark"] {
+  // colors from Chakra UI (https://github.com/chakra-ui/chakra-ui)
+  // released under the MIT license. Copyright (c) 2019 Segun Adebayo
+  $-primary: #4299e1;
+  $-success: #48BB78;
+  $-warning: #F6AD55;
+  $-error: #F56565;
+
+  $-gray-100: #2d3748;
+  $-gray-200: #4a5568;
+  $-gray-300: #718096;
+  $-gray-400: #a0aec0;
+  $-gray-500: #cbd5e0;
+  $-gray-600: #e2e8f0;
+  $-gray-700: #edf2f7;
+  $-gray-800: #f7fafc;
+
+  --primary: #{$-primary};
+  --primary-dark: #{lighten($-primary, 10%)};
+  --success: #{$-success};
+  --warning: #{$-warning};
+  --error: #{$-error};
+  --error-dark: #{lighten($-error, 10%)};
+
+  --gray-100: #{$-gray-100};
+  --gray-200: #{$-gray-200};
+  --gray-300: #{$-gray-300};
+  --gray-400: #{$-gray-400};
+  --gray-500: #{$-gray-500};
+  --gray-600: #{$-gray-600};
+  --gray-700: #{$-gray-700};
+  --gray-800: #{$-gray-800};
+
+  --gray-600-hover: #{lighten($-gray-600, 10%)};
+
+  --gray-700-alpha: #{adjust-color($-gray-700, $alpha: -0.5)};
+
+  --bg: #1a202c;
+  --fg: var(--gray-500);
+  --fg-on-light: var(--bg);
+  --heading-fg: var(--gray-800);
+
+  --code-bg: var(--gray-100);
+  --code-fg: var(--fg);
+
+  --border-color: var(--gray-100);
+}

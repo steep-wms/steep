@@ -12,7 +12,7 @@
 }
 
 .loading {
-  color: #fff;
+  color: var(--bg);
   transform: scale(1);
   animation: pulse 1s infinite;
 }
@@ -38,7 +38,7 @@
 }
 
 .editor-wrapper {
-  background-color: $gray-700;
+  background-color: var(--code-bg);
   border-radius: $border-radius;
   padding: $spacer 0;
   align-self: stretch;
