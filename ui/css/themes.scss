@@ -44,6 +44,8 @@
   --code-fg: var(--bg);
 
   --border-color: var(--gray-300);
+
+  --drop-down-box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.1);
 }
 
 [data-theme="dark"] {
@@ -92,4 +94,6 @@
   --code-fg: var(--fg);
 
   --border-color: var(--gray-100);
+
+  --drop-down-box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);;
 }
