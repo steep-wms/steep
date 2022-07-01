@@ -3,7 +3,7 @@ import { ChevronDown } from "react-feather"
 import { useEffect, useRef, useState } from "react"
 import styles from "./DropDown.scss"
 
-const DropDown = ({ title, right, primary, children }) => {
+const DropDown = ({ title, right, primary, small, forceTitleVisible, children }) => {
   const [visible, setVisible] = useState(false)
   const ref = useRef()
   const btnRef = useRef()
@@ -35,11 +35,11 @@ const DropDown = ({ title, right, primary, children }) => {
 
   return (
     <div className="dropdown" ref={ref}>
-      <button className={classNames("dropdown-btn", { primary })} ref={btnRef}
+      <button className={classNames("dropdown-btn", { primary, small })} ref={btnRef}
           onClick={onDropDownClick}>
-        <span className="dropdown-text">{title} </span><ChevronDown />
+        <span className={classNames("dropdown-text", { "force-visible": forceTitleVisible })}>{title} </span><ChevronDown />
        </button>
-      <div className={classNames("dropdown-menu", { visible, right })}>{children}</div>
+      <div className={classNames("dropdown-menu", { visible, right, "force-title-visible": forceTitleVisible })}>{children}</div>
       <style jsx>{styles}</style>
     </div>
   )

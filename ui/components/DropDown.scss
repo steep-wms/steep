@@ -37,6 +37,17 @@
       color: var(--bg);
     }
 
+    &.small {
+      padding: .3em .5em .2em .5em;
+      font-weight: 300;
+      font-size: $font-size-sm;
+
+      :global(svg) {
+        margin-top: 0;
+        width: 1.2em;
+      }
+    }
+
     &:hover, &:focus {
       background-color: var(--gray-700);
       border-color: var(--gray-700);
@@ -46,7 +57,7 @@
 
     @media (max-width: $sm) {
       padding: .5em;
-      .dropdown-text {
+      .dropdown-text:not(.force-visible) {
         display: none;
       }
     }
@@ -68,9 +79,11 @@
       display: block;
     }
 
-    @media (max-width: $sm) {
-      right: 0;
-      left: auto;
+    &:not(.force-title-visible) {
+      @media (max-width: $sm) {
+        right: 0;
+        left: auto;
+      }
     }
 
     :global(ul) {

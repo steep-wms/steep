@@ -7,7 +7,11 @@
 .search-input-container, .search-body-container {
   display: grid;
   grid-template-columns: minmax(1px, 1fr) 13.5rem;
-  gap: $spacer * 2;
+  column-gap: $spacer * 2;
+
+  @media (max-width: $xl) {
+    grid-template-columns: 100%;
+  }
 }
 
 .sidebar {
@@ -16,6 +20,26 @@
   flex-direction: column;
   gap: $spacer * 0.5;
 
+  @media (max-width: $xl) {
+    order: -1;
+    flex-direction: row;
+    margin-top: 0.5rem;
+  }
+
+  .sidebar-expanded {
+    @media (max-width: $xl) {
+      display: none;
+    }
+  }
+
+  .sidebar-dropdown {
+    display: none;
+
+    @media (max-width: $xl) {
+      display: block;
+    }
+  }
+
   ul {
     margin: 0;
     padding: 0.5rem 0;
@@ -23,7 +47,7 @@
     border-radius: $border-radius;
   }
 
-  li {
+  ul .sidebar-list-item {
     list-style: none;
     padding: 0 1rem 0 2rem;
     height: 2rem;
@@ -59,6 +83,10 @@
     &.heading {
       font-weight: 400;
       padding-left: 1rem;
+
+      @media (max-width: $xl) {
+        display: none;
+      }
     }
   }
 }

@@ -1,4 +1,5 @@
 import Alert from "../../components/Alert"
+import DropDown from "../../components/DropDown"
 import Examples from "../../components/search/Examples"
 import Label from "../../components/Label"
 import Page from "../../components/layouts/Page"
@@ -166,6 +167,76 @@ const Search = () => {
     body = <Examples />
   }
 
+  let sidebarType = results && (<ul>
+    <li className={classNames("sidebar-list-item", { active: !hasAnyTypeExpression(router.query.q) })}
+        onClick={() => pushQuery(removeAllTypeExpressions(router.query.q))}>
+      <div className="active-icon"><ArrowRight size="1rem"/></div>
+      <div className="name">All</div>
+      {counts && <div className="label">
+        <Label small>{formatCount(counts.total)}</Label></div>}
+    </li>
+    <li className={classNames("sidebar-list-item", { active: hasTypeExpression(router.query.q, "workflow") })}
+        onClick={() => pushQuery(removeAllTypeExpressions(router.query.q) + " is:workflow")}>
+      <div className="active-icon"><ArrowRight size="1rem"/></div>
+      <div className="name">Workflows</div>
+      {counts && <div className="label">
+        <Label small>{formatCount(counts.workflow)}</Label></div>}
+    </li>
+    <li className={classNames("sidebar-list-item", { active: hasTypeExpression(router.query.q, "processchain") })}
+        onClick={() => pushQuery(removeAllTypeExpressions(router.query.q) + " is:processchain")}>
+      <div className="active-icon"><ArrowRight size="1rem"/></div>
+      <div className="name">Process Chains</div>
+      {counts && <div className="label">
+        <Label small>{formatCount(counts.processChain)}</Label></div>}
+    </li>
+    <style jsx>{styles}</style>
+  </ul>)
+
+  let sidebarSearchIn = results && (<ul>
+    <li className="sidebar-list-item heading">Search in:</li>
+    <li className={classNames("sidebar-list-item", { active: hasLocator(router.query.q, "id") })}
+        onClick={() => pushQuery(toggleLocator(router.query.q, "id"))}>
+      <div className="active-icon"><Check size="0.85rem"/></div>
+      <div className="name">ID</div>
+    </li>
+    <li className={classNames("sidebar-list-item", { active: hasLocator(router.query.q, "name") })}
+        onClick={() => pushQuery(toggleLocator(router.query.q, "name"))}>
+      <div className="active-icon"><Check size="0.85rem"/></div>
+      <div className="name">Name</div>
+    </li>
+    <li className={classNames("sidebar-list-item", { active: hasLocator(router.query.q, "status") })}
+        onClick={() => pushQuery(toggleLocator(router.query.q, "status"))}>
+      <div className="active-icon"><Check size="0.85rem"/></div>
+      <div className="name">Status</div>
+    </li>
+    <li className={classNames("sidebar-list-item", { active: hasLocator(router.query.q, "source") })}
+        onClick={() => pushQuery(toggleLocator(router.query.q, "source"))}>
+      <div className="active-icon"><Check size="0.85rem"/></div>
+      <div className="name">Source</div>
+    </li>
+    <li className={classNames("sidebar-list-item", { active: hasLocator(router.query.q, "rcs") })}
+        onClick={() => pushQuery(toggleLocator(router.query.q, "rcs"))}>
+      <div className="active-icon"><Check size="0.85rem"/></div>
+      <div className="name">Required Capabilities</div>
+    </li>
+    <li className={classNames("sidebar-list-item", { active: hasLocator(router.query.q, "error") })}
+        onClick={() => pushQuery(toggleLocator(router.query.q, "error"))}>
+      <div className="active-icon"><Check size="0.85rem"/></div>
+      <div className="name">Error Message</div>
+    </li>
+    <li className={classNames("sidebar-list-item", { active: hasLocator(router.query.q, "start") })}
+        onClick={() => pushQuery(toggleLocator(router.query.q, "start"))}>
+      <div className="active-icon"><Check size="0.85rem"/></div>
+      <div className="name">Start Time</div>
+    </li>
+    <li className={classNames("sidebar-list-item", { active: hasLocator(router.query.q, "end") })}
+        onClick={() => pushQuery(toggleLocator(router.query.q, "end"))}>
+      <div className="active-icon"><Check size="0.85rem"/></div>
+      <div className="name">End Time</div>
+    </li>
+    <style jsx>{styles}</style>
+  </ul>)
+
   return (
     <Page title="Search">
       <div className="search-container">
@@ -177,72 +248,22 @@ const Search = () => {
         <div className="search-body-container">
           {body}
           {results && <div className="sidebar">
-            <ul>
-              <li className={classNames({ active: !hasAnyTypeExpression(router.query.q) })}
-                  onClick={() => pushQuery(removeAllTypeExpressions(router.query.q))}>
-                <div className="active-icon"><ArrowRight size="1rem"/></div>
-                <div className="name">All</div>
-                {counts && <div className="label">
-                  <Label small>{formatCount(counts.total)}</Label></div>}
-              </li>
-              <li className={classNames({ active: hasTypeExpression(router.query.q, "workflow") })}
-                  onClick={() => pushQuery(removeAllTypeExpressions(router.query.q) + " is:workflow")}>
-                <div className="active-icon"><ArrowRight size="1rem"/></div>
-                <div className="name">Workflows</div>
-                {counts && <div className="label">
-                  <Label small>{formatCount(counts.workflow)}</Label></div>}
-              </li>
-              <li className={classNames({ active: hasTypeExpression(router.query.q, "processchain") })}
-                  onClick={() => pushQuery(removeAllTypeExpressions(router.query.q) + " is:processchain")}>
-                <div className="active-icon"><ArrowRight size="1rem"/></div>
-                <div className="name">Process Chains</div>
-                {counts && <div className="label">
-                  <Label small>{formatCount(counts.processChain)}</Label></div>}
-              </li>
-            </ul>
-            <ul>
-              <li className="heading">Search in:</li>
-              <li className={classNames({ active: hasLocator(router.query.q, "id") })}
-                  onClick={() => pushQuery(toggleLocator(router.query.q, "id"))}>
-                <div className="active-icon"><Check size="0.85rem"/></div>
-                <div className="name">ID</div>
-              </li>
-              <li className={classNames({ active: hasLocator(router.query.q, "name") })}
-                  onClick={() => pushQuery(toggleLocator(router.query.q, "name"))}>
-                <div className="active-icon"><Check size="0.85rem"/></div>
-                <div className="name">Name</div>
-              </li>
-              <li className={classNames({ active: hasLocator(router.query.q, "status") })}
-                  onClick={() => pushQuery(toggleLocator(router.query.q, "status"))}>
-                <div className="active-icon"><Check size="0.85rem"/></div>
-                <div className="name">Status</div>
-              </li>
-              <li className={classNames({ active: hasLocator(router.query.q, "source") })}
-                  onClick={() => pushQuery(toggleLocator(router.query.q, "source"))}>
-                <div className="active-icon"><Check size="0.85rem"/></div>
-                <div className="name">Source</div>
-              </li>
-              <li className={classNames({ active: hasLocator(router.query.q, "rcs") })}
-                  onClick={() => pushQuery(toggleLocator(router.query.q, "rcs"))}>
-                <div className="active-icon"><Check size="0.85rem"/></div>
-                <div className="name">Required Capabilities</div>
-              </li>
-              <li className={classNames({ active: hasLocator(router.query.q, "error") })}
-                  onClick={() => pushQuery(toggleLocator(router.query.q, "error"))}>
-                <div className="active-icon"><Check size="0.85rem"/></div>
-                <div className="name">Error Message</div>
-              </li>
-              <li className={classNames({ active: hasLocator(router.query.q, "start") })}
-                  onClick={() => pushQuery(toggleLocator(router.query.q, "start"))}>
-                <div className="active-icon"><Check size="0.85rem"/></div>
-                <div className="name">Start Time</div>
-              </li>
-              <li className={classNames({ active: hasLocator(router.query.q, "end") })}
-                  onClick={() => pushQuery(toggleLocator(router.query.q, "end"))}>
-                <div className="active-icon"><Check size="0.85rem"/></div>
-                <div className="name">End Time</div>
-              </li>
-            </ul>
+            <div className="sidebar-dropdown">
+              <DropDown title="Type" small={true} forceTitleVisible={true}>
+                {sidebarType}
+              </DropDown>
+            </div>
+            <div className="sidebar-expanded">
+              {sidebarType}
+            </div>
+            <div className="sidebar-dropdown">
+              <DropDown title="Search in" small={true} forceTitleVisible={true}>
+                {sidebarSearchIn}
+              </DropDown>
+            </div>
+            <div className="sidebar-expanded">
+              {sidebarSearchIn}
+            </div>
           </div>}
           {counts && counts.total > 0 && (
             <div className="pagination">

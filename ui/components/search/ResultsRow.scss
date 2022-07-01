@@ -25,6 +25,11 @@
   gap: 1rem;
   font-size: $font-size-sm;
   color: var(--gray-600);
+
+  @media (max-width: $lg) {
+    flex-direction: column;
+    gap: 0;
+  }
 }
 
 .results-highlight {
@@ -54,6 +59,11 @@
   :global(svg) {
     height: 1em;
     margin-bottom: 3px;
+
+    @media (max-width: $lg) {
+      width: 1em;
+      margin-right: 0.2em;
+    }
   }
 }
 
