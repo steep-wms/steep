@@ -8,15 +8,21 @@ const DropDown = ({ title, right, primary, small, forceTitleVisible, children })
   const ref = useRef()
   const btnRef = useRef()
 
-  function onDropDownClick(e) {
-    if (visible) {
-      setVisible(false)
-      btnRef.current.blur()
-    } else {
-      setVisible(true)
-      btnRef.current.focus()
-    }
-    e.stopPropagation()
+  function onDropDownClick() {
+    // Let the click propagate to the parent element first before we make
+    // the drop down menu visible. This makes sure other drop down menus on the
+    // page are closed. If we'd call setVisible without setTimeout here, our
+    // menu would never be displayed because the onDocumentClick handler above
+    // would just hide it again.
+    setTimeout(() => {
+      if (visible) {
+        setVisible(false)
+        btnRef.current.blur()
+      } else {
+        setVisible(true)
+        btnRef.current.focus()
+      }
+    }, 0)
   }
 
   useEffect(() => {
