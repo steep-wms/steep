@@ -74,6 +74,8 @@ open class PostgreSQLRegistry(vertx: Vertx, url: String, username: String,
     }
 
     val poolOptions = PoolOptions()
+        .setName("steep-postgresql-pool")
+        .setShared(true)
         .setMaxSize(5)
 
     client = PgPool.pool(vertx, connectOptions, poolOptions)
