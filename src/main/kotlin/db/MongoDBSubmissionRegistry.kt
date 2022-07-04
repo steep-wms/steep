@@ -69,7 +69,7 @@ import io.vertx.ext.mongo.impl.JsonObjectBsonAdapter as wrap
  */
 class MongoDBSubmissionRegistry(private val vertx: Vertx,
     connectionString: String, createIndexes: Boolean = true) :
-    MongoDBRegistry(connectionString), SubmissionRegistry {
+    MongoDBRegistry(vertx, connectionString), SubmissionRegistry {
   companion object {
     private val log = LoggerFactory.getLogger(MongoDBSubmissionRegistry::class.java)
 

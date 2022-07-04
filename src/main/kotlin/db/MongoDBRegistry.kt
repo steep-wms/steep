@@ -7,6 +7,7 @@ import com.mongodb.reactivestreams.client.MongoCollection
 import com.mongodb.reactivestreams.client.MongoDatabase
 import helper.findOneAndUpdateAwait
 import helper.updateOneAwait
+import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.mongo.impl.codec.json.JsonObjectCodec
 import io.vertx.kotlin.core.json.json
@@ -21,7 +22,7 @@ import java.time.format.DateTimeFormatter.ISO_INSTANT
  * `mongodb://localhost:27017/database`)
  * @author Michel Kraemer
  */
-open class MongoDBRegistry(connectionString: String) : Registry {
+open class MongoDBRegistry(vertx: Vertx, connectionString: String) : Registry {
   companion object {
     /**
      * Collection and property names
@@ -39,7 +40,7 @@ open class MongoDBRegistry(connectionString: String) : Registry {
 
   init {
     val cs = ConnectionString(connectionString)
-    client = SharedMongoClient.create(cs)
+    client = SharedMongoClient.create(vertx, cs)
     db = client.getDatabase(cs.database)
 
     collSequence = db.getCollection(COLL_SEQUENCE, JsonObject::class.java)

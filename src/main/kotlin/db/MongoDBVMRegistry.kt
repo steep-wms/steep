@@ -32,7 +32,7 @@ import java.time.Instant
  */
 class MongoDBVMRegistry(private val vertx: Vertx,
     connectionString: String, createIndexes: Boolean = true) :
-    MongoDBRegistry(connectionString), VMRegistry {
+    MongoDBRegistry(vertx, connectionString), VMRegistry {
   companion object {
     private val log = LoggerFactory.getLogger(MongoDBVMRegistry::class.java)
 

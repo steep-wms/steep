@@ -1,5 +1,7 @@
 package db
 
+import ConfigConstants
+import helper.toDuration
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.coroutines.await
@@ -10,6 +12,8 @@ import io.vertx.sqlclient.PoolOptions
 import io.vertx.sqlclient.SqlConnection
 import io.vertx.sqlclient.Tuple
 import org.flywaydb.core.Flyway
+import java.time.Duration
+import java.util.concurrent.TimeUnit
 
 /**
  * Base class for registries that access a PostgreSQL database
@@ -76,7 +80,20 @@ open class PostgreSQLRegistry(vertx: Vertx, url: String, username: String,
     val poolOptions = PoolOptions()
         .setName("steep-postgresql-pool")
         .setShared(true)
-        .setMaxSize(5)
+
+    val config = vertx.orCreateContext.config()
+    val connectionPoolMaxSize: Int? =
+        config.getInteger(ConfigConstants.DB_CONNECTIONPOOL_MAXSIZE)
+    val connectionPoolMaxIdleTime: Duration? =
+        config.getString(ConfigConstants.DB_CONNECTIONPOOL_MAXIDLETIME)?.toDuration()
+
+    if (connectionPoolMaxSize != null) {
+      poolOptions.maxSize = connectionPoolMaxSize
+    }
+    if (connectionPoolMaxIdleTime != null) {
+      poolOptions.idleTimeout = connectionPoolMaxIdleTime.toMillis().toInt()
+      poolOptions.idleTimeoutUnit = TimeUnit.MILLISECONDS
+    }
 
     client = PgPool.pool(vertx, connectOptions, poolOptions)
   }

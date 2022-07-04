@@ -84,6 +84,9 @@ steep:
     # url: mongodb://localhost:27017/steep
     username: postgres
     password: mysecretpassword
+    connectionPool:
+      # maxSize: 5
+      maxIdleTime: 1m
 
   cloud:
     enabled: false

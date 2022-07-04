@@ -376,6 +376,17 @@ object ConfigConstants {
   const val DB_PASSWORD = "steep.db.password"
 
   /**
+   * The maximum number of connections to keep in the pool
+   */
+  const val DB_CONNECTIONPOOL_MAXSIZE = "steep.db.connectionPool.maxSize"
+
+  /**
+   * The maximum time an idle connection should be kept in the pool before it
+   * is closed
+   */
+  const val DB_CONNECTIONPOOL_MAXIDLETIME = "steep.db.connectionPool.maxIdleTime"
+
+  /**
    * `true` if Steep should connect to a cloud to acquire remote
    * agents on demand
    */
