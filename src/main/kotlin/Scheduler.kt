@@ -350,6 +350,9 @@ class Scheduler : CoroutineVerticle() {
       if (arci >= 0) {
         val rc = allRequiredCapabilities[arci]
         allRequiredCapabilities[arci] = rc.copy(second = (rc.second - 1).coerceAtLeast(0))
+        if (allRequiredCapabilities[arci].second == 0L) {
+          allRequiredCapabilities.removeAt(arci)
+        }
       }
 
       // execute process chain
