@@ -39,7 +39,6 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import kotlin.math.max
 
 /**
  * Tests for the [Scheduler]
@@ -51,27 +50,13 @@ class SchedulerTest {
   private lateinit var agentRegistry: AgentRegistry
   private lateinit var agentId: String
 
-  private var expectedRequiredCapabilities = listOf<Pair<Collection<String>, Long>>()
-
   @BeforeEach
   fun setUp(vertx: Vertx, ctx: VertxTestContext) {
-    expectedRequiredCapabilities = listOf(emptyList<String>() to 13L)
-
     // mock submission registry
     submissionRegistry = mockk()
     mockkObject(SubmissionRegistryFactory)
     every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
-    coEvery { submissionRegistry.findProcessChainRequiredCapabilities(any()) } answers {
-      expectedRequiredCapabilities.map { it.first }
-    }
     coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING) } returns emptyList()
-    val rcsSlot = slot<Collection<String>>()
-    coEvery { submissionRegistry.countProcessChains(null, REGISTERED, capture(rcsSlot)) } answers {
-      expectedRequiredCapabilities.find {
-        it.first == rcsSlot.captured
-      }?.second ?: throw IllegalStateException(
-          "Invalid required capabilities set `${rcsSlot.captured}'")
-    }
     coEvery { submissionRegistry.close() } just Runs
 
     // mock agent registry
@@ -95,17 +80,33 @@ class SchedulerTest {
   }
 
   /**
-   * Runs a simple test: schedules `nProcessChains` process chains and provides
-   * `nAgents` mock agents to execute the process chains. Each agent needs
+   * Runs a simple test: schedules [nProcessChains] process chains and provides
+   * [nAgents] mock agents to execute the process chains. Each agent needs
    * 1 second to execute a process chain. The method waits until all process
    * chains have been executed successfully.
-   * @param nProcessChains the number of process chains to schedule
-   * @param nAgents the number of mock agents to create
-   * @param vertx the Vert.x instance
-   * @param ctx the test context
    */
   private fun testSimple(nProcessChains: Int, nAgents: Int, vertx: Vertx, ctx: VertxTestContext) {
-    val remainingExpectedRequiredCapabilities = expectedRequiredCapabilities.toMutableList()
+    val allPcs = (1..nProcessChains).map { ProcessChain() }
+    testSimple(allPcs, nAgents, vertx, ctx)
+  }
+
+  /**
+   * Runs a simple test: schedules [allPcs] and provides [nAgents] mock agents
+   * to execute the process chains. Each agent needs 1 second to execute a
+   * process chain. The method waits until all process chains have been
+   * executed successfully.
+   */
+  private fun testSimple(allPcs: List<ProcessChain>, nAgents: Int, vertx: Vertx, ctx: VertxTestContext) {
+    val remainingPcs = allPcs.toMutableList()
+    val executedPcIds = mutableListOf<String>()
+
+    coEvery { submissionRegistry.findProcessChainRequiredCapabilities(REGISTERED) } answers {
+      remainingPcs.map { it.requiredCapabilities }.distinct()
+    }
+    val rcsSlot = slot<Collection<String>>()
+    coEvery { submissionRegistry.countProcessChains(null, REGISTERED, capture(rcsSlot)) } answers {
+      remainingPcs.filter { it.requiredCapabilities == rcsSlot.captured }.size.toLong()
+    }
 
     // mock agents
     val allAgents = (1..nAgents).map { n ->
@@ -126,6 +127,10 @@ class SchedulerTest {
     val slotRequiredCapabilities = slot<List<Pair<Collection<String>, Long>>>()
     coEvery { agentRegistry.selectCandidates(capture(slotRequiredCapabilities)) } answers {
       ctx.verify {
+        val remainingExpectedRequiredCapabilities =
+            remainingPcs.groupBy { it.requiredCapabilities }
+                .mapValues { it.value.size.toLong() }
+                .toList()
         if (slotRequiredCapabilities.captured.isNotEmpty()) {
           assertThat(slotRequiredCapabilities.captured)
               .isEqualTo(remainingExpectedRequiredCapabilities)
@@ -135,13 +140,6 @@ class SchedulerTest {
         if (i >= availableAgents.size) {
           null
         } else {
-          // reduce number of process chains per expected required capability set
-          for ((j, rerc) in remainingExpectedRequiredCapabilities.withIndex()) {
-            if (rerc.first == rc.first) {
-              remainingExpectedRequiredCapabilities[j] = rerc.copy(
-                  second = max(0, rerc.second - 1))
-            }
-          }
           Pair(rc.first, availableAgents[i].id)
         }
       }
@@ -163,15 +161,13 @@ class SchedulerTest {
     }
 
     // mock submission registry
-    val allPcs = (1..nProcessChains).map { ProcessChain() }
-    val registeredPcs = allPcs.toMutableList()
     for (pc in allPcs) {
       // add running process chain to list of registered process chains again
       coEvery { submissionRegistry.setProcessChainStatus(pc.id, REGISTERED) } answers {
         ctx.verify {
-          assertThat(registeredPcs).doesNotContain(pc)
+          assertThat(remainingPcs).doesNotContain(pc)
         }
-        registeredPcs.add(0, pc)
+        remainingPcs.add(0, pc)
       }
 
       // register mock for start and end time
@@ -187,37 +183,39 @@ class SchedulerTest {
       // register mocks for all successful process chains
       coEvery { submissionRegistry.setProcessChainStatus(pc.id, SUCCESS) } answers {
         ctx.verify {
-          assertThat(registeredPcs).doesNotContain(pc)
+          assertThat(remainingPcs).doesNotContain(pc)
         }
       }
     }
 
-    coEvery { submissionRegistry.setProcessChainEndTime(allPcs.last().id, any()) } answers {
+    val slotEndTimePcId = slot<String>()
+    coEvery { submissionRegistry.setProcessChainEndTime(capture(slotEndTimePcId), any()) } answers {
       // on last successful process chain ...
-      ctx.verify {
-        assertThat(registeredPcs).doesNotContain(allPcs.last())
-
-        // verify that all process chains were set to SUCCESS,
-        // and that the results were set correctly
-        coVerify(exactly = 1) {
-          for (pc in allPcs) {
-            submissionRegistry.setProcessChainResults(pc.id,
-                mapOf("ARG1" to listOf("output-${pc.id}")))
-            submissionRegistry.setProcessChainStartTime(pc.id, any())
-            submissionRegistry.setProcessChainEndTime(pc.id, any())
-            submissionRegistry.setProcessChainStatus(pc.id, SUCCESS)
+      executedPcIds.add(slotEndTimePcId.captured)
+      if (executedPcIds.size == allPcs.size) {
+        ctx.verify {
+          // verify that all process chains were set to SUCCESS,
+          // and that the results were set correctly
+          coVerify(exactly = 1) {
+            for (pc in allPcs) {
+              submissionRegistry.setProcessChainResults(pc.id,
+                  mapOf("ARG1" to listOf("output-${pc.id}")))
+              submissionRegistry.setProcessChainStartTime(pc.id, any())
+              submissionRegistry.setProcessChainEndTime(pc.id, any())
+              submissionRegistry.setProcessChainStatus(pc.id, SUCCESS)
+            }
           }
         }
+        ctx.completeNow()
       }
-      ctx.completeNow()
     }
 
     // execute process chains
     coEvery { submissionRegistry.fetchNextProcessChain(REGISTERED, RUNNING, any()) } answers {
-      if (registeredPcs.isEmpty()) null else registeredPcs.removeAt(0)
+      if (remainingPcs.isEmpty()) null else remainingPcs.removeAt(0)
     }
     coEvery { submissionRegistry.existsProcessChain(REGISTERED, any()) } answers {
-      registeredPcs.isNotEmpty() }
+      remainingPcs.isNotEmpty() }
 
     vertx.eventBus().publish(AddressConstants.SCHEDULER_LOOKUP_NOW, null)
   }
@@ -244,8 +242,10 @@ class SchedulerTest {
 
   @Test
   fun twoChainsTwoAgentsDifferentRequiredCapabilities(vertx: Vertx, ctx: VertxTestContext) {
-    expectedRequiredCapabilities = listOf(listOf("docker") to 1, emptyList<String>() to 2)
-    testSimple(2, 2, vertx, ctx)
+    testSimple(listOf(
+        ProcessChain(requiredCapabilities = setOf("docker")),
+        ProcessChain()
+    ), 2, vertx, ctx)
   }
 
   @Test
@@ -267,6 +267,9 @@ class SchedulerTest {
     coEvery { submissionRegistry.setProcessChainStartTime(pc.id, any()) } just Runs
     coEvery { submissionRegistry.setProcessChainEndTime(pc.id, any()) } just Runs
     coEvery { submissionRegistry.setProcessChainErrorMessage(pc.id, message) } just Runs
+    coEvery { submissionRegistry.findProcessChainRequiredCapabilities(REGISTERED) } returns listOf(emptySet())
+    coEvery { submissionRegistry.countProcessChains(null, REGISTERED, emptySet()) } returns 13L
+    coEvery { submissionRegistry.existsProcessChain(REGISTERED, emptySet()) } returns true
 
     coEvery { agentRegistry.deallocate(agent) } answers {
       ctx.verify {
@@ -330,6 +333,8 @@ class SchedulerTest {
       coEvery { submissionRegistry.setProcessChainStatus(pc2.id, SUCCESS) } just Runs
       coEvery { submissionRegistry.setProcessChainEndTime(pc2.id, any()) } just Runs
       coEvery { submissionRegistry.existsProcessChain(REGISTERED, any()) } returns false
+      coEvery { submissionRegistry.findProcessChainRequiredCapabilities(REGISTERED) } returns listOf(emptySet())
+      coEvery { submissionRegistry.countProcessChains(null, REGISTERED, emptySet()) } returns 4L
 
       // mock agent registry
       coEvery { agentRegistry.getAgentIds() } returns setOf(agentId)
