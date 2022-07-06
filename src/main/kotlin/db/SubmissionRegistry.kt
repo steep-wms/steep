@@ -256,12 +256,12 @@ interface SubmissionRegistry : Registry {
 
   /**
    * Get a list of distinct required capabilities of all process chains with
-   * the given [status].
-   * @param status the status of the process chains
-   * @return a list of distinct sets of required capabilities
+   * the given [status]. The list consists of pairs. Each pair contains a
+   * required capability set and a range specifying the minimum and maximum
+   * priority of the process chains found for this set.
    */
   suspend fun findProcessChainRequiredCapabilities(status: ProcessChainStatus):
-      List<Collection<String>>
+      List<Pair<Collection<String>, IntRange>>
 
   /**
    * Get a single process chain from the registry
@@ -277,11 +277,14 @@ interface SubmissionRegistry : Registry {
    * @param status an optional status the process chains should have
    * @param requiredCapabilities an optional set of required capabilities. Only
    * process chains with these required capabilities will be counted.
+   * @param minPriority an optional minimum priority. Only process chains that
+   * have a priority greater than or equal to `minPriority` will be counted.
    * @return the number of process chains in the registry
    */
   suspend fun countProcessChains(submissionId: String? = null,
       status: ProcessChainStatus? = null,
-      requiredCapabilities: Collection<String>? = null): Long
+      requiredCapabilities: Collection<String>? = null,
+      minPriority: Int? = null): Long
 
   /**
    * Group process chains belonging to a given [submissionId] by status and
@@ -297,22 +300,19 @@ interface SubmissionRegistry : Registry {
 
   /**
    * Atomically fetch a process chain that has the given [currentStatus] and
-   * set its status to `newStatus` before returning it. Returned process chains
+   * set its status to [newStatus] before returning it. Returned process chains
    * should be ordered by priority. Process chains with the same priority should
    * be returned in the order in which they have been added to the registry.
    * The method only looks for process chains whose set of [requiredCapabilities]
-   * equals the given one. If no [requiredCapabilities] have been specified, the
-   * method returns the first process chain found.
-   * @param currentStatus the current status of the process chain
-   * @param newStatus the new status
-   * @param requiredCapabilities an optional set of required capabilities used
-   * to narrow down the search
-   * @return the process chain (or `null` if there was no process chain with
-   * the given `currentStatus` and `requiredCapabilities`)
+   * equals the given one and whose priority is greater than or equal to [minPriority].
+   * If [requiredCapabilities] and [minPriority] have not been specified, the
+   * method returns the first process chain found. If no matching process chain
+   * was found, the method returns `null`.
    */
   suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
       newStatus: ProcessChainStatus,
-      requiredCapabilities: Collection<String>? = null): ProcessChain?
+      requiredCapabilities: Collection<String>? = null,
+      minPriority: Int? = null): ProcessChain?
 
   /**
    * Check if there is a process chain that has the given [currentStatus] and

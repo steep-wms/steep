@@ -20,7 +20,6 @@ import helper.bulkWriteAwait
 import helper.countDocumentsAwait
 import helper.deleteAwait
 import helper.deleteManyAwait
-import helper.distinctAwait
 import helper.download
 import helper.findAwait
 import helper.findOneAndUpdateAwait
@@ -609,13 +608,29 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         ProcessChainStatus.valueOf(it.getString(STATUS)) })
 
   override suspend fun findProcessChainRequiredCapabilities(
-      status: ProcessChainStatus): List<Collection<String>> {
-    val arrays = collProcessChains.distinctAwait(REQUIRED_CAPABILITIES, json {
-      obj(
-          STATUS to status.toString()
-      )
-    }, String::class.java)
-    return arrays.map { a -> JsonArray(a).map { it.toString() }}
+      status: ProcessChainStatus): List<Pair<Collection<String>, IntRange>> {
+    val result = collProcessChains.aggregateAwait(listOf(
+        jsonObjectOf(
+            "\$match" to jsonObjectOf(
+                STATUS to status.toString()
+            )
+        ),
+        jsonObjectOf(
+            "\$group" to jsonObjectOf(
+                "_id" to "\$$REQUIRED_CAPABILITIES",
+                // priorities are stored negated
+                "minPriority" to jsonObjectOf("\$max" to "\$$PRIORITY"),
+                "maxPriority" to jsonObjectOf("\$min" to "\$$PRIORITY"),
+            )
+        )
+    ))
+    return result.map { r ->
+      val rcs = JsonArray(r.getString("_id")).map { it.toString() }
+      // priorities are stored negated
+      val minPriority = -r.getInteger("minPriority")
+      val maxPriority = -r.getInteger("maxPriority")
+      rcs to minPriority..maxPriority
+    }
   }
 
   override suspend fun findProcessChainById(processChainId: String): ProcessChain? {
@@ -628,7 +643,8 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   }
 
   override suspend fun countProcessChains(submissionId: String?,
-      status: ProcessChainStatus?, requiredCapabilities: Collection<String>?) =
+      status: ProcessChainStatus?, requiredCapabilities: Collection<String>?,
+      minPriority: Int?) =
       collProcessChains.countDocumentsAwait(JsonObject().also {
         if (submissionId != null) {
           it.put(SUBMISSION_ID, submissionId)
@@ -638,6 +654,10 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         }
         if (requiredCapabilities != null) {
           it.put(REQUIRED_CAPABILITIES, JsonUtils.writeValueAsString(requiredCapabilities))
+        }
+        if (minPriority != null) {
+          // priorities are stored negated
+          it.put(PRIORITY, jsonObjectOf("\$lte" to -minPriority))
         }
       })
 
@@ -666,32 +686,27 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   }
 
   override suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
-      newStatus: ProcessChainStatus, requiredCapabilities: Collection<String>?): ProcessChain? {
-    val doc = collProcessChains.findOneAndUpdateAwait(json {
-      if (requiredCapabilities == null) {
-        obj(
-            STATUS to currentStatus.toString()
-        )
-      } else {
-        obj(
-            STATUS to currentStatus.toString(),
-            REQUIRED_CAPABILITIES to JsonUtils.writeValueAsString(requiredCapabilities)
-        )
+      newStatus: ProcessChainStatus, requiredCapabilities: Collection<String>?,
+      minPriority: Int?): ProcessChain? {
+    val doc = collProcessChains.findOneAndUpdateAwait(JsonObject().also {
+      it.put(STATUS, currentStatus.toString())
+      if (requiredCapabilities != null) {
+        it.put(REQUIRED_CAPABILITIES, JsonUtils.writeValueAsString(requiredCapabilities))
       }
-    }, json {
-      obj(
-          "\$set" to obj(
-              STATUS to newStatus.toString()
-          )
+      if (minPriority != null) {
+        // priorities are stored negated
+        it.put(PRIORITY, jsonObjectOf("\$lte" to -minPriority))
+      }
+    }, jsonObjectOf(
+      "\$set" to jsonObjectOf(
+          STATUS to newStatus.toString()
       )
-    }, FindOneAndUpdateOptions()
+    ), FindOneAndUpdateOptions()
         .projection(wrap(PROCESS_CHAIN_EXCLUDES))
-        .sort(wrap(json {
-          obj(
-              PRIORITY to 1,
-              SEQUENCE to 1
-          )
-        })))
+        .sort(wrap(jsonObjectOf(
+            PRIORITY to 1,
+            SEQUENCE to 1
+        ))))
     return doc?.let { readProcessChain(it).first }
   }
 

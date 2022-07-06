@@ -4,19 +4,21 @@ import AddressConstants.CLUSTER_NODE_LEFT
 import AddressConstants.REMOTE_AGENT_ADDED
 import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import AddressConstants.REMOTE_AGENT_LEFT
+import agent.AgentRegistry.SelectCandidatesParam
+import helper.JsonUtils
 import helper.debounce
 import io.prometheus.client.Gauge
 import io.vertx.core.Future
 import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.core.impl.NoStackTraceThrowable
-import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.AsyncMap
 import io.vertx.core.shareddata.LocalMap
 import io.vertx.core.shareddata.Shareable
 import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
 import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitResult
@@ -231,26 +233,16 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     return result
   }
 
-  override suspend fun selectCandidates(requiredCapabilities: List<Pair<Collection<String>, Long>>):
+  override suspend fun selectCandidates(params: List<SelectCandidatesParam>):
       List<Pair<Collection<String>, String>> {
-    if (requiredCapabilities.isEmpty()) {
+    if (params.isEmpty()) {
       return emptyList()
     }
 
-    // prepare message
-    val msgInquire = json {
-      obj(
-          "action" to "inquire",
-          "requiredCapabilities" to JsonArray(requiredCapabilities.map {
-            json {
-              obj(
-                  "capabilities" to JsonArray(it.first.toList()),
-                  "processChainCount" to it.second
-              )
-            }
-          })
-      )
-    }
+    val msgInquire = jsonObjectOf(
+        "action" to "inquire",
+        "params" to JsonUtils.mapper.convertValue(params, List::class.java)
+    )
 
     // get IDs of agents that are not busy at the moment
     val filteredAgentIds = getAgentIds().filter { !allocatedAgentsCache.contains(it) }
@@ -264,7 +256,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     var lastCandidateSequence = -1L
     val candidatesPerSet = mutableMapOf<Int, MutableList<Pair<String, Long>>>()
     for (agentAndSequence in keys) {
-      if (candidatesPerSet.size == requiredCapabilities.size &&
+      if (candidatesPerSet.size == params.size &&
           agentAndSequence.second >= lastCandidateSequence) {
         // We do not have to inquire the other agents. We already found at
         // least one agent for each required capability set and there will be
@@ -280,13 +272,13 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
       val supportedCapabilities = agentCapabilitiesCache[agent]?.rcs
       if (supportedCapabilities != null) {
         var shouldInquire = false
-        for ((rci, rcs) in requiredCapabilities.withIndex()) {
-          if (candidatesPerSet.containsKey(rci) && agentAndSequence.second >= lastCandidateSequence) {
+        for ((pi, ps) in params.withIndex()) {
+          if (candidatesPerSet.containsKey(pi) && agentAndSequence.second >= lastCandidateSequence) {
             // we already have a candidate for this capability set and this
             // agent's lastSequence would definitely be higher
             continue
           }
-          if (supportedCapabilities.containsAll(rcs.first)) {
+          if (supportedCapabilities.containsAll(ps.requiredCapabilities)) {
             // the agent supports at least one required capabilities set
             shouldInquire = true
             break
@@ -322,9 +314,9 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
 
           // Pretend we already assigned EXACTLY ONE process chain with this
           // capability set to this agent so that other agents maybe chose another set.
-          msgInquire.getJsonArray("requiredCapabilities")
+          msgInquire.getJsonArray("params")
               .getJsonObject(bestRequiredCapabilities)
-              .put("processChainCount", requiredCapabilities[bestRequiredCapabilities].second - 1)
+              .put("count", params[bestRequiredCapabilities].count - 1)
         }
 
         // save capabilities this agent supports if they are included in the response
@@ -347,7 +339,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
       // LRU: Select agent with the lowest `lastSequence` because it's the one
       // that has not processed a process chain for the longest time.
       candidates.sortBy { it.second }
-      Pair(requiredCapabilities[i].first, candidates.first().first)
+      Pair(params[i].requiredCapabilities, candidates.first().first)
     }
   }
 

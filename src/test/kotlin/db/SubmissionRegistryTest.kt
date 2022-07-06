@@ -1138,28 +1138,38 @@ abstract class SubmissionRegistryTest {
   fun countProcessChains(vertx: Vertx, ctx: VertxTestContext) {
     val s1 = Submission(workflow = Workflow(), status = Submission.Status.RUNNING)
     val pc11 = ProcessChain()
-    val pc12 = ProcessChain()
+    val pc12 = ProcessChain(priority = 5)
     val s2 = Submission(workflow = Workflow(), status = Submission.Status.SUCCESS)
-    val pc21 = ProcessChain()
+    val pc21 = ProcessChain(priority = 10)
 
     CoroutineScope(vertx.dispatcher()).launch {
-      val r1 = submissionRegistry.countProcessChains()
-      ctx.verify {
-        assertThat(r1).isEqualTo(0)
+      ctx.coVerify {
+        val r = submissionRegistry.countProcessChains()
+        assertThat(r).isEqualTo(0)
       }
 
       submissionRegistry.addSubmission(s1)
       submissionRegistry.addProcessChains(listOf(pc11, pc12), s1.id)
-      val r2 = submissionRegistry.countProcessChains()
-      ctx.verify {
-        assertThat(r2).isEqualTo(2)
+      ctx.coVerify {
+        val r = submissionRegistry.countProcessChains()
+        assertThat(r).isEqualTo(2)
+      }
+
+      ctx.coVerify {
+        val r = submissionRegistry.countProcessChains(minPriority = 5)
+        assertThat(r).isEqualTo(1)
       }
 
       submissionRegistry.addSubmission(s2)
       submissionRegistry.addProcessChains(listOf(pc21), s2.id)
-      val r3 = submissionRegistry.countProcessChains()
-      ctx.verify {
-        assertThat(r3).isEqualTo(3)
+      ctx.coVerify {
+        val r = submissionRegistry.countProcessChains()
+        assertThat(r).isEqualTo(3)
+      }
+
+      ctx.coVerify {
+        val r = submissionRegistry.countProcessChains(minPriority = 5)
+        assertThat(r).isEqualTo(2)
       }
 
       ctx.completeNow()
@@ -1336,24 +1346,28 @@ abstract class SubmissionRegistryTest {
     val rcs2 = setOf("rc1", "rc2")
 
     val s = Submission(workflow = Workflow())
-    val pc1 = ProcessChain(requiredCapabilities = rcs1)
+    val pc1 = ProcessChain(requiredCapabilities = rcs1, priority = 3)
     val pc2 = ProcessChain()
-    val pc3 = ProcessChain(requiredCapabilities = rcs1)
-    val pc4 = ProcessChain(requiredCapabilities = rcs2)
-    val pc5 = ProcessChain(requiredCapabilities = rcs2)
-    val pc6 = ProcessChain(requiredCapabilities = rcs1)
+    val pc3 = ProcessChain(requiredCapabilities = rcs1, priority = 4)
+    val pc4 = ProcessChain(requiredCapabilities = rcs2, priority = 1)
+    val pc5 = ProcessChain(requiredCapabilities = rcs2, priority = 1)
+    val pc6 = ProcessChain(requiredCapabilities = rcs1, priority = 5)
+    val pc7 = ProcessChain(requiredCapabilities = rcs1, priority = 10)
 
     CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
-      submissionRegistry.addProcessChains(listOf(pc1, pc2, pc3, pc4, pc5, pc6), s.id)
+      submissionRegistry.addProcessChains(listOf(pc1, pc2, pc3, pc4, pc5, pc6, pc7), s.id)
+      submissionRegistry.setProcessChainStatus(pc7.id, SubmissionRegistry.ProcessChainStatus.SUCCESS)
 
       val r = submissionRegistry.findProcessChainRequiredCapabilities(
           SubmissionRegistry.ProcessChainStatus.REGISTERED)
       ctx.verify {
-        assertThat(r).hasSize(3)
-        assertThat(r).anyMatch { it.toSet() == rcs1 }
-        assertThat(r).anyMatch { it.toSet() == rcs2 }
-        assertThat(r).anyMatch { it.isEmpty() }
+        // cast rcs to sets so the comparison can work
+        assertThat(r.map { it.copy(first = it.first.toSet()) }).containsExactlyInAnyOrder(
+            rcs1 to 3..5,
+            rcs2 to 1..1,
+            emptySet<String>() to 0..0
+        )
       }
 
       ctx.completeNow()
@@ -1449,6 +1463,40 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun fetchNextProcessChainMinPriority(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc1 = ProcessChain(priority = -10)
+    val pc2 = ProcessChain()
+    val pc3 = ProcessChain(priority = 10)
+    val pc4 = ProcessChain(priority = 3)
+    val pc5 = ProcessChain()
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      submissionRegistry.addSubmission(s)
+      submissionRegistry.addProcessChains(listOf(pc1, pc2, pc3, pc4, pc5), s.id)
+      val pcA = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.RUNNING,
+          minPriority = 3)
+      val pcB = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.RUNNING,
+          minPriority = 3)
+      val pcC = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.RUNNING,
+          minPriority = 3)
+      ctx.verify {
+        assertThat(pcA).isEqualTo(pc3)
+        assertThat(pcB).isEqualTo(pc4)
+        assertThat(pcC).isNull()
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun fetchNextProcessChainRequiredCapabilities(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
     val pc1 = ProcessChain(requiredCapabilities = setOf("docker", "sleep"))
@@ -1478,6 +1526,48 @@ abstract class SubmissionRegistryTest {
         assertThat(pcB).isEqualTo(pc3)
         assertThat(pcC).isEqualTo(pc1)
         assertThat(pcD).isEqualTo(pc2)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun fetchNextProcessChainRequiredCapabilitiesMinPriority(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc1 = ProcessChain(requiredCapabilities = setOf("docker"), priority = 10)
+    val pc2 = ProcessChain(requiredCapabilities = setOf("docker", "sleep"), priority = 20)
+    val pc3 = ProcessChain(requiredCapabilities = setOf("docker"), priority = 5)
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      submissionRegistry.addSubmission(s)
+      submissionRegistry.addProcessChains(listOf(pc1, pc2, pc3), s.id)
+      val pcA = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          listOf("docker"), minPriority = 10)
+      val pcB = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.SUCCESS,
+          listOf("docker"), minPriority = 5)
+      val pcC = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.SUCCESS,
+          listOf("docker"), minPriority = 10)
+      val pcD = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.SUCCESS,
+          listOf("docker"), minPriority = 5)
+      val pcE = submissionRegistry.fetchNextProcessChain(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.SUCCESS,
+          listOf("docker"), minPriority = 5)
+      ctx.verify {
+        assertThat(pcA).isEqualTo(pc1)
+        assertThat(pcB).isEqualTo(pc1)
+        assertThat(pcC).isNull()
+        assertThat(pcD).isEqualTo(pc3)
+        assertThat(pcE).isNull()
       }
 
       ctx.completeNow()

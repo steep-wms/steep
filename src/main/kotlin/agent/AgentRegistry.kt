@@ -6,11 +6,40 @@ package agent
  */
 interface AgentRegistry {
   /**
-   * For each given set of [requiredCapabilities] (and respective number of
-   * process chains requiring them), try to find an address of an agent that
-   * is able to handle them
+   * Parameters for [selectCandidates]
    */
-  suspend fun selectCandidates(requiredCapabilities: List<Pair<Collection<String>, Long>>):
+  data class SelectCandidatesParam(
+      /**
+       * The required capabilities for which to find a suitable agent
+       */
+      val requiredCapabilities: Collection<String>,
+
+      /**
+       * The minimum priority of the process chains for which a candidate
+       * agent should be selected
+       */
+      val minPriority: Int,
+
+      /**
+       * The maximum priority of the process chains for which a candidate
+       * agent should be selected
+       */
+      val maxPriority: Int,
+
+      /**
+       * The total number of the process chains for which a candidate
+       * agent should be selected
+       */
+      val count: Long
+  )
+
+  /**
+   * For each item in [params], try to find an address of an agent that
+   * is able to handle the requiredCapabilities, priorities, and process chain
+   * counts specified (see [SelectCandidatesParam]). The method returns a list
+   * of required capability sets and agent addresses.
+   */
+  suspend fun selectCandidates(params: List<SelectCandidatesParam>):
       List<Pair<Collection<String>, String>>
 
   /**

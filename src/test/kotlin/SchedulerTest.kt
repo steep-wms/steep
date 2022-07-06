@@ -1,5 +1,6 @@
 import agent.Agent
 import agent.AgentRegistry
+import agent.AgentRegistry.SelectCandidatesParam
 import agent.AgentRegistryFactory
 import agent.RemoteAgent
 import db.SubmissionRegistry
@@ -91,21 +92,29 @@ class SchedulerTest {
   }
 
   /**
-   * Runs a simple test: schedules [allPcs] and provides [nAgents] mock agents
-   * to execute the process chains. Each agent needs 1 second to execute a
-   * process chain. The method waits until all process chains have been
+   * Runs a simple test: schedules [processChains] and provides [nAgents] mock
+   * agents to execute the process chains. Each agent needs 1 second to execute
+   * a process chain. The method waits until all process chains have been
    * executed successfully.
    */
-  private fun testSimple(allPcs: List<ProcessChain>, nAgents: Int, vertx: Vertx, ctx: VertxTestContext) {
-    val remainingPcs = allPcs.toMutableList()
+  private fun testSimple(processChains: List<ProcessChain>, nAgents: Int, vertx: Vertx,
+      ctx: VertxTestContext, verify: ((List<String>) -> Unit)? = null,
+      onExecute: (suspend (String, List<String>) -> Unit)? = null) {
+    val allPcs = processChains.toMutableList()
+    val remainingPcs = processChains.toMutableList()
     val executedPcIds = mutableListOf<String>()
 
     coEvery { submissionRegistry.findProcessChainRequiredCapabilities(REGISTERED) } answers {
-      remainingPcs.map { it.requiredCapabilities }.distinct()
+      remainingPcs.groupBy { it.requiredCapabilities }.map { (rc, pcs) ->
+        rc to pcs.minOf { it.priority }..pcs.maxOf { it.priority }
+      }
     }
     val rcsSlot = slot<Collection<String>>()
-    coEvery { submissionRegistry.countProcessChains(null, REGISTERED, capture(rcsSlot)) } answers {
-      remainingPcs.filter { it.requiredCapabilities == rcsSlot.captured }.size.toLong()
+    val minPrioritySlot = slot<Int>()
+    coEvery { submissionRegistry.countProcessChains(null, REGISTERED,
+        capture(rcsSlot), capture(minPrioritySlot)) } answers {
+      remainingPcs.filter { it.requiredCapabilities == rcsSlot.captured &&
+          it.priority >= minPrioritySlot.captured }.size.toLong()
     }
 
     // mock agents
@@ -119,29 +128,24 @@ class SchedulerTest {
     for (agent in allAgents) {
       val pcSlot = slot<ProcessChain>()
       coEvery { agent.execute(capture(pcSlot)) } coAnswers {
+        onExecute?.invoke(pcSlot.captured.id, executedPcIds)
         delay(1000) // pretend it takes 1 second to execute the process chain
         mapOf("ARG1" to listOf("output-${pcSlot.captured.id}"))
       }
     }
 
-    val slotRequiredCapabilities = slot<List<Pair<Collection<String>, Long>>>()
-    coEvery { agentRegistry.selectCandidates(capture(slotRequiredCapabilities)) } answers {
-      ctx.verify {
-        val remainingExpectedRequiredCapabilities =
-            remainingPcs.groupBy { it.requiredCapabilities }
-                .mapValues { it.value.size.toLong() }
-                .toList()
-        if (slotRequiredCapabilities.captured.isNotEmpty()) {
-          assertThat(slotRequiredCapabilities.captured)
-              .isEqualTo(remainingExpectedRequiredCapabilities)
-        }
-      }
-      slotRequiredCapabilities.captured.mapIndexedNotNull { i, rc ->
-        if (i >= availableAgents.size) {
-          null
-        } else {
-          Pair(rc.first, availableAgents[i].id)
-        }
+    val slotSelectParams = slot<List<SelectCandidatesParam>>()
+    coEvery { agentRegistry.selectCandidates(capture(slotSelectParams)) } answers {
+      // all agents support all required capabilities (!) and by default, they
+      // all select the required capability set with the the highest priority
+      // and the most process chains
+      val best = slotSelectParams.captured.maxWithOrNull(
+          compareBy<SelectCandidatesParam> { it.maxPriority }
+              .thenBy { it.count })
+      if (best != null && availableAgents.isNotEmpty()) {
+        listOf(best.requiredCapabilities to availableAgents.first().id)
+      } else {
+        emptyList()
       }
     }
 
@@ -160,8 +164,7 @@ class SchedulerTest {
       availableAgents.add(slotAgent.captured)
     }
 
-    // mock submission registry
-    for (pc in allPcs) {
+    val registerMocksForPc = { pc: ProcessChain ->
       // add running process chain to list of registered process chains again
       coEvery { submissionRegistry.setProcessChainStatus(pc.id, REGISTERED) } answers {
         ctx.verify {
@@ -170,22 +173,32 @@ class SchedulerTest {
         remainingPcs.add(0, pc)
       }
 
-      // register mock for start and end time
+      // register mock for start time
       coEvery { submissionRegistry.setProcessChainStartTime(pc.id, any()) } just Runs
-      coEvery { submissionRegistry.setProcessChainEndTime(pc.id, any()) } just Runs
 
       // register mock for results
       coEvery { submissionRegistry.setProcessChainResults(pc.id,
           mapOf("ARG1" to listOf("output-${pc.id}"))) } just Runs
-    }
 
-    for (pc in allPcs) {
       // register mocks for all successful process chains
       coEvery { submissionRegistry.setProcessChainStatus(pc.id, SUCCESS) } answers {
         ctx.verify {
           assertThat(remainingPcs).doesNotContain(pc)
         }
       }
+    }
+
+    // mock submission registry
+    for (pc in allPcs) {
+      registerMocksForPc(pc)
+    }
+    val slotAddProcessChain = slot<Collection<ProcessChain>>()
+    coEvery { submissionRegistry.addProcessChains(capture(slotAddProcessChain), any()) } answers {
+      for (pc in slotAddProcessChain.captured) {
+        registerMocksForPc(pc)
+      }
+      allPcs.addAll(slotAddProcessChain.captured)
+      remainingPcs.addAll(slotAddProcessChain.captured)
     }
 
     val slotEndTimePcId = slot<String>()
@@ -205,14 +218,25 @@ class SchedulerTest {
               submissionRegistry.setProcessChainStatus(pc.id, SUCCESS)
             }
           }
+          verify?.invoke(executedPcIds)
         }
         ctx.completeNow()
       }
     }
 
     // execute process chains
-    coEvery { submissionRegistry.fetchNextProcessChain(REGISTERED, RUNNING, any()) } answers {
-      if (remainingPcs.isEmpty()) null else remainingPcs.removeAt(0)
+    val slotFetchNextRcs = slot<Collection<String>>()
+    val slotFetchMinPriority = slot<Int>()
+    coEvery { submissionRegistry.fetchNextProcessChain(REGISTERED, RUNNING,
+        capture(slotFetchNextRcs), capture(slotFetchMinPriority)) } answers {
+      val r = remainingPcs.filter {
+        it.requiredCapabilities == slotFetchNextRcs.captured &&
+            it.priority >= slotFetchMinPriority.captured
+      }.maxByOrNull { it.priority }
+      if (r != null) {
+        remainingPcs.remove(r)
+      }
+      r
     }
     coEvery { submissionRegistry.existsProcessChain(REGISTERED, any()) } answers {
       remainingPcs.isNotEmpty() }
@@ -249,6 +273,82 @@ class SchedulerTest {
   }
 
   @Test
+  fun priorities(vertx: Vertx, ctx: VertxTestContext) {
+    val pc1 = ProcessChain(id = "1", priority = 1)
+    val pc2 = ProcessChain(id = "2", priority = 1)
+    val pc3 = ProcessChain(id = "3", priority = 2)
+    testSimple(listOf(pc1, pc2, pc3), 1, vertx, ctx, verify = { executedPcs ->
+      assertThat(executedPcs).hasSize(3)
+      assertThat(executedPcs.first()).isEqualTo(pc3.id)
+    })
+  }
+
+  @Test
+  fun prioritiesDifferentRcs(vertx: Vertx, ctx: VertxTestContext) {
+    val pc1 = ProcessChain(id = "1", priority = 1, requiredCapabilities = setOf("docker"))
+    val pc2 = ProcessChain(id = "2", priority = 1, requiredCapabilities = setOf("docker"))
+    val pc3 = ProcessChain(id = "3", priority = 2, requiredCapabilities = setOf("sleep"))
+    testSimple(listOf(pc1, pc2, pc3), 1, vertx, ctx, verify = { executedPcs ->
+      assertThat(executedPcs).hasSize(3)
+      assertThat(executedPcs.first()).isEqualTo(pc3.id)
+    })
+  }
+
+  @Test
+  fun prioritiesDifferentRcsMoreComplex(vertx: Vertx, ctx: VertxTestContext) {
+    val pcA1 = ProcessChain(id = "A1", priority = 1, requiredCapabilities = setOf("docker"))
+    val pcA2 = ProcessChain(id = "A2", priority = 1, requiredCapabilities = setOf("docker"))
+    val pcA3 = ProcessChain(id = "A3", priority = 10, requiredCapabilities = setOf("docker"))
+    val pcA4 = ProcessChain(id = "A4", priority = 11, requiredCapabilities = setOf("docker"))
+    val pcA5 = ProcessChain(id = "A5", priority = 12, requiredCapabilities = setOf("docker"))
+
+    val pcB1 = ProcessChain(id = "B1", priority = 8, requiredCapabilities = setOf("sleep"))
+    val pcB2 = ProcessChain(id = "B2", priority = 8, requiredCapabilities = setOf("sleep"))
+    val pcB3 = ProcessChain(id = "B3", priority = 10, requiredCapabilities = setOf("sleep"))
+
+    testSimple(listOf(pcA1, pcA2, pcA3, pcA4, pcA5, pcB1, pcB2, pcB3),
+        1, vertx, ctx, verify = { executedPcs ->
+      assertThat(executedPcs).containsExactly("A5", "A4", "A3", "B3", "B1", "B2", "A1", "A2")
+    })
+  }
+
+  @Test
+  fun prioritiesAddProcessChainWhileRunning(vertx: Vertx, ctx: VertxTestContext) {
+    val pc1 = ProcessChain(id = "1", priority = 1)
+    val pc2 = ProcessChain(id = "2", priority = 1)
+    val pc3 = ProcessChain(id = "3", priority = 2)
+    testSimple(listOf(pc1, pc2), 1, vertx, ctx, onExecute = { _, executedPcs ->
+      if (executedPcs.isEmpty()) {
+        // add pc3 while either pc1 or pc2 is currently running
+        // pc3 should then be scheduled at second position because it as
+        // a higher priority than the remaining pc
+        submissionRegistry.addProcessChains(listOf(pc3), UniqueID.next())
+      }
+    }, verify = { executedPcs ->
+      assertThat(executedPcs).hasSize(3)
+      assertThat(executedPcs[1]).isEqualTo(pc3.id)
+    })
+  }
+
+  @Test
+  fun prioritiesAddProcessChainWithDifferentRcsWhileRunning(vertx: Vertx, ctx: VertxTestContext) {
+    val pc1 = ProcessChain(id = "1", priority = 1, requiredCapabilities = setOf("docker"))
+    val pc2 = ProcessChain(id = "2", priority = 1, requiredCapabilities = setOf("docker"))
+    val pc3 = ProcessChain(id = "3", priority = 2, requiredCapabilities = setOf("sleep"))
+    testSimple(listOf(pc1, pc2), 1, vertx, ctx, onExecute = { _, executedPcs ->
+      if (executedPcs.isEmpty()) {
+        // add pc3 while either pc1 or pc2 is currently running
+        // pc3 should then be scheduled at second position because it as
+        // a higher priority than the remaining pc
+        submissionRegistry.addProcessChains(listOf(pc3), UniqueID.next())
+      }
+    }, verify = { executedPcs ->
+      assertThat(executedPcs).hasSize(3)
+      assertThat(executedPcs[1]).isEqualTo(pc3.id)
+    })
+  }
+
+  @Test
   fun deallocateAgentOnError(vertx: Vertx, ctx: VertxTestContext) {
     val message = "THIS is an ERROR"
 
@@ -267,8 +367,9 @@ class SchedulerTest {
     coEvery { submissionRegistry.setProcessChainStartTime(pc.id, any()) } just Runs
     coEvery { submissionRegistry.setProcessChainEndTime(pc.id, any()) } just Runs
     coEvery { submissionRegistry.setProcessChainErrorMessage(pc.id, message) } just Runs
-    coEvery { submissionRegistry.findProcessChainRequiredCapabilities(REGISTERED) } returns listOf(emptySet())
-    coEvery { submissionRegistry.countProcessChains(null, REGISTERED, emptySet()) } returns 13L
+    coEvery { submissionRegistry.findProcessChainRequiredCapabilities(REGISTERED) } returns
+        listOf(emptySet<String>() to 0..0)
+    coEvery { submissionRegistry.countProcessChains(null, REGISTERED, emptySet(), 0) } returns 13L
     coEvery { submissionRegistry.existsProcessChain(REGISTERED, emptySet()) } returns true
 
     coEvery { agentRegistry.deallocate(agent) } answers {
@@ -282,7 +383,7 @@ class SchedulerTest {
     }
 
     // execute process chains
-    coEvery { submissionRegistry.fetchNextProcessChain(REGISTERED, RUNNING, any()) } returns
+    coEvery { submissionRegistry.fetchNextProcessChain(REGISTERED, RUNNING, any(), 0) } returns
         pc andThen null
 
     vertx.eventBus().publish(AddressConstants.SCHEDULER_LOOKUP_NOW, null)
@@ -333,8 +434,9 @@ class SchedulerTest {
       coEvery { submissionRegistry.setProcessChainStatus(pc2.id, SUCCESS) } just Runs
       coEvery { submissionRegistry.setProcessChainEndTime(pc2.id, any()) } just Runs
       coEvery { submissionRegistry.existsProcessChain(REGISTERED, any()) } returns false
-      coEvery { submissionRegistry.findProcessChainRequiredCapabilities(REGISTERED) } returns listOf(emptySet())
-      coEvery { submissionRegistry.countProcessChains(null, REGISTERED, emptySet()) } returns 4L
+      coEvery { submissionRegistry.findProcessChainRequiredCapabilities(REGISTERED) } returns
+          listOf(emptySet<String>() to 0..0)
+      coEvery { submissionRegistry.countProcessChains(null, REGISTERED, emptySet(), 0) } returns 4L
 
       // mock agent registry
       coEvery { agentRegistry.getAgentIds() } returns setOf(agentId)

@@ -2,8 +2,10 @@ import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import AddressConstants.REMOTE_AGENT_BUSY
 import AddressConstants.REMOTE_AGENT_IDLE
 import AddressConstants.REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
+import agent.AgentRegistry.SelectCandidatesParam
 import agent.LocalAgent
 import agent.RemoteAgentRegistry
+import com.fasterxml.jackson.module.kotlin.convertValue
 import db.SubmissionRegistry
 import helper.CompressedJsonObjectMessageCodec
 import helper.JsonUtils
@@ -405,34 +407,40 @@ class Steep : CoroutineVerticle() {
       -1
     } else {
       // Select requiredCapabilities that best match our own capabilities.
-      // Prefer capability sets with a high number of process chains.
-      val arr = msg.body().getJsonArray("requiredCapabilities")
-      var max = -1L
-      var best = -1
+      // Prefer capability sets with the highest priority and the highest
+      // number of process chains.
+      val params = JsonUtils.mapper.convertValue<List<SelectCandidatesParam>>(
+          msg.body().getJsonArray("params"))
 
-      for ((i, rcs) in arr.withIndex()) {
-        val rcsObj = rcs as JsonObject
-        val rcsArr = rcsObj.getJsonArray("capabilities")
-        val rcsCount = rcsObj.getLong("processChainCount")
+      // calculate number of matching capabilities for each param and filter
+      // out those that require capabilities we don't have
+      val matching = params.mapIndexedNotNull { i, p ->
         var ok = true
-        var count = 0L
-
-        for (rc in rcsArr) {
+        var n = 0
+        for (rc in p.requiredCapabilities) {
           if (capabilities.contains(rc)) {
-            count += rcsCount
+            n++
           } else {
             ok = false
             break
           }
         }
-
-        if (ok && count > max) {
-          max = count
-          best = i
+        if (!ok) {
+          null
+        } else {
+          (i to p) to n
         }
       }
 
-      best
+      // sort by number of matched capabilities, maxPriority, and number of process chains
+      val sorted = matching.sortedWith(
+          compareByDescending<Pair<Pair<Int, SelectCandidatesParam>, Int>> { it.second }
+              .thenByDescending { it.first.second.maxPriority }
+              .thenByDescending { it.first.second.count }
+      )
+
+      // get the index of the best one
+      sorted.firstOrNull()?.first?.first ?: -1
     }
 
     val reply = json {

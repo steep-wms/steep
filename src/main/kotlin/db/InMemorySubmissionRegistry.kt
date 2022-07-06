@@ -392,11 +392,14 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
           .filter { it.submissionId == submissionId }
           .associate { Pair(it.processChain.id, it.status) }
 
-  override suspend fun findProcessChainRequiredCapabilities(status: ProcessChainStatus) =
-      findProcessChainEntries()
-          .filter { it.status == status }
-          .map { it.processChain.requiredCapabilities }
-          .distinct()
+  override suspend fun findProcessChainRequiredCapabilities(status: ProcessChainStatus):
+      List<Pair<Collection<String>, IntRange>> {
+    return findProcessChainEntries().filter { it.status == status }
+        .groupBy { it.processChain.requiredCapabilities }
+        .map { (rcs, pcs) ->
+          rcs to pcs.minOf { it.processChain.priority }..pcs.maxOf { it.processChain.priority }
+        }
+  }
 
   override suspend fun findProcessChainById(processChainId: String): ProcessChain? {
     return processChains.await().get(processChainId).await()?.let {
@@ -405,14 +408,16 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   }
 
   override suspend fun countProcessChains(submissionId: String?,
-      status: ProcessChainStatus?, requiredCapabilities: Collection<String>?): Long =
+      status: ProcessChainStatus?, requiredCapabilities: Collection<String>?,
+      minPriority: Int?): Long =
       findProcessChainEntries()
           .count {
             (submissionId == null || it.submissionId == submissionId) &&
                 (status == null || it.status == status) &&
                 (requiredCapabilities == null ||
                     (it.processChain.requiredCapabilities.size == requiredCapabilities.size &&
-                        it.processChain.requiredCapabilities.containsAll(requiredCapabilities)))
+                        it.processChain.requiredCapabilities.containsAll(requiredCapabilities))) &&
+                (minPriority == null || it.processChain.priority >= minPriority)
           }
           .toLong()
 
@@ -428,7 +433,8 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   }
 
   override suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
-      newStatus: ProcessChainStatus, requiredCapabilities: Collection<String>?): ProcessChain? {
+      newStatus: ProcessChainStatus, requiredCapabilities: Collection<String>?,
+      minPriority: Int?): ProcessChain? {
     val sharedData = vertx.sharedData()
     val lock = sharedData.getLock(LOCK_PROCESS_CHAINS).await()
     try {
@@ -437,7 +443,8 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       val entry = values.map { JsonUtils.readValue<ProcessChainEntry>(it) }
           .filter { it.status == currentStatus && (requiredCapabilities == null ||
               (it.processChain.requiredCapabilities.size == requiredCapabilities.size &&
-                  it.processChain.requiredCapabilities.containsAll(requiredCapabilities))) }
+                  it.processChain.requiredCapabilities.containsAll(requiredCapabilities))) &&
+              (minPriority == null || it.processChain.priority >= minPriority) }
           .sortedWith(compareByDescending<ProcessChainEntry> { it.processChain.priority }.thenBy { it.serial })
           .firstOrNull()
       return entry?.let {

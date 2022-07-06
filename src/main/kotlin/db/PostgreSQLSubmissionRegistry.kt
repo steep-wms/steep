@@ -392,12 +392,19 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun findProcessChainRequiredCapabilities(
-      status: ProcessChainStatus): List<Collection<String>> {
-    val statement = "SELECT DISTINCT $DATA->'$REQUIRED_CAPABILITIES' " +
-        "FROM $PROCESS_CHAINS WHERE $STATUS=$1"
+      status: ProcessChainStatus): List<Pair<Collection<String>, IntRange>> {
+    val statement = "SELECT $DATA->'$REQUIRED_CAPABILITIES'," +
+        "MIN(($DATA->>'$PRIORITY')::int),MAX(($DATA->>'$PRIORITY')::int) " +
+        "FROM $PROCESS_CHAINS WHERE $STATUS=$1 " +
+        "GROUP BY $DATA->'$REQUIRED_CAPABILITIES'"
     val params = Tuple.of(status.toString())
     val rs = client.preparedQuery(statement).execute(params).await()
-    return rs.map { row -> row.getJsonArray(0).map { it.toString() } }
+    return rs.map { row ->
+      val rcs = row.getJsonArray(0).map { it.toString() }
+      val min = row.getInteger(1)
+      val max = row.getInteger(2)
+      rcs to min..max
+    }
   }
 
   override suspend fun findProcessChainById(processChainId: String): ProcessChain? {
@@ -408,7 +415,8 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun countProcessChains(submissionId: String?,
-      status: ProcessChainStatus?, requiredCapabilities: Collection<String>?): Long {
+      status: ProcessChainStatus?, requiredCapabilities: Collection<String>?,
+      minPriority: Int?): Long {
     val statement = StringBuilder()
     statement.append("SELECT COUNT(*) FROM $PROCESS_CHAINS")
 
@@ -425,8 +433,12 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       params.addString(status.toString())
     }
     if (requiredCapabilities != null) {
-      conditions.add("$DATA->'$REQUIRED_CAPABILITIES'=$${pos}")
+      conditions.add("$DATA->'$REQUIRED_CAPABILITIES'=$${pos++}")
       params.addValue(JsonArray(requiredCapabilities.toList()))
+    }
+    if (minPriority != null) {
+      conditions.add("$DATA->'$PRIORITY'>=$${pos}")
+      params.addValue(minPriority)
     }
 
     val rs = if (conditions.isNotEmpty()) {
@@ -458,22 +470,26 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun fetchNextProcessChain(currentStatus: ProcessChainStatus,
-      newStatus: ProcessChainStatus, requiredCapabilities: Collection<String>?): ProcessChain? {
-    val (selectStatement, params) = if (requiredCapabilities == null) {
-      "SELECT $ID FROM $PROCESS_CHAINS WHERE $STATUS=$2" to json {
-        Tuple.of(newStatus.toString(), currentStatus.toString())
-      }
-    } else {
-      "SELECT $ID FROM $PROCESS_CHAINS WHERE $STATUS=$2 " +
-          "AND $DATA->'$REQUIRED_CAPABILITIES'=$3" to json {
-        Tuple.of(newStatus.toString(), currentStatus.toString(),
-            JsonArray(requiredCapabilities.toList()))
-      }
+      newStatus: ProcessChainStatus, requiredCapabilities: Collection<String>?,
+      minPriority: Int?): ProcessChain? {
+    val conditions = mutableListOf<String>()
+    val params = Tuple.of(newStatus.toString())
+
+    var pos = 2
+    conditions.add("$STATUS=$${pos++}")
+    params.addString(currentStatus.toString())
+    if (requiredCapabilities != null) {
+      conditions.add("$DATA->'$REQUIRED_CAPABILITIES'=$${pos++}")
+      params.addValue(JsonArray(requiredCapabilities.toList()))
+    }
+    if (minPriority != null) {
+      conditions.add("$DATA->'$PRIORITY'>=$${pos}")
+      params.addValue(minPriority)
     }
 
     val updateStatement = "UPDATE $PROCESS_CHAINS SET $STATUS=$1 " +
         "WHERE $ID = (" +
-          "$selectStatement " +
+          "SELECT $ID FROM $PROCESS_CHAINS WHERE ${conditions.joinToString(" AND ")} " +
           "ORDER BY $DATA->'$PRIORITY' DESC, $SERIAL ASC LIMIT 1 " +
           "FOR UPDATE SKIP LOCKED" + // skip rows being updated concurrently
         ") RETURNING $DATA::varchar"
