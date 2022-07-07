@@ -36,6 +36,9 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
     private const val COUNTER_NAME = "RemoteAgent.Sequence"
 
     private val log = LoggerFactory.getLogger(RemoteAgent::class.java)
+
+    private val AGENT_LEFT_EXCEPTION = CancellationException(
+        "Agent left the cluster before process chain execution could be finished")
   }
 
   /**
@@ -68,7 +71,7 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
       val agentLeftConsumer = vertx.eventBus().localConsumer<String>(
           AddressConstants.REMOTE_AGENT_LEFT) { agentLeftMsg ->
         if (id == agentLeftMsg.body()) {
-          adapter.cancel(CancellationException("Agent left the cluster"))
+          adapter.cancel(AGENT_LEFT_EXCEPTION)
         }
       }
 
@@ -112,6 +115,12 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
       } finally {
         agentLeftConsumer.unregister()
       }
+    } catch (e: CancellationException) {
+      if (e === AGENT_LEFT_EXCEPTION || e.cause === AGENT_LEFT_EXCEPTION ||
+          e.message == AGENT_LEFT_EXCEPTION.message) {
+        throw IllegalStateException(e.message)
+      }
+      throw e
     } finally {
       replyConsumer.unregister()
       log.trace("Unregistered handler for replies listening on $replyAddress")

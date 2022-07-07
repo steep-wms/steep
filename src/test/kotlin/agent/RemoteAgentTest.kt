@@ -142,8 +142,9 @@ class RemoteAgentTest : AgentTest() {
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy { agent.execute(ProcessChain()) }
-            .isInstanceOf(CancellationException::class.java)
-            .hasMessage("Agent left the cluster")
+            .isInstanceOf(IllegalStateException::class.java)
+            .hasMessage("Agent left the cluster before process chain " +
+                "execution could be finished")
       }
       ctx.completeNow()
     }
