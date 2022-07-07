@@ -16,7 +16,6 @@ import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.AsyncMap
 import io.vertx.core.shareddata.LocalMap
 import io.vertx.core.shareddata.Shareable
-import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
@@ -162,9 +161,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
 
           for (i in 1..instances) {
             val id = if (i == 1) agentId else "$agentId[$i]"
-            // since every node in the cluster receives the CLUSTER_NODE_LEFT
-            // message, we send REMOTE_AGENT_LEFT to local consumers only
-            deregister(id, true)
+            deregister(id)
           }
         }
       }
@@ -190,18 +187,18 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
   /**
    * Remove the remote agent with the given [id] from the registry. If the
    * given [id] is unknown to the registry, the method does nothing. Also
-   * announce that the agent has left in the cluster.
+   * announce in the cluster that the agent has left.
    */
   suspend fun deregister(id: String) {
-    deregister(id, false)
-  }
-
-  private suspend fun deregister(id: String, localOnly: Boolean) {
     val address = REMOTE_AGENT_ADDRESS_PREFIX + id
     val oldValue = agents.await().remove(id).await()
     if (oldValue != null) {
-      vertx.eventBus().publish(REMOTE_AGENT_LEFT, address,
-          deliveryOptionsOf(localOnly = localOnly))
+      // At least one of the agent registries in the cluster will get here
+      // because remove() will return a non-null value if the ID is still in
+      // the map. Hazelcast doesn't make any guarantees about the atomicity of
+      // IMap but the REMOTE_AGENT_LEFT message will be at least published once
+      // and typically, it should not be published more than once.
+      vertx.eventBus().publish(REMOTE_AGENT_LEFT, address)
     } else {
       // make sure metrics are correct
       gaugeAgents.set(agents.await().size().await().toDouble())
