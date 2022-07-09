@@ -140,9 +140,16 @@ class CloudManagerTest {
 
     coEvery { client.getImageID(setup.imageName) } returns setup.imageName
     if (mockCreateResources) {
+      val metadataSlot = slot<Map<String, String>>()
       coEvery { client.createBlockDevice(setup.blockDeviceSizeGb,
           setup.blockDeviceVolumeType, setup.imageName, true,
-          setup.availabilityZone, metadata) } answers { UniqueID.next() }
+          setup.availabilityZone, capture(metadataSlot)) } answers {
+        ctx.verify {
+          assertThat(metadataSlot.captured).containsAllEntriesOf(metadata)
+          assertThat(metadataSlot.captured).containsKey("VM-External-Id")
+        }
+        UniqueID.next()
+      }
       coEvery { client.createVM(any(), setup.flavor, any(), setup.availabilityZone,
           metadata) } answers { UniqueID.next() }
     }
