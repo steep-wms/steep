@@ -88,7 +88,7 @@ class CloudManager : CoroutineVerticle() {
      * The maximum number of seconds to backoff between failed attempts to
      * create a VM
      */
-    private const val MAX_BACKOFF_SECONDS = 60 * 60
+    private const val MAX_BACKOFF_SECONDS = 60 * 10
   }
 
   /**
