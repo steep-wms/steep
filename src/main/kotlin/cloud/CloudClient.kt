@@ -15,7 +15,7 @@ interface CloudClient {
    * device's ID will be included in the method's result
    * @return the list of matching, available block devices
    */
-  suspend fun listAvailableBlockDevices(metadataFilter: ((Map<String, String>) ->
+  suspend fun listAvailableBlockDevices(metadataFilter: (suspend (Map<String, String>) ->
       Boolean)? = null): List<String>
 
   /**

@@ -94,7 +94,7 @@ class OpenStackClient(endpoint: String, username: String, password: String,
     }
   }
 
-  override suspend fun listAvailableBlockDevices(metadataFilter: ((Map<String, String>) ->
+  override suspend fun listAvailableBlockDevices(metadataFilter: (suspend (Map<String, String>) ->
       Boolean)?): List<String> {
     val os = this.os.await()
     val volumes = blocking { os.blockStorage().volumes().list() }

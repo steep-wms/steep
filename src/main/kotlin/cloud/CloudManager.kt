@@ -379,10 +379,24 @@ class CloudManager : CoroutineVerticle() {
 
     // delete block devices that are not attached to a VM (anymore) and whose
     // external VM ID is unknown
-    val unattachedBlockDevices = cloudClient.listAvailableBlockDevices { bd ->
-      createdByTag == bd[CREATED_BY] && (!bd.containsKey(VM_EXTERNAL_ID) ||
-          !remainingVMs.contains(bd[VM_EXTERNAL_ID]))
+    val unattachedBlockDevices = cloudClient.listAvailableBlockDevices list@{ bd ->
+      if (createdByTag != bd[CREATED_BY]) {
+        // this is not our block device
+        return@list false
+      }
+
+      val externalId = bd[VM_EXTERNAL_ID]
+      if (externalId != null) {
+        val lock = tryLockVM(externalId) ?:
+            // someone is currently creating the VM to which the block
+            // device will be attached
+            return@list false
+        lock.release()
+      }
+
+      externalId == null || !remainingVMs.contains(externalId)
     }
+
     unattachedBlockDevices.map { volumeId ->
       async {
         log.info("Deleting unattached volume `$volumeId' ...")
@@ -588,11 +602,13 @@ class CloudManager : CoroutineVerticle() {
    */
   private suspend fun createVM(id: String, setup: Setup): String {
     val metadata = mapOf(CREATED_BY to createdByTag, SETUP_ID to setup.id)
+    val metadataBlockDevice = metadata + (VM_EXTERNAL_ID to id)
 
     val name = "fraunhofer-steep-${id}"
     val imageId = cloudClient.getImageID(setup.imageName)
     val blockDeviceId = cloudClient.createBlockDevice(setup.blockDeviceSizeGb,
-        setup.blockDeviceVolumeType, imageId, true, setup.availabilityZone, metadata)
+        setup.blockDeviceVolumeType, imageId, true, setup.availabilityZone,
+        metadataBlockDevice)
     try {
       return cloudClient.createVM(name, setup.flavor, blockDeviceId,
           setup.availabilityZone, metadata)
