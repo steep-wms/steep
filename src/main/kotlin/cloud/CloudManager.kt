@@ -42,6 +42,7 @@ import java.io.IOException
 import java.io.StringWriter
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
 import kotlin.math.min
 
@@ -139,9 +140,10 @@ class CloudManager : CoroutineVerticle() {
   private lateinit var setupSelector: SetupSelector
 
   /**
-   * The current number of seconds to wait before the next attempt to create a VM
+   * The current number of seconds to wait before the next attempt to create a
+   * VM for a given Setup ID
    */
-  private var backoffSeconds = 0
+  private var backoffSeconds = mutableMapOf<String, AtomicInteger>()
 
   /**
    * The maximum time the cloud manager should try to log in to a new VM via SSH
@@ -527,9 +529,10 @@ class CloudManager : CoroutineVerticle() {
         try {
           log.info("Creating virtual machine ${vm.id} with setup `${setup.id}' ...")
 
-          if (backoffSeconds > 10) {
-            log.info("Backing off for $backoffSeconds seconds due to too many failed attempts.")
-            delay(backoffSeconds * 1000L)
+          val backoff = backoffSeconds.computeIfAbsent(setup.id) { AtomicInteger() }
+          if (backoff.get() > 10) {
+            log.info("Backing off for ${backoff.get()} seconds due to too many failed attempts.")
+            delay(backoff.get() * 1000L)
           }
 
           try {
@@ -571,12 +574,12 @@ class CloudManager : CoroutineVerticle() {
 
             vmRegistry.setVMStatus(vm.id, VM.Status.PROVISIONING, VM.Status.RUNNING)
             vmRegistry.setVMAgentJoinTime(vm.id, Instant.now())
-            backoffSeconds = 0
+            backoff.set(0)
           } catch (t: Throwable) {
             vmRegistry.forceSetVMStatus(vm.id, VM.Status.ERROR)
             vmRegistry.setVMReason(vm.id, t.message ?: "Unknown error")
             vmRegistry.setVMDestructionTime(vm.id, Instant.now())
-            backoffSeconds = min(MAX_BACKOFF_SECONDS, max(backoffSeconds * 2, 2))
+            backoff.getAndUpdate { s -> min(MAX_BACKOFF_SECONDS, max(s * 2, 2)) }
             throw t
           }
         } finally {
