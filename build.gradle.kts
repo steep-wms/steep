@@ -15,7 +15,7 @@ buildscript {
 }
 
 group = "de.fhg.igd"
-version = "6.1.2"
+version = "6.1.3-SNAPSHOT"
 
 val vertxVersion by extra("4.3.0")
 val prometheusClientVersion by extra("0.15.0")
