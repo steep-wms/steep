@@ -37,6 +37,7 @@ import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.CancellationException
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Steep's main API entry point
@@ -56,6 +57,7 @@ class Steep : CoroutineVerticle() {
   private lateinit var remoteAgentRegistry: RemoteAgentRegistry
   private lateinit var capabilities: Set<String>
   private var busy: BusyMarker? = null
+  private val isExecuting = AtomicBoolean(false)
   private lateinit var busyTimeout: Duration
   private var lastProcessChainSequence = -1L
   private lateinit var autoShutdownTimeout: Duration
@@ -331,6 +333,10 @@ class Steep : CoroutineVerticle() {
    * Returns `true` if the agent is busy
    */
   private fun isBusy(): Boolean {
+    if (isExecuting.get()) {
+      // a process chain is currently being executed
+      return true
+    }
     val timedOut = busy?.timestamp?.isBefore(Instant.now().minus(busyTimeout)) ?: return false
     if (timedOut) {
       markBusy(null)
@@ -548,6 +554,7 @@ class Steep : CoroutineVerticle() {
 
       // run the local agent and return its results
       launch {
+        isExecuting.set(true)
         try {
           log.info("Executing process chain ${processChain.id} ...")
           val answer = executeProcessChain(processChain)
@@ -577,6 +584,7 @@ class Steep : CoroutineVerticle() {
         } finally {
           lastExecuteTime = Instant.now()
           vertx.cancelTimer(busyTimer)
+          isExecuting.set(false)
         }
       }
 
