@@ -86,6 +86,11 @@ class CloudManager : CoroutineVerticle() {
     private const val VM_CREATION_LOCK_PREFIX = "CloudManager.VMs.CreationLock."
 
     /**
+     * Name of a cluster-wide lock used to run [sync] only once at the same time
+     */
+    private const val LOCK_SYNC = "CloudManager.Sync.Lock"
+
+    /**
      * The maximum number of seconds to backoff between failed attempts to
      * create a VM
      */
@@ -290,127 +295,139 @@ class CloudManager : CoroutineVerticle() {
    * Synchronize the VM registry with the Cloud
    */
   private suspend fun sync(cleanupOnly: Boolean = false) {
-    log.trace("Syncing VMs ...")
-
-    // destroy all virtual machines whose agents have left
-    val vmsToRemove = vmRegistry.findVMs(VM.Status.LEFT)
-    for (vm in vmsToRemove) {
-      log.info("Destroying VM of left agent `${vm.id}' ...")
-      vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYING)
-      if (vm.externalId != null) {
-        cloudClient.destroyVM(vm.externalId, timeoutDestroyVM)
-      }
-      vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYED)
-      vmRegistry.setVMReason(vm.id, "Agent has left the cluster")
-      vmRegistry.setVMDestructionTime(vm.id, Instant.now())
+    val syncLock = try {
+      vertx.sharedData().getLockWithTimeout(LOCK_SYNC, 5000).await()
+    } catch (t: Throwable) {
+      // Someone else in the cluster is current syncing. No need to do it twice
+      log.trace("Another instance is already syncing VMs")
+      return
     }
 
-    // destroy orphaned VMs:
-    // - VMs that we created before but that are not in our registry
-    // - VMs that we created but that do not have an agent and won't get one
-    val existingVMs = cloudClient.listVMs { createdByTag == it[CREATED_BY] }
-    val deleteDeferreds = mutableListOf<Deferred<String>>()
-    for (externalId in existingVMs) {
-      val id = vmRegistry.findVMByExternalId(externalId)?.id
-      val shouldDelete = if (id == null) {
-        // we don't know this VM
-        true
-      } else {
-        val lock = tryLockVM(id)
-        if (lock == null) {
-          // someone else is currently creating the VM
+    try {
+      log.trace("Syncing VMs ...")
+
+      // destroy all virtual machines whose agents have left
+      val vmsToRemove = vmRegistry.findVMs(VM.Status.LEFT)
+      for (vm in vmsToRemove) {
+        log.info("Destroying VM of left agent `${vm.id}' ...")
+        vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYING)
+        if (vm.externalId != null) {
+          cloudClient.destroyVM(vm.externalId, timeoutDestroyVM)
+        }
+        vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYED)
+        vmRegistry.setVMReason(vm.id, "Agent has left the cluster")
+        vmRegistry.setVMDestructionTime(vm.id, Instant.now())
+      }
+
+      // destroy orphaned VMs:
+      // - VMs that we created before but that are not in our registry
+      // - VMs that we created but that do not have an agent and won't get one
+      val existingVMs = cloudClient.listVMs { createdByTag == it[CREATED_BY] }
+      val deleteDeferreds = mutableListOf<Deferred<String>>()
+      for (externalId in existingVMs) {
+        val id = vmRegistry.findVMByExternalId(externalId)?.id
+        val shouldDelete = if (id == null) {
+          // we don't know this VM
+          true
+        } else {
+          val lock = tryLockVM(id)
+          if (lock == null) {
+            // someone else is currently creating the VM
+            false
+          } else {
+            lock.release()
+
+            // No one is currently creating the VM. Delete it if there is no
+            // corresponding agent.
+            !agentRegistry.getAgentIds().contains(id)
+          }
+        }
+
+        if (shouldDelete) {
+          val active = try {
+            cloudClient.isVMActive(externalId)
+          } catch (e: NoSuchElementException) {
+            false
+          }
+          if (active) {
+            deleteDeferreds.add(async {
+              log.info("Found orphaned VM `$externalId' ...")
+              cloudClient.destroyVM(externalId, timeoutDestroyVM)
+              if (id != null) {
+                vmRegistry.forceSetVMStatus(id, VM.Status.DESTROYED)
+                vmRegistry.setVMReason(id, "VM was orphaned")
+                vmRegistry.setVMDestructionTime(id, Instant.now())
+              }
+              externalId
+            })
+          }
+        }
+      }
+      val deletedVMs = deleteDeferreds.awaitAll()
+      val remainingVMs = existingVMs.toSet() - deletedVMs
+
+      // update status of VMs that don't exist anymore
+      val nonTerminatedVMs = vmRegistry.findNonTerminatedVMs()
+      for (nonTerminatedVM in nonTerminatedVMs) {
+        val lock = tryLockVM(nonTerminatedVM.id)
+        val shouldUpdateStatus = if (lock == null) {
+          // someone is currently creating the VM
           false
         } else {
+          // no one is currently creating the VM
           lock.release()
 
-          // No one is currently creating the VM. Delete it if there is no
-          // corresponding agent.
-          !agentRegistry.getAgentIds().contains(id)
+          if (nonTerminatedVM.externalId != null) {
+            // Entry has an external ID. Check if there is a corresponding VM.
+            !existingVMs.contains(nonTerminatedVM.externalId)
+          } else {
+            // Entry has no external ID. It's an orphan.
+            true
+          }
+        }
+
+        if (shouldUpdateStatus) {
+          log.info("Setting status of deleted VM `${nonTerminatedVM.id}' to DESTROYED")
+          vmRegistry.forceSetVMStatus(nonTerminatedVM.id, VM.Status.DESTROYED)
+          vmRegistry.setVMReason(nonTerminatedVM.id, "VM did not exist anymore")
         }
       }
 
-      if (shouldDelete) {
-        val active = try {
-          cloudClient.isVMActive(externalId)
-        } catch (e: NoSuchElementException) {
-          false
+      // delete block devices that are not attached to a VM (anymore) and whose
+      // external VM ID is unknown
+      val unattachedBlockDevices = cloudClient.listAvailableBlockDevices list@{ bd ->
+        if (createdByTag != bd[CREATED_BY]) {
+          // this is not our block device
+          return@list false
         }
-        if (active) {
-          deleteDeferreds.add(async {
-            log.info("Found orphaned VM `$externalId' ...")
-            cloudClient.destroyVM(externalId, timeoutDestroyVM)
-            if (id != null) {
-              vmRegistry.forceSetVMStatus(id, VM.Status.DESTROYED)
-              vmRegistry.setVMReason(id, "VM was orphaned")
-              vmRegistry.setVMDestructionTime(id, Instant.now())
-            }
-            externalId
-          })
+
+        val externalId = bd[VM_EXTERNAL_ID]
+        if (externalId != null) {
+          val lock = tryLockVM(externalId) ?:
+              // someone is currently creating the VM to which the block
+              // device will be attached
+              return@list false
+          lock.release()
         }
+
+        externalId == null || !remainingVMs.contains(externalId)
       }
-    }
-    val deletedVMs = deleteDeferreds.awaitAll()
-    val remainingVMs = existingVMs.toSet() - deletedVMs
 
-    // update status of VMs that don't exist anymore
-    val nonTerminatedVMs = vmRegistry.findNonTerminatedVMs()
-    for (nonTerminatedVM in nonTerminatedVMs) {
-      val lock = tryLockVM(nonTerminatedVM.id)
-      val shouldUpdateStatus = if (lock == null) {
-        // someone is currently creating the VM
-        false
-      } else {
-        // no one is currently creating the VM
-        lock.release()
+      unattachedBlockDevices.map { volumeId ->
+        async {
+          log.info("Deleting unattached volume `$volumeId' ...")
+          cloudClient.destroyBlockDevice(volumeId)
+        }
+      }.awaitAll()
 
-        if (nonTerminatedVM.externalId != null) {
-          // Entry has an external ID. Check if there is a corresponding VM.
-          !existingVMs.contains(nonTerminatedVM.externalId)
-        } else {
-          // Entry has no external ID. It's an orphan.
-          true
+      if (!cleanupOnly) {
+        // ensure there's a minimum number of VMs
+        launch {
+          createRemoteAgent { setupSelector.selectMinimum(setups) }
         }
       }
-
-      if (shouldUpdateStatus) {
-        log.info("Setting status of deleted VM `${nonTerminatedVM.id}' to DESTROYED")
-        vmRegistry.forceSetVMStatus(nonTerminatedVM.id, VM.Status.DESTROYED)
-        vmRegistry.setVMReason(nonTerminatedVM.id, "VM did not exist anymore")
-      }
-    }
-
-    // delete block devices that are not attached to a VM (anymore) and whose
-    // external VM ID is unknown
-    val unattachedBlockDevices = cloudClient.listAvailableBlockDevices list@{ bd ->
-      if (createdByTag != bd[CREATED_BY]) {
-        // this is not our block device
-        return@list false
-      }
-
-      val externalId = bd[VM_EXTERNAL_ID]
-      if (externalId != null) {
-        val lock = tryLockVM(externalId) ?:
-            // someone is currently creating the VM to which the block
-            // device will be attached
-            return@list false
-        lock.release()
-      }
-
-      externalId == null || !remainingVMs.contains(externalId)
-    }
-
-    unattachedBlockDevices.map { volumeId ->
-      async {
-        log.info("Deleting unattached volume `$volumeId' ...")
-        cloudClient.destroyBlockDevice(volumeId)
-      }
-    }.awaitAll()
-
-    if (!cleanupOnly) {
-      // ensure there's a minimum number of VMs
-      launch {
-        createRemoteAgent { setupSelector.selectMinimum(setups) }
-      }
+    } finally {
+      syncLock.release()
     }
   }
 
