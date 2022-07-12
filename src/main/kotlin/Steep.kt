@@ -38,6 +38,7 @@ import java.time.Instant
 import java.util.concurrent.CancellationException
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.time.toKotlinDuration
 
 /**
  * Steep's main API entry point
@@ -105,8 +106,13 @@ class Steep : CoroutineVerticle() {
     }
 
     // setup automatic shutdown
-    if (autoShutdownTimeout.toMinutes() > 0) {
-      vertx.setPeriodic(1000L * 30L) { checkAutoShutdown() }
+    if (autoShutdownTimeout.toMillis() > 0) {
+      val interval = if (autoShutdownTimeout.toMinutes() > 0) {
+        1000L * 30L
+      } else {
+        5000L
+      }
+      vertx.setPeriodic(interval) { checkAutoShutdown() }
     }
 
     if (capabilities.isEmpty()) {
@@ -128,8 +134,8 @@ class Steep : CoroutineVerticle() {
    */
   private fun checkAutoShutdown() {
     if (!isBusy() && lastExecuteTime.isBefore(Instant.now().minus(autoShutdownTimeout))) {
-      log.info("Agent has been idle for more than ${autoShutdownTimeout.toMinutes()} " +
-          "minutes. Shutting down ...")
+      log.info("Agent has been idle for more than ${autoShutdownTimeout.toKotlinDuration()}. " +
+          "Shutting down ...")
       vertx.close()
     }
   }
