@@ -27,7 +27,9 @@ import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.dispatcher
 import io.vertx.kotlin.coroutines.toReceiveChannel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -136,7 +138,14 @@ class Steep : CoroutineVerticle() {
 
   override suspend fun stop() {
     log.info("Stopping remote agent $agentId ...")
-    remoteAgentRegistry.deregister(agentId)
+
+    // deregister the agent now - do this in the global context because the
+    // method asynchronously publishes a message to the eventbus and the
+    // context of this verticle might have already been closed before the
+    // message could be sent.
+    CoroutineScope(vertx.dispatcher()).launch {
+      remoteAgentRegistry.deregister(agentId)
+    }
   }
 
   /**
