@@ -138,6 +138,7 @@ class Steep : CoroutineVerticle() {
 
   override suspend fun stop() {
     log.info("Stopping remote agent $agentId ...")
+    ALL_LOCAL_AGENT_IDS.remove(agentId)
 
     // deregister the agent now - do this in the global context because the
     // method asynchronously publishes a message to the eventbus and the
