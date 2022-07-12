@@ -499,6 +499,12 @@ class CloudManager : CoroutineVerticle() {
   internal suspend fun createRemoteAgent(n: Long, requiredCapabilities: Collection<String>) {
     var remaining = n
     val goodSetups = setups.toMutableList()
+
+    // Sort setups by backoff, put those with a longer backoff at the end, i.e.
+    // prefer those with a short one. These are the ones that are likely to
+    // succeed.
+    goodSetups.sortBy { backoffSeconds[it.id]?.get() ?: 0 }
+
     while (remaining > 0 && goodSetups.isNotEmpty()) {
       val result = createRemoteAgent { setupSelector.select(remaining, requiredCapabilities, goodSetups) }
 
