@@ -13,6 +13,7 @@ import helper.Shell
 import helper.toDuration
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.Message
+import io.vertx.core.impl.ConcurrentHashSet
 import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -22,6 +23,7 @@ import io.vertx.kotlin.core.file.openOptionsOf
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
@@ -38,6 +40,8 @@ import java.time.Instant
 import java.util.concurrent.CancellationException
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.concurrent.thread
+import kotlin.system.exitProcess
 import kotlin.time.toKotlinDuration
 
 /**
@@ -47,6 +51,7 @@ import kotlin.time.toKotlinDuration
 class Steep : CoroutineVerticle() {
   companion object {
     private val log = LoggerFactory.getLogger(Steep::class.java)
+    private val ALL_LOCAL_AGENT_IDS = ConcurrentHashSet<String>()
   }
 
   private data class BusyMarker(val timestamp: Instant,
@@ -105,14 +110,20 @@ class Steep : CoroutineVerticle() {
           this::onProcessChainLogs)
     }
 
+    ALL_LOCAL_AGENT_IDS.add(agentId)
+
     // setup automatic shutdown
-    if (autoShutdownTimeout.toMillis() > 0) {
+    if (isPrimary && autoShutdownTimeout.toMillis() > 0) {
       val interval = if (autoShutdownTimeout.toMinutes() > 0) {
         1000L * 30L
       } else {
         5000L
       }
-      vertx.setPeriodic(interval) { checkAutoShutdown() }
+      vertx.setPeriodic(interval) {
+        launch {
+          checkAllAutoShutdown()
+        }
+      }
     }
 
     if (capabilities.isEmpty()) {
@@ -129,15 +140,42 @@ class Steep : CoroutineVerticle() {
   }
 
   /**
-   * Checks if the agent has been idle for more than [autoShutdownTimeout]
-   * minutes and, if so, shuts down the Vert.x instance.
+   * Check if all local agents have been idle for more than [autoShutdownTimeout]
+   * and, if so, shut down the process.
    */
-  private fun checkAutoShutdown() {
-    if (!isBusy() && lastExecuteTime.isBefore(Instant.now().minus(autoShutdownTimeout))) {
-      log.info("Agent has been idle for more than ${autoShutdownTimeout.toKotlinDuration()}. " +
-          "Shutting down ...")
-      vertx.close()
+  private suspend fun checkAllAutoShutdown() {
+    val allAgentsCanShutdown = ALL_LOCAL_AGENT_IDS.all { id ->
+      if (id == agentId) {
+        canAutoShutdown()
+      } else {
+        vertx.eventBus().request<Boolean>(REMOTE_AGENT_ADDRESS_PREFIX + id, jsonObjectOf(
+            "action" to "canAutoShutdown"
+        ), deliveryOptionsOf(localOnly = true)).await().body()
+      }
     }
+    if (allAgentsCanShutdown) {
+      log.info("All local agents have been idle for more than " +
+          "${autoShutdownTimeout.toKotlinDuration()}. Shutting down ...")
+
+      // Use `exitProcess` instead of `vertx.close()` so all shutdown hooks
+      // can be executed. Run it in a background thread to allow this verticle
+      // to be undeployed.
+      thread { exitProcess(0) }
+    }
+  }
+
+  /**
+   * Check if the agent has been idle for more than [autoShutdownTimeout]
+   */
+  private fun canAutoShutdown(): Boolean {
+    return !isBusy() && lastExecuteTime.isBefore(Instant.now().minus(autoShutdownTimeout))
+  }
+
+  /**
+   * Check if the agent has been idle for more than [autoShutdownTimeout]
+   */
+  private fun onCanAutoShutdown(msg: Message<JsonObject>) {
+    msg.reply(canAutoShutdown())
   }
 
   /**
@@ -153,6 +191,7 @@ class Steep : CoroutineVerticle() {
         "allocate" -> onAgentAllocate(msg)
         "deallocate" -> onAgentDeallocate(msg)
         "process" -> onProcessChain(msg)
+        "canAutoShutdown" -> onCanAutoShutdown(msg)
         else -> throw NoStackTraceThrowable("Unknown action `$action'")
       }
     } catch (e: Throwable) {
