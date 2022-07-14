@@ -33,6 +33,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import model.processchain.ProcessChain
 import org.slf4j.LoggerFactory
 import java.time.Instant
@@ -78,7 +80,7 @@ class Scheduler : CoroutineVerticle() {
   /**
    * IDs of all process chains we are currently executing
    */
-  private val runningProcessChainIds = mutableSetOf<String>()
+  private val runningProcessChainIds = RunningProcessChainsSet()
 
   /**
    * A cluster-wide map keeping IDs of [Scheduler] instances
@@ -151,7 +153,9 @@ class Scheduler : CoroutineVerticle() {
     val addressRunningProcessChains =
         "$SCHEDULER_PREFIX$agentId$SCHEDULER_RUNNING_PROCESS_CHAINS_SUFFIX"
     vertx.eventBus().consumer<Any?>(addressRunningProcessChains) { msg ->
-      msg.reply(JsonArray(runningProcessChainIds.toList()))
+      launch {
+        msg.reply(JsonArray(runningProcessChainIds.getAll()))
+      }
     }
 
     if (lookupOrphansInitialDelay > 0) {
@@ -327,9 +331,16 @@ class Scheduler : CoroutineVerticle() {
       val arci = allRequiredCapabilities.indexOfFirst { it.requiredCapabilities == requiredCapabilities }
       val minPriority = if (arci >= 0) allRequiredCapabilities[arci].minPriority else null
 
-      // get next registered process chain for the given set of required capabilities
-      val (processChain, isProcessChainResumed) = fetchNextProcessChain(address,
-          requiredCapabilities, minPriority)
+      // Get next registered process chain for the given set of required capabilities.
+      // Fetching the process chain and adding it to 'runningProcessChainIds' must
+      // happen atomically. Otherwise, the process chain will be marked as RUNNING
+      // for a short time while no scheduler is executing it yet and a concurrent
+      // call to `lookupOrphans` (in this exact period of time) will consider
+      // the process chain orphaned and schedule it twice.
+      val (processChain, isProcessChainResumed) = runningProcessChainIds.compute {
+        val r = fetchNextProcessChain(address, requiredCapabilities, minPriority)
+        r.first?.id to r
+      }
       if (processChain == null) {
         // We didn't find a process chain for these required capabilities.
         // Remove them from the list of known ones.
@@ -354,12 +365,12 @@ class Scheduler : CoroutineVerticle() {
         submissionRegistry.setProcessChainStatus(processChain.id, REGISTERED)
 
         // continue with the next capability set and candidate
+        runningProcessChainIds.remove(processChain.id)
         continue
       }
 
       log.info("Assigned process chain `${processChain.id}' to agent `${agent.id}'")
       allocatedProcessChains++
-      runningProcessChainIds.add(processChain.id)
 
       // update number of remaining process chains for this required capability set
       if (arci >= 0) {
@@ -480,7 +491,7 @@ class Scheduler : CoroutineVerticle() {
 
       // ask all scheduler instances which process chains they are currently executing
       val allRunningProcessChains = mutableSetOf<String>()
-      allRunningProcessChains.addAll(runningProcessChainIds) // always consider our own process chains
+      allRunningProcessChains.addAll(runningProcessChainIds.getAll()) // always consider our own process chains
       val keysPromise = Promise.promise<Set<String>>()
       schedulers.keys(keysPromise)
       for (scheduler in keysPromise.future().await()) {
@@ -566,6 +577,42 @@ class Scheduler : CoroutineVerticle() {
       // next lookup and then try again. We should only resume process chains
       // if everything runs through without any problems.
       log.error("Failed to resume orphaned process chains", t)
+    }
+  }
+
+  /**
+   * A small wrapper around [MutableSet] that provides atomic compute, remove
+   * and getAll operations. This is necessary because fetching a process
+   * chain from the registry and adding it to [runningProcessChainIds] must
+   * happen atomically so that no concurrent call to [lookupOrphans] considers
+   * the process chain orphaned just because it's marked as RUNNING in the
+   * registry but has not been added to the set yet.
+   */
+  private class RunningProcessChainsSet {
+    private val set = mutableSetOf<String>()
+    private val mutex = Mutex()
+
+    suspend fun <T> compute(block: suspend () -> Pair<String?, T>): T {
+      return mutex.withLock {
+        val r = block()
+        val id = r.first
+        if (id != null) {
+          set.add(id)
+        }
+        r.second
+      }
+    }
+
+    suspend fun getAll(): List<String> {
+      return mutex.withLock {
+        set.toList()
+      }
+    }
+
+    suspend fun remove(id: String) {
+      mutex.withLock {
+        set.remove(id)
+      }
     }
   }
 }

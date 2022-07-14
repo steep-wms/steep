@@ -99,7 +99,8 @@ class SchedulerTest {
    */
   private fun testSimple(processChains: List<ProcessChain>, nAgents: Int, vertx: Vertx,
       ctx: VertxTestContext, verify: ((List<String>) -> Unit)? = null,
-      onExecute: (suspend (String, List<String>) -> Unit)? = null) {
+      onExecute: (suspend (String, List<String>) -> Unit)? = null,
+      onAfterFetchNextProcessChain: (suspend () -> Unit)? = null) {
     val allPcs = processChains.toMutableList()
     val remainingPcs = processChains.toMutableList()
     val executedPcIds = mutableListOf<String>()
@@ -125,6 +126,7 @@ class SchedulerTest {
     }
 
     val availableAgents = allAgents.toMutableList()
+    val assignedAgents = mutableMapOf<String, String>()
     for (agent in allAgents) {
       val pcSlot = slot<ProcessChain>()
       coEvery { agent.execute(capture(pcSlot)) } coAnswers {
@@ -143,25 +145,35 @@ class SchedulerTest {
           compareBy<SelectCandidatesParam> { it.maxPriority }
               .thenBy { it.count })
       if (best != null && availableAgents.isNotEmpty()) {
-        listOf(best.requiredCapabilities to availableAgents.first().id)
+        listOf(best.requiredCapabilities to
+            "${AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX}${availableAgents.first().id}")
       } else {
         emptyList()
       }
     }
 
     val slotAgentAddress = slot<String>()
-    coEvery { agentRegistry.tryAllocate(capture(slotAgentAddress), any()) } answers {
-      val agent = availableAgents.find { it.id == slotAgentAddress.captured }
+    val slotAllocatedProcessChainId = slot<String>()
+    coEvery { agentRegistry.tryAllocate(capture(slotAgentAddress),
+        capture(slotAllocatedProcessChainId)) } answers {
+      val capturedAgentId = slotAgentAddress.captured.removePrefix(AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX)
+      val agent = availableAgents.find { it.id == capturedAgentId }
       if (agent != null) {
         availableAgents.remove(agent)
+        assignedAgents[agent.id] = slotAllocatedProcessChainId.captured
+        agent
+      } else if (assignedAgents[capturedAgentId] == slotAllocatedProcessChainId.captured) {
+        allAgents.find { it.id == capturedAgentId }
+      } else {
+        null
       }
-      agent
     }
 
     val slotAgent = slot<Agent>()
     coEvery { agentRegistry.deallocate(capture(slotAgent)) } answers {
       // put back agent
       availableAgents.add(slotAgent.captured)
+      assignedAgents.remove(slotAgent.captured.id)
     }
 
     val registerMocksForPc = { pc: ProcessChain ->
@@ -228,7 +240,7 @@ class SchedulerTest {
     val slotFetchNextRcs = slot<Collection<String>>()
     val slotFetchMinPriority = slot<Int>()
     coEvery { submissionRegistry.fetchNextProcessChain(REGISTERED, RUNNING,
-        capture(slotFetchNextRcs), capture(slotFetchMinPriority)) } answers {
+        capture(slotFetchNextRcs), capture(slotFetchMinPriority)) } coAnswers {
       val r = remainingPcs.filter {
         it.requiredCapabilities == slotFetchNextRcs.captured &&
             it.priority >= slotFetchMinPriority.captured
@@ -236,6 +248,7 @@ class SchedulerTest {
       if (r != null) {
         remainingPcs.remove(r)
       }
+      onAfterFetchNextProcessChain?.invoke()
       r
     }
     coEvery { submissionRegistry.existsProcessChain(REGISTERED, any()) } answers {
@@ -358,9 +371,10 @@ class SchedulerTest {
     val pc = ProcessChain()
     every { agent.id } returns agentId
     coEvery { agent.execute(any()) } throws Exception(message)
-    coEvery { agentRegistry.tryAllocate(agentId, pc.id) } returns agent andThen null
-    coEvery { agentRegistry.selectCandidates(any()) } returns
-        listOf(Pair(emptySet(), agentId)) andThen emptyList()
+    coEvery { agentRegistry.tryAllocate("${AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX}$agentId",
+        pc.id) } returns agent andThen null
+    coEvery { agentRegistry.selectCandidates(any()) } returns listOf(Pair(emptySet(),
+        "${AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX}$agentId")) andThen emptyList()
 
     // mock submission registry
     coEvery { submissionRegistry.setProcessChainStatus(pc.id, ERROR) } just Runs
@@ -494,5 +508,58 @@ class SchedulerTest {
 
       vertx.eventBus().publish(AddressConstants.SCHEDULER_LOOKUP_ORPHANS_NOW, null)
     }
+  }
+
+  /**
+   * Test that, if we call `lookupOrphans` while a lookup operation is running,
+   * no process chain is scheduled twice
+   */
+  @Test
+  fun concurrentLookupAndOrphanLookup(vertx: Vertx, ctx: VertxTestContext) {
+    val pc = ProcessChain()
+
+    val mockAgentId = "Mock agent 1"
+    val agentAddress = "${AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX}$mockAgentId"
+
+    testSimple(listOf(pc), 1, vertx, ctx, onAfterFetchNextProcessChain = {
+      // pretend that the process chain is now running
+      coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING) } returns listOf(pc.id)
+      coEvery { submissionRegistry.findProcessChainById(pc.id) } returns pc
+
+      // mock agent and pretend that it is executing the process chain
+      coEvery { agentRegistry.getAgentIds() } returns setOf(mockAgentId)
+      vertx.eventBus().consumer<JsonObject>(agentAddress) { msg ->
+        ctx.verify {
+          assertThat(msg.body().getString("action")).isEqualTo("info")
+        }
+
+        // If we get here, it means that lookupOrphans has actually found
+        // our process chain and considers it an orphan!! This should not happen!
+        // The scheduler has just fetched it from the database and did not have
+        // a chance yet to schedule it.
+        ctx.failNow("Process chain is considered an orphan!")
+
+        msg.reply(json {
+          obj(
+              "id" to mockAgentId,
+              "processChainId" to pc.id
+          )
+        })
+      }
+
+      // force lookup for orphans now
+      vertx.eventBus().publish(AddressConstants.SCHEDULER_LOOKUP_ORPHANS_NOW, null)
+
+      // lookupOrphans should definitely be executed before fetchNextProcessChain returns
+      delay(1000)
+    }, verify = {
+      coVerify(exactly = 1) {
+        // The process chain should have been allocated only once!
+        // (Actually, the following line should never throw. If you get an
+        // error here, it means the unit test is broken. The `ctx.fail()` call
+        // in the consumer above should have already stopped the test!)
+        agentRegistry.tryAllocate(agentAddress, pc.id)
+      }
+    })
   }
 }
