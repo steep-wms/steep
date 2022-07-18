@@ -2,7 +2,6 @@ package runtime
 
 import ConfigConstants
 import helper.DefaultOutputCollector
-import helper.JsonUtils
 import helper.Shell
 import helper.UniqueID
 import io.vertx.core.Vertx
@@ -277,11 +276,11 @@ class DockerRuntimeTest {
   /**
    * Get all running docker containers
    */
-  private fun getContainers(): List<Map<String, Any>> {
+  private fun getContainerNames(): List<String> {
     val outputCollector = DefaultOutputCollector()
-    Shell.execute(listOf("docker", "container", "ls", "--format={{json .}}"),
+    Shell.execute(listOf("docker", "container", "ls", "--format={{.Names}}"),
         outputCollector)
-    return outputCollector.lines().map { JsonUtils.readValue(it) }
+    return outputCollector.lines()
   }
 
   /**
@@ -312,9 +311,8 @@ class DockerRuntimeTest {
     CoroutineScope(vertx.dispatcher()).launch {
       // wait until the container is there
       while (true) {
-        val containers = getContainers()
-        val sleepContainer = containers.any { container ->
-          container["Names"]?.toString()?.startsWith("steep-${exec.id}-sleep") ?: false }
+        val containers = getContainerNames()
+        val sleepContainer = containers.any { it.startsWith("steep-${exec.id}-sleep") }
         if (sleepContainer) {
           break
         }
@@ -326,9 +324,8 @@ class DockerRuntimeTest {
 
       // wait for the container to disappear
       while (true) {
-        val containers = getContainers()
-        val sleepContainerGone = containers.none { container ->
-          container["Names"]?.toString()?.startsWith("steep-${exec.id}-sleep") ?: false }
+        val containers = getContainerNames()
+        val sleepContainerGone = containers.none { it.startsWith("steep-${exec.id}-sleep") }
         if (sleepContainerGone) {
           break
         }
@@ -374,9 +371,8 @@ class DockerRuntimeTest {
     CoroutineScope(vertx.dispatcher()).launch {
       // wait until the container is there
       while (true) {
-        val containers = getContainers()
-        val sleepContainer = containers.any { container ->
-          container["Names"]?.toString()?.equals(containerName) ?: false }
+        val containers = getContainerNames()
+        val sleepContainer = containers.any { it == containerName }
         if (sleepContainer) {
           break
         }
@@ -388,9 +384,8 @@ class DockerRuntimeTest {
 
       // wait for the container to disappear
       while (true) {
-        val containers = getContainers()
-        val sleepContainerGone = containers.none { container ->
-          container["Names"]?.toString()?.equals(containerName) ?: false }
+        val containers = getContainerNames()
+        val sleepContainerGone = containers.none { it == containerName }
         if (sleepContainerGone) {
           break
         }
