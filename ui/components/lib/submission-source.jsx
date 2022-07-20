@@ -29,8 +29,15 @@ function submissionToSource(submission) {
     }
   }
 
+  let parsedYaml
+  try {
+    parsedYaml = yaml.load(submission.source)
+  } catch (e) {
+    parsedYaml = submission.workflow
+  }
+
   return {
-    json: yaml.load(submission.source),
+    json: parsedYaml,
     yaml: submission.source
   }
 }
