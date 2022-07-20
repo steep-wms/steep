@@ -11,6 +11,7 @@ import helper.CompressedJsonObjectMessageCodec
 import helper.JsonUtils
 import helper.Shell
 import helper.toDuration
+import helper.withRetry
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.Message
 import io.vertx.core.impl.ConcurrentHashSet
@@ -33,9 +34,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.processchain.ProcessChain
+import model.retry.RetryPolicy
 import org.slf4j.LoggerFactory
 import java.nio.file.NoSuchFileException
 import java.nio.file.Paths
@@ -623,19 +624,17 @@ class Steep : CoroutineVerticle() {
           // send answer to all reply addresses (in parallel)
           replyAddresses.map { address ->
             async {
-              for (tries in 4 downTo 0) {
+              withRetry(RetryPolicy(5, delay = 1000L, exponentialBackoff = 2)) {
                 try {
                   log.info("Sending results of process chain ${processChain.id} " +
                       "to $address ...")
                   vertx.eventBus().request<Any>(address, answer, deliveryOptionsOf(
                       codecName = CompressedJsonObjectMessageCodec.NAME
                   )).await()
-                  break
                 } catch (t: Throwable) {
                   log.error("Error sending results of process chain " +
-                      "${processChain.id} to peer. Waiting 1 second. " +
-                      "$tries retries remaining.", t)
-                  delay(1000)
+                      "${processChain.id} to $address")
+                  throw t
                 }
               }
             }
