@@ -1,3 +1,5 @@
+import AddressConstants.CLUSTER_LIFECYCLE_MERGED
+import AddressConstants.CLUSTER_NODE_LEFT
 import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import AddressConstants.REMOTE_AGENT_BUSY
 import AddressConstants.REMOTE_AGENT_IDLE
@@ -10,6 +12,7 @@ import db.SubmissionRegistry
 import helper.CompressedJsonObjectMessageCodec
 import helper.JsonUtils
 import helper.Shell
+import helper.debounce
 import helper.toDuration
 import helper.withRetry
 import io.vertx.core.buffer.Buffer
@@ -108,6 +111,22 @@ class Steep : CoroutineVerticle() {
         JsonArray()).map { it as String }.toSet()
     remoteAgentRegistry = RemoteAgentRegistry(vertx)
     remoteAgentRegistry.register(agentId)
+
+    // safeguard to make sure we're always in the agent registry even if data
+    // in the cluster is lost
+    val reregister = debounce(vertx) {
+      remoteAgentRegistry.register(agentId)
+    }
+    vertx.eventBus().localConsumer<String>(CLUSTER_NODE_LEFT) {
+      launch {
+        reregister()
+      }
+    }
+    vertx.eventBus().localConsumer<Unit>(CLUSTER_LIFECYCLE_MERGED) {
+      launch {
+        reregister()
+      }
+    }
 
     // register consumer to provide process chain logs if we are the primary agent
     if (isPrimary) {

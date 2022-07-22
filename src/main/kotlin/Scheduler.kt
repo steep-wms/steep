@@ -1,3 +1,4 @@
+import AddressConstants.CLUSTER_LIFECYCLE_MERGED
 import AddressConstants.CLUSTER_NODE_LEFT
 import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import AddressConstants.REMOTE_AGENT_MISSING
@@ -19,6 +20,7 @@ import db.SubmissionRegistry.ProcessChainStatus.REGISTERED
 import db.SubmissionRegistry.ProcessChainStatus.RUNNING
 import db.SubmissionRegistry.ProcessChainStatus.SUCCESS
 import db.SubmissionRegistryFactory
+import helper.debounce
 import helper.toDuration
 import io.prometheus.client.Gauge
 import io.vertx.core.Promise
@@ -177,6 +179,12 @@ class Scheduler : CoroutineVerticle() {
     sharedData.getAsyncMap(ASYNC_MAP_NAME, schedulersPromise)
     schedulers = schedulersPromise.future().await()
 
+    val register = suspend {
+      schedulers.put(agentId, true).await()
+    }
+    val debouncedRegister = debounce(vertx) { register() }
+    val debouncedLookupOrphans = debounce(vertx) { lookupOrphans() }
+
     // unregister schedulers whose nodes have left
     vertx.eventBus().localConsumer<JsonObject>(CLUSTER_NODE_LEFT) { msg ->
       launch {
@@ -184,13 +192,25 @@ class Scheduler : CoroutineVerticle() {
         log.trace("Node `$theirAgentId' has left the cluster. Removing scheduler.")
         schedulers.remove(theirAgentId).await()
 
+        // safeguard to make sure our instance is always in the list even if
+        // data in the cluster is lost
+        debouncedRegister()
+
         // look for orphaned process chains the scheduler might have left behind
-        lookupOrphans()
+        debouncedLookupOrphans()
+      }
+    }
+
+    // safeguard to make sure our instance is always in the list even if
+    // data in the cluster is lost
+    vertx.eventBus().localConsumer<Unit>(CLUSTER_LIFECYCLE_MERGED) {
+      launch {
+        register()
       }
     }
 
     // register our own instance in the map
-    schedulers.put(agentId, true).await()
+    register()
   }
 
   /**

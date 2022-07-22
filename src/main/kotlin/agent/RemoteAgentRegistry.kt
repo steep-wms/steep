@@ -141,7 +141,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
       }
 
       // log left agents and remove them from local caches
-      vertx.eventBus().consumer<String>(REMOTE_AGENT_LEFT) { msg ->
+      vertx.eventBus().consumer(REMOTE_AGENT_LEFT) { msg ->
         log.info("Remote agent `${msg.body()}' has left.")
         reportRemoteAgents()
 
@@ -180,8 +180,10 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
    */
   suspend fun register(id: String) {
     val address = REMOTE_AGENT_ADDRESS_PREFIX + id
-    agents.await().put(id, true).await()
-    vertx.eventBus().publish(REMOTE_AGENT_ADDED, address)
+    val existing = agents.await().putIfAbsent(id, true).await()
+    if (existing == null) {
+      vertx.eventBus().publish(REMOTE_AGENT_ADDED, address)
+    }
   }
 
   /**

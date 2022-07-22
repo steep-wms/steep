@@ -5,6 +5,7 @@ import cloud.CloudManager
 import com.hazelcast.cluster.MembershipAdapter
 import com.hazelcast.cluster.MembershipEvent
 import com.hazelcast.config.PartitionGroupConfig
+import com.hazelcast.core.LifecycleEvent
 import com.hazelcast.spi.partitiongroup.PartitionGroupMetaData.PARTITION_GROUP_PLACEMENT
 import db.PluginRegistryFactory
 import db.VMRegistryFactory
@@ -22,6 +23,7 @@ import io.vertx.core.Vertx.clusteredVertx
 import io.vertx.core.VertxOptions
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.deploymentOptionsOf
+import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
@@ -203,10 +205,17 @@ suspend fun main() {
               "agentId" to memberAgentId,
               "instances" to memberInstances
           )
-        })
+        }, deliveryOptionsOf(localOnly = true))
       }
     }
   })
+
+  mgr.hazelcastInstance.lifecycleService.addLifecycleListener { lifecycleEvent ->
+    if (lifecycleEvent.state == LifecycleEvent.LifecycleState.MERGED) {
+      vertx.eventBus().publish(AddressConstants.CLUSTER_LIFECYCLE_MERGED, null,
+          deliveryOptionsOf(localOnly = true))
+    }
+  }
 
   // Look for orphaned entries in the remote agent registry from time to time.
   // Such entries may happen if there is a network failure during deregistration

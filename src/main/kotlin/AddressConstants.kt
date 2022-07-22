@@ -48,6 +48,11 @@ object AddressConstants {
   const val CLUSTER_NODE_LEFT = "steep.cluster.nodeLeft"
 
   /**
+   * Will be published when a node's data has been merged into an existing cluster
+   */
+  const val CLUSTER_LIFECYCLE_MERGED = "steep.cluster.lifecycleMerged"
+
+  /**
    * Will be published when a remote agent has been added
    */
   const val REMOTE_AGENT_ADDED = "steep.remoteAgentRegistry.agentAdded"
