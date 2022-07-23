@@ -5,6 +5,7 @@ import cloud.CloudManager
 import com.hazelcast.cluster.MembershipAdapter
 import com.hazelcast.cluster.MembershipEvent
 import com.hazelcast.config.PartitionGroupConfig
+import com.hazelcast.core.HazelcastInstance
 import com.hazelcast.core.LifecycleEvent
 import com.hazelcast.spi.partitiongroup.PartitionGroupMetaData.PARTITION_GROUP_PLACEMENT
 import db.PluginRegistryFactory
@@ -53,6 +54,7 @@ const val ATTR_AGENT_ID = "Agent-ID"
 const val ATTR_AGENT_INSTANCES = "Agent-Instances"
 
 lateinit var globalVertxInstance: io.vertx.core.Vertx
+lateinit var globalHazelcastInstance: HazelcastInstance
 
 suspend fun main() {
   // load configuration
@@ -178,6 +180,7 @@ suspend fun main() {
   // start Vert.x
   val vertx = clusteredVertx(options).await()
   globalVertxInstance = vertx
+  globalHazelcastInstance = mgr.hazelcastInstance
 
   // listen to added and left cluster nodes
   // BUGFIX: do not use mgr.nodeListener() or you will override Vert.x's

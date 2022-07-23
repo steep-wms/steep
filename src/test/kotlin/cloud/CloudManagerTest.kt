@@ -11,6 +11,8 @@ import db.VMRegistryFactory
 import helper.LazyJsonObjectMessageCodec
 import helper.UniqueID
 import helper.YamlUtils
+import helper.hazelcast.ClusterMap
+import helper.hazelcast.DummyClusterMap
 import helper.toDuration
 import io.mockk.Runs
 import io.mockk.coEvery
@@ -74,6 +76,10 @@ class CloudManagerTest {
 
   @BeforeEach
   fun setUp(vertx: Vertx) {
+    // mock hazelcast instance used by agent registry
+    mockkObject(ClusterMap)
+    every { ClusterMap.create<Any, Any>(any(), any()) } answers { DummyClusterMap(arg(0), arg(1)) }
+
     // mock cloud client
     client = mockk()
     mockkObject(CloudClientFactory)

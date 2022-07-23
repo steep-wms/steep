@@ -17,6 +17,7 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.receiveChannelHandler
+import kotlinx.coroutines.isActive
 import model.processchain.ProcessChain
 import org.slf4j.LoggerFactory
 import java.rmi.RemoteException
@@ -67,9 +68,12 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
 
     try {
       // abort when cluster node has left
-      val agentLeftConsumer = vertx.eventBus().consumer<String>(
-          AddressConstants.REMOTE_AGENT_LEFT) { agentLeftMsg ->
-        if (id == agentLeftMsg.body()) {
+      val agentLeftConsumer = vertx.eventBus().localConsumer<JsonObject>(
+          AddressConstants.CLUSTER_NODE_LEFT) { clusterNodeLeftMsg ->
+        val agentId = AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX +
+            clusterNodeLeftMsg.body().getString("agentId")
+        val mainId = id.indexOf('[').let { i -> if (i < 0) id else id.substring(0, i) }
+        if (mainId == agentId && adapter.isActive) {
           adapter.cancel(AGENT_LEFT_EXCEPTION)
         }
       }

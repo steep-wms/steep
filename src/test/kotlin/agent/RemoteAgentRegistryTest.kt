@@ -5,6 +5,11 @@ import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import agent.AgentRegistry.SelectCandidatesParam
 import coVerify
 import helper.UniqueID
+import helper.hazelcast.ClusterMap
+import helper.hazelcast.DummyClusterMap
+import io.mockk.every
+import io.mockk.mockkObject
+import io.mockk.unmockkAll
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.Message
 import io.vertx.core.impl.NoStackTraceThrowable
@@ -19,6 +24,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
@@ -32,6 +39,17 @@ class RemoteAgentRegistryTest {
    * A result of [registerAgentWithCapabilities]
    */
   private class RegisteredAgent(val address: String, var inquiryCount: Int = 0)
+
+  @BeforeEach
+  fun setUp() {
+    mockkObject(ClusterMap)
+    every { ClusterMap.create<Any, Any>(any(), any()) } answers { DummyClusterMap(arg(0), arg(1)) }
+  }
+
+  @AfterEach
+  fun tearDown() {
+    unmockkAll()
+  }
 
   /**
    * Registers a mock agent with the given [capabilities] in the given [registry].

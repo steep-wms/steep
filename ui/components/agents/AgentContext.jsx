@@ -2,9 +2,10 @@ import ListContext from "../lib/ListContext"
 import fetcher from "../lib/json-fetcher"
 
 import {
+  CLUSTER_NODE_LEFT,
   AGENT_ADDRESS_PREFIX,
   AGENT_ADDED,
-  AGENT_LEFT,
+  AGENT_LEAVING,
   AGENT_BUSY,
   AGENT_IDLE
 } from "../../components/lib/EventBusMessages"
@@ -17,8 +18,23 @@ const ADD_MESSAGES = {
 }
 
 const UPDATE_MESSAGES = {
-  [AGENT_LEFT]: (body) => ({
-    id: body.substring(AGENT_ADDRESS_PREFIX.length),
+  [CLUSTER_NODE_LEFT]: (body) => {
+    let agentId = body.agentId
+    let instances = body.instances || 1
+    let r = []
+    for (let i = 1; i <= instances; ++i) {
+      let id = i === 1 ? agentId : `${agentId}[${i}]`
+      r.push({
+        id,
+        left: true,
+        processChainId: undefined,
+        stateChangedTime: new Date()
+      })
+    }
+    return r
+  },
+  [AGENT_LEAVING]: (body) => ({
+    id: body,
     left: true,
     processChainId: undefined,
     stateChangedTime: new Date()

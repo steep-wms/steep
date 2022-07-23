@@ -1,8 +1,8 @@
 package cloud
 
+import AddressConstants.CLUSTER_NODE_LEFT
 import AddressConstants.REMOTE_AGENT_ADDED
 import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
-import AddressConstants.REMOTE_AGENT_LEFT
 import AddressConstants.REMOTE_AGENT_MISSING
 import ConfigConstants
 import ConfigConstants.CLOUD_AGENTPOOL
@@ -217,10 +217,10 @@ class CloudManager : CoroutineVerticle() {
     // create setup selector
     setupSelector = SetupSelector(vmRegistry, poolAgentParams)
 
-    // keep track of left agents
-    vertx.eventBus().consumer<String>(REMOTE_AGENT_LEFT) { msg ->
-      val agentId = msg.body().substring(REMOTE_AGENT_ADDRESS_PREFIX.length)
-      log.info("Agent $agentId has left the cluster. Scheduling deletion of its VM ...")
+    // keep track of left cluster nodes
+    vertx.eventBus().consumer<JsonObject>(CLUSTER_NODE_LEFT) { msg ->
+      val agentId = msg.body().getString("agentId")
+      log.info("Cluster node `$agentId' has left the cluster. Scheduling deletion of its VM ...")
       launch {
         vmRegistry.setVMStatus(agentId, VM.Status.RUNNING, VM.Status.LEFT)
       }

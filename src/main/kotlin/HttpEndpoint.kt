@@ -1,3 +1,4 @@
+import AddressConstants.CLUSTER_NODE_LEFT
 import AddressConstants.CONTROLLER_LOOKUP_NOW
 import AddressConstants.LOCAL_AGENT_ADDRESS_PREFIX
 import AddressConstants.LOGS_PROCESSCHAINS_PREFIX
@@ -15,7 +16,7 @@ import AddressConstants.REMOTE_AGENT_ADDED
 import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import AddressConstants.REMOTE_AGENT_BUSY
 import AddressConstants.REMOTE_AGENT_IDLE
-import AddressConstants.REMOTE_AGENT_LEFT
+import AddressConstants.REMOTE_AGENT_LEAVING
 import AddressConstants.REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
 import AddressConstants.SUBMISSIONS_DELETED
 import AddressConstants.SUBMISSION_ADDED
@@ -325,9 +326,11 @@ class HttpEndpoint : CoroutineVerticle() {
         .addOutboundPermitted(PermittedOptions()
             .setAddress(PROCESSCHAIN_PROGRESS_CHANGED))
         .addOutboundPermitted(PermittedOptions()
+            .setAddress(CLUSTER_NODE_LEFT))
+        .addOutboundPermitted(PermittedOptions()
             .setAddress(REMOTE_AGENT_ADDED))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(REMOTE_AGENT_LEFT))
+            .setAddress(REMOTE_AGENT_LEAVING))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(REMOTE_AGENT_BUSY))
         .addOutboundPermitted(PermittedOptions()

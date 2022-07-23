@@ -58,9 +58,12 @@ object AddressConstants {
   const val REMOTE_AGENT_ADDED = "steep.remoteAgentRegistry.agentAdded"
 
   /**
-   * Will be published when a remote agent has left
+   * Will be published by a remote agent when it is leaving the cluster. This
+   * message might not arrive if the cluster node hosting the agent crashes or
+   * becomes unreachable. In this case, Hazelcast will remove the node from the
+   * cluster and a [CLUSTER_NODE_LEFT] message will be sent.
    */
-  const val REMOTE_AGENT_LEFT = "steep.remoteAgentRegistry.agentLeft"
+  const val REMOTE_AGENT_LEAVING = "steep.remoteAgentRegistry.agentLeaving"
 
   /**
    * Will be published if the remote agent registry was not able to allocate

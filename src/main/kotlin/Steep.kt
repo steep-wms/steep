@@ -3,6 +3,7 @@ import AddressConstants.CLUSTER_NODE_LEFT
 import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import AddressConstants.REMOTE_AGENT_BUSY
 import AddressConstants.REMOTE_AGENT_IDLE
+import AddressConstants.REMOTE_AGENT_LEAVING
 import AddressConstants.REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
 import agent.AgentRegistry.SelectCandidatesParam
 import agent.LocalAgent
@@ -31,9 +32,7 @@ import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
-import io.vertx.kotlin.coroutines.dispatcher
 import io.vertx.kotlin.coroutines.toReceiveChannel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -118,14 +117,10 @@ class Steep : CoroutineVerticle() {
       remoteAgentRegistry.register(agentId)
     }
     vertx.eventBus().localConsumer<String>(CLUSTER_NODE_LEFT) {
-      launch {
-        reregister()
-      }
+      reregister()
     }
     vertx.eventBus().localConsumer<Unit>(CLUSTER_LIFECYCLE_MERGED) {
-      launch {
-        reregister()
-      }
+      reregister()
     }
 
     // register consumer to provide process chain logs if we are the primary agent
@@ -162,13 +157,13 @@ class Steep : CoroutineVerticle() {
     log.info("Stopping remote agent $agentId ...")
     ALL_LOCAL_AGENT_IDS.remove(agentId)
 
-    // deregister the agent now - do this in the global context because the
-    // method asynchronously publishes a message to the eventbus and the
-    // context of this verticle might have already been closed before the
-    // message could be sent.
-    CoroutineScope(vertx.dispatcher()).launch {
-      remoteAgentRegistry.deregister(agentId)
-    }
+    // Let everyone else in the cluster know that we're leaving. Use the event
+    // bus of the global Vert.x object, because our event bus might be closed
+    // before the message could be sent.
+    globalVertxInstance.eventBus().publish(REMOTE_AGENT_LEAVING, agentId)
+
+    // deregister the agent now
+    remoteAgentRegistry.deregister(agentId)
   }
 
   /**

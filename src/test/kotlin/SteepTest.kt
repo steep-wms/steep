@@ -8,6 +8,8 @@ import db.SubmissionRegistryFactory
 import helper.CompressedJsonObjectMessageCodec
 import helper.Shell
 import helper.UniqueID
+import helper.hazelcast.ClusterMap
+import helper.hazelcast.DummyClusterMap
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -59,6 +61,10 @@ class SteepTest {
     vertx.eventBus().registerCodec(CompressedJsonObjectMessageCodec())
 
     agentId = UniqueID.next()
+
+    // mock hazelcast instance used by agent registry
+    mockkObject(ClusterMap)
+    every { ClusterMap.create<Any, Any>(any(), any()) } answers { DummyClusterMap(arg(0), arg(1)) }
 
     // mock submission registry
     submissionRegistry = mockk()
