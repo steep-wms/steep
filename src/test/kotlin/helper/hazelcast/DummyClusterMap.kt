@@ -8,7 +8,9 @@ import io.vertx.core.shareddata.LocalMap
  * @author Michel Kraemer
  */
 class DummyClusterMap<K : Any, V : Any>(name: String, vertx: Vertx) : ClusterMap<K, V> {
+  private val context = vertx.orCreateContext
   private val map: LocalMap<K, V> = vertx.sharedData().getLocalMap(name)
+  private val entryAddedListeners = mutableListOf<Pair<(K, V?) -> Unit, Boolean>>()
   private val entryRemovedListeners = mutableListOf<(K) -> Unit>()
 
   override suspend fun size(): Int = map.size
@@ -18,18 +20,49 @@ class DummyClusterMap<K : Any, V : Any>(name: String, vertx: Vertx) : ClusterMap
     // nothing to do here
   }
 
+  override fun addEntryAddedListener(includeValue: Boolean, listener: (K, V?) -> Unit) {
+    entryAddedListeners.add(listener to includeValue)
+  }
+
   override fun addEntryRemovedListener(listener: (K) -> Unit) {
     entryRemovedListeners.add(listener)
+  }
+
+  override fun addEntryMergedListener(includeValue: Boolean,
+      listener: (K, V?) -> Unit) {
+    // nothing to do here
   }
 
   override suspend fun delete(key: K) {
     map.remove(key)
     for (l in entryRemovedListeners) {
-      l(key)
+      context.runOnContext {
+        l(key)
+      }
     }
   }
 
-  override suspend fun putIfAbsent(key: K, value: V): V? = map.putIfAbsent(key, value)
+  override suspend fun putIfAbsent(key: K, value: V): V? {
+    val r = map.putIfAbsent(key, value)
+    if (r == null) {
+      for ((l, includeValue) in entryAddedListeners) {
+        context.runOnContext {
+          l(key, if (includeValue) value else null)
+        }
+      }
+    }
+    return r
+  }
 
-  override suspend fun put(key: K, value: V): V? = map.put(key, value)
+  override suspend fun put(key: K, value: V): V? {
+    val r = map.put(key, value)
+    if (r == null) {
+      for ((l, includeValue) in entryAddedListeners) {
+        context.runOnContext {
+          l(key, if (includeValue) value else null)
+        }
+      }
+    }
+    return r
+  }
 }

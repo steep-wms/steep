@@ -122,7 +122,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     allocatedAgentsCache = sharedData.getLocalMap(LOCAL_ALLOCATED_AGENTS_CACHE_NAME)
     agents = ClusterMap.create(ASYNC_MAP_NAME, vertx)
 
-    // do not register consumers multiple times
+    // do not register listeners and consumers multiple times
     if (localMap.compute(KEY_INITIALIZED) { _, v -> v != null } == false) {
       val reportRemoteAgents = debounce(vertx) {
         val size = agents.size()
@@ -130,11 +130,18 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
         gaugeAgents.set(size.toDouble())
       }
 
-      // log added agents
-      vertx.eventBus().consumer<String>(REMOTE_AGENT_ADDED) { msg ->
-        log.info("Remote agent `${msg.body()}' has been added.")
+      val onEntryAdded: (String, Boolean?) -> Unit = { k, _ ->
+        log.info("Remote agent `$k' has been added.")
         reportRemoteAgents()
+
+        // Send REMOTE_AGENT_ADDED message. We only need to deliver it to
+        // local consumers because every node in the cluster has an
+        // EntryAddedListener like this.
+        vertx.eventBus().publish(REMOTE_AGENT_ADDED, k, deliveryOptionsOf(localOnly = true))
       }
+
+      agents.addEntryAddedListener(false, onEntryAdded)
+      agents.addEntryMergedListener(false, onEntryAdded)
 
       // unregister agents whose nodes have left
       vertx.eventBus().localConsumer<JsonObject>(CLUSTER_NODE_LEFT) { msg ->
@@ -163,11 +170,6 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
         // local consumers because every node in the cluster has an
         // EntryRemovedListener like this.
         vertx.eventBus().publish(REMOTE_AGENT_LEFT, k, deliveryOptionsOf(localOnly = true))
-
-        launch {
-          // make sure metrics are correct
-          gaugeAgents.set(agents.size().toDouble())
-        }
       }
 
       val onPartitionLost = debounce(vertx) {
@@ -178,9 +180,6 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
         allocatedAgentsCache.clear()
 
         reportRemoteAgents()
-
-        // make sure metrics are correct
-        gaugeAgents.set(agents.size().toDouble())
       }
 
       agents.addPartitionLostListener {
@@ -191,20 +190,14 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
 
   /**
    * Register a remote agent under the given [id] unless there already is
-   * an agent under this [id], in which case the method does nothing. Also
-   * announce the availability of the agent in the cluster under the given
-   * [id].
+   * an agent under this [id], in which case the method does nothing.
    *
    * The agent should already listen to messages on the eventbus address
    * ([REMOTE_AGENT_ADDRESS_PREFIX]` + id`). The agent registry automatically
    * deregisters the agent when the node with the [id] leaves the cluster.
    */
   suspend fun register(id: String) {
-    val address = REMOTE_AGENT_ADDRESS_PREFIX + id
-    val existing = agents.putIfAbsent(id, true)
-    if (existing == null) {
-      vertx.eventBus().publish(REMOTE_AGENT_ADDED, address)
-    }
+    agents.putIfAbsent(id, true)
   }
 
   /**

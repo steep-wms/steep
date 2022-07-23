@@ -2,6 +2,8 @@ package helper.hazelcast
 
 import com.hazelcast.core.EntryEvent
 import com.hazelcast.map.IMap
+import com.hazelcast.map.listener.EntryAddedListener
+import com.hazelcast.map.listener.EntryMergedListener
 import com.hazelcast.map.listener.EntryRemovedListener
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.await
@@ -44,6 +46,16 @@ class ClusterMapImpl<K : Any, V : Any>(private val map: IMap<K, V>,
     }, false).await()
   }
 
+  override fun addEntryAddedListener(includeValue: Boolean, listener: (K, V?) -> Unit) {
+    map.addEntryListener(object : EntryAddedListener<K, V> {
+      override fun entryAdded(event: EntryEvent<K, V?>) {
+        context.runOnContext {
+          listener(event.key, event.value)
+        }
+      }
+    }, includeValue)
+  }
+
   override fun addEntryRemovedListener(listener: (K) -> Unit) {
     map.addEntryListener(object : EntryRemovedListener<K, V> {
       override fun entryRemoved(event: EntryEvent<K, V?>) {
@@ -52,6 +64,16 @@ class ClusterMapImpl<K : Any, V : Any>(private val map: IMap<K, V>,
         }
       }
     }, false)
+  }
+
+  override fun addEntryMergedListener(includeValue: Boolean, listener: (K, V?) -> Unit) {
+    map.addEntryListener(object : EntryMergedListener<K, V> {
+      override fun entryMerged(event: EntryEvent<K, V?>) {
+        context.runOnContext {
+          listener(event.key, event.value)
+        }
+      }
+    }, includeValue)
   }
 
   override fun addPartitionLostListener(listener: () -> Unit) {

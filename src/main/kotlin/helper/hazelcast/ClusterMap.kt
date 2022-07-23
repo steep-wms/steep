@@ -20,6 +20,8 @@ interface ClusterMap<K : Any, V : Any> {
   suspend fun putIfAbsent(key: K, value: V): V?
   suspend fun delete(key: K)
   suspend fun keys(): Set<K>
+  fun addEntryAddedListener(includeValue: Boolean, listener: (K, V?) -> Unit)
   fun addEntryRemovedListener(listener: (K) -> Unit)
+  fun addEntryMergedListener(includeValue: Boolean, listener: (K, V?) -> Unit)
   fun addPartitionLostListener(listener: () -> Unit)
 }

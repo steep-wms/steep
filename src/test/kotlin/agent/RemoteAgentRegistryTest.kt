@@ -151,15 +151,14 @@ class RemoteAgentRegistryTest {
     val registry = RemoteAgentRegistry(vertx)
 
     val agentId = UniqueID.next()
-    val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId
 
     var addedCount = 0
 
     vertx.eventBus().consumer<String>(REMOTE_AGENT_ADDED) { msg ->
-      if (msg.body() == address) {
+      if (msg.body() == agentId) {
         addedCount++
       } else {
-        ctx.failNow(NoStackTraceThrowable("Unknown agent address ${msg.body()}"))
+        ctx.failNow(NoStackTraceThrowable("Unknown agent id ${msg.body()}"))
       }
     }
 
