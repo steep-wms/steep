@@ -16,7 +16,7 @@ import AddressConstants.REMOTE_AGENT_ADDED
 import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import AddressConstants.REMOTE_AGENT_BUSY
 import AddressConstants.REMOTE_AGENT_IDLE
-import AddressConstants.REMOTE_AGENT_LEAVING
+import AddressConstants.REMOTE_AGENT_LEFT
 import AddressConstants.REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
 import AddressConstants.SUBMISSIONS_DELETED
 import AddressConstants.SUBMISSION_ADDED
@@ -330,7 +330,7 @@ class HttpEndpoint : CoroutineVerticle() {
         .addOutboundPermitted(PermittedOptions()
             .setAddress(REMOTE_AGENT_ADDED))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(REMOTE_AGENT_LEAVING))
+            .setAddress(REMOTE_AGENT_LEFT))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(REMOTE_AGENT_BUSY))
         .addOutboundPermitted(PermittedOptions()

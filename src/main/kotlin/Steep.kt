@@ -3,7 +3,6 @@ import AddressConstants.CLUSTER_NODE_LEFT
 import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import AddressConstants.REMOTE_AGENT_BUSY
 import AddressConstants.REMOTE_AGENT_IDLE
-import AddressConstants.REMOTE_AGENT_LEAVING
 import AddressConstants.REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
 import agent.AgentRegistry.SelectCandidatesParam
 import agent.LocalAgent
@@ -156,13 +155,6 @@ class Steep : CoroutineVerticle() {
   override suspend fun stop() {
     log.info("Stopping remote agent $agentId ...")
     ALL_LOCAL_AGENT_IDS.remove(agentId)
-
-    // Let everyone else in the cluster know that we're leaving. Use the event
-    // bus of the global Vert.x object, because our event bus might be closed
-    // before the message could be sent.
-    globalVertxInstance.eventBus().publish(REMOTE_AGENT_LEAVING, agentId)
-
-    // deregister the agent now
     remoteAgentRegistry.deregister(agentId)
   }
 

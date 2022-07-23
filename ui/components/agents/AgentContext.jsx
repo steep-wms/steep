@@ -5,7 +5,7 @@ import {
   CLUSTER_NODE_LEFT,
   AGENT_ADDRESS_PREFIX,
   AGENT_ADDED,
-  AGENT_LEAVING,
+  AGENT_LEFT,
   AGENT_BUSY,
   AGENT_IDLE
 } from "../../components/lib/EventBusMessages"
@@ -33,7 +33,7 @@ const UPDATE_MESSAGES = {
     }
     return r
   },
-  [AGENT_LEAVING]: (body) => ({
+  [AGENT_LEFT]: (body) => ({
     id: body,
     left: true,
     processChainId: undefined,

@@ -22,7 +22,7 @@ module.exports = {
 
   AGENT_ADDRESS_PREFIX: "steep.remoteAgentRegistry.agent.",
   AGENT_ADDED: "steep.remoteAgentRegistry.agentAdded",
-  AGENT_LEAVING: "steep.remoteAgentRegistry.agentLeaving",
+  AGENT_LEFT: "steep.remoteAgentRegistry.agentLeft",
   AGENT_BUSY: "steep.remoteAgentRegistry.agentBusy",
   AGENT_IDLE: "steep.remoteAgentRegistry.agentIdle",
 

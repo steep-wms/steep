@@ -3,6 +3,7 @@ package agent
 import AddressConstants.CLUSTER_NODE_LEFT
 import AddressConstants.REMOTE_AGENT_ADDED
 import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
+import AddressConstants.REMOTE_AGENT_LEFT
 import agent.AgentRegistry.SelectCandidatesParam
 import helper.JsonUtils
 import helper.debounce
@@ -13,6 +14,7 @@ import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.LocalMap
 import io.vertx.core.shareddata.Shareable
+import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
@@ -156,6 +158,11 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
 
         log.info("Remote agent `$k' has left.")
         reportRemoteAgents()
+
+        // Send REMOTE_AGENT_LEFT message. We only need to deliver it to
+        // local consumers because every node in the cluster has an
+        // EntryRemovedListener like this.
+        vertx.eventBus().publish(REMOTE_AGENT_LEFT, k, deliveryOptionsOf(localOnly = true))
 
         launch {
           // make sure metrics are correct
