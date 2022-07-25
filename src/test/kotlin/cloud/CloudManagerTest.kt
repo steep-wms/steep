@@ -192,8 +192,7 @@ class CloudManagerTest {
         ctx.verify {
           assertThat(agentId).isNotEmpty()
         }
-        vertx.eventBus().publish(REMOTE_AGENT_ADDED,
-            REMOTE_AGENT_ADDRESS_PREFIX + agentId)
+        vertx.eventBus().publish(REMOTE_AGENT_ADDED, agentId)
       }
     }
 
@@ -760,7 +759,7 @@ class CloudManagerTest {
         val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId
 
         // count keep-alive messages
-        vertx.eventBus().consumer<JsonObject>(address) { msg ->
+        vertx.eventBus().consumer(address) { msg ->
           val jsonObj: JsonObject = msg.body()
           val action = jsonObj.getString("action")
           if (action == "keepAlive") {
@@ -772,7 +771,7 @@ class CloudManagerTest {
         agentIds.add(agentId)
 
         // send REMOTE_AGENT_ADDED when the VM has been provisioned
-        vertx.eventBus().publish(REMOTE_AGENT_ADDED, address)
+        vertx.eventBus().publish(REMOTE_AGENT_ADDED, agentId)
       }
 
       deployCloudManager(tempDir, listOf(testSetupMin), vertx, ctx)
@@ -890,7 +889,7 @@ class CloudManagerTest {
         val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId
 
         // count keep-alive messages
-        vertx.eventBus().consumer<JsonObject>(address) { msg ->
+        vertx.eventBus().consumer(address) { msg ->
           val jsonObj: JsonObject = msg.body()
           val action = jsonObj.getString("action")
           if (action == "keepAlive") {
@@ -902,7 +901,7 @@ class CloudManagerTest {
         agentIds.add(agentId)
 
         // send REMOTE_AGENT_ADDED when the VM has been provisioned
-        vertx.eventBus().publish(REMOTE_AGENT_ADDED, address)
+        vertx.eventBus().publish(REMOTE_AGENT_ADDED, agentId)
       }
 
       deployCloudManager(tempDir, listOf(testSetup, testSetup2, testSetup3),

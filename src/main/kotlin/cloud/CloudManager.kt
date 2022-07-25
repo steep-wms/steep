@@ -225,10 +225,10 @@ class CloudManager : CoroutineVerticle() {
         vmRegistry.setVMStatus(agentId, VM.Status.RUNNING, VM.Status.LEFT)
       }
     }
-    vertx.eventBus().consumer<String>(REMOTE_AGENT_ADDED) { msg ->
+    vertx.eventBus().consumer(REMOTE_AGENT_ADDED) { msg ->
       // reset the VM status if the agent has returned -- in the hope that the
       // VM has not been deleted by `sync()` in the meantime
-      val agentId = msg.body().substring(REMOTE_AGENT_ADDRESS_PREFIX.length)
+      val agentId = msg.body()
       log.info("Agent $agentId has joined the cluster.")
       launch {
         vmRegistry.setVMStatus(agentId, VM.Status.LEFT, VM.Status.RUNNING)
@@ -678,7 +678,7 @@ class CloudManager : CoroutineVerticle() {
     // to become available
     val promise = Promise.promise<Unit>()
     val consumer = vertx.eventBus().consumer<String>(REMOTE_AGENT_ADDED) { msg ->
-      if (msg.body() == REMOTE_AGENT_ADDRESS_PREFIX + vmId) {
+      if (msg.body() == vmId) {
         promise.complete()
       }
     }
