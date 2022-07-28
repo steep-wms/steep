@@ -71,7 +71,7 @@ function List({ Context, ListItem, subjects, path, pagination, pageSize,
   }, [url, subjects, pagination, updateItems, forceReset, forceUpdate, initialRender])
 
   function reset(newOffset) {
-    if (newOffset !== pageOffset) {
+    if ((newOffset || 0) !== (pageOffset || 0)) {
       forceReset()
     }
   }
