@@ -12,6 +12,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import org.openstack4j.api.Builders
 import org.openstack4j.api.OSClient
+import org.openstack4j.core.transport.Config
 import org.openstack4j.model.common.Identifier
 import org.openstack4j.model.compute.Server
 import org.openstack4j.model.storage.block.Volume
@@ -67,6 +68,9 @@ class OpenStackClient(endpoint: String, username: String, password: String,
     os = async {
       var builder = OSFactory.builderV3()
           .endpoint(endpoint)
+          .withConfig(Config.newConfig()
+              .withConnectionTimeout(1000 * 30) // 30s
+              .withReadTimeout(1000 * 30)) // 30s
           .credentials(username, password, Identifier.byName(domainName))
       builder = if (projectId != null) {
         builder.scopeToProject(Identifier.byId(projectId))
