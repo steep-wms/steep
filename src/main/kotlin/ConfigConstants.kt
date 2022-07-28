@@ -202,12 +202,13 @@ object ConfigConstants {
   const val HTTP_CORS_ENABLE = "steep.http.cors.enable"
 
   /**
-   * A regular expression specifying allowed CORS origins. Use *​ to allow all origins.
+   * A regular expression specifying allowed CORS origins. Use `*` to allow all
+   * origins.
    */
   const val HTTP_CORS_ALLOW_ORIGIN = "steep.http.cors.allowOrigin"
 
   /**
-   * `true` if the Access-​Control-​Allow-​Credentials` response header should
+   * `true` if the Access-Control-Allow-Credentials` response header should
    * be returned.
    */
   const val HTTP_CORS_ALLOW_CREDENTIALS = "steep.http.cors.allowCredentials"

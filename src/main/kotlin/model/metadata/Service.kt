@@ -16,20 +16,20 @@ import model.timeout.TimeoutPolicy
  * host system to have to be able to run
  * @param retries optional rules that define when and how often the execution
  * of this service should be retried in case an error has occurred. Can be
- * overridden in the workflow (see [retries]).
+ * overridden in the workflow (see [model.workflow.ExecuteAction.retries]).
  * @param maxInactivity an optional timeout policy that defines how long the
  * execution of this service can take without producing any output (i.e.
  * without writing anything to the standard output and error streams) before it
  * is automatically aborted. Can be overridden in the workflow (see
- * [maxInactivity]).
+ * [model.workflow.ExecuteAction.maxInactivity]).
  * @param maxRuntime an optional timeout policy that defines how long the
  * execution of this service can take before it is automatically aborted, even
  * if the service regularly writes to the standard output and error streams. Can
- * be overridden in the workflow (see [maxRuntime]).
+ * be overridden in the workflow (see [model.workflow.ExecuteAction.maxRuntime]).
  * @param deadline an optional timeout policy that defines how long the
  * execution of this service can take at all (including all retries and their
  * associated delays) until it is aborted. Can be overridden in the workflow
- * (see [deadline]).
+ * (see [model.workflow.ExecuteAction.deadline]).
  * @author Michel Kraemer
  */
 data class Service(
