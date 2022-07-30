@@ -246,3 +246,7 @@ input {
     padding: 3px 5px;
   }
 }
+
+::placeholder {
+  color: var(--placeholder-color);
+}

@@ -43,6 +43,7 @@
   --code-bg-alpha: #{adjust-color($-gray-700, $alpha: -0.5)};
 
   --border-color: var(--gray-300);
+  --placeholder-color: var(--gray-600);
 
   --drop-down-box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.1);
 }
@@ -92,6 +93,7 @@
   --code-bg-alpha: #{adjust-color($-gray-100, $alpha: -0.5)};
 
   --border-color: var(--gray-100);
+  --placeholder-color: var(--gray-300);
 
   --drop-down-box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);;
 }
