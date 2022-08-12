@@ -24,10 +24,10 @@ const Row = memo(({ data, index, style }) => {
 
 const List = forwardRef(({ language, codeLineHeight, blocks }, ref) => {
   return <pre><code lang={language} className={`hljs language-${language}`} ref={ref}><VariableSizeList
-    height={codeLineHeight * Math.min(blocks.blocks[0].lines, 100.5)}
-    itemCount={blocks.blocks.length} itemData={blocks.blocks}
+    height={codeLineHeight * Math.min(blocks[0].lines, 100.5)}
+    itemCount={blocks.length} itemData={blocks}
     estimatedItemSize={codeLineHeight * BLOCK_SIZE} width="100%"
-    itemSize={(index) => codeLineHeight * blocks.blocks[index].lines}>{Row}</VariableSizeList></code></pre>
+    itemSize={(index) => codeLineHeight * blocks[index].lines}>{Row}</VariableSizeList></code></pre>
 })
 
 function splitIntoBlocks(str) {
@@ -62,26 +62,23 @@ function splitIntoBlocks(str) {
 }
 
 const CodeBox = ({ json, yaml = undefined }) => {
-  const jsonRef = useRef()
   const yamlRef = useRef()
   const copyBtnRef = useRef()
+  const [yamlStr] = useState(() => {
+    // this should only be done once, so we do it in a state initializer
+    return yaml?.trim() || stringify(json)
+  })
+  const [jsonStr] = useState(() => {
+    // this should only be done once, so we do it in a state initializer
+    return JSON.stringify(json, undefined, 2)
+  })
   const [yamlBlocks, setYamlBlocks] = useState(() => {
     // this should only be done once, so we do it in a state initializer
-    let str = yaml?.trim() || stringify(json)
-    let blocks = splitIntoBlocks(str)
-    return {
-      str,
-      blocks
-    }
+    return splitIntoBlocks(yamlStr)
   })
   const [jsonBlocks, setJsonBlocks] = useState(() => {
     // this should only be done once, so we do it in a state initializer
-    let str = JSON.stringify(json, undefined, 2)
-    let blocks = splitIntoBlocks(str)
-    return {
-      str,
-      blocks
-    }
+    return splitIntoBlocks(jsonStr)
   })
   const [copyTooltipVisible, setCopyTooltipVisible] = useState(false)
   const [copyTooltipTitle, setCopyTooltipTitle] = useState(COPY)
@@ -95,13 +92,10 @@ const CodeBox = ({ json, yaml = undefined }) => {
     worker.onmessage = ({ data: { hast, finished } }) => {
       if (hast !== undefined) {
         updateBlocks((state) => {
-          let newBlocks = [...state.blocks]
+          let newBlocks = [...state]
           newBlocks[count] = { ...newBlocks[count], block: hast }
           ++count
-          return {
-            str: state.str,
-            blocks: newBlocks
-          }
+          return newBlocks
         })
       }
     }
@@ -115,8 +109,8 @@ const CodeBox = ({ json, yaml = undefined }) => {
   }, [])
 
   useEffect(() => {
-    let yamlWorker = highlight(yamlBlocks.str, "yaml", setYamlBlocks)
-    let jsonWorker = highlight(jsonBlocks.str, "json", setJsonBlocks)
+    let yamlWorker = highlight(yamlStr, "yaml", setYamlBlocks)
+    let jsonWorker = highlight(jsonStr, "json", setJsonBlocks)
 
     function handleRouteChange() {
       // abort highlighting if user wants to visit another page
@@ -129,11 +123,11 @@ const CodeBox = ({ json, yaml = undefined }) => {
     return () => {
       router.events.off("routeChangeStart", handleRouteChange)
     }
-  }, [yamlBlocks.str, jsonBlocks.str, router])
+  }, [yamlStr, jsonStr, router])
 
   useEffect(() => {
     let clipboardYaml = new Clipboard(copyBtnRef.current, {
-      target: () => activeLang === "yaml" ? yamlRef.current : jsonRef.current
+      text: () => activeLang === "yaml" ? yamlStr : jsonStr
     })
     clipboardYaml.on("success", e => {
       e.clearSelection()
@@ -143,7 +137,7 @@ const CodeBox = ({ json, yaml = undefined }) => {
     return () => {
       clipboardYaml.destroy()
     }
-  }, [activeLang])
+  }, [activeLang, yamlStr, jsonStr])
 
   function onClickLanguage(lang) {
     localStorage.activeCodeLanguage = lang
@@ -169,8 +163,7 @@ const CodeBox = ({ json, yaml = undefined }) => {
             ref={yamlRef} />
         </div>
         <div className={classNames("code-box-tab", { active: activeLang === "json" })}>
-          <List language="json" codeLineHeight={codeLineHeight} blocks={jsonBlocks}
-            ref={jsonRef} />
+          <List language="json" codeLineHeight={codeLineHeight} blocks={jsonBlocks} />
         </div>
         <span className="code-box-copy-btn">
           <Tooltip title={copyTooltipTitle} forceVisible={copyTooltipVisible}
