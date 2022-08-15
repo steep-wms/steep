@@ -25,7 +25,7 @@
     "clipboard": "^2.0.11",
     "color": "^4.2.3",
     "date-fns": "^2.29.1",
-    "dayjs": "^1.11.4",
+    "dayjs": "^1.11.5",
     "favicons": "^6.2.2",
     "hast-to-hyperscript": "^10.0.1",
     "highlight.js": "^11.6.0",
