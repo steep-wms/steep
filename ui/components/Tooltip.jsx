@@ -33,6 +33,15 @@ const Tooltip = ({ title, delay = 300, forceVisible = undefined, className,
     }
   }, [title, tooltip])
 
+  useEffect(() => {
+    return () => {
+      if (timer.current) {
+        clearTimeout(timer.current)
+        timer.current = undefined
+      }
+    }
+  }, [])
+
   function show() {
     function showNow() {
       if (tooltip === undefined) {
