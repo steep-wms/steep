@@ -17,6 +17,7 @@ const Submit = () => {
   const [ready, setReady] = useState(false)
   const [value, setValue] = useState()
   const [error, setError] = useState()
+  const [refreshThemeCounter, setRefreshThemeCounter] = useState(0)
   const router = useRouter()
 
   const editorRef = useRef()
@@ -71,18 +72,17 @@ const Submit = () => {
         getThemeColor(darkStyle, "--gray-700"),
         getThemeColor(darkStyle, "--gray-200")
       )
+
+      // force call to monaco.editor.setTheme after all themes have been defined
+      setRefreshThemeCounter(c => c + 1)
     }
   }, [monaco, defineTheme])
 
   useEffect(() => {
     if (monaco) {
-      // change theme in next tick - we need to make sure the theme has already
-      // been defined in the other useEffect hook above
-      setTimeout(() => {
-        monaco.editor.setTheme(`steep-${settings.theme}`)
-      }, 0)
+      monaco.editor.setTheme(`steep-${settings.theme}`)
     }
-  }, [monaco, settings.theme])
+  }, [monaco, settings.theme, refreshThemeCounter])
 
   useEffect(() => {
     if (router.query.from !== undefined) {
