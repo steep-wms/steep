@@ -60,17 +60,17 @@ dependencies {
     implementation("com.zaxxer:HikariCP:5.0.1")
     implementation("io.airlift:aircompressor:0.21")
     implementation("io.pebbletemplates:pebble:3.1.5")
-    implementation("io.projectreactor:reactor-core:3.4.21") // necessary for reactive MongoDB driver
+    implementation("io.projectreactor:reactor-core:3.4.22") // necessary for reactive MongoDB driver
     implementation("io.prometheus:simpleclient:$prometheusClientVersion")
-    implementation("io.micrometer:micrometer-registry-prometheus:1.9.2")
+    implementation("io.micrometer:micrometer-registry-prometheus:1.9.3")
     implementation("org.apache.ant:ant:1.10.12")
     implementation("org.apache.commons:commons-lang3:3.12.0")
     implementation("org.apache.commons:commons-text:1.9")
-    implementation("org.flywaydb:flyway-core:9.0.4")
+    implementation("org.flywaydb:flyway-core:9.1.6")
     implementation("org.mongodb:mongodb-driver-reactivestreams:4.7.1")
     implementation("com.github.openstack4j.core:openstack4j:3.10")
     implementation("org.parboiled:parboiled-java:1.4.1")
-    implementation("org.postgresql:postgresql:42.4.0")
+    implementation("org.postgresql:postgresql:42.4.2")
     implementation("org.quartz-scheduler:quartz:2.3.2") {
         // we only need org.quartz.CronExpression, so we can exclude all dependencies
         isTransitive = false
@@ -84,7 +84,7 @@ dependencies {
     implementation(kotlin("script-runtime"))
 
     testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.4.8")
-    testImplementation("io.mockk:mockk:1.12.5")
+    testImplementation("io.mockk:mockk:1.12.6")
     testImplementation("io.vertx:vertx-junit5:$vertxVersion")
     testImplementation("org.assertj:assertj-core:3.23.1")
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
