@@ -357,7 +357,7 @@ class HttpEndpointTest {
    * Test that the endpoint returns a single plugin
    */
   @Test
-  fun getPluginByTypeAndName(vertx: Vertx, ctx: VertxTestContext) {
+  fun getPluginByName(vertx: Vertx, ctx: VertxTestContext) {
     val plugins = listOf(
       InitializerPlugin("InitializerPluginName", "/path", "1.0.0", listOf("fred", "foo", "bar")),
     )

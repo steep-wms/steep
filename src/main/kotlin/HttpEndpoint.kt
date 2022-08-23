@@ -229,7 +229,7 @@ class HttpEndpoint : CoroutineVerticle() {
     router.get("/plugins/:name/?")
         .produces("application/json")
         .produces("text/html")
-        .handler(this::onGetPluginByTypeAndName)
+        .handler(this::onGetPluginByName)
 
     router.get("/processchains")
         .produces("application/json")
@@ -1062,10 +1062,10 @@ class HttpEndpoint : CoroutineVerticle() {
   }
 
   /**
-   * Get a single plugin by its type and name
+   * Get a single plugin by its name
    * @param ctx the routing context
    */
-  private fun onGetPluginByTypeAndName(ctx: RoutingContext) {
+  private fun onGetPluginByName(ctx: RoutingContext) {
     if (prefersHtml(ctx)) {
       renderAsset("ui/plugins/[name].html/index.html", ctx.response())
     } else {
