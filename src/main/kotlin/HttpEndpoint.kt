@@ -226,7 +226,7 @@ class HttpEndpoint : CoroutineVerticle() {
         .produces("text/html")
         .handler(this::onGetPlugins)
 
-    router.get("/plugins/:type/:name/?")
+    router.get("/plugins/:name/?")
         .produces("application/json")
         .produces("text/html")
         .handler(this::onGetPluginByTypeAndName)
@@ -1067,22 +1067,19 @@ class HttpEndpoint : CoroutineVerticle() {
    */
   private fun onGetPluginByTypeAndName(ctx: RoutingContext) {
     if (prefersHtml(ctx)) {
-      renderAsset("ui/plugins/[type]/[name].html/index.html", ctx.response())
+      renderAsset("ui/plugins/[name].html/index.html", ctx.response())
     } else {
       launch {
-        val type = ctx.pathParam("type")
         val name = ctx.pathParam("name")
-        val plugin = pluginRegistry.compiledPlugins
-          .filter { it.name == name }
-          .map { JsonUtils.toJson(it) }
-          .firstOrNull { it.getString("type") == type }
+        val plugin = pluginRegistry.compiledPlugins.firstOrNull { it.name == name }
 
         if (plugin == null) {
-          renderError(ctx, 404, "There is no $type plugin with name `$name'")
+          renderError(ctx, 404, "There is no plugin with name `$name'")
         } else {
+          val pluginObj = JsonUtils.toJson(plugin)
           ctx.response()
             .putHeader("content-type", "application/json")
-            .end(plugin.encode())
+            .end(pluginObj.encode())
         }
       }
     }

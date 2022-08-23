@@ -367,22 +367,12 @@ class HttpEndpointTest {
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        client.get(port, "localhost", "/plugins/initializer")
+        client.get(port, "localhost", "/plugins/UNKNOWN_NAME")
           .expect(ResponsePredicate.SC_NOT_FOUND)
           .send()
           .await()
 
-        client.get(port, "localhost", "/plugins/initializer/UNKNOWN_NAME")
-          .expect(ResponsePredicate.SC_NOT_FOUND)
-          .send()
-          .await()
-
-        client.get(port, "localhost", "/plugins/UNKNOWN_TYPE/UNKNOWN_NAME")
-          .expect(ResponsePredicate.SC_NOT_FOUND)
-          .send()
-          .await()
-
-        val response = client.get(port, "localhost", "/plugins/initializer/InitializerPluginName")
+        val response = client.get(port, "localhost", "/plugins/InitializerPluginName")
           .`as`(BodyCodec.jsonObject())
           .expect(ResponsePredicate.SC_OK)
           .expect(ResponsePredicate.JSON)

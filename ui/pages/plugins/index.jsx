@@ -24,14 +24,14 @@ const Plugins = () => {
     sortedPlugins.sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name))
     let lastType = ""
     for (let plugin of sortedPlugins) {
-      let linkHref = "/plugins/[type]/[name]"
-      let linkAs = `/plugins/${plugin.type}/${plugin.name}`
+      let linkHref = "/plugins/[name]"
+      let linkAs = `/plugins/${plugin.name}`
       if (lastType !== plugin.type) {
         lastType = plugin.type
         pluginElements.push(<h2>{plugin.type}</h2>)
       }
       pluginElements.push(
-        <ListItem key={plugin.type + "-" + plugin.name} linkHref={linkHref} linkAs={linkAs}
+        <ListItem key={plugin.name} linkHref={linkHref} linkAs={linkAs}
           title={plugin.name} subtitle={"Version " + plugin.version} />
       )
     }
