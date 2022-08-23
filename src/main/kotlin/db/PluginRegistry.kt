@@ -12,7 +12,7 @@ import model.plugins.RuntimePlugin
  * Provides access to compiled plugins
  * @author Michel Kraemer
  */
-class PluginRegistry(compiledPlugins: List<Plugin>) {
+class PluginRegistry(val compiledPlugins: List<Plugin>) {
   private val initializers = compiledPlugins.filterIsInstance<InitializerPlugin>()
       .toResolved()
   private val outputAdapters = compiledPlugins.filterIsInstance<OutputAdapterPlugin>()

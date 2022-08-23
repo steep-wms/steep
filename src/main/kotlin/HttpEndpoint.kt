@@ -42,6 +42,8 @@ import com.github.zafarkhaja.semver.expr.CompositeExpression.Helper.gte
 import com.github.zafarkhaja.semver.expr.CompositeExpression.Helper.lte
 import db.MetadataRegistry
 import db.MetadataRegistryFactory
+import db.PluginRegistry
+import db.PluginRegistryFactory
 import db.SubmissionRegistry
 import db.SubmissionRegistryFactory
 import db.VMRegistry
@@ -92,6 +94,7 @@ import kotlinx.coroutines.launch
 import model.Submission
 import model.Version
 import model.cloud.VM
+import model.plugins.Plugin
 import model.workflow.Workflow
 import org.apache.commons.text.WordUtils
 import org.parboiled.errors.ParserRuntimeException
@@ -122,6 +125,7 @@ class HttpEndpoint : CoroutineVerticle() {
   }
 
   private lateinit var metadataRegistry: MetadataRegistry
+  private lateinit var pluginRegistry: PluginRegistry
   private lateinit var agentRegistry: AgentRegistry
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var vmRegistry: VMRegistry
@@ -130,6 +134,7 @@ class HttpEndpoint : CoroutineVerticle() {
 
   override suspend fun start() {
     metadataRegistry = MetadataRegistryFactory.create(vertx)
+    pluginRegistry = PluginRegistryFactory.create()
     agentRegistry = AgentRegistryFactory.create(vertx)
     submissionRegistry = SubmissionRegistryFactory.create(vertx)
     vmRegistry = VMRegistryFactory.create(vertx)
@@ -215,6 +220,16 @@ class HttpEndpoint : CoroutineVerticle() {
         .produces("application/json")
         .produces("text/html")
         .handler(this::onGetServiceById)
+
+    router.get("/plugins")
+        .produces("application/json")
+        .produces("text/html")
+        .handler(this::onGetPlugins)
+
+    router.get("/plugins/:type/:name/?")
+        .produces("application/json")
+        .produces("text/html")
+        .handler(this::onGetPluginByTypeAndName)
 
     router.get("/processchains")
         .produces("application/json")
@@ -1023,6 +1038,51 @@ class HttpEndpoint : CoroutineVerticle() {
           ctx.response()
               .putHeader("content-type", "application/json")
               .end(serviceObj.encode())
+        }
+      }
+    }
+  }
+
+  /**
+   * Get a list of all plugins
+   * @param ctx the routing context
+   */
+  private fun onGetPlugins(ctx: RoutingContext) {
+    if (prefersHtml(ctx)) {
+      renderAsset("ui/plugins/index.html", ctx.response())
+    } else {
+      launch {
+        val plugins: List<Plugin> = pluginRegistry.compiledPlugins
+        val result = JsonArray(plugins.map { JsonUtils.toJson(it) }).encode()
+        ctx.response()
+          .putHeader("content-type", "application/json")
+          .end(result)
+      }
+    }
+  }
+
+  /**
+   * Get a single plugin by its type and name
+   * @param ctx the routing context
+   */
+  private fun onGetPluginByTypeAndName(ctx: RoutingContext) {
+    if (prefersHtml(ctx)) {
+      renderAsset("ui/plugins/[type]/[name].html/index.html", ctx.response())
+    } else {
+      launch {
+        val type = ctx.pathParam("type")
+        val name = ctx.pathParam("name")
+        val plugin = pluginRegistry.compiledPlugins
+          .filter { it.name == name }
+          .map { JsonUtils.toJson(it) }
+          .firstOrNull { it.getString("type") == type }
+
+        if (plugin == null) {
+          renderError(ctx, 404, "There is no $type plugin with name `$name'")
+        } else {
+          ctx.response()
+            .putHeader("content-type", "application/json")
+            .end(plugin.encode())
         }
       }
     }

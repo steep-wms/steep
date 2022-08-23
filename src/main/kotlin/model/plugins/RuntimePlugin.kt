@@ -1,5 +1,6 @@
 package model.plugins
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import helper.OutputCollector
 import io.vertx.core.Vertx
 import model.processchain.Executable
@@ -30,6 +31,7 @@ data class RuntimePlugin(
     /**
      * The compiled plugin
      */
+    @JsonIgnore
     override val compiledFunction: KFunction<Unit> = throwPluginNeedsCompile()
 ) : Plugin
 

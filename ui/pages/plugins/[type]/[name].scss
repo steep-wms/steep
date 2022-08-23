@@ -1,0 +1,42 @@
+@import "css/variables";
+
+.plugin-details {
+  .plugin-details-dl {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .plugin-details-left {
+    width: 40%;
+  }
+
+  .plugin-details-right {
+    flex: 1;
+  }
+
+  .plugin-details-left {
+    margin-bottom: $spacer;
+  }
+
+  @media (max-width: $md) {
+    .plugin-details-dl {
+      flex-direction: column;
+    }
+
+    .plugin-details-left {
+      width: 100%;
+    }
+
+    .plugin-details-right {
+      width: 100%;
+    }
+  }
+}
+
+.plugin-list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border-color);
+  padding-top: $spacer;
+}
+

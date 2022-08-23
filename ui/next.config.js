@@ -50,6 +50,8 @@ const config = {
       "/agents/[id].html": { page: "/agents/[id]" },
       "/logs/processchains/[id].html": { page: "/logs/processchains/[id]" },
       "/new/workflow": { page: "/new/workflow" },
+      "/plugins": { page: "/plugins" },
+      "/plugins/[type]/[name].html": { page: "/plugins/[type]/[name]" },
       "/processchains": { page: "/processchains" },
       "/processchains/[id].html": { page: "/processchains/[id]" },
       "/search": { page: "/search" },
