@@ -6,6 +6,8 @@ import agent.AgentRegistryFactory
 import com.fasterxml.jackson.module.kotlin.convertValue
 import db.MetadataRegistry
 import db.MetadataRegistryFactory
+import db.PluginRegistry
+import db.PluginRegistryFactory
 import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus
 import db.SubmissionRegistryFactory
@@ -48,6 +50,13 @@ import model.cloud.VM
 import model.metadata.Cardinality
 import model.metadata.Service
 import model.metadata.ServiceParameter
+import model.plugins.InitializerPlugin
+import model.plugins.OutputAdapterPlugin
+import model.plugins.Plugin
+import model.plugins.ProcessChainAdapterPlugin
+import model.plugins.ProcessChainConsistencyCheckerPlugin
+import model.plugins.ProgressEstimatorPlugin
+import model.plugins.RuntimePlugin
 import model.processchain.Argument
 import model.processchain.Executable
 import model.processchain.ProcessChain
@@ -85,6 +94,7 @@ class HttpEndpointTest {
   private lateinit var agentRegistry: AgentRegistry
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var metadataRegistry: MetadataRegistry
+  private lateinit var pluginRegistry: PluginRegistry
   private lateinit var vmRegistry: VMRegistry
 
   private val setup = Setup(id = "test-setup", flavor = "myflavor",
@@ -110,6 +120,11 @@ class HttpEndpointTest {
     metadataRegistry = mockk()
     mockkObject(MetadataRegistryFactory)
     every { MetadataRegistryFactory.create(any()) } returns metadataRegistry
+
+    // mock plugin registry
+    pluginRegistry = mockk()
+    mockkObject(PluginRegistryFactory)
+    every { PluginRegistryFactory.create() } returns pluginRegistry
 
     // mock VM registry
     vmRegistry = mockk()
@@ -296,6 +311,78 @@ class HttpEndpointTest {
 
         assertThat(JsonUtils.fromJson<Service>(response.body()))
             .isEqualTo(serviceMetadata[0])
+
+        ctx.completeNow()
+      }
+    }
+  }
+
+  /**
+   * Test that the endpoint returns a list of plugins
+   */
+  @Test
+  fun getPlugins(vertx: Vertx, ctx: VertxTestContext) {
+    val plugins = listOf(
+      InitializerPlugin("InitializerPluginName", "/path", "1.0.0", listOf("fred", "foo", "bar")),
+      OutputAdapterPlugin("OutputAdapterPluginName", "/path", "1.0.0", "dataType"),
+      ProcessChainAdapterPlugin("Name", "/path", "1.0.0", listOf("fred", "foo", "bar")),
+      ProcessChainConsistencyCheckerPlugin("ProcessChainAdapterPluginName", "/path", "1.0.0", listOf("fred", "foo", "bar")),
+      ProgressEstimatorPlugin("ProgressEstimatorPluginName", "/path", "1.0.0", listOf("myService")),
+      RuntimePlugin("RuntimePluginName", "/path", "1.0.0", "myRuntime"),
+    )
+
+    coEvery { pluginRegistry.compiledPlugins } returns plugins
+
+    val client = WebClient.create(vertx)
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/plugins")
+          .`as`(BodyCodec.jsonArray())
+          .expect(ResponsePredicate.SC_OK)
+          .expect(ResponsePredicate.JSON)
+          .send()
+          .await()
+
+        val returnedList = JsonUtils.mapper.convertValue<List<Plugin>>(response.body().list)
+        assertThat(returnedList)
+          .usingRecursiveFieldByFieldElementComparatorIgnoringFields("compiledFunction")
+          .isEqualTo(plugins)
+
+        ctx.completeNow()
+      }
+    }
+  }
+
+  /**
+   * Test that the endpoint returns a single plugin
+   */
+  @Test
+  fun getPluginByName(vertx: Vertx, ctx: VertxTestContext) {
+    val plugins = listOf(
+      InitializerPlugin("InitializerPluginName", "/path", "1.0.0", listOf("fred", "foo", "bar")),
+    )
+
+    coEvery { pluginRegistry.compiledPlugins } returns plugins
+
+    val client = WebClient.create(vertx)
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        client.get(port, "localhost", "/plugins/UNKNOWN_NAME")
+          .expect(ResponsePredicate.SC_NOT_FOUND)
+          .send()
+          .await()
+
+        val response = client.get(port, "localhost", "/plugins/InitializerPluginName")
+          .`as`(BodyCodec.jsonObject())
+          .expect(ResponsePredicate.SC_OK)
+          .expect(ResponsePredicate.JSON)
+          .send()
+          .await()
+
+        assertThat(JsonUtils.fromJson<Plugin>(response.body()))
+          .usingRecursiveComparison()
+          .ignoringFieldsMatchingRegexes("compiledFunction")
+          .isEqualTo(plugins[0])
 
         ctx.completeNow()
       }

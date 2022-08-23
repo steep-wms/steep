@@ -1,5 +1,6 @@
 package model.plugins
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import io.vertx.core.Vertx
 import model.processchain.Executable
 import model.workflow.ExecuteAction
@@ -37,6 +38,7 @@ data class ProcessChainConsistencyCheckerPlugin(
     /**
      * The compiled plugin
      */
+    @JsonIgnore
     override val compiledFunction: KFunction<Boolean> = throwPluginNeedsCompile()
 ) : DependentPlugin
 

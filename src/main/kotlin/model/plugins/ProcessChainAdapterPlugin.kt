@@ -1,5 +1,6 @@
 package model.plugins
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import io.vertx.core.Vertx
 import model.processchain.Argument
 import model.processchain.ProcessChain
@@ -29,6 +30,7 @@ data class ProcessChainAdapterPlugin(
     /**
      * The compiled plugin
      */
+    @JsonIgnore
     override val compiledFunction: KFunction<List<ProcessChain>> = throwPluginNeedsCompile()
 ) : DependentPlugin
 
