@@ -67,7 +67,7 @@ const Plugins = () => {
 
   return (
     <Page title="Plugins">
-      <div className="page-title">
+      <div className="plugins-page-title">
         <h1 className="no-margin-bottom">Plugins</h1>
         <div className="title-right">
           <DropDown title="Filter" right primary={currentFilter !== undefined}>
