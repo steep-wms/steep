@@ -1052,7 +1052,7 @@ class HttpEndpoint : CoroutineVerticle() {
       renderAsset("ui/plugins/index.html", ctx.response())
     } else {
       launch {
-        val plugins: List<Plugin> = pluginRegistry.compiledPlugins
+        val plugins = pluginRegistry.getAllPlugins()
         val result = JsonArray(plugins.map { JsonUtils.toJson(it) }).encode()
         ctx.response()
           .putHeader("content-type", "application/json")
@@ -1071,7 +1071,7 @@ class HttpEndpoint : CoroutineVerticle() {
     } else {
       launch {
         val name = ctx.pathParam("name")
-        val plugin = pluginRegistry.compiledPlugins.firstOrNull { it.name == name }
+        val plugin = pluginRegistry.getAllPlugins().firstOrNull { it.name == name }
 
         if (plugin == null) {
           renderError(ctx, 404, "There is no plugin with name `$name'")

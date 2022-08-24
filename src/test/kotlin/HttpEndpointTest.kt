@@ -323,15 +323,19 @@ class HttpEndpointTest {
   @Test
   fun getPlugins(vertx: Vertx, ctx: VertxTestContext) {
     val plugins = listOf(
-      InitializerPlugin("InitializerPluginName", "/path", "1.0.0", listOf("fred", "foo", "bar")),
+      InitializerPlugin("InitializerPluginName", "/path", "1.0.0",
+          listOf("fred", "foo", "bar")),
       OutputAdapterPlugin("OutputAdapterPluginName", "/path", "1.0.0", "dataType"),
-      ProcessChainAdapterPlugin("Name", "/path", "1.0.0", listOf("fred", "foo", "bar")),
-      ProcessChainConsistencyCheckerPlugin("ProcessChainAdapterPluginName", "/path", "1.0.0", listOf("fred", "foo", "bar")),
-      ProgressEstimatorPlugin("ProgressEstimatorPluginName", "/path", "1.0.0", listOf("myService")),
+      ProcessChainAdapterPlugin("Name", "/path", "1.0.0",
+          listOf("fred", "foo", "bar")),
+      ProcessChainConsistencyCheckerPlugin("ProcessChainAdapterPluginName",
+          "/path", "1.0.0", listOf("fred", "foo", "bar")),
+      ProgressEstimatorPlugin("ProgressEstimatorPluginName", "/path", "1.0.0",
+          listOf("myService")),
       RuntimePlugin("RuntimePluginName", "/path", "1.0.0", "myRuntime"),
     )
 
-    coEvery { pluginRegistry.compiledPlugins } returns plugins
+    coEvery { pluginRegistry.getAllPlugins() } returns plugins
 
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
@@ -359,10 +363,11 @@ class HttpEndpointTest {
   @Test
   fun getPluginByName(vertx: Vertx, ctx: VertxTestContext) {
     val plugins = listOf(
-      InitializerPlugin("InitializerPluginName", "/path", "1.0.0", listOf("fred", "foo", "bar")),
+      InitializerPlugin("InitializerPluginName", "/path", "1.0.0",
+          listOf("fred", "foo", "bar")),
     )
 
-    coEvery { pluginRegistry.compiledPlugins } returns plugins
+    coEvery { pluginRegistry.getAllPlugins() } returns plugins
 
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
