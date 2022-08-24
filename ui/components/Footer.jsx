@@ -1,6 +1,6 @@
 import classNames from "classnames"
 import styles from "./Footer.scss"
-import { Book, Home, GitHub } from "react-feather"
+import { Book, Home, Github } from "lucide-react"
 import FraunhoferLogo from "../assets/fraunhofer.svg"
 import FraunhoferLogoWhite from "../assets/fraunhofer-white.svg"
 import SettingsContext from "./lib/SettingsContext"
@@ -26,7 +26,7 @@ const Footer = ({ noTopMargin = false }) => {
               <Book />
             </a>
             <a className="nav-item" href="https://github.com/steep-wms/steep" target="_blank" rel="noopener noreferrer">
-              <GitHub />
+              <Github />
             </a>
           </div>
         </div>

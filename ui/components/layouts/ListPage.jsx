@@ -10,7 +10,7 @@ import { useCallback, useContext, useEffect, useMemo, useState } from "react"
 import styles from "./ListPage.scss"
 import fetcher from "../lib/json-fetcher"
 import { useRouter } from "next/router"
-import { Check } from "react-feather"
+import { Check } from "lucide-react"
 import debounce from "lodash/debounce"
 
 function List({ Context, ListItem, subjects, path, pagination, pageSize,

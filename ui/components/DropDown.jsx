@@ -1,5 +1,5 @@
 import classNames from "classnames"
-import { ChevronDown } from "react-feather"
+import { ChevronDown } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import styles from "./DropDown.scss"
 

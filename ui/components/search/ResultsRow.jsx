@@ -3,7 +3,7 @@ import Label from "../../components/Label"
 import Link from "next/link"
 import { formatIsoLocalDateTime } from "../../components/lib/date-time-utils"
 import { AlertCircle, Clock, CheckCircle, Coffee, Delete, Link as LinkIcon,
-  RotateCw, Send, XCircle } from "react-feather"
+  RotateCw, Send, XCircle } from "lucide-react"
 import classNames from "classnames"
 import styles from "./ResultsRow.scss"
 

@@ -2,7 +2,7 @@ import styles from "./QuickSearch.scss"
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react"
 import { useRouter } from "next/router"
 import { addTypeExpression } from "./lib/search-query"
-import { Search, XCircle } from "react-feather"
+import { Search, XCircle } from "lucide-react"
 import classNames from "classnames"
 
 const QuickSearch = forwardRef(({ type, searchIcon = false, onEnter, onEscape,

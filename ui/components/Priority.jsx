@@ -2,7 +2,7 @@ import Modal from "./Modal"
 import ModalButtons from "./ModalButtons"
 import styles from "./Priority.scss"
 import { useEffect, useRef, useState } from "react"
-import { Edit2 } from "react-feather"
+import { Edit2 } from "lucide-react"
 import classNames from "classnames"
 
 function formatPriority(priority) {

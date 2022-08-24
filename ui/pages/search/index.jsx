@@ -9,7 +9,7 @@ import Results from "../../components/search/Results"
 import fetcher from "../../components/lib/json-fetcher"
 import { hasAnyTypeExpression, hasTypeExpression,
     removeAllTypeExpressions, hasLocator, toggleLocator } from "../../components/lib/search-query"
-import { ArrowRight, Check } from "react-feather"
+import { ArrowRight, Check } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/router"
 import { useSWRConfig } from "swr"

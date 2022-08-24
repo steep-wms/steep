@@ -1,5 +1,5 @@
 import Tooltip from "./Tooltip"
-import { Moon, Sun } from "react-feather"
+import { Moon, Sun } from "lucide-react"
 import SettingsContext from "../components/lib/SettingsContext"
 import { useContext } from "react"
 import styles from "./ThemeSwitcher.scss"

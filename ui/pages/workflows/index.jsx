@@ -4,7 +4,7 @@ import Tooltip from "../../components/Tooltip"
 import WorkflowContext from "../../components/workflows/WorkflowContext"
 import { useMemo } from "react"
 import Link from "next/link"
-import { PlusSquare } from "react-feather"
+import { PlusSquare } from "lucide-react"
 import workflowToProgress from "../../components/workflows/workflow-to-progress"
 import styles from "./index.scss"
 

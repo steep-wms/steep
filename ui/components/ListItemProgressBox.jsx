@@ -2,7 +2,7 @@ import classNames from "classnames"
 import resolvedStyles from "./ListItemProgressBox.scss?type=resolve"
 import styles from "./ListItemProgressBox.scss"
 import { Activity, AlertCircle, CheckCircle, Coffee, Delete, Download, Loader,
-  Moon, PauseCircle, Power, RotateCw, Trash2, XCircle } from "react-feather"
+  Moon, PauseCircle, Power, RotateCw, Trash2, XCircle } from "lucide-react"
 
 const ListItemProgressBox = ({ progress, deleted = false }) => {
   let icon

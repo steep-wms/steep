@@ -1,7 +1,7 @@
 import Tooltip from "./Tooltip"
 import classNames from "classnames"
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
-import { ChevronsDown } from "react-feather"
+import { ChevronsDown } from "lucide-react"
 import AutoSizer from "react-virtualized-auto-sizer"
 import { FixedSizeList } from "react-window"
 import styles from "./Log.scss"

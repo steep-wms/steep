@@ -7,7 +7,7 @@ import SettingsContext from "../../components/lib/SettingsContext"
 import Editor, { useMonaco } from "@monaco-editor/react"
 import Color from "color"
 import { useCallback, useContext, useEffect, useRef, useState } from "react"
-import { Circle } from "react-feather"
+import { Circle } from "lucide-react"
 import { useRouter } from "next/router"
 import styles from "./workflow.scss"
 

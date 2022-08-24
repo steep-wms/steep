@@ -1,7 +1,7 @@
 import classNames from "classnames"
 import Link from "next/link"
 import styles from "./Sidebar.scss"
-import { Grid, Link as LinkIcon, Pocket, Search, Send, Server, Layers } from "react-feather"
+import { LayoutGrid, Link as LinkIcon, Pocket, Search, Send, Server, Layers } from "lucide-react"
 import { useContext, useState } from "react"
 import SteepLogo from "../assets/steep-logo.svg"
 import SteepLogoWhite from "../assets/steep-logo-white.svg"
@@ -52,7 +52,7 @@ const Sidebar = () => {
             <NavItem href="/processchains/" icon={<LinkIcon />} text="Process Chains" />
             <NavItem href="/agents/" icon={<Pocket />} text="Agents" />
             <NavItem href="/vms/" icon={<Server />} text="VMs" />
-            <NavItem href="/services/" icon={<Grid />} text="Services" />
+            <NavItem href="/services/" icon={<LayoutGrid />} text="Services" />
             <NavItem href="/plugins/" icon={<Layers />} text="Plugins" />
             <NavItem href="/search/" icon={<Search />} text="Search" />
           </nav>
