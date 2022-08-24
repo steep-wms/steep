@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Alert from "../../components/Alert"
 import DefinitionList from "../../components/DefinitionList"
 import DefinitionListItem from "../../components/DefinitionListItem"
+import PluginType from "../../components/plugins/PluginType"
 import Label from "../../components/Label"
 import Link from "next/link"
 import styles from "./[name].scss"
@@ -30,7 +31,6 @@ const Plugin = () => {
   let title
   let subtitle
   let plugin
-  let none = <span className="none"></span>
 
   if (data !== undefined) {
     title = data.name
@@ -39,10 +39,10 @@ const Plugin = () => {
         <DefinitionList>
           <div className="plugin-details-dl">
             <div className="plugin-details-left">
-              <DefinitionListItem title="Type">{data.type}</DefinitionListItem>
-              <DefinitionListItem title="Script File">{data.scriptFile}</DefinitionListItem>
-              {data.supportedRuntime && <DefinitionListItem title="Supported Runtime">{data.supportedRuntime}</DefinitionListItem> }
-              {data.supportedDataType && <DefinitionListItem title="Supported Data Type">{data.supportedDataType}</DefinitionListItem> }
+              <DefinitionListItem title="Type"><Label><PluginType type={data.type} /></Label></DefinitionListItem>
+              <DefinitionListItem title="Script file">{data.scriptFile}</DefinitionListItem>
+              {data.supportedRuntime && <DefinitionListItem title="Supported runtime">{data.supportedRuntime}</DefinitionListItem>}
+              {data.supportedDataType && <DefinitionListItem title="Supported data type">{data.supportedDataType}</DefinitionListItem>}
             </div>
             <div className="plugin-details-right">
               <DefinitionListItem title="Version">{data.version}</DefinitionListItem>
@@ -51,12 +51,12 @@ const Plugin = () => {
         </DefinitionList>
       </div>
 
-      {data.dependsOn && data.dependsOn.length > 0 && (<>
-        <h2>Depends On</h2>
+      {data.supportedServiceIds && data.supportedServiceIds.length > 0 && (<>
+        <h2>IDs of supported services</h2>
         <div className="plugin-list">
-          {data.dependsOn.map(r => {
-            let linkHref = "/plugins/[r]"
-            let linkAs = `/plugins/${r}`
+          {data.supportedServiceIds.map(r => {
+            let linkHref = "/services/[id]"
+            let linkAs = `/services/${r}`
             return (
               <Link key={linkAs} href={linkHref} as={linkAs}><a className="list-item-title-link">{r}</a></Link>
             )
@@ -64,12 +64,12 @@ const Plugin = () => {
         </div>
       </>)}
 
-      {data.supportedServiceIds && data.supportedServiceIds.length > 0 && (<>
-        <h2>Supported Service IDs</h2>
+      {data.dependsOn && data.dependsOn.length > 0 && (<>
+        <h2>Depends on</h2>
         <div className="plugin-list">
-          {data.supportedServiceIds.map(r => {
-            let linkHref = "/services/[r]"
-            let linkAs = `/services/${r}`
+          {data.dependsOn.map(r => {
+            let linkHref = "/plugins/[name]"
+            let linkAs = `/plugins/${r}`
             return (
               <Link key={linkAs} href={linkHref} as={linkAs}><a className="list-item-title-link">{r}</a></Link>
             )

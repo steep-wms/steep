@@ -1,0 +1,22 @@
+.page-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.45rem;
+}
+
+.title-right {
+  margin-top: 2rem;
+  gap: 2rem;
+}
+
+.filter-list {
+  &.has-enabled-filters {
+    :global(li):not(.enabled) {
+      &:before {
+        content: "\00a0";
+        padding-left: 24px;
+      }
+    }
+  }
+}
