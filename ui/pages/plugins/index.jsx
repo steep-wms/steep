@@ -5,6 +5,7 @@ import ListItem from "../../components/ListItem"
 import PluginType from "../../components/plugins/PluginType"
 import { Check } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/router"
 import fetcher from "../../components/lib/json-fetcher"
 import classNames from "classnames"
 import styles from "./index.scss"
@@ -15,7 +16,8 @@ const PLUGIN_TYPES = ["initializer", "outputAdapter", "processChainAdapter",
 const Plugins = () => {
   const [plugins, setPlugins] = useState()
   const [error, setError] = useState()
-  const [currentFilter, setCurrentFilter] = useState()
+  const router = useRouter()
+  const currentFilter = router.query.type
 
   useEffect(() => {
     fetcher(`${process.env.baseUrl}/plugins`)
@@ -27,11 +29,16 @@ const Plugins = () => {
   }, [])
 
   function toggleFilter(type, enabled) {
+    let query = { ...router.query }
     if (enabled) {
-      setCurrentFilter(undefined)
+      delete query["type"]
     } else {
-      setCurrentFilter(type)
+      query.type = type
     }
+    router.push({
+      pathname: router.pathname,
+      query
+    })
   }
 
   let filterDropDownElements = []
