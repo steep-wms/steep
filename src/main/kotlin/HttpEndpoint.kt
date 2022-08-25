@@ -94,7 +94,6 @@ import kotlinx.coroutines.launch
 import model.Submission
 import model.Version
 import model.cloud.VM
-import model.plugins.Plugin
 import model.workflow.Workflow
 import org.apache.commons.text.WordUtils
 import org.parboiled.errors.ParserRuntimeException
@@ -700,7 +699,6 @@ class HttpEndpoint : CoroutineVerticle() {
               receivedAny = false
               return@setPeriodic
             }
-            @Suppress("ThrowableNotThrown")
             channel.cancel(CancellationException("Timeout while waiting for " +
                 "log data from agent"))
             vertx.cancelTimer(timerId)
