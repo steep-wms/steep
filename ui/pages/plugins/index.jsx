@@ -4,8 +4,8 @@ import DropDown from "../../components/DropDown"
 import ListItem from "../../components/ListItem"
 import PluginType from "../../components/plugins/PluginType"
 import { Check } from "lucide-react"
-import { useEffect, useState } from "react"
 import { useRouter } from "next/router"
+import useSWRImmutable from "swr/immutable"
 import fetcher from "../../components/lib/json-fetcher"
 import classNames from "classnames"
 import styles from "./index.scss"
@@ -14,19 +14,9 @@ const PLUGIN_TYPES = ["initializer", "outputAdapter", "processChainAdapter",
   "processChainConsistencyChecker", "progressEstimator", "runtime"].sort()
 
 const Plugins = () => {
-  const [plugins, setPlugins] = useState()
-  const [error, setError] = useState()
+  const { data: plugins, error } = useSWRImmutable(`${process.env.baseUrl}/plugins`, fetcher)
   const router = useRouter()
   const currentFilter = router.query.type
-
-  useEffect(() => {
-    fetcher(`${process.env.baseUrl}/plugins`)
-      .then(setPlugins)
-      .catch(err => {
-        console.log(err)
-        setError(<Alert error>Could not load plugins</Alert>)
-      })
-  }, [])
 
   function toggleFilter(type, enabled) {
     let query = { ...router.query }
@@ -86,7 +76,7 @@ const Plugins = () => {
       </div>
       {pluginElements}
       {pluginElements && pluginElements.length === 0 && <>There are no plugins.</>}
-      {error}
+      {error && <Alert error>Could not load plugins</Alert>}
       {plugins && plugins.length === 0 && <Alert warning>There are no configured plugins</Alert>}
       <style jsx>{styles}</style>
     </Page>

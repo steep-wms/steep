@@ -1,31 +1,18 @@
 import DetailPage from "../../components/layouts/DetailPage"
 import { useRouter } from "next/router"
-import { useEffect, useState } from "react"
 import Alert from "../../components/Alert"
 import DefinitionList from "../../components/DefinitionList"
 import DefinitionListItem from "../../components/DefinitionListItem"
 import Label from "../../components/Label"
 import styles from "./[id].scss"
 import { formatDurationMilliseconds } from "../../components/lib/date-time-utils"
+import useSWRImmutable from "swr/immutable"
 import fetcher from "../../components/lib/json-fetcher"
 
 const Service = () => {
   const router = useRouter()
   const { id } = router.query
-
-  const [data, setData] = useState()
-  const [error, setError] = useState()
-
-  useEffect(() => {
-    if (id) {
-      fetcher(`${process.env.baseUrl}/services/${id}`)
-        .then(setData)
-        .catch(err => {
-          console.log(err)
-          setError(<Alert error>Could not load service</Alert>)
-        })
-    }
-  }, [id])
+  const { data, error } = useSWRImmutable(() => id && `${process.env.baseUrl}/services/${id}`, fetcher)
 
   let title
   let subtitle
@@ -178,7 +165,7 @@ const Service = () => {
   return (
     <DetailPage title={title} subtitle={subtitle}>
       {service}
-      {error}
+      {error && <Alert error>Could not load service</Alert>}
       <style jsx>{styles}</style>
     </DetailPage>
   )

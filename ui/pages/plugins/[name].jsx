@@ -1,6 +1,5 @@
 import DetailPage from "../../components/layouts/DetailPage"
 import { useRouter } from "next/router"
-import { useEffect, useState } from "react"
 import Alert from "../../components/Alert"
 import DefinitionList from "../../components/DefinitionList"
 import DefinitionListItem from "../../components/DefinitionListItem"
@@ -8,25 +7,13 @@ import PluginType from "../../components/plugins/PluginType"
 import Label from "../../components/Label"
 import Link from "next/link"
 import styles from "./[name].scss"
+import useSWRImmutable from "swr/immutable"
 import fetcher from "../../components/lib/json-fetcher"
 
 const Plugin = () => {
   const router = useRouter()
   const { name } = router.query
-
-  const [data, setData] = useState()
-  const [error, setError] = useState()
-
-  useEffect(() => {
-    if (name) {
-      fetcher(`${process.env.baseUrl}/plugins/${name}`)
-        .then(setData)
-        .catch(err => {
-          console.log(err)
-          setError(<Alert error>Could not load plugin</Alert>)
-        })
-    }
-  }, [name])
+  const { data, error } = useSWRImmutable(() => name && `${process.env.baseUrl}/plugins/${name}`, fetcher)
 
   let title
   let subtitle
@@ -84,7 +71,7 @@ const Plugin = () => {
   return (
     <DetailPage title={title} subtitle={subtitle}>
       {plugin}
-      {error}
+      {error && <Alert error>Could not load plugin</Alert>}
       <style jsx>{styles}</style>
     </DetailPage>
   )

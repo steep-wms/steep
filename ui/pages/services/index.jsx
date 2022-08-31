@@ -1,21 +1,11 @@
 import Page from "../../components/layouts/Page"
 import Alert from "../../components/Alert"
 import ListItem from "../../components/ListItem"
-import { useEffect, useState } from "react"
+import useSWRImmutable from "swr/immutable"
 import fetcher from "../../components/lib/json-fetcher"
 
 const Services = () => {
-  const [services, setServices] = useState()
-  const [error, setError] = useState()
-
-  useEffect(() => {
-    fetcher(`${process.env.baseUrl}/services`)
-      .then(setServices)
-      .catch(err => {
-        console.log(err)
-        setError(<Alert error>Could not load services</Alert>)
-      })
-  }, [])
+  const { data: services, error } = useSWRImmutable(`${process.env.baseUrl}/services`, fetcher)
 
   let serviceElements
   if (services !== undefined) {
@@ -38,7 +28,7 @@ const Services = () => {
       <h1>Services</h1>
       {serviceElements}
       {serviceElements && serviceElements.length === 0 && <>There are no services.</>}
-      {error}
+      {error && <Alert error>Could not load services</Alert>}
       {services && services.length === 0 && <Alert warning>There are no configured services</Alert>}
     </Page>
   )
