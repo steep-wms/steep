@@ -1,7 +1,7 @@
 import DetailPage from "../../components/layouts/DetailPage"
 import Link from "next/link"
 import { useRouter } from "next/router"
-import { useContext, useEffect, useState } from "react"
+import { useContext, useEffect } from "react"
 import Alert from "../../components/Alert"
 import DefinitionList from "../../components/DefinitionList"
 import DefinitionListItem from "../../components/DefinitionListItem"
@@ -12,23 +12,20 @@ import AgentContext from "../../components/agents/AgentContext"
 import styles from "./[id].scss"
 import { formatDate } from "../../components/lib/date-time-utils"
 import agentToProgress from "../../components/agents/agent-to-progress"
+import useSWR from "swr"
 import fetcher from "../../components/lib/json-fetcher"
 
 function AgentDetails({ id }) {
   const agents = useContext(AgentContext.Items)
   const updateAgents = useContext(AgentContext.UpdateItems)
-  const [error, setError] = useState()
+  const { data: swrAgent, error } = useSWR(() => id &&
+    `${process.env.baseUrl}/agents/${id}`, fetcher, { revalidateOnFocus: false })
 
   useEffect(() => {
-    if (id) {
-      fetcher(`${process.env.baseUrl}/agents/${id}`)
-        .then(agent => updateAgents({ action: "set", items: [agent] }))
-        .catch(err => {
-          console.log(err)
-          setError(<Alert error>Could not load agent</Alert>)
-        })
+    if (swrAgent) {
+      updateAgents({ action: "set", items: [swrAgent] })
     }
-  }, [id, updateAgents])
+  }, [id, updateAgents, swrAgent])
 
   let breadcrumbs
   let title
@@ -86,7 +83,7 @@ function AgentDetails({ id }) {
   return (
     <DetailPage breadcrumbs={breadcrumbs} title={title}>
       {agent}
-      {error}
+      {error && <Alert error>Could not load agent</Alert>}
     </DetailPage>
   )
 }

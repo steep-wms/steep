@@ -19,7 +19,7 @@ function List({ Context, ListItem, subjects, path, pagination, pageSize,
   const workflows = useContext(Context.Items)
   const updateItems = useContext(Context.UpdateItems)
   const [pageTotal, setPageTotal] = useState(0)
-  const [lastForceUpdate, setLastForceUpdate] = useState(forceUpdate)
+  const [, setLastForceUpdate] = useState(forceUpdate)
 
   const router = useRouter()
   const initialRender = Object.keys(router.query).length === 0 &&
