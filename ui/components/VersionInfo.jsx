@@ -5,7 +5,8 @@ import useSWRImmutable from "swr/immutable"
 import fetcher from "./lib/json-fetcher"
 
 const VersionInfo = () => {
-  const { data, error } = useSWRImmutable(process.env.baseUrl, fetcher)
+  let url = process.env.baseUrl.length > 0 ? process.env.baseUrl : "/"
+  const { data, error } = useSWRImmutable(url, fetcher)
 
   if (error !== undefined) {
     return <Alert error>Could not load version information</Alert>
