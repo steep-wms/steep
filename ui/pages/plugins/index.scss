@@ -1,11 +1,5 @@
 @import "css/variables";
 
-.dummy {
-  // STRANGE WORKAROUND TO FIX A BUG IN SCSS, STYLED-JSX, OR WEBPACK'S SCSS
-  // LOADER (whatever) THAT LEADS TO THE FIRST RULE IN THIS FILE BEING IGNORED
-  color: red;
-}
-
 .plugins-page-title {
   display: flex;
   justify-content: space-between;

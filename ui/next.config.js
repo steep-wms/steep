@@ -75,6 +75,13 @@ const config = {
             type: (fileName, options) => options.query.type || "scoped"
           }
         },
+        // Strip BOM added by SASS if a scss file contains a UTF-8 character
+        // (or even if it just contains a UTF-8 escape sequence). styled-jsx
+        // puts the compiled style into a JavaScript string. If we don't remove
+        // the BOM, the first character in this string will be the BOM (!) and
+        // so the first rule in the stylesheet will not apply because the
+        // selector is not `.element` but `\ufeff.element`.
+        "./strip-bom-loader.cjs",
         "sass-loader"
       ]
     })
