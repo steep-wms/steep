@@ -21,15 +21,13 @@ import { formatDate, formatDurationTitle } from "../../components/lib/date-time-
 import fetcher from "../../components/lib/json-fetcher"
 import EventBus from "@vertx/eventbus-bridge-client.js"
 import classNames from "classnames"
-import useSWR from "swr"
 import styles from "./[id].scss"
 
 function ProcessChainDetails({ id }) {
   const processChains = useContext(ProcessChainContext.Items)
   const updateProcessChains = useContext(ProcessChainContext.UpdateItems)
-  const { data: swrProcessChain, error } = useSWR(() => id &&
-      `${process.env.baseUrl}/processchains/${id}`, fetcher, { revalidateOnFocus: false })
   const eventBus = useContext(EventBusContext)
+  const [error, setError] = useState()
   const [cancelModalOpen, setCancelModalOpen] = useState()
   const [logAvailable, setLogAvailable] = useState(false)
   const [logCollapsed, setLogCollapsed] = useState()
@@ -235,7 +233,7 @@ function ProcessChainDetails({ id }) {
   return (
     <DetailPage breadcrumbs={breadcrumbs} title={title} menu={menu} deleted={deleted}>
       {processchain}
-      {error && <Alert error>Could not load process chain</Alert>}
+      {error}
       <CancelModal isOpen={cancelModalOpen} contentLabel="Cancel modal"
           onRequestClose={() => setCancelModalOpen(false)} title="Cancel process chain"
           onConfirm={onDoCancel} onDeny={() => setCancelModalOpen(false)}>

@@ -15,23 +15,26 @@ import WorkflowContext from "../../components/workflows/WorkflowContext"
 import { formatDate, formatDurationTitle } from "../../components/lib/date-time-utils"
 import submissionToSource from "../../components/lib/submission-source"
 import workflowToProgress from "../../components/workflows/workflow-to-progress"
-import useSWR from "swr"
 import fetcher from "../../components/lib/json-fetcher"
 import styles from "./[id].scss"
 
 function WorkflowDetails({ id }) {
   const workflows = useContext(WorkflowContext.Items)
   const updateWorkflows = useContext(WorkflowContext.UpdateItems)
-  const { data: swrWorkflow, error } = useSWR(() => id &&
-    `${process.env.baseUrl}/workflows/${id}`, fetcher, { revalidateOnFocus: false })
+  const [error, setError] = useState()
   const [cancelModalOpen, setCancelModalOpen] = useState()
   const router = useRouter()
 
   useEffect(() => {
-    if (swrWorkflow) {
-      updateWorkflows({ action: "set", items: [swrWorkflow] })
+    if (id) {
+      fetcher(`${process.env.baseUrl}/workflows/${id}`)
+        .then(workflow => updateWorkflows({ action: "set", items: [workflow] }))
+        .catch(err => {
+          console.error(err)
+          setError(<Alert error>Could not load workflow</Alert>)
+        })
     }
-  }, [id, updateWorkflows, swrWorkflow])
+  }, [id, updateWorkflows])
 
   function onCancel() {
     setCancelModalOpen(true)
@@ -182,7 +185,7 @@ function WorkflowDetails({ id }) {
   return (
     <DetailPage breadcrumbs={breadcrumbs} title={title} menu={menu} deleted={deleted}>
       {workflow}
-      {error && <Alert error>Could not load workflow</Alert>}
+      {error}
       <CancelModal isOpen={cancelModalOpen} contentLabel="Cancel modal"
           onRequestClose={() => setCancelModalOpen(false)} title="Cancel workflow"
           onConfirm={onDoCancel} onDeny={() => setCancelModalOpen(false)}>

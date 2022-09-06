@@ -8,7 +8,6 @@ import Pagination from "../Pagination"
 import QuickSearch from "../QuickSearch"
 import { useCallback, useContext, useEffect, useMemo, useState } from "react"
 import styles from "./ListPage.scss"
-import useSWR from "swr"
 import fetcher from "../lib/json-fetcher"
 import { useRouter } from "next/router"
 import { Check } from "lucide-react"
@@ -18,8 +17,8 @@ function List({ Context, ListItem, subjects, path, pagination, pageSize,
     pageOffset, enabledFilterValues, forceUpdate }) {
   const workflows = useContext(Context.Items)
   const updateItems = useContext(Context.UpdateItems)
+  const [error, setError] = useState()
   const [pageTotal, setPageTotal] = useState(0)
-  const [lastForceUpdate, setLastForceUpdate] = useState(forceUpdate)
 
   const router = useRouter()
   const initialRender = Object.keys(router.query).length === 0 &&
@@ -46,37 +45,30 @@ function List({ Context, ListItem, subjects, path, pagination, pageSize,
   }
 
   let url = `${process.env.baseUrl}/${path}?${params.toString()}`
-  const { data: swrData, error, mutate } = useSWR(() => {
+
+  useEffect(() => {
     if (initialRender) {
       // skip fetch if router.query hasn't been populated yet
-      return false
+      return
     }
-    return url
-  }, u => fetcher(u, true), {
-    revalidateOnFocus: false
-  })
 
-  useEffect(() => {
-    if (swrData) {
-      updateItems({ action: "set", items: swrData.body })
-      if (pagination) {
-        let pageTotalHeader = swrData.headers.get("x-page-total")
-        if (pageTotalHeader !== null) {
-          setPageTotal(+pageTotalHeader)
+    forceReset()
+
+    fetcher(url, true)
+      .then(r => {
+        updateItems({ action: "set", items: r.body })
+        if (pagination) {
+          let pageTotalHeader = r.headers.get("x-page-total")
+          if (pageTotalHeader !== null) {
+            setPageTotal(+pageTotalHeader)
+          }
         }
-      }
-    }
-  }, [url, pagination, updateItems, swrData])
-
-  useEffect(() => {
-    setLastForceUpdate(current => {
-      if (current !== forceUpdate) {
-        forceReset()
-        mutate()
-      }
-      return forceUpdate
-    })
-  }, [forceUpdate, mutate, forceReset])
+      })
+      .catch(err => {
+        console.error(err)
+        setError(<Alert error>Could not load {subjects}</Alert>)
+      })
+  }, [url, subjects, pagination, updateItems, forceReset, forceUpdate, initialRender])
 
   function reset(newOffset) {
     if ((newOffset || 0) !== (pageOffset || 0)) {
@@ -92,7 +84,7 @@ function List({ Context, ListItem, subjects, path, pagination, pageSize,
   return (<div className={classNames("list-container", { loading: listItems === undefined })}>
     {listItems}
     {listItems && listItems.length === 0 && <>There are no {subjects}.</>}
-    {error && <Alert error>Could not load {subjects}</Alert>}
+    {error}
     {pagination && pageTotal + workflows.added > 0 && (
       <div className="pagination">
         <Pagination pageSize={pageSize} pageOffset={pageOffset}
