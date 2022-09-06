@@ -1,14 +1,24 @@
 import Alert from "./Alert"
 import DefinitionList from "./DefinitionList"
 import DefinitionListItem from "./DefinitionListItem"
-import useSWRImmutable from "swr/immutable"
+import { useEffect, useState } from "react"
 import fetcher from "./lib/json-fetcher"
 
 const VersionInfo = () => {
-  const { data, error } = useSWRImmutable(process.env.baseUrl, fetcher)
+  const [data, setData] = useState()
+  const [error, setError] = useState()
+
+  useEffect(() => {
+    fetcher(process.env.baseUrl)
+      .then(setData)
+      .catch(err => {
+        console.log(err)
+        setError(<Alert error>Could not load version information</Alert>)
+      })
+  }, [])
 
   if (error !== undefined) {
-    return <Alert error>Could not load version information</Alert>
+    return error
   } else if (data === undefined) {
     return (
       <></>

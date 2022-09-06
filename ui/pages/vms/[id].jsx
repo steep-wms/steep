@@ -1,7 +1,7 @@
 import DetailPage from "../../components/layouts/DetailPage"
 import Link from "next/link"
 import { useRouter } from "next/router"
-import { useContext, useEffect } from "react"
+import { useContext, useEffect, useState } from "react"
 import Alert from "../../components/Alert"
 import DefinitionList from "../../components/DefinitionList"
 import DefinitionListItem from "../../components/DefinitionListItem"
@@ -11,21 +11,24 @@ import LiveDuration from "../../components/LiveDuration"
 import VMContext from "../../components/vms/VMContext"
 import vmToProgress from "../../components/vms/vm-to-progress"
 import { formatDate, formatDurationTitle } from "../../components/lib/date-time-utils"
-import useSWR from "swr"
 import fetcher from "../../components/lib/json-fetcher"
 import styles from "./[id].scss"
 
 function VMDetails({ id }) {
   const vms = useContext(VMContext.Items)
   const updateVMs = useContext(VMContext.UpdateItems)
-  const { data: swrVM, error } = useSWR(() => id &&
-    `${process.env.baseUrl}/vms/${id}`, fetcher, { revalidateOnFocus: false })
+  const [error, setError] = useState()
 
   useEffect(() => {
-    if (swrVM) {
-      updateVMs({ action: "set", items: [swrVM] })
+    if (id) {
+      fetcher(`${process.env.baseUrl}/vms/${id}`)
+        .then(vm => updateVMs({ action: "set", items: [vm] }))
+        .catch(err => {
+          console.log(err)
+          setError(<Alert error>Could not load VM</Alert>)
+        })
     }
-  }, [id, updateVMs, swrVM])
+  }, [id, updateVMs])
 
   let breadcrumbs
   let title
@@ -171,7 +174,7 @@ function VMDetails({ id }) {
   return (
     <DetailPage breadcrumbs={breadcrumbs} title={title} deleted={deleted}>
       {result}
-      {error && <Alert error>Could not load VM</Alert>}
+      {error}
     </DetailPage>
   )
 }
