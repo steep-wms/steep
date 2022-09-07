@@ -302,7 +302,7 @@ class HttpEndpoint : CoroutineVerticle() {
     router.get("/favicons/*").handler(placeholderHandler(true))
 
     val sockJSHandler = SockJSHandler.create(vertx)
-    sockJSHandler.bridge(SockJSBridgeOptions()
+    val sockJSRouter = sockJSHandler.bridge(SockJSBridgeOptions()
         .addOutboundPermitted(PermittedOptions()
             .setAddressRegex(Pattern.quote(LOGS_PROCESSCHAINS_PREFIX) + ".+"))
         .addOutboundPermitted(PermittedOptions()
@@ -370,7 +370,7 @@ class HttpEndpoint : CoroutineVerticle() {
     router.route("/eventbus/*")
         .handler(BodyHandler.create()
             .setBodyLimit(config.getLong(ConfigConstants.HTTP_POST_MAX_SIZE, 1024L * 1024L)))
-        .handler(sockJSHandler)
+        .subRouter(sockJSRouter)
 
     val baseRouter = Router.router(vertx)
     baseRouter.route("$basePath/*").subRouter(router)
