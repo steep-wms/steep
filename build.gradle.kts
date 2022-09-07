@@ -1,11 +1,14 @@
 import java.text.SimpleDateFormat
 import java.util.Date
+import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     application
     jacoco
     kotlin("jvm") version "1.7.10"
+    id("com.github.ben-manes.versions") version "0.42.0"
+    id("se.patrikerdes.use-latest-versions") version "0.2.18"
 }
 
 buildscript {
@@ -115,6 +118,19 @@ jacoco {
 }
 
 tasks {
+    fun isNonStable(version: String): Boolean {
+        val stableKeyword = listOf("RELEASE", "FINAL", "GA").any { version.toUpperCase().contains(it) }
+        val regex = "^[0-9,.v-]+(-r)?$".toRegex()
+        val isStable = stableKeyword || regex.matches(version)
+        return !isStable
+    }
+
+    withType<DependencyUpdatesTask> {
+        rejectVersionIf {
+            isNonStable(candidate.version) && !isNonStable(currentVersion)
+        }
+    }
+
     test {
         useJUnitPlatform()
     }
