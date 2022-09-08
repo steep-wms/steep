@@ -69,7 +69,7 @@ dependencies {
     implementation("org.apache.ant:ant:1.10.12")
     implementation("org.apache.commons:commons-lang3:3.12.0")
     implementation("org.apache.commons:commons-text:1.9")
-    implementation("org.flywaydb:flyway-core:9.2.2")
+    implementation("org.flywaydb:flyway-core:9.2.3")
     implementation("org.mongodb:mongodb-driver-reactivestreams:4.7.1")
     implementation("com.github.openstack4j.core:openstack4j:3.10")
     implementation("org.parboiled:parboiled-java:1.4.1")
