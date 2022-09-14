@@ -1,5 +1,5 @@
-const favicons = require("favicons")
-const fs = require("fs")
+import favicons from "favicons"
+import fs from "fs"
 
 const config = {
   path: "/favicons/",
@@ -11,28 +11,25 @@ const config = {
   logging: true
 }
 
-favicons("../../assets/steep-icon.svg", config, (error, response) => {
-  if (error) {
-    console.error(error.message)
-    return
-  }
+let response = await favicons("../../assets/steep-icon.svg", config)
 
-  for (let f of response.files) {
-    console.log(`Write ${f.name} ...`)
-    fs.writeFileSync(f.name, f.contents, "utf-8")
-  }
+console.log(response)
 
-  for (let f of response.images) {
-    console.log(`Write ${f.name} ...`)
-    fs.writeFileSync(f.name, f.contents)
-  }
+for (let f of response.files) {
+  console.log(`Write ${f.name} ...`)
+  fs.writeFileSync(f.name, f.contents, "utf-8")
+}
 
-  console.log("---------------------------------------------------------------")
-  console.log("INSERT THE FOLLOWING INTO YOUR Header.jsx")
-  console.log("---------------------------------------------------------------")
-  for (let s of response.html) {
-    s = s.replace(/"\/favicons\/([^"]*)"/g, "{`${router.basePath}/favicons/$1`}")
-    s = s.replace(/>$/m, "/>")
-    console.log(s)
-  }
-})
+for (let f of response.images) {
+  console.log(`Write ${f.name} ...`)
+  fs.writeFileSync(f.name, f.contents)
+}
+
+console.log("---------------------------------------------------------------")
+console.log("INSERT THE FOLLOWING INTO YOUR Header.jsx")
+console.log("---------------------------------------------------------------")
+for (let s of response.html) {
+  s = s.replace(/"\/favicons\/([^"]*)"/g, "{`${router.basePath}/favicons/$1`}")
+  s = s.replace(/>$/m, "/>")
+  console.log(s)
+}
