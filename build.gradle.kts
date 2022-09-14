@@ -63,7 +63,7 @@ dependencies {
     implementation("com.zaxxer:HikariCP:5.0.1")
     implementation("io.airlift:aircompressor:0.21")
     implementation("io.pebbletemplates:pebble:3.1.5")
-    implementation("io.projectreactor:reactor-core:3.4.22") // necessary for reactive MongoDB driver
+    implementation("io.projectreactor:reactor-core:3.4.23") // necessary for reactive MongoDB driver
     implementation("io.prometheus:simpleclient:$prometheusClientVersion")
     implementation("io.micrometer:micrometer-registry-prometheus:1.9.3")
     implementation("org.apache.ant:ant:1.10.12")
