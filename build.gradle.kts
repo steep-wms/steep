@@ -57,19 +57,19 @@ dependencies {
     implementation("commons-io:commons-io:2.11.0")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.4")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.4")
-    implementation("com.github.luben:zstd-jni:1.5.2-3")
+    implementation("com.github.luben:zstd-jni:1.5.2-4")
     implementation("com.github.zafarkhaja:java-semver:0.9.0")
     implementation("com.google.guava:guava:31.1-jre")
     implementation("com.zaxxer:HikariCP:5.0.1")
     implementation("io.airlift:aircompressor:0.21")
     implementation("io.pebbletemplates:pebble:3.1.5")
-    implementation("io.projectreactor:reactor-core:3.4.22") // necessary for reactive MongoDB driver
+    implementation("io.projectreactor:reactor-core:3.4.23") // necessary for reactive MongoDB driver
     implementation("io.prometheus:simpleclient:$prometheusClientVersion")
-    implementation("io.micrometer:micrometer-registry-prometheus:1.9.3")
+    implementation("io.micrometer:micrometer-registry-prometheus:1.9.4")
     implementation("org.apache.ant:ant:1.10.12")
     implementation("org.apache.commons:commons-lang3:3.12.0")
     implementation("org.apache.commons:commons-text:1.9")
-    implementation("org.flywaydb:flyway-core:9.2.2")
+    implementation("org.flywaydb:flyway-core:9.3.0")
     implementation("org.mongodb:mongodb-driver-reactivestreams:4.7.1")
     implementation("com.github.openstack4j.core:openstack4j:3.10")
     implementation("org.parboiled:parboiled-java:1.4.1")
@@ -78,7 +78,7 @@ dependencies {
         // we only need org.quartz.CronExpression, so we can exclude all dependencies
         isTransitive = false
     }
-    implementation("org.yaml:snakeyaml:1.31")
+    implementation("org.yaml:snakeyaml:1.32")
 
     implementation(kotlin("reflect"))
     implementation(kotlin("scripting-jvm"))
@@ -86,7 +86,7 @@ dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation(kotlin("script-runtime"))
 
-    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.4.8")
+    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.4.9")
     testImplementation("io.mockk:mockk:1.12.7")
     testImplementation("io.vertx:vertx-junit5:$vertxVersion")
     testImplementation("org.assertj:assertj-core:3.23.1")
