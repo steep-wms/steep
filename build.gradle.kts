@@ -70,7 +70,7 @@ dependencies {
     implementation("org.apache.commons:commons-lang3:3.12.0")
     implementation("org.apache.commons:commons-text:1.9")
     implementation("org.flywaydb:flyway-core:9.3.0")
-    implementation("org.mongodb:mongodb-driver-reactivestreams:4.7.1")
+    implementation("org.mongodb:mongodb-driver-reactivestreams:4.7.2")
     implementation("com.github.openstack4j.core:openstack4j:3.10")
     implementation("org.parboiled:parboiled-java:1.4.1")
     implementation("org.postgresql:postgresql:42.5.0")
