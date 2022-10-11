@@ -18,12 +18,6 @@ const config = {
   // create a folder for each page
   trailingSlash: true,
 
-  // do not display static optimization indicator
-  // it gets in the way of notifications
-  devIndicators: {
-    autoPrerender: false
-  },
-
   eslint: {
     dirs: ["components", "cypress", "pages"]
   },
