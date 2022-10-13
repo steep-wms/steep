@@ -695,7 +695,8 @@ class CloudManager : CoroutineVerticle() {
         "env" to System.getenv(),
         "ipAddress" to ipAddress,
         "agentId" to vmId,
-        "agentCapabilities" to setup.providedCapabilities
+        "agentCapabilities" to setup.providedCapabilities, // TODO deprecated - it's available through `setup` now
+        "setup" to setup
     )
 
     // run provisioning scripts
