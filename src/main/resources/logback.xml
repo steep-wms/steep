@@ -3,23 +3,27 @@
     <!-- can be used to disable logback's debug output -->
     <!-- <statusListener class="ch.qos.logback.core.status.NopStatusListener" /> -->
 
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
-            <if condition='org.apache.commons.lang3.BooleanUtils.toBoolean(p("STEEP_LOGGING_ENABLEJSON"))'>
-                <then>
+    <if condition='org.apache.commons.lang3.BooleanUtils.toBoolean(p("STEEP_LOGGING_ENABLEJSON"))'>
+        <then>
+            <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+                <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
                     <layout class="ch.qos.logback.contrib.json.classic.JsonLayout">
                         <jsonFormatter class="ch.qos.logback.contrib.jackson.JacksonJsonFormatter"/>
                         <appendLineSeparator>true</appendLineSeparator>
                     </layout>
-                </then>
-                <else>
+                </encoder>
+            </appender>
+        </then>
+        <else>
+            <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+                <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
                     <layout class="ch.qos.logback.classic.PatternLayout">
                         <pattern>%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n</pattern>
                     </layout>
-                </else>
-            </if>
-        </encoder>
-    </appender>
+                </encoder>
+            </appender>
+        </else>
+    </if>
 
     <logger name="org.mongodb" level="INFO" />
     <logger name="io.netty" level="INFO" />
