@@ -1,5 +1,7 @@
 package helper
 
+import AddressConstants
+import agent.LocalAgent
 import ch.qos.logback.classic.encoder.PatternLayoutEncoder
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.UnsynchronizedAppenderBase
@@ -13,19 +15,27 @@ class EventbusAppender : UnsynchronizedAppenderBase<ILoggingEvent>() {
   var encoder: PatternLayoutEncoder? = null
 
   /**
-   * The event bus address to which to send the events
+   * The name of the process chain logger as defined in [LocalAgent]
    */
-  var address: String? = null
+  var loggerName: String? = null
+
+  private var address: String? = null
 
   override fun start() {
     if (encoder == null) {
-      addError("Missing encoder")
+      addError("Missing `encoder'")
       return
     }
-    if (address == null) {
-      addError("Missing event bus address")
+
+    val ln = loggerName
+    if (ln == null) {
+      addError("Missing `loggerName'")
       return
     }
+
+    val id = ln.substring(LocalAgent.PROCESSCHAIN_LOG_PREFIX.length)
+    address = AddressConstants.LOGS_PROCESSCHAINS_PREFIX + id
+
     super.start()
   }
 

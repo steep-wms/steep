@@ -1,17 +1,16 @@
 package helper
 
-import ConfigConstants
 import agent.LocalAgent
-import ch.qos.logback.core.PropertyDefinerBase
+import ch.qos.logback.core.FileAppender
 import java.nio.file.Paths
 
 /**
- * A logback property definer that takes the name of a process chain logger,
- * extracts the process chain ID and generates a path for the corresponding
- * log file.
+ * A logback appender that writes process chain logs into a file. The filename
+ * is calculated based on the name of a process chain logger, which should
+ * contain the process chain ID.
  * @author Michel Kraemer
  */
-class ProcessChainLogPathPropertyDefiner : PropertyDefinerBase() {
+class ProcessChainLogFileAppender<E> : FileAppender<E>() {
   /**
    * The name of the process chain logger as defined in [LocalAgent]
    */
@@ -29,25 +28,27 @@ class ProcessChainLogPathPropertyDefiner : PropertyDefinerBase() {
    */
   var groupByPrefix = 0
 
-  override fun getPropertyValue(): String? {
+  override fun start() {
     val ln = loggerName
     if (ln == null) {
       addError("The `loggerName' property must be set")
-      return null
+      return
     }
     val p = path
     if (p == null) {
       addError("The `path' property must be set")
-      return null
+      return
     }
 
     val id = ln.substring(LocalAgent.PROCESSCHAIN_LOG_PREFIX.length)
     val filename = "$id.log"
 
-    return if (groupByPrefix > 0) {
+    file = if (groupByPrefix > 0) {
       Paths.get(p, id.substring(0, groupByPrefix), filename).toString()
     } else {
       Paths.get(p, filename).toString()
     }
+
+    super.start()
   }
 }

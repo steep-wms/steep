@@ -403,25 +403,19 @@ fun configureLogging(conf: JsonObject) {
       <appender name="PROCESSCHAIN" class="ch.qos.logback.classic.sift.SiftingAppender">
         <discriminator class="helper.LoggerNameBasedDiscriminator" />
         <sift>
-            <define name="processChainLogPath" class="helper.ProcessChainLogPathPropertyDefiner">
-                <loggerName>${"$"}{loggerName}</loggerName>
-                <path>${path}</path>
-                <groupByPrefix>${groupByPrefix}</groupByPrefix>
-            </define>
-            <appender name="PROCESSCHAIN-${"$"}{loggerName}" class="ch.qos.logback.core.FileAppender">
-                <file>${"$"}{processChainLogPath}</file>
-                $processChainEncoder
-            </appender>
+          <appender name="PROCESSCHAIN-${"$"}{loggerName}" class="helper.ProcessChainLogFileAppender">
+            <loggerName>${"$"}{loggerName}</loggerName>
+            <path>${path}</path>
+            <groupByPrefix>${groupByPrefix}</groupByPrefix>
+            $processChainEncoder
+          </appender>
         </sift>
       </appender>
       <appender name="PROCESSCHAIN-EVENTBUS" class="ch.qos.logback.classic.sift.SiftingAppender">
         <discriminator class="helper.LoggerNameBasedDiscriminator" />
         <sift>
-          <define name="processChainLogAddress" class="helper.ProcessChainLogAddressPropertyDefiner">
-            <loggerName>${"$"}{loggerName}</loggerName>
-          </define>
           <appender name="PROCESSCHAIN-EVENTBUS-${"$"}{loggerName}" class="helper.EventbusAppender">
-            <address>${"$"}{processChainLogAddress}</address>
+            <loggerName>${"$"}{loggerName}</loggerName>
             $processChainEncoder
           </appender>
         </sift>

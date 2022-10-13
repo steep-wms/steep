@@ -23,7 +23,7 @@ version = "6.4.0-SNAPSHOT"
 val vertxVersion by extra("4.3.3")
 val prometheusClientVersion by extra("0.16.0")
 val slf4jVersion by extra("2.0.0")
-val logbackVersion by extra("1.4.0")
+val logbackVersion by extra("1.4.4")
 val junitVersion by extra("5.9.0")
 val testcontainersVersion by extra("1.17.3")
 
