@@ -1,6 +1,7 @@
 package cloud
 
 import model.retry.RetryPolicy
+import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import kotlin.math.min
@@ -44,15 +45,20 @@ data class VMCircuitBreaker(
     val resetTimeout: Duration,
 
     /**
+     * A counter for the number of performed attempts
+     */
+    val performedAttempts: Int = 0,
+
+    /**
+     * The clock to use to determine if the the reset timeout has been reached
+     */
+    private val clock: Clock = Clock.systemUTC(),
+
+    /**
      * An internal timestamp that records when the circuit breaker's state
      * has last changed
      */
-    private val lastAttemptTimestamp: Instant = Instant.now(),
-
-    /**
-     * A counter for the number of performed attempts
-     */
-    val performedAttempts: Int = 0
+    private val lastAttemptTimestamp: Instant = Instant.now(clock)
 ) {
   /**
    * `true` if the circuit breaker is in the *open* state and no other attempts
@@ -64,7 +70,7 @@ data class VMCircuitBreaker(
    * `true` if the circuit breaker is half open and one more attempt can be
    * performed
    */
-  val halfOpen get() = Instant.now().isAfter(lastAttemptTimestamp.plus(resetTimeout))
+  val halfOpen get() = Instant.now(clock).isAfter(lastAttemptTimestamp.plus(resetTimeout))
 
   /**
    * `true` if an attempt can be performed
@@ -92,7 +98,8 @@ data class VMCircuitBreaker(
     return VMCircuitBreaker(
         retryPolicy = retryPolicy,
         resetTimeout = resetTimeout,
-        performedAttempts = if (success) 0  else performedAttempts + 1
+        performedAttempts = if (success) 0  else performedAttempts + 1,
+        clock = clock
     )
   }
 }

@@ -1,10 +1,7 @@
 package cloud
 
-import io.mockk.every
-import io.mockk.mockkStatic
 import model.retry.RetryPolicy
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.time.Clock
 import java.time.Duration
@@ -16,16 +13,6 @@ import java.time.ZoneOffset
  * @author Michel Kraemer
  */
 class VMCircuitBreakerTest {
-  private val today = LocalDate.of(2022, 10, 20)
-  private val fixedClock = Clock.fixed(today.atStartOfDay().toInstant(ZoneOffset.UTC), ZoneOffset.UTC)
-
-  @BeforeEach
-  fun setUp() {
-    // mock system time so we can jump forward to test timeouts
-    mockkStatic(Clock::class)
-    every { Clock.systemUTC() } returns fixedClock
-  }
-
   /**
    * Check if the circuit breaker is open after the maximum number of
    * attempts has been reached
@@ -105,7 +92,10 @@ class VMCircuitBreakerTest {
    */
   @Test
   fun halfOpenAfterResetTimeout() {
-    var b = VMCircuitBreaker(RetryPolicy(2), Duration.ofSeconds(60))
+    val today = LocalDate.of(2022, 10, 20)
+    var cl = Clock.fixed(today.atStartOfDay().toInstant(ZoneOffset.UTC), ZoneOffset.UTC)
+
+    var b = VMCircuitBreaker(RetryPolicy(2), Duration.ofSeconds(60), clock = cl)
     assertThat(b.performedAttempts).isEqualTo(0)
     assertThat(b.open).isFalse
     assertThat(b.halfOpen).isFalse
@@ -119,15 +109,15 @@ class VMCircuitBreakerTest {
     assertThat(b.canPerformAttempt).isFalse
 
     // jump forward in time but still before the timeout
-    var cl = Clock.fixed(fixedClock.instant().plusSeconds(50), fixedClock.zone)
-    every { Clock.systemUTC() } returns cl
+    cl = Clock.offset(cl, Duration.ofSeconds(50))
+    b = b.copy(clock = cl)
     assertThat(b.open).isTrue
     assertThat(b.halfOpen).isFalse
     assertThat(b.canPerformAttempt).isFalse
 
     // jump forward in time after the timeout
-    cl = Clock.fixed(cl.instant().plusSeconds(20), cl.zone)
-    every { Clock.systemUTC() } returns cl
+    cl = Clock.offset(cl, Duration.ofSeconds(20))
+    b = b.copy(clock = cl)
     assertThat(b.open).isTrue
     assertThat(b.halfOpen).isTrue
     assertThat(b.canPerformAttempt).isTrue
@@ -139,14 +129,14 @@ class VMCircuitBreakerTest {
     assertThat(b.halfOpen).isFalse
     assertThat(b.canPerformAttempt).isFalse
 
-    cl = Clock.fixed(cl.instant().plusSeconds(50), cl.zone)
-    every { Clock.systemUTC() } returns cl
+    cl = Clock.offset(cl, Duration.ofSeconds(50))
+    b = b.copy(clock = cl)
     assertThat(b.open).isTrue
     assertThat(b.halfOpen).isFalse
     assertThat(b.canPerformAttempt).isFalse
 
-    cl = Clock.fixed(cl.instant().plusSeconds(20), cl.zone)
-    every { Clock.systemUTC() } returns cl
+    cl = Clock.offset(cl, Duration.ofSeconds(20))
+    b = b.copy(clock = cl)
     assertThat(b.open).isTrue
     assertThat(b.halfOpen).isTrue
     assertThat(b.canPerformAttempt).isTrue
