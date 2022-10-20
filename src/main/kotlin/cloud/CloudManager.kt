@@ -34,6 +34,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.cloud.PoolAgentParams
 import model.cloud.VM
+import model.retry.RetryPolicy
 import model.setup.Setup
 import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
@@ -42,8 +43,7 @@ import java.io.IOException
 import java.io.StringWriter
 import java.time.Duration
 import java.time.Instant
-import java.util.concurrent.atomic.AtomicInteger
-import kotlin.math.max
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.min
 
 /**
@@ -89,12 +89,6 @@ class CloudManager : CoroutineVerticle() {
      * Name of a cluster-wide lock used to run [sync] only once at the same time
      */
     private const val LOCK_SYNC = "CloudManager.Sync.Lock"
-
-    /**
-     * The maximum number of seconds to backoff between failed attempts to
-     * create a VM
-     */
-    private const val MAX_BACKOFF_SECONDS = 60 * 10
   }
 
   /**
@@ -145,10 +139,10 @@ class CloudManager : CoroutineVerticle() {
   private lateinit var setupSelector: SetupSelector
 
   /**
-   * The current number of seconds to wait before the next attempt to create a
-   * VM for a given Setup ID
+   * Circuit breakers for all setups that specify the maximum number of attempts
+   * to create a VM, delays, and whether another attempt can be performed or not
    */
-  private var backoffSeconds = mutableMapOf<String, AtomicInteger>()
+  private val setupCircuitBreakers = ConcurrentHashMap<String, VMCircuitBreaker>()
 
   /**
    * The maximum time the cloud manager should try to log in to a new VM via SSH
@@ -462,7 +456,7 @@ class CloudManager : CoroutineVerticle() {
     val vmsToKeep = mutableListOf<VM>()
     for (setup in minimumSetups) {
       val vms = vmsPerSetup[setup.id]
-      if (vms != null && vms.isNotEmpty()) {
+      if (!vms.isNullOrEmpty()) {
         vmsToKeep.add(vms.removeFirst())
       }
     }
@@ -500,10 +494,8 @@ class CloudManager : CoroutineVerticle() {
     var remaining = n
     val goodSetups = setups.toMutableList()
 
-    // Sort setups by backoff, put those with a longer backoff at the end, i.e.
-    // prefer those with a short one. These are the ones that are likely to
-    // succeed.
-    goodSetups.sortBy { backoffSeconds[it.id]?.get() ?: 0 }
+    // remove setups whose circuit breaker is open
+    goodSetups.retainAll { setupCircuitBreakers[it.id]?.canPerformAttempt ?: true }
 
     while (remaining > 0 && goodSetups.isNotEmpty()) {
       val result = createRemoteAgent { setupSelector.select(remaining, requiredCapabilities, goodSetups) }
@@ -552,10 +544,15 @@ class CloudManager : CoroutineVerticle() {
         try {
           log.info("Creating virtual machine ${vm.id} with setup `${setup.id}' ...")
 
-          val backoff = backoffSeconds.computeIfAbsent(setup.id) { AtomicInteger() }
-          if (backoff.get() > 10) {
-            log.info("Backing off for ${backoff.get()} seconds due to too many failed attempts.")
-            delay(backoff.get() * 1000L)
+          val delay = setupCircuitBreakers.computeIfAbsent(setup.id) {
+            VMCircuitBreaker(
+                RetryPolicy(5, 1000, 2, 60000), // TODO make configurable
+                Duration.ofMinutes(30) // TODO make configurable
+            )
+          }.currentDelay
+          if (delay > 0) {
+            log.info("Backing off for $delay milliseconds due to too many failed attempts.")
+            delay(delay)
           }
 
           try {
@@ -597,12 +594,12 @@ class CloudManager : CoroutineVerticle() {
 
             vmRegistry.setVMStatus(vm.id, VM.Status.PROVISIONING, VM.Status.RUNNING)
             vmRegistry.setVMAgentJoinTime(vm.id, Instant.now())
-            backoff.set(0)
+            setupCircuitBreakers.computeIfPresent(setup.id) { _, cb -> cb.afterAttemptPerformed(true) }
           } catch (t: Throwable) {
             vmRegistry.forceSetVMStatus(vm.id, VM.Status.ERROR)
             vmRegistry.setVMReason(vm.id, t.message ?: "Unknown error")
             vmRegistry.setVMDestructionTime(vm.id, Instant.now())
-            backoff.getAndUpdate { s -> min(MAX_BACKOFF_SECONDS, max(s * 2, 2)) }
+            setupCircuitBreakers.computeIfPresent(setup.id) { _, cb -> cb.afterAttemptPerformed(false) }
             throw t
           }
         } finally {
@@ -704,7 +701,7 @@ class CloudManager : CoroutineVerticle() {
       val destFileName = "/tmp/" + FilenameUtils.getName(script)
 
       // compile script template and write result into temporary file
-      val tmpFile = vertx.executeBlocking<File>({ ebp ->
+      val tmpFile = vertx.executeBlocking({ ebp ->
         val compiledTemplate = engine.getTemplate(script)
         val writer = StringWriter()
         compiledTemplate.evaluate(writer, context)
