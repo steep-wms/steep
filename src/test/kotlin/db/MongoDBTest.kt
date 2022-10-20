@@ -29,7 +29,7 @@ interface MongoDBTest {
     private lateinit var MONGOD_EXE: MongodExecutable
     private lateinit var MONGOD: MongodProcess
     private val MONGOD_CONFIG = MongodConfig.builder()
-        .version(Version.Main.PRODUCTION)
+        .version(Version.Main.V4_4)
         .build()
     val CONNECTION_STRING = "mongodb://" +
         MONGOD_CONFIG.net().serverAddress.hostAddress + ":" +
