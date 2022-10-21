@@ -6,6 +6,7 @@
   background-color: var(--gray-200);
   padding: .15rem .5rem .25rem .5rem;
   border-radius: $border-radius;
+  white-space: nowrap;
 
   &.label-small {
     font-size: .6rem;

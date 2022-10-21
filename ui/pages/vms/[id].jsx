@@ -48,7 +48,7 @@ function VMDetails({ id }) {
         vm.setup.providedCapabilities.length === 0) {
       caps = <>&ndash;</>
     } else {
-      caps = vm.setup.providedCapabilities.map((r, i) => <Label key={i}>{r}</Label>)
+      caps = vm.setup.providedCapabilities.map((r, i) => <><Label key={i}>{r}</Label><wbr/></>)
     }
 
     let progress = vmToProgress(vm)
