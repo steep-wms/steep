@@ -7,7 +7,7 @@ plugins {
     application
     jacoco
     kotlin("jvm") version "1.7.20"
-    id("com.github.ben-manes.versions") version "0.42.0"
+    id("com.github.ben-manes.versions") version "0.43.0"
     id("se.patrikerdes.use-latest-versions") version "0.2.18"
 }
 
@@ -99,7 +99,7 @@ dependencies {
 }
 
 application {
-    mainClassName = "MainKt"
+    mainClass.set("MainKt")
 
     applicationDefaultJvmArgs = listOf(
         // required to improve performance of Hazelcast
