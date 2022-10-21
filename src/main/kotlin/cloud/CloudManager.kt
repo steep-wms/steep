@@ -518,22 +518,16 @@ class CloudManager : CoroutineVerticle() {
    */
   internal suspend fun createRemoteAgent(n: Long, requiredCapabilities: Collection<String>) {
     var remaining = n
-    val goodSetups = setups.toMutableList()
-
-    // remove setups whose circuit breaker is open
-    goodSetups.retainAll { setupCircuitBreakers[it.id]?.canPerformAttempt ?: true }
-
-    while (remaining > 0 && goodSetups.isNotEmpty()) {
-      val result = createRemoteAgent { setupSelector.select(remaining, requiredCapabilities, goodSetups) }
-
-      // remove failed setups (i.e. retain alternatives), then try again
-      remaining = 0
-      for (p in result) {
-        if (!p.second) {
-          remaining++
-          goodSetups.remove(p.first.setup)
-        }
+    while (remaining > 0) {
+      // Remove setups whose circuit breaker is open. We have to do this in
+      // every iteration because the circuit breaker states can change.
+      val possibleSetups = setups.filter { setupCircuitBreakers[it.id]?.canPerformAttempt ?: true }
+      if (possibleSetups.isEmpty()) {
+        break
       }
+
+      val result = createRemoteAgent { setupSelector.select(remaining, requiredCapabilities, possibleSetups) }
+      remaining = result.count { !it.second }.toLong()
     }
   }
 

@@ -42,6 +42,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.cloud.VM
+import model.retry.RetryPolicy
+import model.setup.CreationPolicy
 import model.setup.Setup
 import model.setup.Volume
 import org.assertj.core.api.Assertions.assertThat
@@ -336,6 +338,7 @@ class CloudManagerTest {
   inner class Create {
     private lateinit var testSetup: Setup
     private lateinit var testSetupLarge: Setup
+    private lateinit var testSetupWithAlternative: Setup
     private lateinit var testSetupAlternative: Setup
     private lateinit var testSetupTwo: Setup
     private lateinit var testSetupWithVolumes: Setup
@@ -365,10 +368,14 @@ class CloudManagerTest {
       testSetupLarge = Setup("testLarge", "myFlavor", "myImage", AZ01, 500000,
           "SSD", 0, 4, provisioningScripts = listOf(testSh.absolutePath),
           providedCapabilities = listOf("test2"))
+      testSetupWithAlternative = Setup("testWithAlternative", "myflavor", "myImage", AZ01, 500000,
+          null, 0, 1, provisioningScripts = listOf(testSh.absolutePath),
+          providedCapabilities = listOf("test3", "alternative"),
+          creation = CreationPolicy(retries = RetryPolicy(2)))
       testSetupAlternative = Setup("testAlternative", "myAlternativeFlavor",
           "myImage", AZ02, 500000, null, 0, 1,
           provisioningScripts = listOf(testSh.absolutePath),
-          providedCapabilities = listOf("test3", "foo"))
+          providedCapabilities = listOf("test3", "alternative"))
       testSetupTwo = Setup("testTwo", "myflavorTwo", "myImageTwo", AZ01, 500000,
           null, 0, 3, maxCreateConcurrent = 2,
           provisioningScripts = listOf(testSh.absolutePath),
@@ -379,7 +386,8 @@ class CloudManagerTest {
             testVolume1, testVolume2, testVolume3))
 
       deployCloudManager(tempDir, listOf(testSetup, testSetupLarge,
-          testSetupAlternative, testSetupTwo, testSetupWithVolumes), vertx, ctx)
+          testSetupWithAlternative, testSetupAlternative, testSetupTwo,
+          testSetupWithVolumes), vertx, ctx)
     }
 
     /**
@@ -489,31 +497,33 @@ class CloudManagerTest {
     fun createVMAlternativeSetup(vertx: Vertx, ctx: VertxTestContext) {
       CoroutineScope(vertx.dispatcher()).launch {
         // let the first setup throw an exception and the second succeed
-        coEvery { client.createVM(any(), testSetup.flavor, any(),
-            testSetup.availabilityZone, any()) } throws IllegalStateException()
+        coEvery { client.createVM(any(), testSetupWithAlternative.flavor, any(),
+            testSetupWithAlternative.availabilityZone, any()) } throws IllegalStateException()
         coEvery { client.createVM(any(), testSetupAlternative.flavor, any(),
             testSetupAlternative.availabilityZone, any()) } answers { UniqueID.next() }
 
         // mock additional methods
         coEvery { client.destroyBlockDevice(any()) } just Runs
-        coEvery { client.createBlockDevice(testSetup.blockDeviceSizeGb,
-            testSetup.blockDeviceVolumeType, testSetup.imageName, true,
-            testSetup.availabilityZone, any()) } answers { UniqueID.next() }
+        coEvery { client.createBlockDevice(testSetupWithAlternative.blockDeviceSizeGb,
+            testSetupWithAlternative.blockDeviceVolumeType,
+            testSetupWithAlternative.imageName, true,
+            testSetupWithAlternative.availabilityZone, any()) } answers { UniqueID.next() }
         coEvery { client.createBlockDevice(testSetupAlternative.blockDeviceSizeGb,
             testSetupAlternative.blockDeviceVolumeType, testSetupAlternative.imageName, true,
             testSetupAlternative.availabilityZone, any()) } answers { UniqueID.next() }
 
-        doCreateOnDemand(testSetup, vertx, ctx, 1, false, listOf("foo"))
+        doCreateOnDemand(testSetupWithAlternative, vertx, ctx, 1, false)
 
         ctx.coVerify {
-          coVerify(exactly = 2) {
-            client.getImageID(testSetup.imageName)
+          coVerify(exactly = 3) {
+            client.getImageID(testSetupWithAlternative.imageName)
           }
-          coVerify(exactly = 1) {
-            client.createBlockDevice(testSetup.blockDeviceSizeGb, null,
-                testSetup.imageName, true, testSetup.availabilityZone, any())
-            client.createVM(any(), testSetup.flavor, any(),
-                testSetup.availabilityZone, any())
+          coVerify(exactly = 2) {
+            client.createBlockDevice(testSetupWithAlternative.blockDeviceSizeGb, null,
+                testSetupWithAlternative.imageName, true,
+                testSetupWithAlternative.availabilityZone, any())
+            client.createVM(any(), testSetupWithAlternative.flavor, any(),
+                testSetupWithAlternative.availabilityZone, any())
           }
           coVerify(exactly = 1) {
             client.createBlockDevice(testSetupAlternative.blockDeviceSizeGb,
@@ -524,6 +534,8 @@ class CloudManagerTest {
           }
           coVerify(exactly = 1) {
             client.getIPAddress(any())
+          }
+          coVerify(exactly = 2) {
             client.destroyBlockDevice(any())
           }
         }
