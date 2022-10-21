@@ -407,7 +407,27 @@ object ConfigConstants {
   /**
    * The path to the file that describes all available setups
    */
-  const val CLOUD_SETUPS_FILE = "steep.cloud.setupsFile"
+  const val CLOUD_SETUPS_FILE = "steep.cloud.setups.file"
+
+  /**
+   * The path to the file that describes all available setups
+   */
+  @Deprecated("Use 'steep.cloud.setups.file' instead")
+  const val CLOUD_SETUPS_FILE_DEPRECATED = "steep.cloud.setupsFile"
+
+  /**
+   * Configuration items that describe a policy to control how VMs are created
+   * from individual setups (see [model.setup.CreationPolicy]). The policy can
+   * be overridden per [model.setup.Setup].
+   *
+   * We need to define individual keys here because it must be possible to
+   * override each item with environment variables.
+   */
+  const val CLOUD_SETUPS_CREATION_RETRIES_MAXATTEMPTS = "steep.cloud.setups.creation.retries.maxAttempts"
+  const val CLOUD_SETUPS_CREATION_RETRIES_DELAY = "steep.cloud.setups.creation.retries.delay"
+  const val CLOUD_SETUPS_CREATION_RETRIES_EXPONENTIALBACKOFF = "steep.cloud.setups.creation.retries.exponentialBackoff"
+  const val CLOUD_SETUPS_CREATION_RETRIES_MAXDELAY = "steep.cloud.setups.creation.retries.maxDelay"
+  const val CLOUD_SETUPS_CREATION_LOCKAFTERRETRIES = "steep.cloud.setups.creation.lockAfterRetries"
 
   /**
    * The time that should pass before the Cloud manager syncs its internal

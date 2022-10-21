@@ -124,6 +124,12 @@ class CloudManager : CoroutineVerticle() {
   internal lateinit var setups: List<Setup>
 
   /**
+   * Default creation policy if none is defined in the [Setup]
+   */
+  private lateinit var defaultCreationPolicyRetries: RetryPolicy
+  private var defaultCreationPolicyLockAfterRetries: Long = 0
+
+  /**
    * Registry to save created VMs
    */
   private lateinit var vmRegistry: VMRegistry
@@ -192,6 +198,26 @@ class CloudManager : CoroutineVerticle() {
 
     // load setups file
     setups = SetupRegistryFactory.create(vertx).findSetups()
+
+    // load values of default creation policy
+    // the default values here describe a time frame of 10 minutes in which
+    // at most five attempts will be made to create a VM with a subsequent
+    // lock time of 20 minutes.
+    defaultCreationPolicyRetries = RetryPolicy(
+        maxAttempts = config.getInteger(
+            ConfigConstants.CLOUD_SETUPS_CREATION_RETRIES_MAXATTEMPTS, 5),
+        delay = config.getString(
+            ConfigConstants.CLOUD_SETUPS_CREATION_RETRIES_DELAY)
+            ?.toDuration()?.toMillis() ?: 40_000L, // 40 seconds
+        exponentialBackoff = config.getInteger(
+            ConfigConstants.CLOUD_SETUPS_CREATION_RETRIES_EXPONENTIALBACKOFF, 2),
+        maxDelay = config.getString(
+            ConfigConstants.CLOUD_SETUPS_CREATION_RETRIES_MAXDELAY)
+            ?.toDuration()?.toMillis()
+    )
+    defaultCreationPolicyLockAfterRetries = config.getString(
+        ConfigConstants.CLOUD_SETUPS_CREATION_LOCKAFTERRETRIES)
+        ?.toDuration()?.toMillis() ?: (20 * 60 * 1000L) // 20 minutes
 
     // if sshUsername is null, check if all setups have an sshUsername
     if (sshUsername == null) {
@@ -546,8 +572,9 @@ class CloudManager : CoroutineVerticle() {
 
           val delay = setupCircuitBreakers.computeIfAbsent(setup.id) {
             VMCircuitBreaker(
-                RetryPolicy(5, 1000, 2, 60000), // TODO make configurable
-                Duration.ofMinutes(30) // TODO make configurable
+                retryPolicy = setup.creation?.retries ?: defaultCreationPolicyRetries,
+                resetTimeout = Duration.ofMillis(setup.creation?.lockAfterRetries
+                    ?: defaultCreationPolicyLockAfterRetries)
             )
           }.currentDelay
           if (delay > 0) {

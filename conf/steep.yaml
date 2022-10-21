@@ -90,11 +90,20 @@ steep:
 
   cloud:
     enabled: false
-    setupsFile: conf/setups.yaml
     driver: openstack
     createdByTag: Steep
     syncInterval: 2m
     keepAliveInterval: 30s
+
+    setups:
+      file: conf/setups.yaml
+      creation:
+        retries:
+          maxAttempts: 5
+          delay: 40s
+          exponentialBackoff: 2
+        lockAfterRetries: 20m
+
     timeouts:
       sshReady: 5m
       agentReady: 5m
