@@ -10,7 +10,7 @@ import ListItemProgressBox from "../../components/ListItemProgressBox"
 import LiveDuration from "../../components/LiveDuration"
 import VMContext from "../../components/vms/VMContext"
 import vmToProgress from "../../components/vms/vm-to-progress"
-import { formatDate, formatDurationTitle } from "../../components/lib/date-time-utils"
+import { formatDate, formatDurationTitle, formatDurationMilliseconds } from "../../components/lib/date-time-utils"
 import fetcher from "../../components/lib/json-fetcher"
 import styles from "./[id].scss"
 
@@ -163,6 +163,43 @@ function VMDetails({ id }) {
                   </>)}
                 </div>
               )}
+            </DefinitionListItem>
+          </DefinitionList>
+        </div>
+      </div>
+      <h3>Creation</h3>
+      <div className="vm-details-two-column">
+        <div className="vm-details-left">
+          <DefinitionList>
+            <DefinitionListItem title="Maximum number of attempts">
+              {vm.setup.creation?.retries?.maxAttempts !== undefined ?
+                vm.setup.creation.retries.maxAttempts : <>(default)</>}
+            </DefinitionListItem>
+            <DefinitionListItem title="Delay between attempts">
+              {vm.setup.creation?.retries?.delay !== undefined ?
+                formatDurationMilliseconds(vm.setup.creation.retries.delay, true) : <>(default)</>}
+            </DefinitionListItem>
+          </DefinitionList>
+        </div>
+        <div className="vm-details-left">
+          <DefinitionList>
+            <DefinitionListItem title="Exponential backoff factor">
+              {vm.setup.creation?.retries?.exponentialBackoff !== undefined ?
+                vm.setup.creation.retries.exponentialBackoff : <>(default)</>}
+            </DefinitionListItem>
+            <DefinitionListItem title="Maximum delay between attempts">
+              {vm.setup.creation?.retries?.maxDelay !== undefined ?
+                formatDurationMilliseconds(vm.setup.creation.retries.maxDelay, true) : <>(default)</>}
+            </DefinitionListItem>
+          </DefinitionList>
+        </div>
+      </div>
+      <div className="vm-details-two-column">
+        <div className="vm-details-left">
+          <DefinitionList>
+            <DefinitionListItem title="Lock time after all retries">
+              {vm.setup.creation?.lockAfterRetries !== undefined ?
+                formatDurationMilliseconds(vm.setup.creation.lockAfterRetries, true) : <>(default)</>}
             </DefinitionListItem>
           </DefinitionList>
         </div>
