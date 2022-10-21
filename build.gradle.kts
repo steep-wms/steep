@@ -20,12 +20,12 @@ buildscript {
 group = "de.fhg.igd"
 version = "6.4.0-SNAPSHOT"
 
-val vertxVersion by extra("4.3.3")
+val vertxVersion by extra("4.3.4")
 val prometheusClientVersion by extra("0.16.0")
-val slf4jVersion by extra("2.0.0")
+val slf4jVersion by extra("2.0.3")
 val logbackVersion by extra("1.4.4")
-val junitVersion by extra("5.9.0")
-val testcontainersVersion by extra("1.17.3")
+val junitVersion by extra("5.9.1")
+val testcontainersVersion by extra("1.17.5")
 
 repositories {
     mavenCentral()
@@ -57,7 +57,7 @@ dependencies {
     implementation("commons-io:commons-io:2.11.0")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.4")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.4")
-    implementation("com.github.luben:zstd-jni:1.5.2-4")
+    implementation("com.github.luben:zstd-jni:1.5.2-5")
     implementation("com.github.zafarkhaja:java-semver:0.9.0")
     implementation("com.google.guava:guava:31.1-jre")
     implementation("com.zaxxer:HikariCP:5.0.1")
@@ -69,7 +69,7 @@ dependencies {
     implementation("org.apache.ant:ant:1.10.12")
     implementation("org.apache.commons:commons-lang3:3.12.0")
     implementation("org.apache.commons:commons-text:1.10.0")
-    implementation("org.flywaydb:flyway-core:9.4.0")
+    implementation("org.flywaydb:flyway-core:9.5.1")
     implementation("org.mongodb:mongodb-driver-reactivestreams:4.7.2")
     implementation("com.github.openstack4j.core:openstack4j:3.10")
     implementation("org.parboiled:parboiled-java:1.4.1")
@@ -86,7 +86,7 @@ dependencies {
     implementation(kotlin("stdlib-jdk8"))
     implementation(kotlin("script-runtime"))
 
-    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.4.11")
+    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.5.1")
     testImplementation("io.mockk:mockk:1.13.2")
     testImplementation("io.vertx:vertx-junit5:$vertxVersion")
     testImplementation("org.assertj:assertj-core:3.23.1")
