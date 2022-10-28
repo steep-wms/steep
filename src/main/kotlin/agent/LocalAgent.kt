@@ -41,6 +41,7 @@ import org.slf4j.MDC
 import runtime.DockerRuntime
 import runtime.OtherRuntime
 import java.io.File
+import java.lang.reflect.InvocationTargetException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -265,7 +266,15 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
         } else {
           interruptable(executor) {
             withMDC(exec, processChainId) {
-              r.compiledFunction.call(exec, collector, vertx)
+              try {
+                r.compiledFunction.call(exec, collector, vertx)
+              } catch (e: InvocationTargetException) {
+                val c = e.cause
+                if (c != null) {
+                  throw c
+                }
+                throw e
+              }
             }
           }
         }

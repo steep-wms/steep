@@ -1,5 +1,6 @@
 package agent
 
+import assertThatThrownBy
 import coVerify
 import db.PluginRegistry
 import db.PluginRegistryFactory
@@ -208,6 +209,54 @@ abstract class AgentTest {
         }
       }
       ctx.completeNow()
+    }
+  }
+
+  protected fun doCustomRuntimeThrows(vertx: Vertx, ctx: VertxTestContext,
+      assert: (expected: Throwable, actual: Throwable) -> Boolean) {
+    val customRuntimeName = "foobar"
+    val ex = ExecutionException(message = "foobar", lastOutput = "", exitCode = 1)
+
+    val customRuntime = spyk(object {
+      @Suppress("UNUSED_PARAMETER")
+      fun execute(executable: Executable, outputCollector: OutputCollector,
+          vertx: Vertx) {
+        throw ex
+      }
+    })
+
+    val pluginRegistry = mockk<PluginRegistry>()
+    mockkObject(PluginRegistryFactory)
+    every { PluginRegistryFactory.create() } returns pluginRegistry
+    every { pluginRegistry.findRuntime(customRuntimeName) } returns RuntimePlugin(
+        name = customRuntimeName,
+        scriptFile = "",
+        supportedRuntime = customRuntimeName,
+        compiledFunction = customRuntime::execute
+    )
+    every { pluginRegistry.findProgressEstimator(any()) } returns null
+
+    val exec = Executable(path = "ls", serviceId = "ls",
+        arguments = emptyList(), runtime = customRuntimeName)
+    val processChain = ProcessChain(executables = listOf(exec))
+
+    val agent = createAgent(vertx)
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        assertThatThrownBy { agent.execute(processChain) }.matches { t -> assert(ex, t) }
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if the agent can call a custom runtime that throws an exception
+   */
+  @Test
+  open fun customRuntimeThrows(vertx: Vertx, ctx: VertxTestContext) {
+    doCustomRuntimeThrows(vertx, ctx) { expected, actual ->
+      actual === expected
     }
   }
 

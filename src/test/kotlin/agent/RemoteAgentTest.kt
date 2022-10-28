@@ -70,13 +70,22 @@ class RemoteAgentTest : AgentTest() {
 
       CoroutineScope(vertx.dispatcher()).launch {
         val la = LocalAgent(vertx, localAgentDispatcher)
-        val results = la.execute(processChain)
-        vertx.eventBus().send(replyAddress, json {
-          obj(
-              "results" to JsonUtils.toJson(results),
-              "status" to SubmissionRegistry.ProcessChainStatus.SUCCESS.toString()
-          )
-        })
+        try {
+          val results = la.execute(processChain)
+          vertx.eventBus().send(replyAddress, json {
+            obj(
+                "results" to JsonUtils.toJson(results),
+                "status" to SubmissionRegistry.ProcessChainStatus.SUCCESS.toString()
+            )
+          })
+        } catch (t: Throwable) {
+          vertx.eventBus().send(replyAddress, json {
+            obj(
+                "errorMessage" to t.message,
+                "status" to SubmissionRegistry.ProcessChainStatus.ERROR.toString()
+            )
+          })
+        }
       }
 
       msg.reply("ACK")
@@ -99,6 +108,14 @@ class RemoteAgentTest : AgentTest() {
   override fun customRuntime(vertx: Vertx, ctx: VertxTestContext) {
     registerConsumer(vertx)
     super.customRuntime(vertx, ctx)
+  }
+
+  @Test
+  override fun customRuntimeThrows(vertx: Vertx, ctx: VertxTestContext) {
+    registerConsumer(vertx)
+    doCustomRuntimeThrows(vertx, ctx) { expected, actual ->
+      actual is RemoteException && actual.message == expected.message
+    }
   }
 
   @Test
