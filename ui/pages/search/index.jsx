@@ -55,22 +55,22 @@ const Search = () => {
   }
 
   function makeKey(params) {
-    let u = new URL(`${process.env.baseUrl}/search`)
+    let sp = new URLSearchParams()
     for (let [key, value] of params) {
-      u.searchParams.append(key, value)
+      sp.append(key, value)
     }
-    u.searchParams.append("timeZone", tz)
-    return u.toString()
+    sp.append("timeZone", tz)
+    return `${process.env.baseUrl}/search?${sp.toString()}`
   }
   function makeExactCountKey(params) {
-    let u = new URL(`${process.env.baseUrl}/search`)
+    let sp = new URLSearchParams()
     for (let [key, value] of params) {
-      u.searchParams.append(key, value)
+      sp.append(key, value)
     }
-    u.searchParams.append("size", 0)
-    u.searchParams.append("count", "exact")
-    u.searchParams.append("timeZone", tz)
-    return u.toString()
+    sp.append("size", 0)
+    sp.append("count", "exact")
+    sp.append("timeZone", tz)
+    return `${process.env.baseUrl}/search?${sp.toString()}`
   }
 
   let key = makeKey(params)
