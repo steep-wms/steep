@@ -36,7 +36,7 @@ const QuickSearch = forwardRef(({ type, searchIcon = false, onEnter, onEscape,
   onEnter = onEnter || function () {
     let query
     if (value) {
-      query = "q=" + addTypeExpression(value, type)
+      query = "q=" + encodeURIComponent(addTypeExpression(value, type))
     } else {
       query = undefined
     }
