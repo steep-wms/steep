@@ -16,9 +16,13 @@ interface ClusterMap<K : Any, V : Any> {
   }
 
   suspend fun size(): Int
+  suspend fun get(key: K): V?
   suspend fun put(key: K, value: V): V?
   suspend fun putIfAbsent(key: K, value: V): V?
+  suspend fun computeIfAbsent(key: K, mappingFunction: (K) -> V): V?
+  suspend fun computeIfPresent(key: K, remappingFunction: (K, V) -> V): V?
   suspend fun delete(key: K)
+  suspend fun entries(): Set<Map.Entry<K, V>>
   suspend fun keys(): Set<K>
   fun addEntryAddedListener(includeValue: Boolean, listener: (K, V?) -> Unit)
   fun addEntryRemovedListener(listener: (K) -> Unit)

@@ -1,5 +1,6 @@
 package cloud
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import model.retry.RetryPolicy
 import java.time.Clock
 import java.time.Duration
@@ -52,6 +53,7 @@ data class VMCircuitBreaker(
     /**
      * The clock to use to determine if the the reset timeout has been reached
      */
+    @JsonIgnore
     private val clock: Clock = Clock.systemUTC(),
 
     /**
@@ -64,22 +66,24 @@ data class VMCircuitBreaker(
    * `true` if the circuit breaker is in the *open* state and no other attempts
    * should be performed
    */
+  @JsonIgnore
   val open = performedAttempts >= retryPolicy.maxAttempts
 
   /**
    * `true` if the circuit breaker is half open and one more attempt can be
    * performed
    */
-  val halfOpen get() = Instant.now(clock).isAfter(lastAttemptTimestamp.plus(resetTimeout))
+  val halfOpen @JsonIgnore get() = Instant.now(clock).isAfter(lastAttemptTimestamp.plus(resetTimeout))
 
   /**
    * `true` if an attempt can be performed
    */
-  val canPerformAttempt get() = !open || halfOpen
+  val canPerformAttempt @JsonIgnore get() = !open || halfOpen
 
   /**
    * The delay in milliseconds before the next attempt can be performed
    */
+  @JsonIgnore
   val currentDelay = if (performedAttempts > 0) {
     // never calculate a delay that is longer than the one for the maximum number of attempts
     val lpa = min(retryPolicy.maxAttempts, performedAttempts)

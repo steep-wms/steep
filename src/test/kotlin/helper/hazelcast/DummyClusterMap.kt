@@ -15,6 +15,7 @@ class DummyClusterMap<K : Any, V : Any>(name: String, vertx: Vertx) : ClusterMap
 
   override suspend fun size(): Int = map.size
   override suspend fun keys(): Set<K> = map.keys
+  override suspend fun entries(): Set<Map.Entry<K, V>> = map.entries
 
   override fun addPartitionLostListener(listener: () -> Unit) {
     // nothing to do here
@@ -54,6 +55,8 @@ class DummyClusterMap<K : Any, V : Any>(name: String, vertx: Vertx) : ClusterMap
     return r
   }
 
+  override suspend fun get(key: K): V? = map[key]
+
   override suspend fun put(key: K, value: V): V? {
     val r = map.put(key, value)
     if (r == null) {
@@ -64,5 +67,21 @@ class DummyClusterMap<K : Any, V : Any>(name: String, vertx: Vertx) : ClusterMap
       }
     }
     return r
+  }
+
+  override suspend fun computeIfAbsent(key: K, mappingFunction: (K) -> V): V? {
+    val r = map.computeIfAbsent(key, mappingFunction)
+    if (r != null) {
+      for ((l, includeValue) in entryAddedListeners) {
+        context.runOnContext {
+          l(key, if (includeValue) r else null)
+        }
+      }
+    }
+    return r
+  }
+
+  override suspend fun computeIfPresent(key: K, remappingFunction: (K, V) -> V): V? {
+    return map.computeIfPresent(key, remappingFunction)
   }
 }

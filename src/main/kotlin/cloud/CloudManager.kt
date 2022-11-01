@@ -18,6 +18,7 @@ import db.SetupRegistryFactory
 import db.VMRegistry
 import db.VMRegistryFactory
 import helper.JsonUtils
+import helper.hazelcast.ClusterMap
 import helper.toDuration
 import io.vertx.core.Promise
 import io.vertx.core.json.JsonArray
@@ -43,7 +44,6 @@ import java.io.IOException
 import java.io.StringWriter
 import java.time.Duration
 import java.time.Instant
-import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.min
 
 /**
@@ -89,6 +89,11 @@ class CloudManager : CoroutineVerticle() {
      * Name of a cluster-wide lock used to run [sync] only once at the same time
      */
     private const val LOCK_SYNC = "CloudManager.Sync.Lock"
+
+    /**
+     * Name of a cluster-wide map to store circuit breaker states
+     */
+    private const val CLUSTER_MAP_CIRCUIT_BREAKERS = "CloudManager.Map.CircuitBreakers"
   }
 
   /**
@@ -148,7 +153,7 @@ class CloudManager : CoroutineVerticle() {
    * Circuit breakers for all setups that specify the maximum number of attempts
    * to create a VM, delays, and whether another attempt can be performed or not
    */
-  private val setupCircuitBreakers = ConcurrentHashMap<String, VMCircuitBreaker>()
+  private lateinit var setupCircuitBreakers: ClusterMap<String, VMCircuitBreakerHolder>
 
   /**
    * The maximum time the cloud manager should try to log in to a new VM via SSH
@@ -198,6 +203,7 @@ class CloudManager : CoroutineVerticle() {
 
     // load setups file
     setups = SetupRegistryFactory.create(vertx).findSetups()
+    setupCircuitBreakers = ClusterMap.create(CLUSTER_MAP_CIRCUIT_BREAKERS, vertx)
 
     // load values of default creation policy
     // the default values here describe a time frame of 10 minutes in which
@@ -521,7 +527,11 @@ class CloudManager : CoroutineVerticle() {
     while (remaining > 0) {
       // Remove setups whose circuit breaker is open. We have to do this in
       // every iteration because the circuit breaker states can change.
-      val possibleSetups = setups.filter { setupCircuitBreakers[it.id]?.canPerformAttempt ?: true }
+      // 'setupCircuitBreakers' can never have more entries than 'setups' but
+      // we need to query all 'setups'. Copy the whole map to local to avoid
+      // multiple cluster map requests.
+      val cbs = setupCircuitBreakers.entries().associate { it.key to it.value.unsafeGet() }
+      val possibleSetups = setups.filter { cbs[it.id]?.canPerformAttempt ?: true }
       if (possibleSetups.isEmpty()) {
         break
       }
@@ -565,12 +575,12 @@ class CloudManager : CoroutineVerticle() {
           log.info("Creating virtual machine ${vm.id} with setup `${setup.id}' ...")
 
           val delay = setupCircuitBreakers.computeIfAbsent(setup.id) {
-            VMCircuitBreaker(
+            VMCircuitBreakerHolder(VMCircuitBreaker(
                 retryPolicy = setup.creation?.retries ?: defaultCreationPolicyRetries,
                 resetTimeout = Duration.ofMillis(setup.creation?.lockAfterRetries
                     ?: defaultCreationPolicyLockAfterRetries)
-            )
-          }.currentDelay
+            ))
+          }!!.unsafeGet().currentDelay
           if (delay > 0) {
             log.info("Backing off for $delay milliseconds due to too many failed attempts.")
             delay(delay)
@@ -615,12 +625,14 @@ class CloudManager : CoroutineVerticle() {
 
             vmRegistry.setVMStatus(vm.id, VM.Status.PROVISIONING, VM.Status.RUNNING)
             vmRegistry.setVMAgentJoinTime(vm.id, Instant.now())
-            setupCircuitBreakers.computeIfPresent(setup.id) { _, cb -> cb.afterAttemptPerformed(true) }
+            setupCircuitBreakers.computeIfPresent(setup.id) { _, cb ->
+              VMCircuitBreakerHolder(cb.unsafeGet().afterAttemptPerformed(true)) }
           } catch (t: Throwable) {
             vmRegistry.forceSetVMStatus(vm.id, VM.Status.ERROR)
             vmRegistry.setVMReason(vm.id, t.message ?: "Unknown error")
             vmRegistry.setVMDestructionTime(vm.id, Instant.now())
-            setupCircuitBreakers.computeIfPresent(setup.id) { _, cb -> cb.afterAttemptPerformed(false) }
+            setupCircuitBreakers.computeIfPresent(setup.id) { _, cb ->
+              VMCircuitBreakerHolder(cb.unsafeGet().afterAttemptPerformed(false)) }
             throw t
           }
         } finally {
