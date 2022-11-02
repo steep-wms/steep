@@ -3,7 +3,6 @@ package cloud
 import com.fasterxml.jackson.annotation.JsonIgnore
 import model.retry.RetryPolicy
 import java.time.Clock
-import java.time.Duration
 import java.time.Instant
 import kotlin.math.min
 import kotlin.math.pow
@@ -40,10 +39,10 @@ data class VMCircuitBreaker(
     val retryPolicy: RetryPolicy,
 
     /**
-     * A reset timeout that defines when the circuit breaker should go into
-     * the *half open* state after is was open
+     * A reset timeout (in milliseconds) that defines when the circuit breaker
+     * should go into the *half open* state after is was open
      */
-    val resetTimeout: Duration,
+    val resetTimeout: Long,
 
     /**
      * A counter for the number of performed attempts
@@ -73,7 +72,8 @@ data class VMCircuitBreaker(
    * `true` if the circuit breaker is half open and one more attempt can be
    * performed
    */
-  val halfOpen @JsonIgnore get() = Instant.now(clock).isAfter(lastAttemptTimestamp.plus(resetTimeout))
+  val halfOpen @JsonIgnore get() = Instant.now(clock).isAfter(
+      lastAttemptTimestamp.plusMillis(resetTimeout))
 
   /**
    * `true` if an attempt can be performed

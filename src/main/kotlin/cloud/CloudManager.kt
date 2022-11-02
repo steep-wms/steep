@@ -577,8 +577,8 @@ class CloudManager : CoroutineVerticle() {
           val delay = setupCircuitBreakers.computeIfAbsent(setup.id) {
             VMCircuitBreakerHolder(VMCircuitBreaker(
                 retryPolicy = setup.creation?.retries ?: defaultCreationPolicyRetries,
-                resetTimeout = Duration.ofMillis(setup.creation?.lockAfterRetries
-                    ?: defaultCreationPolicyLockAfterRetries)
+                resetTimeout = setup.creation?.lockAfterRetries
+                    ?: defaultCreationPolicyLockAfterRetries
             ))
           }!!.unsafeGet().currentDelay
           if (delay > 0) {

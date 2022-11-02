@@ -19,7 +19,7 @@ class VMCircuitBreakerTest {
    */
   @Test
   fun openAfterAllAttemptsFailed() {
-    var b = VMCircuitBreaker(RetryPolicy(2), Duration.ofSeconds(60))
+    var b = VMCircuitBreaker(RetryPolicy(2), 60 * 1000L)
     assertThat(b.performedAttempts).isEqualTo(0)
     assertThat(b.open).isFalse
     assertThat(b.halfOpen).isFalse
@@ -43,7 +43,7 @@ class VMCircuitBreakerTest {
    */
   @Test
   fun successfulAttempts() {
-    var b = VMCircuitBreaker(RetryPolicy(2), Duration.ofSeconds(60))
+    var b = VMCircuitBreaker(RetryPolicy(2), 60 * 1000L)
     assertThat(b.performedAttempts).isEqualTo(0)
     assertThat(b.open).isFalse
     assertThat(b.halfOpen).isFalse
@@ -67,7 +67,7 @@ class VMCircuitBreakerTest {
    */
   @Test
   fun resetAfterSuccess() {
-    var b = VMCircuitBreaker(RetryPolicy(2), Duration.ofSeconds(60))
+    var b = VMCircuitBreaker(RetryPolicy(2), 60 * 1000L)
     assertThat(b.performedAttempts).isEqualTo(0)
     assertThat(b.open).isFalse
     assertThat(b.halfOpen).isFalse
@@ -95,7 +95,7 @@ class VMCircuitBreakerTest {
     val today = LocalDate.of(2022, 10, 20)
     var cl = Clock.fixed(today.atStartOfDay().toInstant(ZoneOffset.UTC), ZoneOffset.UTC)
 
-    var b = VMCircuitBreaker(RetryPolicy(2), Duration.ofSeconds(60), clock = cl)
+    var b = VMCircuitBreaker(RetryPolicy(2), 60 * 1000L, clock = cl)
     assertThat(b.performedAttempts).isEqualTo(0)
     assertThat(b.open).isFalse
     assertThat(b.halfOpen).isFalse
@@ -154,7 +154,7 @@ class VMCircuitBreakerTest {
    */
   @Test
   fun exponentialDelay() {
-    var b = VMCircuitBreaker(RetryPolicy(4, 100, 2), Duration.ofSeconds(60))
+    var b = VMCircuitBreaker(RetryPolicy(4, 100, 2), 60 * 1000L)
     assertThat(b.performedAttempts).isEqualTo(0)
     assertThat(b.currentDelay).isEqualTo(0)
     assertThat(b.open).isFalse
@@ -220,7 +220,7 @@ class VMCircuitBreakerTest {
    */
   @Test
   fun exponentialDelayWithMaxDelay() {
-    var b = VMCircuitBreaker(RetryPolicy(4, 100, 2, 400), Duration.ofSeconds(60))
+    var b = VMCircuitBreaker(RetryPolicy(4, 100, 2, 400), 60 * 1000L)
     assertThat(b.performedAttempts).isEqualTo(0)
     assertThat(b.currentDelay).isEqualTo(0)
     assertThat(b.open).isFalse
