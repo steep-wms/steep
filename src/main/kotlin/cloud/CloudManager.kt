@@ -18,7 +18,6 @@ import db.SetupRegistryFactory
 import db.VMRegistry
 import db.VMRegistryFactory
 import helper.JsonUtils
-import helper.hazelcast.ClusterMap
 import helper.toDuration
 import io.vertx.core.Promise
 import io.vertx.core.json.JsonArray
@@ -153,7 +152,7 @@ class CloudManager : CoroutineVerticle() {
    * Circuit breakers for all setups that specify the maximum number of attempts
    * to create a VM, delays, and whether another attempt can be performed or not
    */
-  private lateinit var setupCircuitBreakers: ClusterMap<String, VMCircuitBreakerHolder>
+  private lateinit var setupCircuitBreakers: VMCircuitBreakerMap
 
   /**
    * The maximum time the cloud manager should try to log in to a new VM via SSH
@@ -203,7 +202,6 @@ class CloudManager : CoroutineVerticle() {
 
     // load setups file
     setups = SetupRegistryFactory.create(vertx).findSetups()
-    setupCircuitBreakers = ClusterMap.create(CLUSTER_MAP_CIRCUIT_BREAKERS, vertx)
 
     // load values of default creation policy
     // the default values here describe a time frame of 10 minutes in which
@@ -224,6 +222,11 @@ class CloudManager : CoroutineVerticle() {
     defaultCreationPolicyLockAfterRetries = config.getString(
         ConfigConstants.CLOUD_SETUPS_CREATION_LOCKAFTERRETRIES)
         ?.toDuration()?.toMillis() ?: (20 * 60 * 1000L) // 20 minutes
+
+    // initialize cluster map for circuit breakers
+    setupCircuitBreakers = VMCircuitBreakerMap(CLUSTER_MAP_CIRCUIT_BREAKERS,
+        setups, defaultCreationPolicyRetries, defaultCreationPolicyLockAfterRetries,
+        vertx)
 
     // if sshUsername is null, check if all setups have an sshUsername
     if (sshUsername == null) {
@@ -530,7 +533,7 @@ class CloudManager : CoroutineVerticle() {
       // 'setupCircuitBreakers' can never have more entries than 'setups' but
       // we need to query all 'setups'. Copy the whole map to local to avoid
       // multiple cluster map requests.
-      val cbs = setupCircuitBreakers.entries().associate { it.key to it.value.unsafeGet() }
+      val cbs = setupCircuitBreakers.getAllBySetup()
       val possibleSetups = setups.filter { cbs[it.id]?.canPerformAttempt ?: true }
       if (possibleSetups.isEmpty()) {
         break
@@ -574,13 +577,7 @@ class CloudManager : CoroutineVerticle() {
         try {
           log.info("Creating virtual machine ${vm.id} with setup `${setup.id}' ...")
 
-          val delay = setupCircuitBreakers.computeIfAbsent(setup.id) {
-            VMCircuitBreakerHolder(VMCircuitBreaker(
-                retryPolicy = setup.creation?.retries ?: defaultCreationPolicyRetries,
-                resetTimeout = setup.creation?.lockAfterRetries
-                    ?: defaultCreationPolicyLockAfterRetries
-            ))
-          }!!.unsafeGet().currentDelay
+          val delay = setupCircuitBreakers.computeIfAbsent(setup).currentDelay
           if (delay > 0) {
             log.info("Backing off for $delay milliseconds due to too many failed attempts.")
             delay(delay)
@@ -625,14 +622,12 @@ class CloudManager : CoroutineVerticle() {
 
             vmRegistry.setVMStatus(vm.id, VM.Status.PROVISIONING, VM.Status.RUNNING)
             vmRegistry.setVMAgentJoinTime(vm.id, Instant.now())
-            setupCircuitBreakers.computeIfPresent(setup.id) { _, cb ->
-              VMCircuitBreakerHolder(cb.unsafeGet().afterAttemptPerformed(true)) }
+            setupCircuitBreakers.afterAttemptPerformed(setup.id, true)
           } catch (t: Throwable) {
             vmRegistry.forceSetVMStatus(vm.id, VM.Status.ERROR)
             vmRegistry.setVMReason(vm.id, t.message ?: "Unknown error")
             vmRegistry.setVMDestructionTime(vm.id, Instant.now())
-            setupCircuitBreakers.computeIfPresent(setup.id) { _, cb ->
-              VMCircuitBreakerHolder(cb.unsafeGet().afterAttemptPerformed(false)) }
+            setupCircuitBreakers.afterAttemptPerformed(setup.id, false)
             throw t
           }
         } finally {
