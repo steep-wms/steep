@@ -1,10 +1,7 @@
 package cloud
 
-import helper.JsonUtils
 import helper.hazelcast.ClusterMap
 import io.vertx.core.Vertx
-import io.vertx.core.buffer.Buffer
-import io.vertx.core.shareddata.ClusterSerializable
 import model.retry.RetryPolicy
 import model.setup.Setup
 import java.io.Serializable
@@ -47,20 +44,7 @@ class VMCircuitBreakerMap(
   class Entry(
       var performedAttempts: Int = 0,
       var lastAttemptTimestamp: Instant = Instant.now()
-  ) : ClusterSerializable {
-    override fun writeToBuffer(buffer: Buffer) {
-      val b = JsonUtils.mapper.writeValueAsBytes(this)
-      buffer.appendInt(b.size)
-      buffer.appendBytes(b)
-    }
-
-    override fun readFromBuffer(pos: Int, buffer: Buffer): Int {
-      val len = buffer.getInt(pos)
-      val b = buffer.getBytes(pos + 4, pos + 4 + len)
-      JsonUtils.mapper.readerForUpdating(this).readValue<Entry>(b)
-      return pos + 4 + len
-    }
-  }
+  ) : Serializable
 
   /**
    * Creates a new entry in the map. The operation is serializable so it can
