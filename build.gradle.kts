@@ -6,7 +6,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     application
     jacoco
-    kotlin("jvm") version "1.7.20"
+    kotlin("jvm") version "1.7.21"
     id("com.github.ben-manes.versions") version "0.43.0"
     id("se.patrikerdes.use-latest-versions") version "0.2.18"
 }
