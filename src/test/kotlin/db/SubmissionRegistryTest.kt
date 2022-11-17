@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import model.Submission
 import model.processchain.Executable
 import model.processchain.ProcessChain
+import model.processchain.Run
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
@@ -1709,32 +1710,20 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  fun setProcessChainStartTime(vertx: Vertx, ctx: VertxTestContext) {
+  fun addProcessChainRun(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()
 
     CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChains(listOf(pc), s.id)
-      val startTime1 = submissionRegistry.getProcessChainStartTime(pc.id)
+      ctx.coVerify {
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id)).isEmpty()
 
-      ctx.verify {
-        assertThat(startTime1).isNull()
-      }
-
-      val newStartTime = Instant.now()
-      submissionRegistry.setProcessChainStartTime(pc.id, newStartTime)
-      val startTime2 = submissionRegistry.getProcessChainStartTime(pc.id)
-
-      ctx.verify {
-        assertThat(startTime2).isEqualTo(newStartTime)
-      }
-
-      submissionRegistry.setProcessChainStartTime(pc.id, null)
-      val startTime3 = submissionRegistry.getProcessChainStartTime(pc.id)
-
-      ctx.verify {
-        assertThat(startTime3).isNull()
+        val newStartTime = Instant.now()
+        submissionRegistry.addProcessChainRun(pc.id, newStartTime)
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id))
+            .isEqualTo(listOf(Run(newStartTime)))
       }
 
       ctx.completeNow()
@@ -1742,35 +1731,221 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  fun setProcessChainEndTime(vertx: Vertx, ctx: VertxTestContext) {
+  fun deleteLastUnfinishedProcessChainRun(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
     val pc = ProcessChain()
 
     CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChains(listOf(pc), s.id)
-      val endTime1 = submissionRegistry.getProcessChainEndTime(pc.id)
+      ctx.coVerify {
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id)).isEmpty()
 
-      ctx.verify {
-        assertThat(endTime1).isNull()
-      }
+        // try to finish a run that does not exist
+        submissionRegistry.finishLastProcessChainRun(pc.id, Instant.now(),
+            SubmissionRegistry.ProcessChainStatus.ERROR)
 
-      val newEndTime = Instant.now()
-      submissionRegistry.setProcessChainEndTime(pc.id, newEndTime)
-      val endTime2 = submissionRegistry.getProcessChainEndTime(pc.id)
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id)).isEmpty()
 
-      ctx.verify {
-        assertThat(endTime2).isEqualTo(newEndTime)
-      }
+        val newStartTime1 = Instant.now().minusMillis(1000)
+        submissionRegistry.addProcessChainRun(pc.id, newStartTime1)
 
-      submissionRegistry.setProcessChainEndTime(pc.id, null)
-      val endTime3 = submissionRegistry.getProcessChainEndTime(pc.id)
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id))
+            .isEqualTo(listOf(Run(newStartTime1)))
 
-      ctx.verify {
-        assertThat(endTime3).isNull()
+        // finish current run
+        val endTime = Instant.now()
+        submissionRegistry.finishLastProcessChainRun(pc.id, endTime,
+            SubmissionRegistry.ProcessChainStatus.ERROR)
+
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id))
+            .isEqualTo(listOf(Run(newStartTime1, endTime,
+                SubmissionRegistry.ProcessChainStatus.ERROR)))
+
+        // try to delete finished run (should do nothing)
+        submissionRegistry.deleteLastUnfinishedProcessChainRun(pc.id)
+
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id))
+            .isEqualTo(listOf(Run(newStartTime1, endTime,
+                SubmissionRegistry.ProcessChainStatus.ERROR)))
+
+        // add another unfinished run
+        val newStartTime2 = Instant.now()
+        submissionRegistry.addProcessChainRun(pc.id, newStartTime2)
+
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id))
+            .isEqualTo(listOf(Run(newStartTime1, endTime,
+                SubmissionRegistry.ProcessChainStatus.ERROR),
+                Run(newStartTime2)))
+
+        // ... and another one
+        val newStartTime3 = Instant.now()
+        submissionRegistry.addProcessChainRun(pc.id, newStartTime3)
+
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id))
+            .isEqualTo(listOf(Run(newStartTime1, endTime,
+                SubmissionRegistry.ProcessChainStatus.ERROR),
+                Run(newStartTime2), Run(newStartTime3)))
+
+        submissionRegistry.deleteLastUnfinishedProcessChainRun(pc.id)
+
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id))
+            .isEqualTo(listOf(Run(newStartTime1, endTime,
+                SubmissionRegistry.ProcessChainStatus.ERROR),
+                Run(newStartTime2)))
+
+        submissionRegistry.deleteLastUnfinishedProcessChainRun(pc.id)
+
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id))
+            .isEqualTo(listOf(Run(newStartTime1, endTime,
+                SubmissionRegistry.ProcessChainStatus.ERROR)))
       }
 
       ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun deleteAllProcessChainRuns(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc = ProcessChain()
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      submissionRegistry.addSubmission(s)
+      submissionRegistry.addProcessChains(listOf(pc), s.id)
+      ctx.coVerify {
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id)).isEmpty()
+
+        val newStartTime1 = Instant.now()
+        submissionRegistry.addProcessChainRun(pc.id, newStartTime1)
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id))
+            .isEqualTo(listOf(Run(newStartTime1)))
+
+        val newStartTime2 = Instant.now()
+        submissionRegistry.addProcessChainRun(pc.id, newStartTime2)
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id))
+            .isEqualTo(listOf(Run(newStartTime1), Run(newStartTime2)))
+
+        submissionRegistry.deleteAllProcessChainRuns(pc.id)
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id)).isEmpty()
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun getLastProcessChainRun(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc = ProcessChain()
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      submissionRegistry.addSubmission(s)
+      submissionRegistry.addProcessChains(listOf(pc), s.id)
+      ctx.coVerify {
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id)).isEmpty()
+        assertThat(submissionRegistry.getLastProcessChainRun(pc.id)).isNull()
+
+        val newStartTime1 = Instant.now().minusMillis(1000)
+        submissionRegistry.addProcessChainRun(pc.id, newStartTime1)
+
+        assertThat(submissionRegistry.getLastProcessChainRun(pc.id))
+            .isEqualTo(Run(newStartTime1))
+
+        // add another run
+        val newStartTime2 = Instant.now()
+        submissionRegistry.addProcessChainRun(pc.id, newStartTime2)
+
+        assertThat(submissionRegistry.getLastProcessChainRun(pc.id))
+            .isEqualTo(Run(newStartTime2))
+
+        // ... and another one
+        val newStartTime3 = Instant.now()
+        submissionRegistry.addProcessChainRun(pc.id, newStartTime3)
+
+        assertThat(submissionRegistry.getLastProcessChainRun(pc.id))
+            .isEqualTo(Run(newStartTime3))
+
+        submissionRegistry.deleteLastUnfinishedProcessChainRun(pc.id)
+
+        assertThat(submissionRegistry.getLastProcessChainRun(pc.id))
+            .isEqualTo(Run(newStartTime2))
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun finishLastProcessChainRun(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc = ProcessChain()
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      submissionRegistry.addSubmission(s)
+      submissionRegistry.addProcessChains(listOf(pc), s.id)
+      ctx.coVerify {
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id)).isEmpty()
+
+        val newStartTime1 = Instant.now().minusMillis(1000)
+        submissionRegistry.addProcessChainRun(pc.id, newStartTime1)
+
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id))
+            .isEqualTo(listOf(Run(newStartTime1)))
+
+        val endTime = Instant.now()
+        submissionRegistry.finishLastProcessChainRun(pc.id, endTime,
+            SubmissionRegistry.ProcessChainStatus.SUCCESS)
+
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id))
+            .isEqualTo(listOf(Run(newStartTime1, endTime,
+                SubmissionRegistry.ProcessChainStatus.SUCCESS)))
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun finishLastProcessChainRunError(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc = ProcessChain()
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      submissionRegistry.addSubmission(s)
+      submissionRegistry.addProcessChains(listOf(pc), s.id)
+      ctx.coVerify {
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id)).isEmpty()
+
+        val newStartTime1 = Instant.now().minusMillis(1000)
+        submissionRegistry.addProcessChainRun(pc.id, newStartTime1)
+
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id))
+            .isEqualTo(listOf(Run(newStartTime1)))
+
+        val errorMessage = "THIS IS an ErrOR"
+        val endTime = Instant.now()
+        submissionRegistry.finishLastProcessChainRun(pc.id, endTime,
+            SubmissionRegistry.ProcessChainStatus.ERROR, errorMessage)
+
+        assertThat(submissionRegistry.getProcessChainRuns(pc.id))
+            .isEqualTo(listOf(Run(newStartTime1, endTime,
+                SubmissionRegistry.ProcessChainStatus.ERROR, errorMessage)))
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun getLastRunOfMissingProcessChain(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        assertThatThrownBy {
+          submissionRegistry.getLastProcessChainRun("MISSING")
+        }.isInstanceOf(NoSuchElementException::class.java)
+        ctx.completeNow()
+      }
     }
   }
 
@@ -2227,65 +2402,6 @@ abstract class SubmissionRegistryTest {
     }
   }
 
-  private suspend fun doSetProcessChainErrorMessage(ctx: VertxTestContext): ProcessChain {
-    val s = Submission(workflow = Workflow())
-    val pc = ProcessChain()
-
-    submissionRegistry.addSubmission(s)
-    submissionRegistry.addProcessChains(listOf(pc), s.id)
-    val pcErrorMessage1 = submissionRegistry.getProcessChainErrorMessage(pc.id)
-
-    ctx.verify {
-      assertThat(pcErrorMessage1).isNull()
-    }
-
-    val errorMessage = "THIS is an ERROR!!!!"
-    submissionRegistry.setProcessChainErrorMessage(pc.id, errorMessage)
-    val pcErrorMessage2 = submissionRegistry.getProcessChainErrorMessage(pc.id)
-
-    ctx.verify {
-      assertThat(pcErrorMessage2).isEqualTo(errorMessage)
-    }
-
-    return pc
-  }
-
-  @Test
-  fun setProcessChainErrorMessage(vertx: Vertx, ctx: VertxTestContext) {
-    CoroutineScope(vertx.dispatcher()).launch {
-      doSetProcessChainErrorMessage(ctx)
-      ctx.completeNow()
-    }
-  }
-
-  @Test
-  fun resetProcessChainErrorMessage(vertx: Vertx, ctx: VertxTestContext) {
-    CoroutineScope(vertx.dispatcher()).launch {
-      val pc = doSetProcessChainErrorMessage(ctx)
-
-      submissionRegistry.setProcessChainErrorMessage(pc.id, null)
-      val pcErrorMessage = submissionRegistry.getProcessChainErrorMessage(pc.id)
-
-      ctx.verify {
-        assertThat(pcErrorMessage).isNull()
-      }
-
-      ctx.completeNow()
-    }
-  }
-
-  @Test
-  fun getErrorMessageOfMissingProcessChain(vertx: Vertx, ctx: VertxTestContext) {
-    CoroutineScope(vertx.dispatcher()).launch {
-      ctx.coVerify {
-        assertThatThrownBy {
-          submissionRegistry.getProcessChainErrorMessage("MISSING")
-        }.isInstanceOf(NoSuchElementException::class.java)
-        ctx.completeNow()
-      }
-    }
-  }
-
   @Test
   fun searchEmpty(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
@@ -2361,9 +2477,9 @@ abstract class SubmissionRegistryTest {
       submissionRegistry.setSubmissionErrorMessage(s.id, expectedSubmissionError)
 
       val expectedProcessChainError = "crash"
-      submissionRegistry.setProcessChainErrorMessage(pc.id, expectedProcessChainError)
-
-      submissionRegistry.setProcessChainStartTime(pc.id, startTime)
+      submissionRegistry.addProcessChainRun(pc.id, startTime)
+      submissionRegistry.finishLastProcessChainRun(pc.id, endTime,
+          SubmissionRegistry.ProcessChainStatus.ERROR, expectedProcessChainError)
 
       ctx.coVerify {
         submissionRegistry.search(QueryCompiler.compile("docker")).toList().let { results ->
@@ -2389,7 +2505,7 @@ abstract class SubmissionRegistryTest {
           assertThat(results[0].type).isEqualTo(Type.PROCESS_CHAIN)
           assertThat(results[0].source).isNull()
           assertThat(results[0].startTime).isEqualTo(startTime)
-          assertThat(results[0].endTime).isNull()
+          assertThat(results[0].endTime).isEqualTo(endTime)
         }
 
         submissionRegistry.search(QueryCompiler.compile("ELVis")).toList().let { results ->
@@ -2449,7 +2565,9 @@ abstract class SubmissionRegistryTest {
       submissionRegistry.setSubmissionErrorMessage(s.id, expectedSubmissionError)
 
       val expectedProcessChainError = "docker error"
-      submissionRegistry.setProcessChainErrorMessage(pc.id, expectedProcessChainError)
+      submissionRegistry.addProcessChainRun(pc.id, Instant.now().minusMillis(1000))
+      submissionRegistry.finishLastProcessChainRun(pc.id, Instant.now(),
+          SubmissionRegistry.ProcessChainStatus.ERROR, expectedProcessChainError)
 
       ctx.coVerify {
         submissionRegistry.search(QueryCompiler.compile("docker in:rcs")).toList().let { results ->
@@ -2519,7 +2637,9 @@ abstract class SubmissionRegistryTest {
       submissionRegistry.setSubmissionErrorMessage(s.id, expectedSubmissionError)
 
       val expectedProcessChainError = "docker error"
-      submissionRegistry.setProcessChainErrorMessage(pc.id, expectedProcessChainError)
+      submissionRegistry.addProcessChainRun(pc.id, Instant.now().minusMillis(1000))
+      submissionRegistry.finishLastProcessChainRun(pc.id, Instant.now(),
+          SubmissionRegistry.ProcessChainStatus.ERROR, expectedProcessChainError)
 
       ctx.coVerify {
         submissionRegistry.search(QueryCompiler.compile("rcs:docker")).toList().let { results ->
@@ -2575,7 +2695,9 @@ abstract class SubmissionRegistryTest {
       submissionRegistry.setSubmissionErrorMessage(s.id, expectedSubmissionError)
 
       val expectedProcessChainError = "docker error"
-      submissionRegistry.setProcessChainErrorMessage(pc.id, expectedProcessChainError)
+      submissionRegistry.addProcessChainRun(pc.id, Instant.now().minusMillis(1000))
+      submissionRegistry.finishLastProcessChainRun(pc.id, Instant.now(),
+          SubmissionRegistry.ProcessChainStatus.ERROR, expectedProcessChainError)
 
       ctx.coVerify {
         submissionRegistry.search(QueryCompiler.compile("foo is:workflow")).toList().let { results ->
@@ -2822,10 +2944,11 @@ abstract class SubmissionRegistryTest {
           LocalDateTime.of(2022, 6, 1, 10, 11, 12).atZone(zoneId).toInstant())
       submissionRegistry.setSubmissionEndTime(s2.id,
           LocalDateTime.of(2022, 6, 5, 11, 12, 13).atZone(zoneId).toInstant())
-      submissionRegistry.setProcessChainStartTime(pc2.id,
+      submissionRegistry.addProcessChainRun(pc2.id,
           LocalDateTime.of(2022, 6, 1, 10, 11, 15).atZone(zoneId).toInstant())
-      submissionRegistry.setProcessChainEndTime(pc2.id,
-          LocalDateTime.of(2022, 6, 5, 11, 12, 10).atZone(zoneId).toInstant())
+      submissionRegistry.finishLastProcessChainRun(pc2.id,
+          LocalDateTime.of(2022, 6, 5, 11, 12, 10).atZone(zoneId).toInstant(),
+          SubmissionRegistry.ProcessChainStatus.SUCCESS)
 
       ctx.coVerify {
         submissionRegistry.search(QueryCompiler.compile("2022-05-30",

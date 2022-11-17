@@ -12,6 +12,7 @@ import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitResult
 import model.Submission
 import model.processchain.ProcessChain
+import model.processchain.Run
 import search.Locator
 import search.Match
 import search.Query
@@ -61,10 +62,8 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       val processChain: ProcessChain,
       val submissionId: String,
       val status: ProcessChainStatus,
-      val startTime: Instant? = null,
-      val endTime: Instant? = null,
-      val results: Map<String, List<Any>>? = null,
-      val errorMessage: String? = null
+      val runs: List<Run> = emptyList(),
+      val results: Map<String, List<Any>>? = null
   )
 
   private data class SubmissionEntry(
@@ -496,19 +495,47 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     }
   }
 
-  override suspend fun setProcessChainStartTime(processChainId: String, startTime: Instant?) {
-    updateProcessChain(processChainId) { it.copy(startTime = startTime) }
+  override suspend fun getProcessChainRuns(processChainId: String): List<Run> {
+    return getProcessChainEntryById(processChainId).runs
   }
 
-  override suspend fun getProcessChainStartTime(processChainId: String): Instant? =
-      getProcessChainEntryById(processChainId).startTime
-
-  override suspend fun setProcessChainEndTime(processChainId: String, endTime: Instant?) {
-    updateProcessChain(processChainId) { it.copy(endTime = endTime) }
+  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant) {
+    updateProcessChain(processChainId) { it.copy(runs = it.runs + Run(startTime)) }
   }
 
-  override suspend fun getProcessChainEndTime(processChainId: String): Instant? =
-      getProcessChainEntryById(processChainId).endTime
+  override suspend fun deleteLastUnfinishedProcessChainRun(processChainId: String) {
+    updateProcessChain(processChainId) { e ->
+      val l = e.runs.lastOrNull()
+      if (l != null && l.endTime == null) {
+        e.copy(runs = e.runs.dropLast(1))
+      } else {
+        e
+      }
+    }
+  }
+
+  override suspend fun deleteAllProcessChainRuns(processChainId: String) {
+    updateProcessChain(processChainId) { it.copy(runs = emptyList()) }
+  }
+
+  override suspend fun getLastProcessChainRun(processChainId: String): Run? {
+    return getProcessChainEntryById(processChainId).runs.lastOrNull()
+  }
+
+  override suspend fun finishLastProcessChainRun(processChainId: String,
+      endTime: Instant, status: ProcessChainStatus, errorMessage: String?) {
+    updateProcessChain(processChainId) {
+      if (it.runs.isEmpty()) {
+        it
+      } else {
+        it.copy(runs = it.runs.dropLast(1) + it.runs.last().copy(
+            endTime = endTime,
+            status = status,
+            errorMessage = errorMessage
+        ))
+      }
+    }
+  }
 
   override suspend fun getProcessChainSubmissionId(processChainId: String): String =
       getProcessChainEntryById(processChainId).submissionId
@@ -612,14 +639,6 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
         .associateBy({ it.processChain.id }, { it.status to it.results })
   }
 
-  override suspend fun setProcessChainErrorMessage(processChainId: String,
-      errorMessage: String?) {
-    updateProcessChain(processChainId) { it.copy(errorMessage = errorMessage) }
-  }
-
-  override suspend fun getProcessChainErrorMessage(processChainId: String): String? =
-      getProcessChainEntryById(processChainId).errorMessage
-
   private suspend fun searchSubmissions(query: Query, locators: Set<Locator>):
       List<InternalSearchResult> {
     val map = submissions.await()
@@ -642,10 +661,20 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     val values = awaitResult<List<String>> { map.values(it) }
     return values
         .map { JsonUtils.readValue<ProcessChainEntry>(it) }
-        .map { pc -> pc.serial to SearchResult(pc.processChain.id, Type.PROCESS_CHAIN,
-            null, if (locators.contains(Locator.ERROR_MESSAGE))
-              pc.errorMessage else null, pc.processChain.requiredCapabilities, null,
-            pc.status.name, pc.startTime, pc.endTime) }
+        .map { pc -> pc.serial to SearchResult(
+            id = pc.processChain.id,
+            type = Type.PROCESS_CHAIN,
+            name = null,
+            errorMessage = if (locators.contains(Locator.ERROR_MESSAGE))
+              pc.runs.lastOrNull()?.errorMessage
+            else
+              null,
+            requiredCapabilities = pc.processChain.requiredCapabilities,
+            source = null,
+            status = pc.status.name,
+            startTime = pc.runs.lastOrNull()?.startTime,
+            endTime = pc.runs.lastOrNull()?.endTime
+        ) }
         .map { (serial, r) -> InternalSearchResult(serial, r,
             SearchResultMatcher.toMatch(r, query)) }
         .filter { it.matches.isNotEmpty() }

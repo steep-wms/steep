@@ -185,15 +185,15 @@ class SchedulerTest {
         remainingPcs.add(0, pc)
       }
 
-      // register mock for start time
-      coEvery { submissionRegistry.setProcessChainStartTime(pc.id, any()) } just Runs
+      // register mock for new run
+      coEvery { submissionRegistry.addProcessChainRun(pc.id, any()) } just Runs
 
       // register mock for results
       coEvery { submissionRegistry.setProcessChainResults(pc.id,
           mapOf("ARG1" to listOf("output-${pc.id}"))) } just Runs
 
       // register mocks for all successful process chains
-      coEvery { submissionRegistry.setProcessChainStatus(pc.id, SUCCESS) } answers {
+      coEvery { submissionRegistry.finishLastProcessChainRun(pc.id, any(), SUCCESS, null) } answers {
         ctx.verify {
           assertThat(remainingPcs).doesNotContain(pc)
         }
@@ -213,10 +213,10 @@ class SchedulerTest {
       remainingPcs.addAll(slotAddProcessChain.captured)
     }
 
-    val slotEndTimePcId = slot<String>()
-    coEvery { submissionRegistry.setProcessChainEndTime(capture(slotEndTimePcId), any()) } answers {
+    val slotStatusPcId = slot<String>()
+    coEvery { submissionRegistry.setProcessChainStatus(capture(slotStatusPcId), any()) } answers {
       // on last successful process chain ...
-      executedPcIds.add(slotEndTimePcId.captured)
+      executedPcIds.add(slotStatusPcId.captured)
       if (executedPcIds.size == allPcs.size) {
         ctx.verify {
           // verify that all process chains were set to SUCCESS,
@@ -225,8 +225,8 @@ class SchedulerTest {
             for (pc in allPcs) {
               submissionRegistry.setProcessChainResults(pc.id,
                   mapOf("ARG1" to listOf("output-${pc.id}")))
-              submissionRegistry.setProcessChainStartTime(pc.id, any())
-              submissionRegistry.setProcessChainEndTime(pc.id, any())
+              submissionRegistry.addProcessChainRun(pc.id, any())
+              submissionRegistry.finishLastProcessChainRun(pc.id, any(), SUCCESS, null)
               submissionRegistry.setProcessChainStatus(pc.id, SUCCESS)
             }
           }
@@ -378,9 +378,8 @@ class SchedulerTest {
 
     // mock submission registry
     coEvery { submissionRegistry.setProcessChainStatus(pc.id, ERROR) } just Runs
-    coEvery { submissionRegistry.setProcessChainStartTime(pc.id, any()) } just Runs
-    coEvery { submissionRegistry.setProcessChainEndTime(pc.id, any()) } just Runs
-    coEvery { submissionRegistry.setProcessChainErrorMessage(pc.id, message) } just Runs
+    coEvery { submissionRegistry.addProcessChainRun(pc.id, any()) } just Runs
+    coEvery { submissionRegistry.finishLastProcessChainRun(pc.id, any(), any(), any()) } just Runs
     coEvery { submissionRegistry.findProcessChainRequiredCapabilities(REGISTERED) } returns
         listOf(emptySet<String>() to 0..0)
     coEvery { submissionRegistry.countProcessChains(null, REGISTERED, emptySet(), 0) } returns 13L
@@ -390,7 +389,7 @@ class SchedulerTest {
       ctx.verify {
         coVerify(exactly = 1) {
           submissionRegistry.setProcessChainStatus(pc.id, ERROR)
-          submissionRegistry.setProcessChainErrorMessage(pc.id, message)
+          submissionRegistry.finishLastProcessChainRun(pc.id, any(), ERROR, message)
         }
       }
       ctx.completeNow()
@@ -442,11 +441,12 @@ class SchedulerTest {
       coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING) } returns
           listOf(pc1.id, pc2.id, pc3.id, pc4.id) andThen listOf(pc1.id, pc2.id, pc3.id)
       coEvery { submissionRegistry.setProcessChainStatus(pc1.id, REGISTERED) } just Runs
-      coEvery { submissionRegistry.setProcessChainStartTime(pc1.id, null) } just Runs
+      coEvery { submissionRegistry.deleteLastUnfinishedProcessChainRun(pc1.id) } just Runs
       coEvery { submissionRegistry.findProcessChainById(pc2.id) } returns pc2
+      coEvery { submissionRegistry.addProcessChainRun(pc2.id, any()) } just Runs
       coEvery { submissionRegistry.setProcessChainResults(pc2.id, pc2Results) } just Runs
       coEvery { submissionRegistry.setProcessChainStatus(pc2.id, SUCCESS) } just Runs
-      coEvery { submissionRegistry.setProcessChainEndTime(pc2.id, any()) } just Runs
+      coEvery { submissionRegistry.finishLastProcessChainRun(pc2.id, any(), any(), null) } just Runs
       coEvery { submissionRegistry.existsProcessChain(REGISTERED, any()) } returns false
       coEvery { submissionRegistry.findProcessChainRequiredCapabilities(REGISTERED) } returns
           listOf(emptySet<String>() to 0..0)
@@ -484,13 +484,14 @@ class SchedulerTest {
           coVerify(exactly = 1) {
             // check that pc1 was successfully reset
             submissionRegistry.setProcessChainStatus(pc1.id, REGISTERED)
-            submissionRegistry.setProcessChainStartTime(pc1.id, null)
+            submissionRegistry.deleteLastUnfinishedProcessChainRun(pc1.id)
 
             // check that pc2 was successfully resumed
             submissionRegistry.findProcessChainById(pc2.id)
+            submissionRegistry.addProcessChainRun(pc2.id, any())
             submissionRegistry.setProcessChainResults(pc2.id, pc2Results)
             submissionRegistry.setProcessChainStatus(pc2.id, SUCCESS)
-            submissionRegistry.setProcessChainEndTime(pc2.id, any())
+            submissionRegistry.finishLastProcessChainRun(pc2.id, any(), SUCCESS, null)
           }
           coVerify(exactly = 1) {
             // check that pc2 was successfully executed

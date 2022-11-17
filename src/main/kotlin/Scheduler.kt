@@ -357,9 +357,9 @@ class Scheduler : CoroutineVerticle() {
       // for a short time while no scheduler is executing it yet and a concurrent
       // call to `lookupOrphans` (in this exact period of time) will consider
       // the process chain orphaned and schedule it twice.
-      val (processChain, isProcessChainResumed) = runningProcessChainIds.compute {
+      val processChain = runningProcessChainIds.compute {
         val r = fetchNextProcessChain(address, requiredCapabilities, minPriority)
-        r.first?.id to r
+        r?.id to r
       }
       if (processChain == null) {
         // We didn't find a process chain for these required capabilities.
@@ -405,31 +405,33 @@ class Scheduler : CoroutineVerticle() {
       launch {
         try {
           gaugeProcessChains.labels(RUNNING.name).inc()
-          if (!isProcessChainResumed) {
-            submissionRegistry.setProcessChainStartTime(processChain.id, Instant.now())
-          }
+          submissionRegistry.addProcessChainRun(processChain.id, Instant.now())
 
           val results = agent.execute(processChain)
 
           submissionRegistry.setProcessChainResults(processChain.id, results)
+          submissionRegistry.finishLastProcessChainRun(processChain.id,
+              Instant.now(), SUCCESS)
           submissionRegistry.setProcessChainStatus(processChain.id, SUCCESS)
           gaugeProcessChains.labels(SUCCESS.name).inc()
         } catch (_: CancellationException) {
           if (!shuttingDown) { // ignore cancellation on shutdown
             log.warn("Process chain execution was cancelled")
+            submissionRegistry.finishLastProcessChainRun(processChain.id,
+                Instant.now(), CANCELLED)
             submissionRegistry.setProcessChainStatus(processChain.id, CANCELLED)
             gaugeProcessChains.labels(CANCELLED.name).inc()
           }
         } catch (t: Throwable) {
           log.error("Process chain execution failed", t)
-          submissionRegistry.setProcessChainErrorMessage(processChain.id, t.message)
+          submissionRegistry.finishLastProcessChainRun(processChain.id,
+              Instant.now(), ERROR, t.message)
           submissionRegistry.setProcessChainStatus(processChain.id, ERROR)
           gaugeProcessChains.labels(ERROR.name).inc()
         } finally {
           if (!shuttingDown) {
             gaugeProcessChains.labels(RUNNING.name).dec()
             agentRegistry.deallocate(agent)
-            submissionRegistry.setProcessChainEndTime(processChain.id, Instant.now())
             runningProcessChainIds.remove(processChain.id)
 
             // try to lookup next process chain immediately
@@ -469,11 +471,10 @@ class Scheduler : CoroutineVerticle() {
 
   /**
    * Fetch next process chain to schedule either from [processChainsToResume]
-   * or from the [submissionRegistry]. Return a pair with the process chain
-   * and a flag specifying if the process chain is resumed or not.
+   * or from the [submissionRegistry]
    */
   private suspend fun fetchNextProcessChain(agentAddress: String,
-      requiredCapabilities: Collection<String>, minPriority: Int?): Pair<ProcessChain?, Boolean> {
+      requiredCapabilities: Collection<String>, minPriority: Int?): ProcessChain? {
     if (processChainsToResume.isNotEmpty()) {
       val pci = processChainsToResume.indexOfFirst { pair ->
         val agentId = pair.second.getString("id")
@@ -483,12 +484,12 @@ class Scheduler : CoroutineVerticle() {
       if (pci >= 0) {
         val processChainId = processChainsToResume[pci].first
         processChainsToResume.removeAt(pci)
-        return submissionRegistry.findProcessChainById(processChainId) to true
+        return submissionRegistry.findProcessChainById(processChainId)
       }
     }
 
     return submissionRegistry.fetchNextProcessChain(
-        REGISTERED, RUNNING, requiredCapabilities, minPriority) to false
+        REGISTERED, RUNNING, requiredCapabilities, minPriority)
   }
 
   /**
@@ -584,7 +585,7 @@ class Scheduler : CoroutineVerticle() {
       // executed by an agent
       for (id in orphansWithoutAgents) {
         submissionRegistry.setProcessChainStatus(id, REGISTERED)
-        submissionRegistry.setProcessChainStartTime(id, null)
+        submissionRegistry.deleteLastUnfinishedProcessChainRun(id)
       }
 
       // resume process chains with agents in `lookup` method

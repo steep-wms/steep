@@ -156,8 +156,9 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
     return pc
   }
 
-  override suspend fun setProcessChainStartTime(processChainId: String, startTime: Instant?) {
-    delegate.setProcessChainStartTime(processChainId, startTime)
+  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant) {
+    delegate.addProcessChainRun(processChainId, startTime)
+    // TODO rework messages sent to UI
     vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_STARTTIME_CHANGED, json {
       obj(
           "processChainId" to processChainId,
@@ -166,14 +167,58 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
     })
   }
 
-  override suspend fun setProcessChainEndTime(processChainId: String, endTime: Instant?) {
-    delegate.setProcessChainEndTime(processChainId, endTime)
+  override suspend fun deleteLastUnfinishedProcessChainRun(processChainId: String) {
+    delegate.deleteLastUnfinishedProcessChainRun(processChainId)
+    // TODO rework messages sent to UI
+    vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_STARTTIME_CHANGED, json {
+      obj(
+          "processChainId" to processChainId,
+          "startTime" to null
+      )
+    })
+  }
+
+  override suspend fun deleteAllProcessChainRuns(processChainId: String) {
+    delegate.deleteAllProcessChainRuns(processChainId)
+    // TODO rework messages sent to UI
+    vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_STARTTIME_CHANGED, json {
+      obj(
+          "processChainId" to processChainId,
+          "startTime" to null
+      )
+    })
+    vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_ENDTIME_CHANGED, json {
+      obj(
+          "processChainId" to processChainId,
+          "endTime" to null
+      )
+    })
+    vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_ERRORMESSAGE_CHANGED, json {
+      obj(
+          "processChainId" to processChainId,
+          "errorMessage" to null
+      )
+    })
+  }
+
+  override suspend fun finishLastProcessChainRun(processChainId: String,
+      endTime: Instant, status: ProcessChainStatus, errorMessage: String?) {
+    delegate.finishLastProcessChainRun(processChainId, endTime, status, errorMessage)
+    // TODO rework messages sent to UI
     vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_ENDTIME_CHANGED, json {
       obj(
           "processChainId" to processChainId,
           "endTime" to endTime
       )
     })
+    if (errorMessage != null) {
+      vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_ERRORMESSAGE_CHANGED, json {
+        obj(
+            "processChainId" to processChainId,
+            "errorMessage" to errorMessage
+        )
+      })
+    }
   }
 
   override suspend fun setProcessChainStatus(processChainId: String, status: ProcessChainStatus) {
@@ -246,16 +291,6 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
       obj(
           "processChainId" to processChainId,
           "results" to results
-      )
-    })
-  }
-
-  override suspend fun setProcessChainErrorMessage(processChainId: String, errorMessage: String?) {
-    delegate.setProcessChainErrorMessage(processChainId, errorMessage)
-    vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_ERRORMESSAGE_CHANGED, json {
-      obj(
-          "processChainId" to processChainId,
-          "errorMessage" to errorMessage
       )
     })
   }

@@ -3,6 +3,7 @@ package db
 import io.vertx.core.json.JsonObject
 import model.Submission
 import model.processchain.ProcessChain
+import model.processchain.Run
 import search.Query
 import search.SearchResult
 import search.Type
@@ -326,36 +327,43 @@ interface SubmissionRegistry : Registry {
       requiredCapabilities: Collection<String>? = null): Boolean
 
   /**
-   * Set the start time of a process chain
-   * @param processChainId the process chain ID
-   * @param startTime the new start time (may be `null` if the start time
-   * should be removed)
+   * Get all runs of the process chain with the given [processChainId]
    */
-  suspend fun setProcessChainStartTime(processChainId: String, startTime: Instant?)
+  suspend fun getProcessChainRuns(processChainId: String): List<Run>
 
   /**
-   * Get the start time of a process chain
-   * @param processChainId the process chain ID
-   * @return the start time (may be `null` if the process chain has not
-   * started yet)
+   * Create a new run with the given [startTime] for the process chain with
+   * the given [processChainId]
    */
-  suspend fun getProcessChainStartTime(processChainId: String): Instant?
+  suspend fun addProcessChainRun(processChainId: String, startTime: Instant)
 
   /**
-   * Set the end time of a process chain
-   * @param processChainId the submission ID
-   * @param endTime the new end time (may be `null` if the end time should be
-   * removed)
+   * Delete the last unfinished run of the process chain with the given
+   * [processChainId]. A process chain run is unfinished if it has a start time
+   * but no end time. This method is a no-op if there are no runs for the
+   * process chain.
    */
-  suspend fun setProcessChainEndTime(processChainId: String, endTime: Instant?)
+  suspend fun deleteLastUnfinishedProcessChainRun(processChainId: String)
 
   /**
-   * Get the end time of a process chain
-   * @param processChainId the process chain ID
-   * @return the end time (may be `null` if the process chain has not
-   * finished yet)
+   * Delete all runs of the process chain with the given [processChainId].
+   * This method is a no-op if there are no runs for the process chain.
    */
-  suspend fun getProcessChainEndTime(processChainId: String): Instant?
+  suspend fun deleteAllProcessChainRuns(processChainId: String)
+
+  /**
+   * Get the last run of the process chain with the given [processChainId].
+   * Returns `null` if there if no run for the process chain yet.
+   */
+  suspend fun getLastProcessChainRun(processChainId: String): Run?
+
+  /**
+   * Finishes the last unfinished run of the process chain with the given
+   * [processChainId] and sets the run's [endTime], [status] as well as
+   * the [errorMessage] (if the run failed).
+   */
+  suspend fun finishLastProcessChainRun(processChainId: String, endTime: Instant,
+      status: ProcessChainStatus, errorMessage: String? = null)
 
   /**
    * Get the ID of the submission the given process chain belongs to
@@ -442,24 +450,6 @@ interface SubmissionRegistry : Registry {
    */
   suspend fun getProcessChainStatusAndResultsIfFinished(processChainIds: Collection<String>):
       Map<String, Pair<ProcessChainStatus, Map<String, List<Any>>?>>
-
-  /**
-   * Set the error message of a process chain
-   * @param processChainId the process chain ID
-   * @param errorMessage the error message (may be `null` if the error message
-   * should be removed)
-   * @throws NoSuchElementException if the process chain does not exist
-   */
-  suspend fun setProcessChainErrorMessage(processChainId: String, errorMessage: String?)
-
-  /**
-   * Get the error message of a process chain
-   * @param processChainId the process chain ID
-   * @return the error message (may be `null` if the process chain does not have
-   * an error message)
-   * @throws NoSuchElementException if the process chain does not exist
-   */
-  suspend fun getProcessChainErrorMessage(processChainId: String): String?
 
   /**
    * Searches the registry to find objects that match the given [query].

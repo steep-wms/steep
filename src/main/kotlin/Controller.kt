@@ -300,9 +300,7 @@ class Controller : CoroutineVerticle() {
             submission.id, ProcessChainStatus.ERROR)
         for (pcId in failedProcessChains) {
           submissionRegistry.setProcessChainStatus(pcId, ProcessChainStatus.REGISTERED)
-          submissionRegistry.setProcessChainStartTime(pcId, null)
-          submissionRegistry.setProcessChainErrorMessage(pcId, null)
-          submissionRegistry.setProcessChainEndTime(pcId, null)
+          submissionRegistry.deleteAllProcessChainRuns(pcId)
         }
 
         // Re-load all process chains. waitForProcessChains() will only

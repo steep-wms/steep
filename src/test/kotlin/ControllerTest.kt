@@ -147,7 +147,6 @@ class ControllerTest {
     coEvery { submissionRegistry.addProcessChains(capture(processChainsSlot), submission.id) } answers {
       for (processChain in processChainsSlot.captured) {
         processChainVerifier?.invoke(processChain)
-        coEvery { submissionRegistry.setProcessChainStartTime(processChain.id, any()) } just Runs
       }
 
       val processChainsById = processChainsSlot.captured.associateBy { it.id }
@@ -370,7 +369,6 @@ class ControllerTest {
     // make sure the controller resets the status of the failed process chain
     coEvery { submissionRegistry.setProcessChainStatus(processChains[1].id,
         ProcessChainStatus.REGISTERED) } just Runs
-    coEvery { submissionRegistry.setProcessChainErrorMessage(processChains[1].id, null) } just Runs
 
     // pretend the resumed process chains succeed
     var nProcessChainStatusAndResults = 0
@@ -395,12 +393,9 @@ class ControllerTest {
     }
 
     // accept process chain start and end times
-    coEvery { submissionRegistry.setProcessChainStartTime(processChains[0].id, any()) } just Runs
-    coEvery { submissionRegistry.setProcessChainStartTime(processChains[1].id, any()) } just Runs
-    coEvery { submissionRegistry.setProcessChainStartTime(processChains[2].id, any()) } just Runs
-    coEvery { submissionRegistry.setProcessChainEndTime(processChains[0].id, any()) } just Runs
-    coEvery { submissionRegistry.setProcessChainEndTime(processChains[1].id, any()) } just Runs
-    coEvery { submissionRegistry.setProcessChainEndTime(processChains[2].id, any()) } just Runs
+    coEvery { submissionRegistry.deleteAllProcessChainRuns(processChains[0].id) } just Runs
+    coEvery { submissionRegistry.deleteAllProcessChainRuns(processChains[1].id) } just Runs
+    coEvery { submissionRegistry.deleteAllProcessChainRuns(processChains[2].id) } just Runs
 
     // accept the new process chain
     val processChainsSlot = slot<List<ProcessChain>>()
@@ -412,8 +407,7 @@ class ControllerTest {
       for (processChain in processChainsSlot.captured) {
         processChainStatusAndResults[processChain.id] =
             ProcessChainStatus.SUCCESS to mapOf("output_file4" to listOf("/tmp/4"))
-        coEvery { submissionRegistry.setProcessChainStartTime(processChain.id, any()) } just Runs
-        coEvery { submissionRegistry.setProcessChainEndTime(processChain.id, any()) } just Runs
+        coEvery { submissionRegistry.deleteAllProcessChainRuns(processChain.id) } just Runs
       }
     }
 

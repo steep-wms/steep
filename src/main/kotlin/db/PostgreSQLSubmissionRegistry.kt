@@ -1,5 +1,6 @@
 package db
 
+import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.google.common.cache.CacheBuilder
 import db.SubmissionRegistry.ProcessChainStatus
@@ -9,6 +10,7 @@ import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.await
@@ -16,6 +18,7 @@ import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.Tuple
 import model.Submission
 import model.processchain.ProcessChain
+import model.processchain.Run
 import search.DateTerm
 import search.DateTimeRangeTerm
 import search.DateTimeTerm
@@ -28,7 +31,6 @@ import search.Term
 import search.Type
 import java.time.Instant
 import java.time.OffsetDateTime
-import java.time.format.DateTimeFormatter.ISO_INSTANT
 import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
 
@@ -60,6 +62,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     private const val SERIAL = "serial"
     private const val PRIORITY = "priority"
     private const val EXECUTABLES = "executables"
+    private const val RUNS = "runs"
     private const val WORKFLOW = "workflow"
     private const val NAME = "name"
     private const val SOURCE = "source"
@@ -522,23 +525,50 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     return block(r)
   }
 
-  override suspend fun setProcessChainStartTime(processChainId: String, startTime: Instant?) {
-    updateColumn(PROCESS_CHAINS, processChainId, START_TIME,
-        startTime?.let { ISO_INSTANT.format(it) })
+  override suspend fun getProcessChainRuns(processChainId: String): List<Run> {
+    return getProcessChainColumn(processChainId, RUNS) { r ->
+      r.getJsonArray(0)?.let { JsonUtils.mapper.convertValue(it) } ?: emptyList() }
   }
 
-  override suspend fun getProcessChainStartTime(processChainId: String): Instant? =
-      getProcessChainColumn(processChainId, START_TIME) { it.getString(0)?.let { s ->
-        Instant.from(ISO_INSTANT.parse(s)) } }
-
-  override suspend fun setProcessChainEndTime(processChainId: String, endTime: Instant?) {
-    updateColumn(PROCESS_CHAINS, processChainId, END_TIME,
-        endTime?.let { ISO_INSTANT.format(it) })
+  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant) {
+    val updateStatement = "UPDATE $PROCESS_CHAINS SET " +
+        "$RUNS=COALESCE($RUNS, '[]'::jsonb) || $1 WHERE $ID=$2"
+    val updateParams = Tuple.of(
+        jsonArrayOf(JsonUtils.toJson(Run(startTime))),
+        processChainId
+    )
+    client.preparedQuery(updateStatement).execute(updateParams).await()
   }
 
-  override suspend fun getProcessChainEndTime(processChainId: String): Instant? =
-      getProcessChainColumn(processChainId, END_TIME) { it.getString(0)?.let { s ->
-        Instant.from(ISO_INSTANT.parse(s)) } }
+  override suspend fun deleteLastUnfinishedProcessChainRun(processChainId: String) {
+    val updateStatement = "UPDATE $PROCESS_CHAINS SET $RUNS=$RUNS - (-1) " +
+        "WHERE $ID=$1 AND $RUNS->-1->>'$END_TIME' IS NULL"
+    val updateParams = Tuple.of(processChainId)
+    client.preparedQuery(updateStatement).execute(updateParams).await()
+  }
+
+  override suspend fun deleteAllProcessChainRuns(processChainId: String) {
+    updateColumn(PROCESS_CHAINS, processChainId, RUNS, null)
+  }
+
+  override suspend fun getLastProcessChainRun(processChainId: String): Run? {
+    return getProcessChainColumn(processChainId, "$RUNS->-1") { r ->
+      r.getJsonObject(0)?.let { JsonUtils.mapper.convertValue(it) } }
+  }
+
+  override suspend fun finishLastProcessChainRun(processChainId: String,
+      endTime: Instant, status: ProcessChainStatus, errorMessage: String?) {
+    val updateStatement = "UPDATE $PROCESS_CHAINS " +
+        "SET $RUNS=$RUNS - (-1) || ($RUNS->-1 || $1) WHERE $ID=$2"
+    val updateParams = Tuple.of(
+        jsonObjectOf(
+            END_TIME to endTime,
+            STATUS to status.toString()
+        ).also { obj -> if (errorMessage != null) obj.put(ERROR_MESSAGE, errorMessage) },
+        processChainId
+    )
+    client.preparedQuery(updateStatement).execute(updateParams).await()
+  }
 
   override suspend fun getProcessChainSubmissionId(processChainId: String): String {
     return processChainSubmissionIds.getIfPresent(processChainId) ?: run {
@@ -616,14 +646,6 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     })
   }
 
-  override suspend fun setProcessChainErrorMessage(processChainId: String,
-      errorMessage: String?) {
-    updateColumn(PROCESS_CHAINS, processChainId, ERROR_MESSAGE, errorMessage)
-  }
-
-  override suspend fun getProcessChainErrorMessage(processChainId: String): String? =
-      getProcessChainColumn(processChainId, ERROR_MESSAGE) { it.getString(0) }
-
   /**
    * Escape a string so it can be used in a LIKE expression
    */
@@ -670,7 +692,10 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
    * Converts a [locator] to a column name or JSONB property name
    */
   private fun locatorToField(locator: Locator, type: Type): String? = when (locator) {
-    Locator.ERROR_MESSAGE -> ERROR_MESSAGE
+    Locator.ERROR_MESSAGE -> when (type) {
+      Type.WORKFLOW -> ERROR_MESSAGE
+      Type.PROCESS_CHAIN -> "$RUNS->-1->>'$ERROR_MESSAGE'"
+    }
     Locator.ID -> ID
     Locator.NAME -> when (type) {
       Type.WORKFLOW -> "$DATA->>'$NAME'"
@@ -687,11 +712,11 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
     Locator.START_TIME -> when (type) {
       Type.WORKFLOW -> "$DATA->>'$START_TIME'"
-      Type.PROCESS_CHAIN -> START_TIME
+      Type.PROCESS_CHAIN -> "$RUNS->-1->>'$START_TIME'"
     }
     Locator.END_TIME -> when (type) {
       Type.WORKFLOW -> "$DATA->>'$END_TIME'"
-      Type.PROCESS_CHAIN -> END_TIME
+      Type.PROCESS_CHAIN -> "$RUNS->-1->>'$END_TIME'"
     }
   }
 

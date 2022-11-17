@@ -94,6 +94,7 @@ import kotlinx.coroutines.launch
 import model.Submission
 import model.Version
 import model.cloud.VM
+import model.processchain.Run
 import model.workflow.Workflow
 import org.apache.commons.text.WordUtils
 import org.parboiled.errors.ParserRuntimeException
@@ -1446,19 +1447,32 @@ class HttpEndpoint : CoroutineVerticle() {
     val status = submissionRegistry.getProcessChainStatus(id)
     processChain.put("status", status.toString())
 
+    val lastRun = object {
+      private var loaded: Boolean = false
+      private var r: Run? = null
+
+      suspend fun get(): Run? {
+        if (!loaded) {
+          r = submissionRegistry.getLastProcessChainRun(id)
+          loaded = true
+        }
+        return r
+      }
+    }
+
     if (status != SubmissionRegistry.ProcessChainStatus.REGISTERED) {
-      val startTime = submissionRegistry.getProcessChainStartTime(id)
-      if (startTime != null) {
-        processChain.put("startTime", startTime)
+      val lr = lastRun.get()
+      if (lr?.startTime != null) {
+        processChain.put("startTime", lr.startTime)
       }
     }
 
     if (status == SubmissionRegistry.ProcessChainStatus.SUCCESS ||
         status == SubmissionRegistry.ProcessChainStatus.ERROR ||
         status == SubmissionRegistry.ProcessChainStatus.CANCELLED) {
-      val endTime = submissionRegistry.getProcessChainEndTime(id)
-      if (endTime != null) {
-        processChain.put("endTime", endTime)
+      val lr = lastRun.get()
+      if (lr?.endTime != null) {
+        processChain.put("endTime", lr.endTime)
       }
     }
 
@@ -1485,9 +1499,9 @@ class HttpEndpoint : CoroutineVerticle() {
         processChain.put("estimatedProgress", response.body())
       }
     } else if (status == SubmissionRegistry.ProcessChainStatus.ERROR) {
-      val errorMessage = submissionRegistry.getProcessChainErrorMessage(id)
-      if (errorMessage != null) {
-        processChain.put("errorMessage", errorMessage)
+      val lr = lastRun.get()
+      if (lr?.errorMessage != null) {
+        processChain.put("errorMessage", lr.errorMessage)
       }
     }
   }

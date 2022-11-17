@@ -40,6 +40,7 @@ import io.vertx.kotlin.core.json.obj
 import model.Submission
 import model.processchain.Executable
 import model.processchain.ProcessChain
+import model.processchain.Run
 import org.slf4j.LoggerFactory
 import search.DateTerm
 import search.DateTimeRangeTerm
@@ -89,6 +90,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     private const val ERROR_MESSAGE = "errorMessage"
     private const val SEQUENCE = "sequence"
     private const val PRIORITY = "priority"
+    private const val RUNS = "runs"
     private const val WORKFLOW = "workflow"
     private const val NAME = "name"
     private const val SOURCE = "source"
@@ -726,23 +728,134 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     }, 1) == 1L
   }
 
-  override suspend fun setProcessChainStartTime(processChainId: String, startTime: Instant?) {
-    updateField(collProcessChains, processChainId, START_TIME, instantToTimestamp(startTime))
-  }
+  override suspend fun getProcessChainRuns(processChainId: String): List<Run> {
+    val pc = collProcessChains.findOneAwait(jsonObjectOf(
+        INTERNAL_ID to processChainId
+    ), jsonObjectOf(
+        RUNS to 1
+    )) ?: throw NoSuchElementException("There is no process chain with ID `$processChainId'")
 
-  override suspend fun getProcessChainStartTime(processChainId: String): Instant? =
-      getProcessChainField<Any?>(processChainId, START_TIME)?.let {
-        timestampToInstant(it)
+    val runs = pc.getJsonArray(RUNS) ?: return emptyList()
+
+    // array is stored backwards
+    val result = mutableListOf<Run>()
+    for (i in runs.size() - 1 downTo 0) {
+      val r = runs.getJsonObject(i)
+
+      // convert BSON timestamps to ISO strings
+      r.getJsonObject(START_TIME)?.let { st ->
+        r.put(START_TIME, ISO_INSTANT.format(timestampToInstant(st)))
+      }
+      r.getJsonObject(END_TIME)?.let { et ->
+        r.put(END_TIME, ISO_INSTANT.format(timestampToInstant(et)))
       }
 
-  override suspend fun setProcessChainEndTime(processChainId: String, endTime: Instant?) {
-    updateField(collProcessChains, processChainId, END_TIME, instantToTimestamp(endTime))
+      result.add(JsonUtils.fromJson(r))
+    }
+    return result
   }
 
-  override suspend fun getProcessChainEndTime(processChainId: String): Instant? =
-      getProcessChainField<Any?>(processChainId, END_TIME)?.let {
-        timestampToInstant(it)
+  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant) {
+    collProcessChains.updateOneAwait(jsonObjectOf(
+        INTERNAL_ID to processChainId
+    ), jsonObjectOf(
+        "\$push" to jsonObjectOf(
+            RUNS to jsonObjectOf(
+                "\$each" to jsonArrayOf(
+                    jsonObjectOf(
+                        START_TIME to instantToTimestamp(startTime)
+                    )
+                ),
+                "\$position" to 0 // prepend to array
+            )
+        )
+    ))
+  }
+
+  override suspend fun deleteLastUnfinishedProcessChainRun(processChainId: String) {
+    collProcessChains.updateOneAwait(jsonObjectOf(
+        INTERNAL_ID to processChainId,
+        "\$or" to jsonArrayOf(
+            jsonObjectOf(
+                "$RUNS.0.$END_TIME" to jsonObjectOf(
+                    "\$exists" to false
+                )
+            ),
+            jsonObjectOf(
+                "$RUNS.0.$END_TIME" to jsonObjectOf(
+                    "\$type" to 10 // null
+                )
+            )
+        )
+    ), jsonObjectOf(
+        "\$pop" to jsonObjectOf(
+            RUNS to -1 // remove first element
+        )
+    ))
+  }
+
+  override suspend fun deleteAllProcessChainRuns(processChainId: String) {
+    collProcessChains.updateOneAwait(jsonObjectOf(
+        INTERNAL_ID to processChainId
+    ), jsonObjectOf(
+        "\$unset" to jsonObjectOf(
+            RUNS to ""
+        )
+    ))
+  }
+
+  override suspend fun getLastProcessChainRun(processChainId: String): Run? {
+    val pcs = collProcessChains.aggregateAwait(listOf(
+        jsonObjectOf(
+            "\$match" to jsonObjectOf(
+                INTERNAL_ID to processChainId
+            )
+        ),
+        jsonObjectOf(
+            "\$limit" to 1
+        ),
+        jsonObjectOf(
+            "\$project" to jsonObjectOf(
+                RUNS to jsonObjectOf(
+                    "\$first" to "\$$RUNS"
+                )
+            )
+        )
+    ))
+
+    if (pcs.isEmpty()) {
+      throw NoSuchElementException("There is no process chain with ID `$processChainId'")
+    }
+
+    return pcs.first().let { pc ->
+      val r = pc.getJsonObject(RUNS) ?: return@let null
+
+      // convert BSON timestamps to ISO strings
+      r.getJsonObject(START_TIME)?.let { st ->
+        r.put(START_TIME, ISO_INSTANT.format(timestampToInstant(st)))
       }
+      r.getJsonObject(END_TIME)?.let { et ->
+        r.put(END_TIME, ISO_INSTANT.format(timestampToInstant(et)))
+      }
+
+      JsonUtils.fromJson(r)
+    }
+  }
+
+  override suspend fun finishLastProcessChainRun(processChainId: String,
+      endTime: Instant, status: ProcessChainStatus, errorMessage: String?) {
+    collProcessChains.updateOneAwait(jsonObjectOf(
+        INTERNAL_ID to processChainId,
+        "$RUNS.0" to jsonObjectOf(
+            "\$exists" to true
+        )
+    ), jsonObjectOf(
+        "\$set" to jsonObjectOf(
+            "$RUNS.0.$END_TIME" to instantToTimestamp(endTime),
+            "$RUNS.0.$STATUS" to status.toString()
+        ).also { obj -> if (errorMessage != null) obj.put("$RUNS.0.$ERROR_MESSAGE", errorMessage) }
+    ))
+  }
 
   override suspend fun getProcessChainSubmissionId(processChainId: String): String =
       getProcessChainField(processChainId, SUBMISSION_ID)
@@ -879,13 +992,6 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       f.value to results
     }
   }
-
-  override suspend fun setProcessChainErrorMessage(processChainId: String, errorMessage: String?) {
-    updateField(collProcessChains, processChainId, ERROR_MESSAGE, errorMessage)
-  }
-
-  override suspend fun getProcessChainErrorMessage(processChainId: String): String? =
-      getProcessChainField(processChainId, ERROR_MESSAGE)
 
   /**
    * Create an operator that looks for a [value] in a given [field]. Either
@@ -1140,6 +1246,24 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         )
         pipelines.computeIfAbsent(type) { mutableListOf() }.add(matchStage)
       }
+    }
+
+    // extract fields of last process chain run
+    if (pipelines[Type.PROCESS_CHAIN]?.isNotEmpty() == true) {
+      pipelines[Type.PROCESS_CHAIN]?.add(0, jsonObjectOf(
+          "\$addFields" to jsonObjectOf(
+              "runs0" to jsonObjectOf(
+                  "\$first" to "\$$RUNS"
+              )
+          )
+      ))
+      pipelines[Type.PROCESS_CHAIN]?.add(1, jsonObjectOf(
+          "\$addFields" to jsonObjectOf(
+              START_TIME to "\$runs0.$START_TIME",
+              END_TIME to "\$runs0.$END_TIME",
+              ERROR_MESSAGE to "\$runs0.$ERROR_MESSAGE"
+          )
+      ))
     }
 
     if (pipelines.isEmpty() || pipelines.all { it.value.isEmpty() }) {

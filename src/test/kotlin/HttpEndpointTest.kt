@@ -60,6 +60,7 @@ import model.plugins.RuntimePlugin
 import model.processchain.Argument
 import model.processchain.Executable
 import model.processchain.ProcessChain
+import model.processchain.Run
 import model.setup.Setup
 import model.workflow.ExecuteAction
 import model.workflow.ForEachAction
@@ -1103,16 +1104,13 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainStatus(pc4.id) } returns ProcessChainStatus.ERROR
 
     val startTime = Instant.now()
-    coEvery { submissionRegistry.getProcessChainStartTime(pc1.id) } returns startTime
-    coEvery { submissionRegistry.getProcessChainStartTime(pc2.id) } returns startTime
-    coEvery { submissionRegistry.getProcessChainStartTime(pc3.id) } returns null
-    coEvery { submissionRegistry.getProcessChainStartTime(pc4.id) } returns startTime
-
-    val endTime = Instant.now()
-    coEvery { submissionRegistry.getProcessChainEndTime(pc1.id) } returns endTime
-    coEvery { submissionRegistry.getProcessChainEndTime(pc2.id) } returns null
-    coEvery { submissionRegistry.getProcessChainEndTime(pc3.id) } returns null
-    coEvery { submissionRegistry.getProcessChainEndTime(pc4.id) } returns endTime
+    val endTime = Instant.now().plusMillis(1234)
+    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns
+        Run(startTime, endTime, ProcessChainStatus.SUCCESS, "This error SHOULD NOT BE returned")
+    coEvery { submissionRegistry.getLastProcessChainRun(pc2.id) } returns Run(startTime)
+    coEvery { submissionRegistry.getLastProcessChainRun(pc3.id) } returns null
+    coEvery { submissionRegistry.getLastProcessChainRun(pc4.id) } returns
+        Run(startTime, endTime, ProcessChainStatus.ERROR, "THIS is an ERROR")
 
     coEvery { submissionRegistry.getProcessChainResults(pc1.id) } returns mapOf(
         "output_file1" to listOf("output.txt"))
@@ -1120,13 +1118,6 @@ class HttpEndpointTest {
         "output_file_that_should_not_be_returned" to listOf("output2.txt"))
     coEvery { submissionRegistry.getProcessChainResults(pc3.id) } returns null
     coEvery { submissionRegistry.getProcessChainResults(pc4.id) } returns null
-
-    coEvery { submissionRegistry.getProcessChainErrorMessage(pc1.id) } returns
-        "This error SHOULD NOT BE returned"
-    coEvery { submissionRegistry.getProcessChainErrorMessage(pc2.id) } returns null
-    coEvery { submissionRegistry.getProcessChainErrorMessage(pc3.id) } returns null
-    coEvery { submissionRegistry.getProcessChainErrorMessage(pc4.id) } returns
-        "THIS is an ERROR"
 
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
@@ -1205,12 +1196,9 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainStatus(pc2.id) } returns ProcessChainStatus.RUNNING
 
     val startTime = Instant.now()
-    coEvery { submissionRegistry.getProcessChainStartTime(pc1.id) } returns startTime
-    coEvery { submissionRegistry.getProcessChainStartTime(pc2.id) } returns startTime
-
-    val endTime = Instant.now()
-    coEvery { submissionRegistry.getProcessChainEndTime(pc1.id) } returns endTime
-    coEvery { submissionRegistry.getProcessChainEndTime(pc2.id) } returns null
+    val endTime = Instant.now().plusMillis(1234)
+    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns Run(startTime, endTime)
+    coEvery { submissionRegistry.getLastProcessChainRun(pc2.id) } returns Run(startTime)
 
     coEvery { submissionRegistry.getProcessChainResults(pc1.id) } returns mapOf(
         "output_file1" to listOf("output.txt"))
@@ -1276,10 +1264,8 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns ProcessChainStatus.SUCCESS
 
     val startTime = Instant.now()
-    coEvery { submissionRegistry.getProcessChainStartTime(pc1.id) } returns startTime
-
-    val endTime = Instant.now()
-    coEvery { submissionRegistry.getProcessChainEndTime(pc1.id) } returns endTime
+    val endTime = Instant.now().plusMillis(1234)
+    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns Run(startTime, endTime)
 
     coEvery { submissionRegistry.getProcessChainResults(pc1.id) } returns mapOf(
         "output_file1" to listOf("output.txt"))
@@ -1332,9 +1318,8 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns
         ProcessChainStatus.SUCCESS
     val startTime = Instant.now()
-    coEvery { submissionRegistry.getProcessChainStartTime(pc1.id) } returns startTime
-    val endTime = Instant.now()
-    coEvery { submissionRegistry.getProcessChainEndTime(pc1.id) } returns endTime
+    val endTime = Instant.now().plusMillis(4321)
+    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns Run(startTime, endTime)
     coEvery { submissionRegistry.getProcessChainResults(pc1.id) } returns mapOf(
         "output_file1" to listOf("output.txt"))
 
@@ -1401,7 +1386,7 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns
         ProcessChainStatus.RUNNING
     val startTime = Instant.now()
-    coEvery { submissionRegistry.getProcessChainStartTime(pc1.id) } returns startTime
+    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns Run(startTime)
 
     val address = LOCAL_AGENT_ADDRESS_PREFIX + pc1.id
     vertx.eventBus().consumer<JsonObject>(address).handler { msg ->
@@ -1469,16 +1454,11 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainSubmissionId(pc4.id) } returns sid
 
     val startTime = Instant.now()
-    coEvery { submissionRegistry.getProcessChainStartTime(pc1.id) } returns startTime
-    coEvery { submissionRegistry.getProcessChainStartTime(pc2.id) } returns startTime
-    coEvery { submissionRegistry.getProcessChainStartTime(pc3.id) } returns null
-    coEvery { submissionRegistry.getProcessChainStartTime(pc4.id) } returns null
-
-    val endTime = Instant.now()
-    coEvery { submissionRegistry.getProcessChainEndTime(pc1.id) } returns endTime
-    coEvery { submissionRegistry.getProcessChainEndTime(pc2.id) } returns null
-    coEvery { submissionRegistry.getProcessChainEndTime(pc3.id) } returns null
-    coEvery { submissionRegistry.getProcessChainEndTime(pc4.id) } returns null
+    val endTime = Instant.now().plusMillis(120)
+    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns Run(startTime, endTime)
+    coEvery { submissionRegistry.getLastProcessChainRun(pc2.id) } returns Run(startTime)
+    coEvery { submissionRegistry.getLastProcessChainRun(pc3.id) } returns null
+    coEvery { submissionRegistry.getLastProcessChainRun(pc4.id) } returns null
 
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
