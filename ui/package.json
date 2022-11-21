@@ -48,7 +48,7 @@
     "react-window": "^1.8.7",
     "sass": "^1.55.0",
     "sass-loader": "^13.1.0",
-    "serve": "^14.0.1",
+    "serve": "^14.1.2",
     "sockjs-client": "^1.6.1",
     "spinkit": "^2.0.1",
     "svgo-loader": "^3.0.1",
