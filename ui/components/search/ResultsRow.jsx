@@ -3,7 +3,7 @@ import Label from "../../components/Label"
 import Link from "next/link"
 import { formatIsoLocalDateTime } from "../../components/lib/date-time-utils"
 import { AlertCircle, Clock, CheckCircle, Coffee, Delete, Link as LinkIcon,
-  RotateCw, Send, XCircle } from "lucide-react"
+  RotateCw, PauseCircle, Send, XCircle } from "lucide-react"
 import classNames from "classnames"
 import styles from "./ResultsRow.scss"
 
@@ -98,6 +98,12 @@ function Status({ status, statusMatch }) {
       statusIcon = <RotateCw />
       text = "Running"
       cls = "running"
+      break
+
+    case "PAUSED":
+      statusIcon = <PauseCircle />
+      text = "Paused"
+      cls = "paused"
       break
 
     case "CANCELLED":

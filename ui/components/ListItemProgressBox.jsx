@@ -59,6 +59,11 @@ const ListItemProgressBox = ({ progress, deleted = false }) => {
       break
     }
 
+    case "PAUSED":
+      defaultTitle = "PAUSED"
+      icon = <PauseCircle className={classNames("feather", "idle", resolvedStyles.className)} />
+      break
+
     case "CANCELLED":
       defaultTitle = "Cancelled"
       icon = <Delete className={classNames("feather", "cancelled", resolvedStyles.className)} />

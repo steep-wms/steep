@@ -29,6 +29,11 @@ interface SubmissionRegistry : Registry {
     RUNNING,
 
     /**
+     * The process chain's execution is paused
+     */
+    PAUSED,
+
+    /**
      * The process chain's execution has been cancelled
      */
     CANCELLED,
@@ -228,23 +233,25 @@ interface SubmissionRegistry : Registry {
       order: Int = 1, excludeExecutables: Boolean = false): Collection<Pair<ProcessChain, String>>
 
   /**
-   * Find the IDs of all process chains that have a given status
-   * @param status the expected process chain status
+   * Find the IDs of all process chains that have one of the given statuses
+   * @param statuses the expected process chain statuses (at least one status
+   * must be given)
    * @return the list of process chain IDs (may be empty if there are no
-   * process chains with the given status)
+   * process chains with the given statuses)
    */
-  suspend fun findProcessChainIdsByStatus(status: ProcessChainStatus): Collection<String>
+  suspend fun findProcessChainIdsByStatus(vararg statuses: ProcessChainStatus): Collection<String>
 
   /**
    * Find the IDs of all process chains that belong to a given submission
-   * and have the given status
+   * and have one of the given statuses
    * @param submissionId the submission's ID
-   * @param status the expected process chain status
+   * @param statuses the expected process chain statuses (at least one status
+   * must be given)
    * @return the list of process chain IDs (may be empty if the submission does
-   * not exist or if it has no process chains with the given status)
+   * not exist or if it has no process chains with the given statuses)
    */
   suspend fun findProcessChainIdsBySubmissionIdAndStatus(submissionId: String,
-      status: ProcessChainStatus): Collection<String>
+      vararg statuses: ProcessChainStatus): Collection<String>
 
   /**
    * Find all process chains that belong to a given submission and return their
@@ -411,19 +418,20 @@ interface SubmissionRegistry : Registry {
   /**
    * Set the [priority] of the process chain with the given [processChainId]
    * if (and only if) the process chain has not already finished (i.e. only if
-   * its status is either [ProcessChainStatus.REGISTERED] or
-   * [ProcessChainStatus.RUNNING]). Priorities of finished process chains are
-   * fixed and cannot be modified. Return `true` if the process chain was
-   * updated, `false` otherwise.
+   * its status is either [ProcessChainStatus.REGISTERED],
+   * [ProcessChainStatus.RUNNING], or [ProcessChainStatus.PAUSED]). Priorities
+   * of finished process chains are fixed and cannot be modified. Return `true`
+   * if the process chain was updated, `false` otherwise.
    */
   suspend fun setProcessChainPriority(processChainId: String, priority: Int): Boolean
 
   /**
    * Set the [priority] of all process chains of the submission with the
    * given [submissionId]. Only affects process chains that are not finished
-   * yet (i.e. only those that have a status of either [ProcessChainStatus.REGISTERED]
-   * or [ProcessChainStatus.RUNNING]). Priorities of finished process chains are
-   * fixed and cannot be modified. They will be skipped silently.
+   * yet (i.e. only those that have a status of either [ProcessChainStatus.REGISTERED],
+   * [ProcessChainStatus.RUNNING], or [ProcessChainStatus.PAUSED]). Priorities
+   * of finished process chains are fixed and cannot be modified. They will be
+   * skipped silently.
    */
   suspend fun setAllProcessChainsPriority(submissionId: String, priority: Int)
 
@@ -446,7 +454,8 @@ interface SubmissionRegistry : Registry {
   /**
    * Query the process chains with the given [processChainIds] and return
    * status and results of those that are finished (i.e. not
-   * [ProcessChainStatus.REGISTERED] or [ProcessChainStatus.RUNNING])
+   * [ProcessChainStatus.REGISTERED], [ProcessChainStatus.RUNNING], or
+   * [ProcessChainStatus.PAUSED])
    */
   suspend fun getProcessChainStatusAndResultsIfFinished(processChainIds: Collection<String>):
       Map<String, Pair<ProcessChainStatus, Map<String, List<Any>>?>>

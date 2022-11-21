@@ -568,29 +568,30 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       }, PROCESS_CHAIN_EXCLUDES_BUT_SUBMISSION_ID).map {
         readProcessChain(it, excludeExecutables) }
 
-  override suspend fun findProcessChainIdsByStatus(status: ProcessChainStatus) =
-      collProcessChains.findAwait(json {
-        obj(
-            STATUS to status.toString()
+  override suspend fun findProcessChainIdsByStatus(
+      vararg statuses: ProcessChainStatus): Collection<String> {
+    require(statuses.isNotEmpty()) { "At least one status must be given" }
+    return collProcessChains.findAwait(jsonObjectOf(
+        STATUS to jsonObjectOf(
+            "\$in" to jsonArrayOf(*statuses.map { it.toString() }.toTypedArray())
         )
-      }, projection = json {
-        obj(
-            INTERNAL_ID to 1
-        )
-      }).map { it.getString(INTERNAL_ID) }
+    ), projection = jsonObjectOf(
+        INTERNAL_ID to 1
+    )).map { it.getString(INTERNAL_ID) }
+  }
 
   override suspend fun findProcessChainIdsBySubmissionIdAndStatus(
-      submissionId: String, status: ProcessChainStatus) =
-      collProcessChains.findAwait(json {
-        obj(
-            SUBMISSION_ID to submissionId,
-            STATUS to status.toString()
+      submissionId: String, vararg statuses: ProcessChainStatus): Collection<String> {
+    require(statuses.isNotEmpty()) { "At least one status must be given" }
+    return collProcessChains.findAwait(jsonObjectOf(
+        SUBMISSION_ID to submissionId,
+        STATUS to jsonObjectOf(
+            "\$in" to jsonArrayOf(*statuses.map { it.toString() }.toTypedArray())
         )
-      }, projection = json {
-        obj(
-            INTERNAL_ID to 1
-        )
-      }).map { it.getString(INTERNAL_ID) }
+    ), projection = jsonObjectOf(
+        INTERNAL_ID to 1
+    )).map { it.getString(INTERNAL_ID) }
+  }
 
   override suspend fun findProcessChainStatusesBySubmissionId(submissionId: String) =
       collProcessChains.findAwait(json {
@@ -901,6 +902,9 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
             ),
             jsonObjectOf(
                 STATUS to ProcessChainStatus.RUNNING
+            ),
+            jsonObjectOf(
+                STATUS to ProcessChainStatus.PAUSED
             )
         )
     ), jsonObjectOf(
@@ -921,6 +925,9 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
             ),
             jsonObjectOf(
                 STATUS to ProcessChainStatus.RUNNING
+            ),
+            jsonObjectOf(
+                STATUS to ProcessChainStatus.PAUSED
             )
         )
     ), jsonObjectOf(
@@ -967,6 +974,11 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
               obj(
                   STATUS to obj(
                       "\$ne" to ProcessChainStatus.RUNNING.toString()
+                  )
+              ),
+              obj(
+                  STATUS to obj(
+                      "\$ne" to ProcessChainStatus.PAUSED.toString()
                   )
               )
           ),

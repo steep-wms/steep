@@ -335,7 +335,8 @@ class ControllerTest {
     val submission = Submission(workflow = workflow)
     val runningSubmissions = mutableListOf(submission)
 
-    val processChains = listOf(ProcessChain(), ProcessChain(), ProcessChain())
+    val processChains = listOf(ProcessChain(), ProcessChain(), ProcessChain(),
+        ProcessChain())
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     data class SmallState(val vars: List<Variable>, val actions: List<Action>,
@@ -357,17 +358,20 @@ class ControllerTest {
     // there are no accepted submissions
     coEvery { submissionRegistry.fetchNextSubmission(Status.ACCEPTED, Status.RUNNING) } returns null
 
-    // pretend that the first process chain has succeeded, the second was still
-    // running, and the third failed
+    // pretend that the first process chain has succeeded, the second and
+    // third were still running and paused respectively, and that the fourth
+    // one failed
     coEvery { submissionRegistry.countProcessChains(submission.id,
         ProcessChainStatus.RUNNING) } returns 1
     coEvery { submissionRegistry.countProcessChains(submission.id,
+        ProcessChainStatus.PAUSED) } returns 1
+    coEvery { submissionRegistry.countProcessChains(submission.id,
         ProcessChainStatus.ERROR) } returns 1
     coEvery { submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(submission.id,
-        ProcessChainStatus.ERROR) } returns listOf(processChains[1].id)
+        ProcessChainStatus.ERROR) } returns listOf(processChains[3].id)
 
     // make sure the controller resets the status of the failed process chain
-    coEvery { submissionRegistry.setProcessChainStatus(processChains[1].id,
+    coEvery { submissionRegistry.setProcessChainStatus(processChains[3].id,
         ProcessChainStatus.REGISTERED) } just Runs
 
     // pretend the resumed process chains succeed
@@ -375,7 +379,8 @@ class ControllerTest {
     val processChainStatusAndResults = mutableMapOf(
         processChains[0].id to (ProcessChainStatus.SUCCESS to mapOf("output_file1" to listOf("/tmp/1"))),
         processChains[1].id to (ProcessChainStatus.RUNNING to null),
-        processChains[2].id to (ProcessChainStatus.RUNNING to null)
+        processChains[2].id to (ProcessChainStatus.RUNNING to null),
+        processChains[3].id to (ProcessChainStatus.RUNNING to null)
     )
     val processChainIdsSlot = slot<Collection<String>>()
     coEvery { submissionRegistry.getProcessChainStatusAndResultsIfFinished(capture(processChainIdsSlot)) } answers {
@@ -387,6 +392,8 @@ class ControllerTest {
             ProcessChainStatus.SUCCESS to mapOf("output_file2" to listOf("/tmp/2"))
         processChainStatusAndResults[processChains[2].id] =
             ProcessChainStatus.SUCCESS to mapOf("output_file3" to listOf("/tmp/3"))
+        processChainStatusAndResults[processChains[3].id] =
+            ProcessChainStatus.SUCCESS to mapOf("output_file4" to listOf("/tmp/4"))
       }
       nProcessChainStatusAndResults++
       r
@@ -396,6 +403,7 @@ class ControllerTest {
     coEvery { submissionRegistry.deleteAllProcessChainRuns(processChains[0].id) } just Runs
     coEvery { submissionRegistry.deleteAllProcessChainRuns(processChains[1].id) } just Runs
     coEvery { submissionRegistry.deleteAllProcessChainRuns(processChains[2].id) } just Runs
+    coEvery { submissionRegistry.deleteAllProcessChainRuns(processChains[3].id) } just Runs
 
     // accept the new process chain
     val processChainsSlot = slot<List<ProcessChain>>()
@@ -406,7 +414,7 @@ class ControllerTest {
       }
       for (processChain in processChainsSlot.captured) {
         processChainStatusAndResults[processChain.id] =
-            ProcessChainStatus.SUCCESS to mapOf("output_file4" to listOf("/tmp/4"))
+            ProcessChainStatus.SUCCESS to mapOf("output_file5" to listOf("/tmp/5"))
         coEvery { submissionRegistry.deleteAllProcessChainRuns(processChain.id) } just Runs
       }
     }
@@ -462,20 +470,15 @@ class ControllerTest {
         expectedSubmissionStatus = Status.CANCELLED)
   }
 
-  /**
-   * Tries to cancel an already running process chain
-   * @param vertx the Vert.x instance
-   * @param ctx the test context
-   */
-  @Test
-  fun cancelRunning(vertx: Vertx, ctx: VertxTestContext) {
+  private fun doCancelRunning(initialStatus: ProcessChainStatus,
+      vertx: Vertx, ctx: VertxTestContext) {
     var n = 0
     doSimple(vertx, ctx, workflowName = "smallGraph",
         processChainStatusSupplier = { processChain, _ ->
           if (processChain.executables.any { it.path == "join.sh" }) {
             n++
             if (n == 1) {
-              ProcessChainStatus.RUNNING
+              initialStatus
             } else {
               ProcessChainStatus.CANCELLED
             }
@@ -484,6 +487,26 @@ class ControllerTest {
           }
         },
         expectedSubmissionStatus = Status.CANCELLED)
+  }
+
+  /**
+   * Tries to cancel an already running process chain
+   * @param vertx the Vert.x instance
+   * @param ctx the test context
+   */
+  @Test
+  fun cancelRunning(vertx: Vertx, ctx: VertxTestContext) {
+    doCancelRunning(ProcessChainStatus.RUNNING, vertx, ctx)
+  }
+
+  /**
+   * Tries to cancel a paused process chain
+   * @param vertx the Vert.x instance
+   * @param ctx the test context
+   */
+  @Test
+  fun cancelPaused(vertx: Vertx, ctx: VertxTestContext) {
+    doCancelRunning(ProcessChainStatus.PAUSED, vertx, ctx)
   }
 
   /**
@@ -524,7 +547,7 @@ class ControllerTest {
     coEvery { submissionRegistry.setAllProcessChainsStatus(any(), any(), any()) } just Runs
 
     val processChainIds = ConcurrentHashSet<String>()
-    coEvery { submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(any(), any()) } returns processChainIds
+    coEvery { submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(any(), any(), any()) } returns processChainIds
 
     var statusRequested = 0
     var consumerRegistered = false

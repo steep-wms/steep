@@ -545,9 +545,9 @@ class Controller : CoroutineVerticle() {
     submissionRegistry.setAllProcessChainsStatus(id, ProcessChainStatus.REGISTERED,
       ProcessChainStatus.CANCELLED)
 
-    // now cancel running process chains
+    // now cancel running and paused process chains
     val pcIds = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
-      id, ProcessChainStatus.RUNNING)
+      id, ProcessChainStatus.RUNNING, ProcessChainStatus.PAUSED)
     val cancelMsg = jsonObjectOf("action" to "cancel")
     for (pcId in pcIds) {
       vertx.eventBus().send(LOCAL_AGENT_ADDRESS_PREFIX + pcId, cancelMsg)

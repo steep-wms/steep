@@ -76,7 +76,7 @@
     stroke: var(--gray-600);
   }
 
-  &.running :global(svg) {
+  &.running :global(svg), &.paused :global(svg) {
     stroke: var(--gray-600);
   }
 

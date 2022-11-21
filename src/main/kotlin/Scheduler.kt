@@ -16,6 +16,7 @@ import agent.AgentRegistryFactory
 import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus.CANCELLED
 import db.SubmissionRegistry.ProcessChainStatus.ERROR
+import db.SubmissionRegistry.ProcessChainStatus.PAUSED
 import db.SubmissionRegistry.ProcessChainStatus.REGISTERED
 import db.SubmissionRegistry.ProcessChainStatus.RUNNING
 import db.SubmissionRegistry.ProcessChainStatus.SUCCESS
@@ -82,7 +83,7 @@ class Scheduler : CoroutineVerticle() {
   /**
    * IDs of all process chains we are currently executing
    */
-  private val runningProcessChainIds = RunningProcessChainsSet()
+  private val executingProcessChainIds = RunningProcessChainsSet()
 
   /**
    * A cluster-wide map keeping IDs of [Scheduler] instances
@@ -156,7 +157,7 @@ class Scheduler : CoroutineVerticle() {
         "$SCHEDULER_PREFIX$agentId$SCHEDULER_RUNNING_PROCESS_CHAINS_SUFFIX"
     vertx.eventBus().consumer<Any?>(addressRunningProcessChains) { msg ->
       launch {
-        msg.reply(JsonArray(runningProcessChainIds.getAll()))
+        msg.reply(JsonArray(executingProcessChainIds.getAll()))
       }
     }
 
@@ -352,12 +353,12 @@ class Scheduler : CoroutineVerticle() {
       val minPriority = if (arci >= 0) allRequiredCapabilities[arci].minPriority else null
 
       // Get next registered process chain for the given set of required capabilities.
-      // Fetching the process chain and adding it to 'runningProcessChainIds' must
+      // Fetching the process chain and adding it to 'executingProcessChainIds' must
       // happen atomically. Otherwise, the process chain will be marked as RUNNING
       // for a short time while no scheduler is executing it yet and a concurrent
       // call to `lookupOrphans` (in this exact period of time) will consider
       // the process chain orphaned and schedule it twice.
-      val processChain = runningProcessChainIds.compute {
+      val processChain = executingProcessChainIds.compute {
         val r = fetchNextProcessChain(address, requiredCapabilities, minPriority)
         r?.id to r
       }
@@ -385,7 +386,7 @@ class Scheduler : CoroutineVerticle() {
         submissionRegistry.setProcessChainStatus(processChain.id, REGISTERED)
 
         // continue with the next capability set and candidate
-        runningProcessChainIds.remove(processChain.id)
+        executingProcessChainIds.remove(processChain.id)
         continue
       }
 
@@ -432,7 +433,7 @@ class Scheduler : CoroutineVerticle() {
           if (!shuttingDown) {
             gaugeProcessChains.labels(RUNNING.name).dec()
             agentRegistry.deallocate(agent)
-            runningProcessChainIds.remove(processChain.id)
+            executingProcessChainIds.remove(processChain.id)
 
             // try to lookup next process chain immediately
             vertx.eventBus().send(SCHEDULER_LOOKUP_NOW, json {
@@ -503,22 +504,22 @@ class Scheduler : CoroutineVerticle() {
     }
 
     try {
-      // get all process chains with status RUNNING from the registry
+      // get all process chains with status RUNNING or PAUSED from the registry
       // IMPORTANT: we need to do this first before we ask the schedulers which
       // process chains they are executing. Otherwise, we might risk finding
       // chains that have been started by a scheduler right after we asked it.
       val runningProcessChains = submissionRegistry.findProcessChainIdsByStatus(
-          status = RUNNING)
+          RUNNING, PAUSED)
 
       // ask all scheduler instances which process chains they are currently executing
       val allRunningProcessChains = mutableSetOf<String>()
-      allRunningProcessChains.addAll(runningProcessChainIds.getAll()) // always consider our own process chains
+      allRunningProcessChains.addAll(executingProcessChainIds.getAll()) // always consider our own process chains
       val keysPromise = Promise.promise<Set<String>>()
       schedulers.keys(keysPromise)
       for (scheduler in keysPromise.future().await()) {
         if (scheduler == agentId) {
           // no need to send a message to `this` (we've already added
-          // `runningProcessChainIds` to `allRunningProcessChains` above)
+          // `executingProcessChainIds` to `allRunningProcessChains` above)
         } else {
           val address = "$SCHEDULER_PREFIX$scheduler$SCHEDULER_RUNNING_PROCESS_CHAINS_SUFFIX"
           val ids = vertx.eventBus().request<JsonArray>(address, null).await()
@@ -536,12 +537,12 @@ class Scheduler : CoroutineVerticle() {
         return
       }
 
-      // check again if orphaned process chains are still running (or if they
+      // check again if orphaned process chains are still being executed (or if they
       // had just been finished by a scheduler before we had the chance to ask it)
-      val stillRunningProcessChains = submissionRegistry.findProcessChainIdsByStatus(
-          status = RUNNING).toSet()
+      val stillExecutingProcessChains = submissionRegistry.findProcessChainIdsByStatus(
+          RUNNING, PAUSED).toSet()
       val orphanedProcessChains = orphanedCandidates.filter {
-        stillRunningProcessChains.contains(it) }
+        stillExecutingProcessChains.contains(it) }
       if (orphanedProcessChains.isEmpty()) {
         // nothing to do
         return
@@ -604,7 +605,7 @@ class Scheduler : CoroutineVerticle() {
   /**
    * A small wrapper around [MutableSet] that provides atomic compute, remove
    * and getAll operations. This is necessary because fetching a process
-   * chain from the registry and adding it to [runningProcessChainIds] must
+   * chain from the registry and adding it to [executingProcessChainIds] must
    * happen atomically so that no concurrent call to [lookupOrphans] considers
    * the process chain orphaned just because it's marked as RUNNING in the
    * registry but has not been added to the set yet.

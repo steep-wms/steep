@@ -6,7 +6,7 @@ export default function workflowToProgress(workflow) {
   if (workflow.status === "RUNNING") {
     let completed = workflow.succeededProcessChains +
        workflow.failedProcessChains + workflow.cancelledProcessChains
-    progressTitle = `${workflow.runningProcessChains} Running`
+    progressTitle = `${workflow.runningProcessChains + workflow.pausedProcessChains} Running`
     progressSubTitle = `${completed} of ${workflow.totalProcessChains} completed`
   } else if (workflow.status !== "ACCEPTED" && workflow.status !== "RUNNING") {
     if (workflow.failedProcessChains > 0) {

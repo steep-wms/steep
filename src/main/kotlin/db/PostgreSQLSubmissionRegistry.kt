@@ -368,19 +368,21 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun findProcessChainIdsByStatus(
-      status: ProcessChainStatus): List<String> {
+      vararg statuses: ProcessChainStatus): Collection<String> {
+    require(statuses.isNotEmpty()) { "At least one status must be given" }
     val statement = "SELECT $ID FROM $PROCESS_CHAINS " +
-        "WHERE $STATUS=$1 ORDER BY $SERIAL"
-    val params = Tuple.of(status.toString())
+        "WHERE $STATUS=ANY($1) ORDER BY $SERIAL"
+    val params = Tuple.of(statuses.map { it.toString() }.toTypedArray())
     val rs = client.preparedQuery(statement).execute(params).await()
     return rs.map { it.getString(0) }
   }
 
   override suspend fun findProcessChainIdsBySubmissionIdAndStatus(
-      submissionId: String, status: ProcessChainStatus): List<String> {
+      submissionId: String, vararg statuses: ProcessChainStatus): Collection<String> {
+    require(statuses.isNotEmpty()) { "At least one status must be given" }
     val statement = "SELECT $ID FROM $PROCESS_CHAINS " +
-        "WHERE $SUBMISSION_ID=$1 AND $STATUS=$2 ORDER BY $SERIAL"
-    val params = Tuple.of(submissionId, status.toString())
+        "WHERE $SUBMISSION_ID=$1 AND $STATUS=ANY($2) ORDER BY $SERIAL"
+    val params = Tuple.of(submissionId, statuses.map { it.toString() }.toTypedArray())
     val rs = client.preparedQuery(statement).execute(params).await()
     return rs.map { it.getString(0) }
   }
@@ -604,9 +606,12 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   override suspend fun setProcessChainPriority(processChainId: String, priority: Int): Boolean {
     val newObj = jsonObjectOf(PRIORITY to priority)
     val updateStatement = "UPDATE $PROCESS_CHAINS SET $DATA=$DATA || $1 " +
-        "WHERE $ID=$2 AND $DATA->'$PRIORITY'!=$3 AND ($STATUS=$4 OR $STATUS=$5) RETURNING 1"
+        "WHERE $ID=$2 AND $DATA->'$PRIORITY'!=$3 AND " +
+        "($STATUS=$4 OR $STATUS=$5 OR $STATUS=$6) RETURNING 1"
     val updateParams = Tuple.of(newObj, processChainId, priority,
-        ProcessChainStatus.REGISTERED.toString(), ProcessChainStatus.RUNNING.toString())
+        ProcessChainStatus.REGISTERED.toString(),
+        ProcessChainStatus.RUNNING.toString(),
+        ProcessChainStatus.PAUSED.toString())
     val result = client.preparedQuery(updateStatement).execute(updateParams).await()
     return result.size() > 0
   }
@@ -614,9 +619,11 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   override suspend fun setAllProcessChainsPriority(submissionId: String, priority: Int) {
     val newObj = jsonObjectOf(PRIORITY to priority)
     val updateStatement = "UPDATE $PROCESS_CHAINS SET $DATA=$DATA || $1 WHERE " +
-        "$SUBMISSION_ID=$2 AND ($STATUS=$3 OR $STATUS=$4)"
+        "$SUBMISSION_ID=$2 AND ($STATUS=$3 OR $STATUS=$4 OR $STATUS=$5)"
     val updateParams = Tuple.of(newObj, submissionId,
-        ProcessChainStatus.REGISTERED.toString(), ProcessChainStatus.RUNNING.toString())
+        ProcessChainStatus.REGISTERED.toString(),
+        ProcessChainStatus.RUNNING.toString(),
+        ProcessChainStatus.PAUSED.toString())
     client.preparedQuery(updateStatement).execute(updateParams).await()
   }
 
@@ -632,10 +639,11 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   override suspend fun getProcessChainStatusAndResultsIfFinished(processChainIds: Collection<String>):
       Map<String, Pair<ProcessChainStatus, Map<String, List<Any>>?>> {
     val statement = "SELECT $ID, $STATUS, $RESULTS::varchar FROM $PROCESS_CHAINS " +
-        "WHERE $STATUS!=$1 AND $STATUS!=$2 AND $ID=ANY($3)"
+        "WHERE $STATUS!=$1 AND $STATUS!=$2 AND $STATUS!=$3 AND $ID=ANY($4)"
     val params = Tuple.of(
         ProcessChainStatus.REGISTERED,
         ProcessChainStatus.RUNNING,
+        ProcessChainStatus.PAUSED,
         processChainIds.toTypedArray()
     )
     val rs = client.preparedQuery(statement).execute(params).await()

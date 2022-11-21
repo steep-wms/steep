@@ -144,7 +144,7 @@ function ProcessChainDetails({ id }) {
       menuItems.push(<a href={`${process.env.baseUrl}/logs/processchains/${id}?forceDownload=true`}
         key="download-log"><li>Download log</li></a>)
     }
-    if (pc.status === "REGISTERED" || pc.status === "RUNNING") {
+    if (pc.status === "REGISTERED" || pc.status === "RUNNING" || pc.status === "PAUSED") {
       menuItems.push(<li key="cancel" onClick={onCancel}>Cancel</li>)
     }
     if (menuItems.length > 0) {
@@ -199,7 +199,8 @@ function ProcessChainDetails({ id }) {
               <DefinitionListItem title="Priority">
                 <Priority value={pc.priority} onChange={v => onDoChangePriority(v)}
                   subjectShort="process chain" subjectLong="process chain"
-                  editable={pc.status === "REGISTERED" || pc.status === "RUNNING"} />
+                  editable={pc.status === "REGISTERED" || pc.status === "RUNNING" ||
+                    pc.status === "PAUSED"} />
               </DefinitionListItem>
               <DefinitionListItem title="Required capabilities">
                 {reqcap}

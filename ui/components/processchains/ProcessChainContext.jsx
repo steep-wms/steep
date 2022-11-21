@@ -79,7 +79,7 @@ function reducer(state, { action, items }, next) {
             } else if (item.currentStatus !== undefined && pc.status === item.currentStatus) {
               newItems[i] = { ...pc, status: item.status }
             } else if (item.priority !== undefined &&
-                (pc.status === "REGISTERED" || pc.status === "RUNNING")) {
+                (pc.status === "REGISTERED" || pc.status === "RUNNING" || pc.status === "PAUSED")) {
               newItems[i] = { ...pc, priority: item.priority }
             }
             state = { ...state, items: newItems }

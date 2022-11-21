@@ -15,6 +15,7 @@ import {
 
 function initWorkflow(w) {
   w.runningProcessChains = w.runningProcessChains || 0
+  w.pausedProcessChains = w.pausedProcessChains || 0
   w.succeededProcessChains = w.succeededProcessChains || 0
   w.cancelledProcessChains = w.cancelledProcessChains || 0
   w.failedProcessChains = w.failedProcessChains || 0
@@ -64,13 +65,15 @@ const UPDATE_MESSAGES = {
     }
 
     if (status === "RUNNING") {
-      workflow.runningProcessChains = pcsSize
+      workflow.runningProcessChains += pcsSize
+    } else if (status === "PAUSED") {
+      workflow.pausedProcessChains += pcsSize
     } else if (status === "CANCELLED") {
-      workflow.cancelledProcessChains = pcsSize
+      workflow.cancelledProcessChains += pcsSize
     } else if (status === "ERROR") {
-      workflow.failedProcessChains = pcsSize
+      workflow.failedProcessChains += pcsSize
     } else if (status === "SUCCESS") {
-      workflow.succeededProcessChains = pcsSize
+      workflow.succeededProcessChains += pcsSize
     }
 
     return workflow
@@ -82,6 +85,7 @@ const UPDATE_MESSAGES = {
     let workflow = {
       id: body.submissionId,
       runningProcessChains: 0,
+      pausedProcessChains: 0,
       cancelledProcessChains: 0,
       failedProcessChains: 0,
       succeededProcessChains: 0
@@ -90,6 +94,8 @@ const UPDATE_MESSAGES = {
     if (previousStatus !== status) {
       if (previousStatus === "RUNNING") {
         workflow.runningProcessChains--
+      } else if (previousStatus === "PAUSED") {
+        workflow.pausedProcessChains--
       } else if (previousStatus === "CANCELLED") {
         workflow.cancelledProcessChains--
       } else if (previousStatus === "ERROR") {
@@ -100,6 +106,8 @@ const UPDATE_MESSAGES = {
 
       if (status === "RUNNING") {
         workflow.runningProcessChains++
+      } else if (status === "PAUSED") {
+        workflow.pausedProcessChains++
       } else if (status === "CANCELLED") {
         workflow.cancelledProcessChains++
       } else if (status === "ERROR") {
@@ -122,6 +130,7 @@ function reducer(state, { action, items }, next) {
   if (action === "update" && items.length > 0 &&
       (items[0].totalProcessChains !== undefined ||
         items[0].runningProcessChains !== undefined ||
+        items[0].pausedProcessChains !== undefined ||
         items[0].cancelledProcessChains !== undefined ||
         items[0].failedProcessChains !== undefined ||
         items[0].succeededProcessChains !== undefined)) {
@@ -141,6 +150,10 @@ function reducer(state, { action, items }, next) {
         if (item.runningProcessChains !== undefined) {
           newItem.runningProcessChains =
               Math.max(0, newItem.runningProcessChains + item.runningProcessChains)
+        }
+        if (item.pausedProcessChains !== undefined) {
+          newItem.pausedProcessChains =
+              Math.max(0, newItem.pausedProcessChains + item.pausedProcessChains)
         }
         if (item.cancelledProcessChains !== undefined) {
           newItem.cancelledProcessChains =
@@ -181,11 +194,14 @@ function reducer(state, { action, items }, next) {
         let n = 0
         if (item.currentStatus === "REGISTERED") {
           n = newItem.totalProcessChains - newItem.runningProcessChains -
-              newItem.failedProcessChains - newItem.succeededProcessChains -
-              newItem.cancelledProcessChains
+              newItem.pausedProcessChains - newItem.failedProcessChains -
+              newItem.succeededProcessChains - newItem.cancelledProcessChains
         } else if (item.currentStatus === "RUNNING") {
           n = newItem.runningProcessChains
           newItem.runningProcessChains = 0
+        } else if (item.currentStatus === "PAUSED") {
+          n = newItem.pausedProcessChains
+          newItem.pausedProcessChains = 0
         } else if (item.currentStatus === "CANCELLED") {
           n = newItem.cancelledProcessChains
           newItem.cancelledProcessChains = 0
@@ -199,6 +215,8 @@ function reducer(state, { action, items }, next) {
 
         if (item.newStatus === "RUNNING") {
           newItem.runningProcessChains += n
+        } else if (item.newStatus === "PAUSED") {
+          newItem.pausedProcessChains += n
         } else if (item.newStatus === "CANCELLED") {
           newItem.cancelledProcessChains += n
         } else if (item.newStatus === "ERROR") {

@@ -993,6 +993,19 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun findProcessChainIdsByStatusNoStatus(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        assertThatThrownBy {
+          submissionRegistry.findProcessChainIdsByStatus()
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("At least one status must be given")
+      }
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun findProcessChainIdsByStatus(vertx: Vertx, ctx: VertxTestContext) {
     val s1 = Submission(workflow = Workflow())
     val pc1 = ProcessChain()
@@ -1025,6 +1038,36 @@ abstract class SubmissionRegistryTest {
         assertThat(statuses3).isEmpty()
       }
 
+      val statuses4 = submissionRegistry.findProcessChainIdsByStatus(
+          SubmissionRegistry.ProcessChainStatus.REGISTERED,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      val statuses5 = submissionRegistry.findProcessChainIdsByStatus(
+          SubmissionRegistry.ProcessChainStatus.SUCCESS,
+          SubmissionRegistry.ProcessChainStatus.CANCELLED)
+      val statuses6 = submissionRegistry.findProcessChainIdsByStatus(
+          SubmissionRegistry.ProcessChainStatus.ERROR,
+          SubmissionRegistry.ProcessChainStatus.CANCELLED)
+      ctx.verify {
+        assertThat(statuses4).containsExactlyInAnyOrder(pc4.id, pc1.id, pc2.id)
+        assertThat(statuses5).isEqualTo(listOf(pc3.id))
+        assertThat(statuses6).isEmpty()
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun findProcessChainIdsBySubmissionIdAndStatusNoStatus(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Submission(workflow = Workflow())
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        submissionRegistry.addSubmission(s1)
+        assertThatThrownBy {
+          submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(s1.id)
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("At least one status must be given")
+      }
       ctx.completeNow()
     }
   }
@@ -1047,25 +1090,39 @@ abstract class SubmissionRegistryTest {
           SubmissionRegistry.ProcessChainStatus.SUCCESS)
       submissionRegistry.addProcessChains(listOf(pc4), s2.id)
 
-      val statuses0 = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
-          s1.id, SubmissionRegistry.ProcessChainStatus.REGISTERED)
-      val statuses1 = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
-          s1.id, SubmissionRegistry.ProcessChainStatus.RUNNING)
-      val statuses2 = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
-          s1.id, SubmissionRegistry.ProcessChainStatus.SUCCESS)
-      val statuses3 = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
-          s1.id, SubmissionRegistry.ProcessChainStatus.CANCELLED)
-      val statuses4 = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
-          s2.id, SubmissionRegistry.ProcessChainStatus.REGISTERED)
-      val statuses5 = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
-          s2.id, SubmissionRegistry.ProcessChainStatus.RUNNING)
-      ctx.verify {
+      ctx.coVerify {
+        val statuses0 = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
+            s1.id, SubmissionRegistry.ProcessChainStatus.REGISTERED)
+        val statuses1 = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
+            s1.id, SubmissionRegistry.ProcessChainStatus.RUNNING)
+        val statuses2 = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
+            s1.id, SubmissionRegistry.ProcessChainStatus.SUCCESS)
+        val statuses3 = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
+            s1.id, SubmissionRegistry.ProcessChainStatus.CANCELLED)
+        val statuses4 = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
+            s2.id, SubmissionRegistry.ProcessChainStatus.REGISTERED)
+        val statuses5 = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
+            s2.id, SubmissionRegistry.ProcessChainStatus.RUNNING)
         assertThat(statuses0).isEmpty()
         assertThat(statuses1).isEqualTo(listOf(pc1.id, pc2.id))
         assertThat(statuses2).isEqualTo(listOf(pc3.id))
         assertThat(statuses3).isEmpty()
         assertThat(statuses4).isEqualTo(listOf(pc4.id))
         assertThat(statuses5).isEmpty()
+      }
+
+      ctx.coVerify {
+        val statuses0 = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
+            s1.id, SubmissionRegistry.ProcessChainStatus.REGISTERED,
+            SubmissionRegistry.ProcessChainStatus.RUNNING,
+            SubmissionRegistry.ProcessChainStatus.SUCCESS)
+        val statuses1 = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
+            s2.id, SubmissionRegistry.ProcessChainStatus.CANCELLED,
+            SubmissionRegistry.ProcessChainStatus.REGISTERED,
+            SubmissionRegistry.ProcessChainStatus.RUNNING,
+            SubmissionRegistry.ProcessChainStatus.SUCCESS)
+        assertThat(statuses0).containsExactlyInAnyOrder(pc1.id, pc2.id, pc3.id)
+        assertThat(statuses1).isEqualTo(listOf(pc4.id))
       }
 
       ctx.completeNow()
@@ -1205,6 +1262,7 @@ abstract class SubmissionRegistryTest {
     val pc2 = ProcessChain()
     val pc3 = ProcessChain()
     val pc4 = ProcessChain()
+    val pc5 = ProcessChain()
 
     CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s)
@@ -1219,23 +1277,31 @@ abstract class SubmissionRegistryTest {
           SubmissionRegistry.ProcessChainStatus.REGISTERED)
       val count3 = submissionRegistry.countProcessChains(s.id,
           SubmissionRegistry.ProcessChainStatus.RUNNING)
+      val count4 = submissionRegistry.countProcessChains(s.id,
+          SubmissionRegistry.ProcessChainStatus.PAUSED)
       submissionRegistry.addProcessChains(listOf(pc4), s.id,
           SubmissionRegistry.ProcessChainStatus.SUCCESS)
-      val count4 = submissionRegistry.countProcessChains(s.id,
-          SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      submissionRegistry.addProcessChains(listOf(pc5), s.id,
+          SubmissionRegistry.ProcessChainStatus.PAUSED)
       val count5 = submissionRegistry.countProcessChains(s.id,
-          SubmissionRegistry.ProcessChainStatus.RUNNING)
+          SubmissionRegistry.ProcessChainStatus.REGISTERED)
       val count6 = submissionRegistry.countProcessChains(s.id,
+          SubmissionRegistry.ProcessChainStatus.RUNNING)
+      val count7 = submissionRegistry.countProcessChains(s.id,
           SubmissionRegistry.ProcessChainStatus.SUCCESS)
+      val count8 = submissionRegistry.countProcessChains(s.id,
+          SubmissionRegistry.ProcessChainStatus.PAUSED)
 
       ctx.verify {
         assertThat(count0).isEqualTo(0)
         assertThat(count1).isEqualTo(1)
         assertThat(count2).isEqualTo(1)
         assertThat(count3).isEqualTo(2)
-        assertThat(count4).isEqualTo(1)
-        assertThat(count5).isEqualTo(2)
-        assertThat(count6).isEqualTo(1)
+        assertThat(count4).isEqualTo(0)
+        assertThat(count5).isEqualTo(1)
+        assertThat(count6).isEqualTo(2)
+        assertThat(count7).isEqualTo(1)
+        assertThat(count8).isEqualTo(1)
       }
 
       ctx.completeNow()
@@ -1294,6 +1360,7 @@ abstract class SubmissionRegistryTest {
     val pc7 = ProcessChain()
     val pc8 = ProcessChain()
     val pc9 = ProcessChain()
+    val pc10 = ProcessChain()
 
     CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s1)
@@ -1311,6 +1378,8 @@ abstract class SubmissionRegistryTest {
           SubmissionRegistry.ProcessChainStatus.REGISTERED)
       submissionRegistry.addProcessChains(listOf(pc9), s2.id,
           SubmissionRegistry.ProcessChainStatus.CANCELLED)
+      submissionRegistry.addProcessChains(listOf(pc10), s2.id,
+          SubmissionRegistry.ProcessChainStatus.PAUSED)
 
       ctx.coVerify {
         assertThat(submissionRegistry.countProcessChainsPerStatus())
@@ -1318,6 +1387,7 @@ abstract class SubmissionRegistryTest {
                 SubmissionRegistry.ProcessChainStatus.SUCCESS to 3L,
                 SubmissionRegistry.ProcessChainStatus.ERROR to 3L,
                 SubmissionRegistry.ProcessChainStatus.RUNNING to 1L,
+                SubmissionRegistry.ProcessChainStatus.PAUSED to 1L,
                 SubmissionRegistry.ProcessChainStatus.REGISTERED to 1L,
                 SubmissionRegistry.ProcessChainStatus.CANCELLED to 1L
             ))
@@ -1331,6 +1401,7 @@ abstract class SubmissionRegistryTest {
         assertThat(submissionRegistry.countProcessChainsPerStatus(s2.id))
             .isEqualTo(mapOf(
                 SubmissionRegistry.ProcessChainStatus.RUNNING to 1L,
+                SubmissionRegistry.ProcessChainStatus.PAUSED to 1L,
                 SubmissionRegistry.ProcessChainStatus.ERROR to 2L,
                 SubmissionRegistry.ProcessChainStatus.REGISTERED to 1L,
                 SubmissionRegistry.ProcessChainStatus.CANCELLED to 1L
@@ -2147,6 +2218,7 @@ abstract class SubmissionRegistryTest {
       val pc2 = ProcessChain()
       val pc3 = ProcessChain()
       val pc4 = ProcessChain()
+      val pc5 = ProcessChain()
 
       submissionRegistry.addSubmission(s)
       submissionRegistry.addProcessChains(listOf(pc1), s.id,
@@ -2157,38 +2229,45 @@ abstract class SubmissionRegistryTest {
           SubmissionRegistry.ProcessChainStatus.SUCCESS)
       submissionRegistry.addProcessChains(listOf(pc4), s.id,
           SubmissionRegistry.ProcessChainStatus.ERROR)
+      submissionRegistry.addProcessChains(listOf(pc5), s.id,
+          SubmissionRegistry.ProcessChainStatus.PAUSED)
       val r1 = submissionRegistry.findProcessChainById(pc1.id)!!
       val r2 = submissionRegistry.findProcessChainById(pc2.id)!!
       val r3 = submissionRegistry.findProcessChainById(pc3.id)!!
       val r4 = submissionRegistry.findProcessChainById(pc4.id)!!
+      val r5 = submissionRegistry.findProcessChainById(pc5.id)!!
 
       ctx.verify {
         assertThat(r1.priority).isEqualTo(0)
         assertThat(r2.priority).isEqualTo(0)
         assertThat(r3.priority).isEqualTo(0)
         assertThat(r4.priority).isEqualTo(0)
+        assertThat(r5.priority).isEqualTo(0)
       }
 
       assertThat(submissionRegistry.setProcessChainPriority(pc1.id, 10)).isTrue
       assertThat(submissionRegistry.setProcessChainPriority(pc2.id, 10)).isTrue
       assertThat(submissionRegistry.setProcessChainPriority(pc3.id, 10)).isFalse
       assertThat(submissionRegistry.setProcessChainPriority(pc4.id, 10)).isFalse
-      val r5 = submissionRegistry.findProcessChainById(pc1.id)!!
-      val r6 = submissionRegistry.findProcessChainById(pc2.id)!!
-      val r7 = submissionRegistry.findProcessChainById(pc3.id)!!
-      val r8 = submissionRegistry.findProcessChainById(pc4.id)!!
+      assertThat(submissionRegistry.setProcessChainPriority(pc5.id, 10)).isTrue
+      val r6 = submissionRegistry.findProcessChainById(pc1.id)!!
+      val r7 = submissionRegistry.findProcessChainById(pc2.id)!!
+      val r8 = submissionRegistry.findProcessChainById(pc3.id)!!
+      val r9 = submissionRegistry.findProcessChainById(pc4.id)!!
+      val r10 = submissionRegistry.findProcessChainById(pc5.id)!!
 
       ctx.verify {
-        assertThat(r5.priority).isEqualTo(10)
         assertThat(r6.priority).isEqualTo(10)
-        assertThat(r7.priority).isEqualTo(0)
+        assertThat(r7.priority).isEqualTo(10)
         assertThat(r8.priority).isEqualTo(0)
+        assertThat(r9.priority).isEqualTo(0)
+        assertThat(r10.priority).isEqualTo(10)
       }
 
       assertThat(submissionRegistry.setProcessChainPriority(pc1.id, 10)).isFalse
-      val r9 = submissionRegistry.findProcessChainById(pc1.id)!!
+      val r11 = submissionRegistry.findProcessChainById(pc1.id)!!
       ctx.verify {
-        assertThat(r9.priority).isEqualTo(10)
+        assertThat(r11.priority).isEqualTo(10)
       }
 
       ctx.completeNow()
@@ -2196,17 +2275,18 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  fun setAllProcessChainPriority(vertx: Vertx, ctx: VertxTestContext) {
+  fun setAllProcessChainsPriority(vertx: Vertx, ctx: VertxTestContext) {
     val s1 = Submission(workflow = Workflow())
     val pc1 = ProcessChain(priority = -10)
     val pc2 = ProcessChain()
     val pc3 = ProcessChain()
     val pc4 = ProcessChain()
     val pc5 = ProcessChain()
+    val pc6 = ProcessChain()
 
     val s2 = Submission(workflow = Workflow())
-    val pc6 = ProcessChain()
-    val pc7 = ProcessChain(priority = 100)
+    val pc7 = ProcessChain()
+    val pc8 = ProcessChain(priority = 100)
 
     CoroutineScope(vertx.dispatcher()).launch {
       submissionRegistry.addSubmission(s1)
@@ -2218,24 +2298,27 @@ abstract class SubmissionRegistryTest {
           SubmissionRegistry.ProcessChainStatus.SUCCESS)
       submissionRegistry.addProcessChains(listOf(pc5), s1.id,
           SubmissionRegistry.ProcessChainStatus.ERROR)
+      submissionRegistry.addProcessChains(listOf(pc6), s1.id,
+          SubmissionRegistry.ProcessChainStatus.PAUSED)
 
       submissionRegistry.addSubmission(s2)
-      submissionRegistry.addProcessChains(listOf(pc6, pc7), s2.id,
+      submissionRegistry.addProcessChains(listOf(pc7, pc8), s2.id,
           SubmissionRegistry.ProcessChainStatus.REGISTERED)
 
       val r11 = submissionRegistry.findProcessChains(submissionId = s1.id).map { it.first }
       val r12 = submissionRegistry.findProcessChains(submissionId = s2.id).map { it.first }
       ctx.verify {
-        assertThat(r11).hasSize(5)
+        assertThat(r11).hasSize(6)
         assertThat(r11[0]).isEqualTo(pc1)
         assertThat(r11[1]).isEqualTo(pc2)
         assertThat(r11[2]).isEqualTo(pc3)
         assertThat(r11[3]).isEqualTo(pc4)
         assertThat(r11[4]).isEqualTo(pc5)
+        assertThat(r11[5]).isEqualTo(pc6)
 
         assertThat(r12).hasSize(2)
-        assertThat(r12[0]).isEqualTo(pc6)
-        assertThat(r12[1]).isEqualTo(pc7)
+        assertThat(r12[0]).isEqualTo(pc7)
+        assertThat(r12[1]).isEqualTo(pc8)
       }
 
       submissionRegistry.setAllProcessChainsPriority(s1.id, -1000)
@@ -2243,16 +2326,17 @@ abstract class SubmissionRegistryTest {
       val r21 = submissionRegistry.findProcessChains(submissionId = s1.id).map { it.first }
       val r22 = submissionRegistry.findProcessChains(submissionId = s2.id).map { it.first }
       ctx.verify {
-        assertThat(r21).hasSize(5)
+        assertThat(r21).hasSize(6)
         assertThat(r21[0].priority).isEqualTo(-1000)
         assertThat(r21[1].priority).isEqualTo(-1000)
         assertThat(r21[2].priority).isEqualTo(-1000)
         assertThat(r21[3].priority).isEqualTo(0)
         assertThat(r21[4].priority).isEqualTo(0)
+        assertThat(r21[5].priority).isEqualTo(-1000)
 
         assertThat(r22).hasSize(2)
-        assertThat(r22[0]).isEqualTo(pc6)
-        assertThat(r22[1]).isEqualTo(pc7)
+        assertThat(r22[0]).isEqualTo(pc7)
+        assertThat(r22[1]).isEqualTo(pc8)
       }
 
       ctx.completeNow()
@@ -2340,6 +2424,7 @@ abstract class SubmissionRegistryTest {
       val pc5 = ProcessChain()
       val pc6 = ProcessChain()
       val pc7 = ProcessChain()
+      val pc8 = ProcessChain()
 
       submissionRegistry.addSubmission(s1)
       submissionRegistry.addSubmission(s2)
@@ -2357,6 +2442,8 @@ abstract class SubmissionRegistryTest {
           SubmissionRegistry.ProcessChainStatus.SUCCESS)
       submissionRegistry.addProcessChains(listOf(pc7), s2.id,
           SubmissionRegistry.ProcessChainStatus.RUNNING)
+      submissionRegistry.addProcessChains(listOf(pc8), s2.id,
+          SubmissionRegistry.ProcessChainStatus.PAUSED)
 
       val results1 = mapOf("output" to listOf("/tmp/out/file1"))
       val results2 = mapOf("output" to listOf("/tmp/out/file2"))
@@ -2389,7 +2476,7 @@ abstract class SubmissionRegistryTest {
         ))
 
         val r6 = submissionRegistry.getProcessChainStatusAndResultsIfFinished(
-            listOf(pc1.id, pc2.id, pc3.id, pc4.id, pc5.id, pc6.id, pc7.id))
+            listOf(pc1.id, pc2.id, pc3.id, pc4.id, pc5.id, pc6.id, pc7.id, pc8.id))
         assertThat(r6).isEqualTo(mapOf(
             pc3.id to (SubmissionRegistry.ProcessChainStatus.SUCCESS to results1),
             pc4.id to (SubmissionRegistry.ProcessChainStatus.CANCELLED to null),

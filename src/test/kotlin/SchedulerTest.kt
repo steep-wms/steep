@@ -5,6 +5,7 @@ import agent.AgentRegistryFactory
 import agent.RemoteAgent
 import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus.ERROR
+import db.SubmissionRegistry.ProcessChainStatus.PAUSED
 import db.SubmissionRegistry.ProcessChainStatus.REGISTERED
 import db.SubmissionRegistry.ProcessChainStatus.RUNNING
 import db.SubmissionRegistry.ProcessChainStatus.SUCCESS
@@ -57,7 +58,7 @@ class SchedulerTest {
     submissionRegistry = mockk()
     mockkObject(SubmissionRegistryFactory)
     every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
-    coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING) } returns emptyList()
+    coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING, PAUSED) } returns emptyList()
     coEvery { submissionRegistry.close() } just Runs
 
     // mock agent registry
@@ -438,7 +439,7 @@ class SchedulerTest {
       }
 
       // mock submission registry
-      coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING) } returns
+      coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING, PAUSED) } returns
           listOf(pc1.id, pc2.id, pc3.id, pc4.id) andThen listOf(pc1.id, pc2.id, pc3.id)
       coEvery { submissionRegistry.setProcessChainStatus(pc1.id, REGISTERED) } just Runs
       coEvery { submissionRegistry.deleteLastUnfinishedProcessChainRun(pc1.id) } just Runs
@@ -479,7 +480,7 @@ class SchedulerTest {
           assertThat(otherSchedulerCalled).isTrue
 
           coVerify(atLeast = 2) {
-            submissionRegistry.findProcessChainIdsByStatus(RUNNING)
+            submissionRegistry.findProcessChainIdsByStatus(RUNNING, PAUSED)
           }
           coVerify(exactly = 1) {
             // check that pc1 was successfully reset
@@ -524,7 +525,7 @@ class SchedulerTest {
 
     testSimple(listOf(pc), 1, vertx, ctx, onAfterFetchNextProcessChain = {
       // pretend that the process chain is now running
-      coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING) } returns listOf(pc.id)
+      coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING, PAUSED) } returns listOf(pc.id)
       coEvery { submissionRegistry.findProcessChainById(pc.id) } returns pc
 
       // mock agent and pretend that it is executing the process chain

@@ -404,6 +404,7 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.countProcessChainsPerStatus(s1.id) } returns mapOf(
         ProcessChainStatus.REGISTERED to 1L,
         ProcessChainStatus.RUNNING to 2L,
+        ProcessChainStatus.PAUSED to 6L,
         ProcessChainStatus.CANCELLED to 3L,
         ProcessChainStatus.ERROR to 4L,
         ProcessChainStatus.SUCCESS to 5L
@@ -458,16 +459,18 @@ class HttpEndpointTest {
                   "id" to s1.id,
                   "status" to Submission.Status.ACCEPTED.toString(),
                   "runningProcessChains" to 2,
+                  "pausedProcessChains" to 6,
                   "cancelledProcessChains" to 3,
                   "failedProcessChains" to 4,
                   "succeededProcessChains" to 5,
-                  "totalProcessChains" to 15,
+                  "totalProcessChains" to 21,
                   "requiredCapabilities" to array()
               ),
               obj(
                   "id" to s2.id,
                   "status" to Submission.Status.ACCEPTED.toString(),
                   "runningProcessChains" to 12,
+                  "pausedProcessChains" to 0,
                   "cancelledProcessChains" to 13,
                   "failedProcessChains" to 14,
                   "succeededProcessChains" to 15,
@@ -479,6 +482,7 @@ class HttpEndpointTest {
                   "status" to Submission.Status.SUCCESS.toString(),
                   "priority" to 10,
                   "runningProcessChains" to 0,
+                  "pausedProcessChains" to 0,
                   "cancelledProcessChains" to 0,
                   "failedProcessChains" to 0,
                   "succeededProcessChains" to 1,
@@ -532,6 +536,7 @@ class HttpEndpointTest {
                   "id" to s3.id,
                   "status" to Submission.Status.SUCCESS.toString(),
                   "runningProcessChains" to 0,
+                  "pausedProcessChains" to 0,
                   "cancelledProcessChains" to 0,
                   "failedProcessChains" to 0,
                   "succeededProcessChains" to 1,
@@ -555,6 +560,7 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.countProcessChainsPerStatus(s1.id) } returns mapOf(
         ProcessChainStatus.REGISTERED to 1L,
         ProcessChainStatus.RUNNING to 2L,
+        ProcessChainStatus.PAUSED to 6L,
         ProcessChainStatus.CANCELLED to 3L,
         ProcessChainStatus.ERROR to 4L,
         ProcessChainStatus.SUCCESS to 5L
@@ -588,10 +594,11 @@ class HttpEndpointTest {
                 "status" to Submission.Status.ACCEPTED.toString(),
                 "priority" to -10,
                 "runningProcessChains" to 2,
+                "pausedProcessChains" to 6,
                 "cancelledProcessChains" to 3,
                 "failedProcessChains" to 4,
                 "succeededProcessChains" to 5,
-                "totalProcessChains" to 15,
+                "totalProcessChains" to 21,
                 "requiredCapabilities" to array(),
                 "source" to source
             )
@@ -633,6 +640,7 @@ class HttpEndpointTest {
               "workflow" to JsonUtils.toJson(s1.workflow),
               "status" to Submission.Status.ACCEPTED.toString(),
               "runningProcessChains" to 0,
+              "pausedProcessChains" to 0,
               "cancelledProcessChains" to 0,
               "failedProcessChains" to 0,
               "succeededProcessChains" to 0,
@@ -678,6 +686,7 @@ class HttpEndpointTest {
               "workflow" to JsonUtils.toJson(s1.workflow),
               "status" to Submission.Status.SUCCESS.toString(),
               "runningProcessChains" to 0,
+              "pausedProcessChains" to 0,
               "cancelledProcessChains" to 0,
               "failedProcessChains" to 0,
               "succeededProcessChains" to 1,
@@ -724,6 +733,7 @@ class HttpEndpointTest {
               "workflow" to JsonUtils.toJson(s1.workflow),
               "status" to Submission.Status.ERROR.toString(),
               "runningProcessChains" to 0,
+              "pausedProcessChains" to 0,
               "cancelledProcessChains" to 0,
               "failedProcessChains" to 1,
               "succeededProcessChains" to 0,
@@ -750,7 +760,7 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.findSubmissionById(s1.id) } returns s1
     coEvery { submissionRegistry.findSubmissionById("UNKNOWN") } returns null
     coEvery { submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
-        s1.id, ProcessChainStatus.RUNNING) } returns emptyList()
+        s1.id, ProcessChainStatus.RUNNING, ProcessChainStatus.PAUSED) } returns emptyList()
     coEvery { submissionRegistry.getSubmissionStatus(s1.id) } returns
         Submission.Status.RUNNING andThen Submission.Status.CANCELLED
 
@@ -864,6 +874,7 @@ class HttpEndpointTest {
               "requiredCapabilities" to array(),
               "source" to source,
               "runningProcessChains" to 1,
+              "pausedProcessChains" to 0,
               "cancelledProcessChains" to 2,
               "succeededProcessChains" to 0,
               "failedProcessChains" to 0,
@@ -893,6 +904,7 @@ class HttpEndpointTest {
               "requiredCapabilities" to array(),
               "source" to source,
               "runningProcessChains" to 1,
+              "pausedProcessChains" to 0,
               "cancelledProcessChains" to 2,
               "succeededProcessChains" to 0,
               "failedProcessChains" to 0,
@@ -1093,15 +1105,17 @@ class HttpEndpointTest {
     val pc2 = ProcessChain()
     val pc3 = ProcessChain()
     val pc4 = ProcessChain()
+    val pc5 = ProcessChain()
 
     coEvery { submissionRegistry.findProcessChains(any(), any(), any(), any(), any(), true) } returns listOf(
-        Pair(pc1, s1.id), Pair(pc2, s1.id), Pair(pc3, s2.id), Pair(pc4, s2.id))
-    coEvery { submissionRegistry.countProcessChains() } returns 4
+        Pair(pc1, s1.id), Pair(pc2, s1.id), Pair(pc3, s2.id), Pair(pc4, s2.id), Pair(pc5, s2.id))
+    coEvery { submissionRegistry.countProcessChains() } returns 5
 
     coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns ProcessChainStatus.SUCCESS
     coEvery { submissionRegistry.getProcessChainStatus(pc2.id) } returns ProcessChainStatus.RUNNING
     coEvery { submissionRegistry.getProcessChainStatus(pc3.id) } returns ProcessChainStatus.REGISTERED
     coEvery { submissionRegistry.getProcessChainStatus(pc4.id) } returns ProcessChainStatus.ERROR
+    coEvery { submissionRegistry.getProcessChainStatus(pc5.id) } returns ProcessChainStatus.PAUSED
 
     val startTime = Instant.now()
     val endTime = Instant.now().plusMillis(1234)
@@ -1111,6 +1125,8 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getLastProcessChainRun(pc3.id) } returns null
     coEvery { submissionRegistry.getLastProcessChainRun(pc4.id) } returns
         Run(startTime, endTime, ProcessChainStatus.ERROR, "THIS is an ERROR")
+    coEvery { submissionRegistry.getLastProcessChainRun(pc5.id) } returns
+        Run(startTime, endTime, ProcessChainStatus.ERROR, "Waiting for retry")
 
     coEvery { submissionRegistry.getProcessChainResults(pc1.id) } returns mapOf(
         "output_file1" to listOf("output.txt"))
@@ -1118,6 +1134,7 @@ class HttpEndpointTest {
         "output_file_that_should_not_be_returned" to listOf("output2.txt"))
     coEvery { submissionRegistry.getProcessChainResults(pc3.id) } returns null
     coEvery { submissionRegistry.getProcessChainResults(pc4.id) } returns null
+    coEvery { submissionRegistry.getProcessChainResults(pc5.id) } returns null
 
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
@@ -1131,7 +1148,7 @@ class HttpEndpointTest {
 
         assertThat(response.headers()["x-page-size"]).isEqualTo("10")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
-        assertThat(response.headers()["x-page-total"]).isEqualTo("4")
+        assertThat(response.headers()["x-page-total"]).isEqualTo("5")
 
         assertThat(response.body()).isEqualTo(json {
           array(
@@ -1164,6 +1181,13 @@ class HttpEndpointTest {
                   "startTime" to startTime,
                   "endTime" to endTime,
                   "errorMessage" to "THIS is an ERROR"
+              ),
+              obj(
+                  "id" to pc5.id,
+                  "requiredCapabilities" to array(),
+                  "submissionId" to s2.id,
+                  "status" to "PAUSED",
+                  "startTime" to startTime
               )
           )
         })
@@ -1441,17 +1465,20 @@ class HttpEndpointTest {
     val pc2 = ProcessChain()
     val pc3 = ProcessChain()
     val pc4 = ProcessChain()
+    val pc5 = ProcessChain()
 
     coEvery { submissionRegistry.findProcessChainById(pc1.id) } returns pc1
     coEvery { submissionRegistry.findProcessChainById(pc2.id) } returns pc2
     coEvery { submissionRegistry.findProcessChainById(pc3.id) } returns pc3
     coEvery { submissionRegistry.findProcessChainById(pc4.id) } returns pc4
+    coEvery { submissionRegistry.findProcessChainById(pc5.id) } returns pc5
     coEvery { submissionRegistry.findProcessChainById("UNKNOWN") } returns null
 
     coEvery { submissionRegistry.getProcessChainSubmissionId(pc1.id) } returns sid
     coEvery { submissionRegistry.getProcessChainSubmissionId(pc2.id) } returns sid
     coEvery { submissionRegistry.getProcessChainSubmissionId(pc3.id) } returns sid
     coEvery { submissionRegistry.getProcessChainSubmissionId(pc4.id) } returns sid
+    coEvery { submissionRegistry.getProcessChainSubmissionId(pc5.id) } returns sid
 
     val startTime = Instant.now()
     val endTime = Instant.now().plusMillis(120)
@@ -1459,6 +1486,7 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getLastProcessChainRun(pc2.id) } returns Run(startTime)
     coEvery { submissionRegistry.getLastProcessChainRun(pc3.id) } returns null
     coEvery { submissionRegistry.getLastProcessChainRun(pc4.id) } returns null
+    coEvery { submissionRegistry.getLastProcessChainRun(pc5.id) } returns Run(startTime, endTime)
 
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
@@ -1604,6 +1632,27 @@ class HttpEndpointTest {
               "requiredCapabilities" to array(),
               "submissionId" to sid,
               "status" to ProcessChainStatus.CANCELLED.toString()
+          )
+        })
+
+        coEvery { submissionRegistry.getProcessChainStatus(pc5.id) } returns
+            ProcessChainStatus.PAUSED andThen ProcessChainStatus.CANCELLED
+        coEvery { submissionRegistry.setProcessChainStatus(pc5.id,
+            ProcessChainStatus.PAUSED, ProcessChainStatus.CANCELLED) } just Runs
+        val response5 = client.put(port, "localhost", "/processchains/${pc5.id}")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .sendJsonObject(cancelledBody)
+            .await()
+
+        assertThat(response5.body()).isEqualTo(json {
+          obj(
+              "id" to pc5.id,
+              "requiredCapabilities" to array(),
+              "submissionId" to sid,
+              "status" to ProcessChainStatus.CANCELLED.toString(),
+              "startTime" to startTime,
+              "endTime" to endTime
           )
         })
 

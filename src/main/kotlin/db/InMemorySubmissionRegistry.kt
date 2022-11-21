@@ -375,16 +375,21 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
             Pair(pc, it.submissionId)
           }
 
-  override suspend fun findProcessChainIdsByStatus(status: ProcessChainStatus) =
-      findProcessChainEntries()
-          .filter { it.status == status }
-          .map { it.processChain.id }
+  override suspend fun findProcessChainIdsByStatus(
+      vararg statuses: ProcessChainStatus): Collection<String> {
+    require(statuses.isNotEmpty()) { "At least one status must be given" }
+    return findProcessChainEntries()
+        .filter { it.status in statuses }
+        .map { it.processChain.id }
+  }
 
   override suspend fun findProcessChainIdsBySubmissionIdAndStatus(
-      submissionId: String, status: ProcessChainStatus) =
-      findProcessChainEntries()
-          .filter { it.submissionId == submissionId && it.status == status }
-          .map { it.processChain.id }
+      submissionId: String, vararg statuses: ProcessChainStatus): Collection<String> {
+    require(statuses.isNotEmpty()) { "At least one status must be given" }
+    return findProcessChainEntries()
+        .filter { it.submissionId == submissionId && it.status in statuses }
+        .map { it.processChain.id }
+  }
 
   override suspend fun findProcessChainStatusesBySubmissionId(submissionId: String) =
       findProcessChainEntries()
@@ -584,7 +589,8 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     updateProcessChain(processChainId) { entry ->
       if (entry.processChain.priority != priority && (
               entry.status == ProcessChainStatus.REGISTERED ||
-                  entry.status == ProcessChainStatus.RUNNING)) {
+                  entry.status == ProcessChainStatus.RUNNING ||
+                  entry.status == ProcessChainStatus.PAUSED)) {
         updated = true
         entry.copy(
             processChain = entry.processChain.copy(priority = priority)
@@ -606,7 +612,8 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       values.map { JsonUtils.readValue<ProcessChainEntry>(it) }
           .filter { it.submissionId == submissionId &&
               (it.status == ProcessChainStatus.REGISTERED ||
-                  it.status == ProcessChainStatus.RUNNING) }
+                  it.status == ProcessChainStatus.RUNNING ||
+                  it.status == ProcessChainStatus.PAUSED) }
           .forEach { entry ->
             val newEntry = entry.copy(
                 processChain = entry.processChain.copy(priority = priority)
@@ -634,7 +641,8 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
         .filter {
           ids.contains(it.processChain.id) &&
               it.status != ProcessChainStatus.REGISTERED &&
-              it.status !== ProcessChainStatus.RUNNING
+              it.status !== ProcessChainStatus.RUNNING &&
+              it.status !== ProcessChainStatus.PAUSED
         }
         .associateBy({ it.processChain.id }, { it.status to it.results })
   }

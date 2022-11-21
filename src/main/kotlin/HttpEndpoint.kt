@@ -1096,6 +1096,8 @@ class HttpEndpoint : CoroutineVerticle() {
     val statuses = submissionRegistry.countProcessChainsPerStatus(submissionId)
     submission.put("runningProcessChains",
         statuses[SubmissionRegistry.ProcessChainStatus.RUNNING] ?: 0L)
+    submission.put("pausedProcessChains",
+        statuses[SubmissionRegistry.ProcessChainStatus.PAUSED] ?: 0L)
     submission.put("cancelledProcessChains",
         statuses[SubmissionRegistry.ProcessChainStatus.CANCELLED] ?: 0L)
     submission.put("succeededProcessChains",
@@ -1245,9 +1247,10 @@ class HttpEndpoint : CoroutineVerticle() {
               SubmissionRegistry.ProcessChainStatus.REGISTERED,
               SubmissionRegistry.ProcessChainStatus.CANCELLED)
 
-          // now cancel running process chains
+          // now cancel running and paused process chains
           val pcIds = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
-              id, SubmissionRegistry.ProcessChainStatus.RUNNING)
+              id, SubmissionRegistry.ProcessChainStatus.RUNNING,
+              SubmissionRegistry.ProcessChainStatus.PAUSED)
           // request cancellation (see also onPutProcessChainById())
           val cancelMsg = jsonObjectOf("action" to "cancel")
           for (pcId in pcIds) {
@@ -1634,7 +1637,8 @@ class HttpEndpoint : CoroutineVerticle() {
         val currentStatus = submissionRegistry.getProcessChainStatus(id)
 
         if (priority != null && currentStatus != SubmissionRegistry.ProcessChainStatus.REGISTERED &&
-            currentStatus != SubmissionRegistry.ProcessChainStatus.RUNNING) {
+            currentStatus != SubmissionRegistry.ProcessChainStatus.RUNNING &&
+            currentStatus != SubmissionRegistry.ProcessChainStatus.PAUSED) {
           // 422 Unprocessable Entity
           renderError(ctx, 422, "Cannot change priority of a finished process chain")
           return@launch
@@ -1643,7 +1647,8 @@ class HttpEndpoint : CoroutineVerticle() {
         if (status == SubmissionRegistry.ProcessChainStatus.CANCELLED) {
           if (currentStatus == SubmissionRegistry.ProcessChainStatus.REGISTERED) {
             submissionRegistry.setProcessChainStatus(id, currentStatus, status)
-          } else if (currentStatus == SubmissionRegistry.ProcessChainStatus.RUNNING) {
+          } else if (currentStatus == SubmissionRegistry.ProcessChainStatus.RUNNING ||
+              currentStatus == SubmissionRegistry.ProcessChainStatus.PAUSED) {
             // Ask local agent (running anywhere in the cluster) to cancel
             // the process chain. Its status should be set to CANCELLED by
             // the scheduler as soon as the local agent has aborted the
