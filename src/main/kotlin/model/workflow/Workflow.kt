@@ -15,7 +15,7 @@ import com.fasterxml.jackson.annotation.JsonInclude
  * @author Michel Kraemer
  */
 data class Workflow(
-    val api: String = "4.5.0",
+    val api: String = "4.6.0",
     val name: String? = null,
     @JsonInclude(JsonInclude.Include.NON_DEFAULT)
     val priority: Int = 0,
