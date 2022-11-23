@@ -66,6 +66,11 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
   var defaultPriority = workflow.priority
 
   /**
+   * The default retry policy for generated process chains
+   */
+  private val defaultRetryPolicy = workflow.retries?.processChains
+
+  /**
    * Create the next set of process chains. Call this method until it returns
    * an empty list (i.e. until it does not produce more process chains).
    * Execute the process chains after each call to this method and pass their
@@ -483,8 +488,13 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       }
 
       if (executables.isNotEmpty()) {
-        processChains.add(ProcessChain(idGenerator.next(), executables,
-            capabilities, defaultPriority))
+        processChains.add(ProcessChain(
+            id = idGenerator.next(),
+            executables = executables,
+            requiredCapabilities = capabilities,
+            priority = defaultPriority,
+            retries = defaultRetryPolicy
+        ))
       }
     }
 

@@ -2,6 +2,7 @@ package model.processchain
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import helper.UniqueID
+import model.retry.RetryPolicy
 
 /**
  * A process chain describes a set of actions (i.e. [Executable]s) that should
@@ -12,6 +13,8 @@ import helper.UniqueID
  * the host system to have to be able to run
  * @param priority a priority used during scheduling. Process chains with
  * higher priorities will be scheduled before those with lower priorities.
+ * @param retries optional rules that define when and how often this process
+ * chain should be rescheduled in case an error has occurred
  * @author Michel Kraemer
  */
 data class ProcessChain(
@@ -19,5 +22,6 @@ data class ProcessChain(
     val executables: List<Executable> = emptyList(),
     val requiredCapabilities: Set<String> = emptySet(),
     @JsonInclude(JsonInclude.Include.NON_DEFAULT)
-    val priority: Int = 0
+    val priority: Int = 0,
+    val retries: RetryPolicy? = null
 )

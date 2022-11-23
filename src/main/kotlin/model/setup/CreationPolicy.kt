@@ -18,8 +18,8 @@ data class CreationPolicy(
     val retries: RetryPolicy? = null,
 
     /**
-     * When the maximum number of attempts to create a VM (specified by [retries]
-     * has been reached) the [Setup] will be locked and no other VM with this
+     * When the maximum number of attempts to create a VM (specified by [retries])
+     * has been reached, the [Setup] will be locked and no other VM with this
      * setup will be created. This parameter defines how long it will be locked
      * (in milliseconds).
      *
