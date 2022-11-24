@@ -6,8 +6,8 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     application
     jacoco
-    kotlin("jvm") version "1.7.20"
-    id("com.github.ben-manes.versions") version "0.43.0"
+    kotlin("jvm") version "1.7.21"
+    id("com.github.ben-manes.versions") version "0.44.0"
     id("se.patrikerdes.use-latest-versions") version "0.2.18"
 }
 
@@ -40,7 +40,7 @@ dependencies {
     implementation("ch.qos.logback:logback-core:$logbackVersion")
     implementation("ch.qos.logback.contrib:logback-jackson:0.1.5")
     implementation("ch.qos.logback.contrib:logback-json-classic:0.1.5")
-    implementation("org.codehaus.janino:janino:3.1.8") // for conditionals in logback.xml
+    implementation("org.codehaus.janino:janino:3.1.9") // for conditionals in logback.xml
 
     implementation("io.vertx:vertx-core:$vertxVersion")
     implementation("io.vertx:vertx-hazelcast:$vertxVersion")
@@ -55,25 +55,25 @@ dependencies {
 
     implementation("commons-codec:commons-codec:1.15")
     implementation("commons-io:commons-io:2.11.0")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.4")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.4")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.14.1")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.1")
     implementation("com.github.luben:zstd-jni:1.5.2-5")
     implementation("com.github.zafarkhaja:java-semver:0.9.0")
     implementation("com.google.guava:guava:31.1-jre")
     implementation("com.zaxxer:HikariCP:5.0.1")
     implementation("io.airlift:aircompressor:0.21")
     implementation("io.pebbletemplates:pebble:3.1.6")
-    implementation("io.projectreactor:reactor-core:3.4.24") // necessary for reactive MongoDB driver
+    implementation("io.projectreactor:reactor-core:3.5.0") // necessary for reactive MongoDB driver
     implementation("io.prometheus:simpleclient:$prometheusClientVersion")
-    implementation("io.micrometer:micrometer-registry-prometheus:1.9.5")
+    implementation("io.micrometer:micrometer-registry-prometheus:1.10.2")
     implementation("org.apache.ant:ant:1.10.12")
     implementation("org.apache.commons:commons-lang3:3.12.0")
     implementation("org.apache.commons:commons-text:1.10.0")
-    implementation("org.flywaydb:flyway-core:9.5.1")
-    implementation("org.mongodb:mongodb-driver-reactivestreams:4.7.2")
+    implementation("org.flywaydb:flyway-core:9.8.2")
+    implementation("org.mongodb:mongodb-driver-reactivestreams:4.8.0")
     implementation("com.github.openstack4j.core:openstack4j:3.10")
     implementation("org.parboiled:parboiled-java:1.4.1")
-    implementation("org.postgresql:postgresql:42.5.0")
+    implementation("org.postgresql:postgresql:42.5.1")
     implementation("org.quartz-scheduler:quartz:2.3.2") {
         // we only need org.quartz.CronExpression, so we can exclude all dependencies
         isTransitive = false
