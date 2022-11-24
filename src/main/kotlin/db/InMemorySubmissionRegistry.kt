@@ -375,13 +375,10 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
             Pair(pc, it.submissionId)
           }
 
-  override suspend fun findProcessChainIdsByStatus(
-      vararg statuses: ProcessChainStatus): Collection<String> {
-    require(statuses.isNotEmpty()) { "At least one status must be given" }
-    return findProcessChainEntries()
-        .filter { it.status in statuses }
-        .map { it.processChain.id }
-  }
+  override suspend fun findProcessChainIdsByStatus(status: ProcessChainStatus) =
+      findProcessChainEntries()
+          .filter { it.status == status }
+          .map { it.processChain.id }
 
   override suspend fun findProcessChainIdsBySubmissionIdAndStatus(
       submissionId: String, vararg statuses: ProcessChainStatus): Collection<String> {
@@ -461,6 +458,25 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     }
   }
 
+  override suspend fun autoResumeProcessChains(now: Instant) {
+    val sharedData = vertx.sharedData()
+    val lock = sharedData.getLock(LOCK_PROCESS_CHAINS).await()
+    try {
+      val map = processChains.await()
+      val values = awaitResult<List<String>> { map.values(it) }
+      values.map { JsonUtils.readValue<ProcessChainEntry>(it) }
+          .filter { it.status == ProcessChainStatus.PAUSED &&
+              it.runs.lastOrNull()?.autoResumeAfter != null &&
+              it.runs.lastOrNull()?.autoResumeAfter?.isBefore(now) == true }
+          .forEach { e ->
+              val newEntry = e.copy(status = ProcessChainStatus.REGISTERED)
+              map.put(e.processChain.id, JsonUtils.writeValueAsString(newEntry)).await()
+          }
+    } finally {
+      lock.release()
+    }
+  }
+
   override suspend fun existsProcessChain(currentStatus: ProcessChainStatus,
       requiredCapabilities: Collection<String>?): Boolean {
     val sharedData = vertx.sharedData()
@@ -528,7 +544,8 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   }
 
   override suspend fun finishLastProcessChainRun(processChainId: String,
-      endTime: Instant, status: ProcessChainStatus, errorMessage: String?) {
+      endTime: Instant, status: ProcessChainStatus, errorMessage: String?,
+      autoResumeAfter: Instant?) {
     updateProcessChain(processChainId) {
       if (it.runs.isEmpty()) {
         it
@@ -536,11 +553,15 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
         it.copy(runs = it.runs.dropLast(1) + it.runs.last().copy(
             endTime = endTime,
             status = status,
-            errorMessage = errorMessage
+            errorMessage = errorMessage,
+            autoResumeAfter = autoResumeAfter
         ))
       }
     }
   }
+
+  override suspend fun countProcessChainRuns(processChainId: String): Long =
+      getProcessChainEntryById(processChainId).runs.size.toLong()
 
   override suspend fun getProcessChainSubmissionId(processChainId: String): String =
       getProcessChainEntryById(processChainId).submissionId

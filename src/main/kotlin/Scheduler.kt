@@ -29,6 +29,7 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.AsyncMap
 import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
@@ -74,6 +75,11 @@ class Scheduler : CoroutineVerticle() {
 
   private lateinit var periodicLookupJob: Job
   private var periodicLookupOrphansJob: Job? = null
+
+  /**
+   * The timestamp of the next time [lookup] will be called automatically
+   */
+  private var nextLookupInterval: Instant = Instant.now()
 
   /**
    * The remaining number of lookups to do in [lookup]
@@ -131,6 +137,7 @@ class Scheduler : CoroutineVerticle() {
     // periodically look for new process chains and execute them
     periodicLookupJob = launch {
       while (true) {
+        nextLookupInterval = Instant.now().plusMillis(lookupInterval)
         delay(lookupInterval)
         try {
           lookup()
@@ -287,6 +294,10 @@ class Scheduler : CoroutineVerticle() {
     }
 
     try {
+      // auto-resume paused process chains that failed before and that have
+      // a retry policy
+      submissionRegistry.autoResumeProcessChains(Instant.now())
+
       val allRequiredCapabilities = findProcessChainRequiredCapabilities().toMutableList()
 
       while (pendingLookups > 0L) {
@@ -425,10 +436,46 @@ class Scheduler : CoroutineVerticle() {
           }
         } catch (t: Throwable) {
           log.error("Process chain execution failed", t)
-          submissionRegistry.finishLastProcessChainRun(processChain.id,
-              Instant.now(), ERROR, t.message)
-          submissionRegistry.setProcessChainStatus(processChain.id, ERROR)
-          gaugeProcessChains.labels(ERROR.name).inc()
+          val performedAttempts = if (processChain.retries != null) {
+            submissionRegistry.countProcessChainRuns(processChain.id)
+          } else {
+            1L
+          }
+          if (processChain.retries != null &&
+              (processChain.retries.maxAttempts < 0 ||
+                  performedAttempts < processChain.retries.maxAttempts)) {
+            val delay = processChain.retries.calculateDelay(performedAttempts.toInt())
+
+            val msg = when {
+              processChain.retries.maxAttempts > 0 ->
+                "Operation failed $performedAttempts out of ${processChain.retries.maxAttempts} times."
+              performedAttempts > 1 ->
+                "Operation failed $performedAttempts times."
+              else ->
+                "Operation failed $performedAttempts time."
+            }
+            log.error("$msg Retrying execution after $delay milliseconds.")
+
+            val autoResumeAfter = Instant.now().plusMillis(delay)
+            submissionRegistry.finishLastProcessChainRun(processChain.id,
+                Instant.now(), ERROR, t.message, autoResumeAfter)
+            submissionRegistry.setProcessChainStatus(processChain.id, PAUSED)
+
+            // trigger lookup explicitly if delay is very short
+            if (autoResumeAfter.isBefore(nextLookupInterval)) {
+              launch {
+                delay(delay)
+                vertx.eventBus().send(SCHEDULER_LOOKUP_NOW, jsonObjectOf(
+                    "maxLookups" to 1
+                ))
+              }
+            }
+          } else {
+            submissionRegistry.finishLastProcessChainRun(processChain.id,
+                Instant.now(), ERROR, t.message)
+            submissionRegistry.setProcessChainStatus(processChain.id, ERROR)
+            gaugeProcessChains.labels(ERROR.name).inc()
+          }
         } finally {
           if (!shuttingDown) {
             gaugeProcessChains.labels(RUNNING.name).dec()
@@ -436,11 +483,9 @@ class Scheduler : CoroutineVerticle() {
             executingProcessChainIds.remove(processChain.id)
 
             // try to lookup next process chain immediately
-            vertx.eventBus().send(SCHEDULER_LOOKUP_NOW, json {
-              obj(
-                  "maxLookups" to 1
-              )
-            })
+            vertx.eventBus().send(SCHEDULER_LOOKUP_NOW, jsonObjectOf(
+                "maxLookups" to 1
+            ))
           }
         }
       }
@@ -504,12 +549,11 @@ class Scheduler : CoroutineVerticle() {
     }
 
     try {
-      // get all process chains with status RUNNING or PAUSED from the registry
+      // get all process chains with status RUNNING from the registry
       // IMPORTANT: we need to do this first before we ask the schedulers which
       // process chains they are executing. Otherwise, we might risk finding
       // chains that have been started by a scheduler right after we asked it.
-      val runningProcessChains = submissionRegistry.findProcessChainIdsByStatus(
-          RUNNING, PAUSED)
+      val runningProcessChains = submissionRegistry.findProcessChainIdsByStatus(RUNNING)
 
       // ask all scheduler instances which process chains they are currently executing
       val allRunningProcessChains = mutableSetOf<String>()
@@ -540,7 +584,7 @@ class Scheduler : CoroutineVerticle() {
       // check again if orphaned process chains are still being executed (or if they
       // had just been finished by a scheduler before we had the chance to ask it)
       val stillExecutingProcessChains = submissionRegistry.findProcessChainIdsByStatus(
-          RUNNING, PAUSED).toSet()
+          RUNNING).toSet()
       val orphanedProcessChains = orphanedCandidates.filter {
         stillExecutingProcessChains.contains(it) }
       if (orphanedProcessChains.isEmpty()) {

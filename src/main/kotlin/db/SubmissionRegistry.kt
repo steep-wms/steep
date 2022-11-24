@@ -233,13 +233,12 @@ interface SubmissionRegistry : Registry {
       order: Int = 1, excludeExecutables: Boolean = false): Collection<Pair<ProcessChain, String>>
 
   /**
-   * Find the IDs of all process chains that have one of the given statuses
-   * @param statuses the expected process chain statuses (at least one status
-   * must be given)
+   * Find the IDs of all process chains that have a given status
+   * @param status the expected process chain status
    * @return the list of process chain IDs (may be empty if there are no
-   * process chains with the given statuses)
+   * process chains with the given status)
    */
-  suspend fun findProcessChainIdsByStatus(vararg statuses: ProcessChainStatus): Collection<String>
+  suspend fun findProcessChainIdsByStatus(status: ProcessChainStatus): Collection<String>
 
   /**
    * Find the IDs of all process chains that belong to a given submission
@@ -323,6 +322,18 @@ interface SubmissionRegistry : Registry {
       minPriority: Int? = null): ProcessChain?
 
   /**
+   * Atomically set the status of all process chains that meet the following
+   * criteria to [ProcessChainStatus.REGISTERED]:
+   *
+   * * The process chain's current status must be [ProcessChainStatus.PAUSED]
+   * * The process chain's last run (see [getLastProcessChainRun]) must have
+   *   [Run.autoResumeAfter] set
+   * * [Run.autoResumeAfter] must lie before [now] (i.e. the auto-resume timeout
+   *   must have passed already)
+   */
+  suspend fun autoResumeProcessChains(now: Instant)
+
+  /**
    * Check if there is a process chain that has the given [currentStatus] and
    * the optional set of [requiredCapabilities].
    * @param currentStatus the current status of the process chain
@@ -368,9 +379,21 @@ interface SubmissionRegistry : Registry {
    * Finishes the last unfinished run of the process chain with the given
    * [processChainId] and sets the run's [endTime], [status] as well as
    * the [errorMessage] (if the run failed).
+   *
+   * Also optionally sets an [autoResumeAfter] timestamp for process chains
+   * that failed (and now have the status [ProcessChainStatus.PAUSED]), so that
+   * they can be retried after some time. See [autoResumeProcessChains] for
+   * more information.
    */
   suspend fun finishLastProcessChainRun(processChainId: String, endTime: Instant,
-      status: ProcessChainStatus, errorMessage: String? = null)
+      status: ProcessChainStatus, errorMessage: String? = null,
+      autoResumeAfter: Instant? = null)
+
+  /**
+   * Count how many runs (finished as well as unfinished) the process chain
+   * with the given [processChainId] has in the registry
+   */
+  suspend fun countProcessChainRuns(processChainId: String): Long
 
   /**
    * Get the ID of the submission the given process chain belongs to

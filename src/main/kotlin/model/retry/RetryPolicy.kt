@@ -3,6 +3,8 @@ package model.retry
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import helper.StringDurationToMillisecondsConverter
+import kotlin.math.min
+import kotlin.math.pow
 
 /**
  * Defines rules for retrying operations such as the execution of
@@ -57,4 +59,19 @@ data class RetryPolicy(
      */
     @JsonDeserialize(converter = StringDurationToMillisecondsConverter::class)
     val maxDelay: Long? = null
-)
+) {
+  /**
+   * Calculate delay in milliseconds after [performedAttempts] and before
+   * the next attempt
+   */
+  fun calculateDelay(performedAttempts: Int): Long {
+    return if (performedAttempts > 0) {
+      // never calculate a delay that is longer than the one for the maximum number of attempts
+      val lpa = if (maxAttempts < 0) performedAttempts else min(maxAttempts, performedAttempts)
+      min(delay * exponentialBackoff.toDouble().pow(lpa - 1).toLong(),
+          maxDelay ?: Long.MAX_VALUE)
+    } else {
+      0L
+    }
+  }
+}

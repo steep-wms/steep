@@ -3,8 +3,6 @@ package cloud
 import model.retry.RetryPolicy
 import java.time.Clock
 import java.time.Instant
-import kotlin.math.min
-import kotlin.math.pow
 
 /**
  * A use-case driven implementation of the circuit breaker pattern that can
@@ -80,14 +78,7 @@ data class VMCircuitBreaker(
   /**
    * The delay in milliseconds before the next attempt can be performed
    */
-  val currentDelay = if (performedAttempts > 0) {
-    // never calculate a delay that is longer than the one for the maximum number of attempts
-    val lpa = min(retryPolicy.maxAttempts, performedAttempts)
-    min(retryPolicy.delay * retryPolicy.exponentialBackoff.toDouble().pow(lpa - 1).toLong(),
-        retryPolicy.maxDelay ?: Long.MAX_VALUE)
-  } else {
-    0L
-  }
+  val currentDelay = retryPolicy.calculateDelay(performedAttempts)
 
   /**
    * This method should be called after each attempt. It updates the circuit

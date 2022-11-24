@@ -36,11 +36,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.processchain.ProcessChain
+import model.retry.RetryPolicy
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Tests for the [Scheduler]
@@ -58,7 +60,8 @@ class SchedulerTest {
     submissionRegistry = mockk()
     mockkObject(SubmissionRegistryFactory)
     every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
-    coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING, PAUSED) } returns emptyList()
+    coEvery { submissionRegistry.autoResumeProcessChains(any()) } just Runs
+    coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING) } returns emptyList()
     coEvery { submissionRegistry.close() } just Runs
 
     // mock agent registry
@@ -101,7 +104,9 @@ class SchedulerTest {
   private fun testSimple(processChains: List<ProcessChain>, nAgents: Int, vertx: Vertx,
       ctx: VertxTestContext, verify: ((List<String>) -> Unit)? = null,
       onExecute: (suspend (String, List<String>) -> Unit)? = null,
-      onAfterFetchNextProcessChain: (suspend () -> Unit)? = null) {
+      onAfterFetchNextProcessChain: (suspend () -> Unit)? = null,
+      onAddProcessChainRun: ((String) -> Unit)? = null,
+      expectedRuns: Int = 1) {
     val allPcs = processChains.toMutableList()
     val remainingPcs = processChains.toMutableList()
     val executedPcIds = mutableListOf<String>()
@@ -179,7 +184,7 @@ class SchedulerTest {
 
     val registerMocksForPc = { pc: ProcessChain ->
       // add running process chain to list of registered process chains again
-      coEvery { submissionRegistry.setProcessChainStatus(pc.id, REGISTERED) } answers {
+      coEvery { submissionRegistry.setProcessChainStatus(pc.id, or(REGISTERED, PAUSED)) } answers {
         ctx.verify {
           assertThat(remainingPcs).doesNotContain(pc)
         }
@@ -187,7 +192,9 @@ class SchedulerTest {
       }
 
       // register mock for new run
-      coEvery { submissionRegistry.addProcessChainRun(pc.id, any()) } just Runs
+      coEvery { submissionRegistry.addProcessChainRun(pc.id, any()) } answers {
+        onAddProcessChainRun?.invoke(pc.id)
+      }
 
       // register mock for results
       coEvery { submissionRegistry.setProcessChainResults(pc.id,
@@ -215,7 +222,7 @@ class SchedulerTest {
     }
 
     val slotStatusPcId = slot<String>()
-    coEvery { submissionRegistry.setProcessChainStatus(capture(slotStatusPcId), any()) } answers {
+    coEvery { submissionRegistry.setProcessChainStatus(capture(slotStatusPcId), SUCCESS) } answers {
       // on last successful process chain ...
       executedPcIds.add(slotStatusPcId.captured)
       if (executedPcIds.size == allPcs.size) {
@@ -226,9 +233,13 @@ class SchedulerTest {
             for (pc in allPcs) {
               submissionRegistry.setProcessChainResults(pc.id,
                   mapOf("ARG1" to listOf("output-${pc.id}")))
-              submissionRegistry.addProcessChainRun(pc.id, any())
               submissionRegistry.finishLastProcessChainRun(pc.id, any(), SUCCESS, null)
               submissionRegistry.setProcessChainStatus(pc.id, SUCCESS)
+            }
+          }
+          coVerify(exactly = expectedRuns) {
+            for (pc in allPcs) {
+              submissionRegistry.addProcessChainRun(pc.id, any())
             }
           }
           verify?.invoke(executedPcIds)
@@ -439,7 +450,7 @@ class SchedulerTest {
       }
 
       // mock submission registry
-      coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING, PAUSED) } returns
+      coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING) } returns
           listOf(pc1.id, pc2.id, pc3.id, pc4.id) andThen listOf(pc1.id, pc2.id, pc3.id)
       coEvery { submissionRegistry.setProcessChainStatus(pc1.id, REGISTERED) } just Runs
       coEvery { submissionRegistry.deleteLastUnfinishedProcessChainRun(pc1.id) } just Runs
@@ -480,7 +491,7 @@ class SchedulerTest {
           assertThat(otherSchedulerCalled).isTrue
 
           coVerify(atLeast = 2) {
-            submissionRegistry.findProcessChainIdsByStatus(RUNNING, PAUSED)
+            submissionRegistry.findProcessChainIdsByStatus(RUNNING)
           }
           coVerify(exactly = 1) {
             // check that pc1 was successfully reset
@@ -525,7 +536,7 @@ class SchedulerTest {
 
     testSimple(listOf(pc), 1, vertx, ctx, onAfterFetchNextProcessChain = {
       // pretend that the process chain is now running
-      coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING, PAUSED) } returns listOf(pc.id)
+      coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING) } returns listOf(pc.id)
       coEvery { submissionRegistry.findProcessChainById(pc.id) } returns pc
 
       // mock agent and pretend that it is executing the process chain
@@ -563,5 +574,42 @@ class SchedulerTest {
         agentRegistry.tryAllocate(agentAddress, pc.id)
       }
     })
+  }
+
+  @Test
+  fun retryProcessChain(vertx: Vertx, ctx: VertxTestContext) {
+    val pc = ProcessChain(id = "1", priority = 1, retries = RetryPolicy(
+        maxAttempts = 3,
+        delay = 100
+    ))
+
+    val runs = AtomicLong(0)
+
+    coEvery { submissionRegistry.countProcessChainRuns(pc.id) } answers { runs.get() }
+    coEvery { submissionRegistry.finishLastProcessChainRun(
+        pc.id, any(), any(), any(), any())} just Runs
+
+    testSimple(listOf(pc), 1, vertx, ctx, expectedRuns = 3,
+      onAddProcessChainRun = {
+        runs.incrementAndGet()
+      },
+      onExecute = { _, _ ->
+        if (runs.get() < 3) {
+          throw IllegalStateException()
+        }
+      },
+      verify = { executedPcs ->
+        assertThat(executedPcs).hasSize(1)
+        coVerify(exactly = 2) {
+          submissionRegistry.setProcessChainStatus(pc.id, PAUSED)
+        }
+        coVerify(exactly = 1) {
+          submissionRegistry.setProcessChainStatus(pc.id, SUCCESS)
+        }
+        coVerify(exactly = 3) {
+          submissionRegistry.addProcessChainRun(pc.id, any())
+        }
+      }
+    )
   }
 }

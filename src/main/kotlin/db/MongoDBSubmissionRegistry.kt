@@ -88,6 +88,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     private const val STATUS = "status"
     private const val REQUIRED_CAPABILITIES = "requiredCapabilities"
     private const val ERROR_MESSAGE = "errorMessage"
+    private const val AUTO_RESUME_AFTER = "autoResumeAfter"
     private const val SEQUENCE = "sequence"
     private const val PRIORITY = "priority"
     private const val RUNS = "runs"
@@ -568,17 +569,12 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       }, PROCESS_CHAIN_EXCLUDES_BUT_SUBMISSION_ID).map {
         readProcessChain(it, excludeExecutables) }
 
-  override suspend fun findProcessChainIdsByStatus(
-      vararg statuses: ProcessChainStatus): Collection<String> {
-    require(statuses.isNotEmpty()) { "At least one status must be given" }
-    return collProcessChains.findAwait(jsonObjectOf(
-        STATUS to jsonObjectOf(
-            "\$in" to jsonArrayOf(*statuses.map { it.toString() }.toTypedArray())
-        )
-    ), projection = jsonObjectOf(
-        INTERNAL_ID to 1
-    )).map { it.getString(INTERNAL_ID) }
-  }
+  override suspend fun findProcessChainIdsByStatus(status: ProcessChainStatus) =
+      collProcessChains.findAwait(jsonObjectOf(
+          STATUS to status.toString()
+      ), projection = jsonObjectOf(
+          INTERNAL_ID to 1
+      )).map { it.getString(INTERNAL_ID) }
 
   override suspend fun findProcessChainIdsBySubmissionIdAndStatus(
       submissionId: String, vararg statuses: ProcessChainStatus): Collection<String> {
@@ -713,6 +709,19 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     return doc?.let { readProcessChain(it).first }
   }
 
+  override suspend fun autoResumeProcessChains(now: Instant) {
+    collProcessChains.updateManyAwait(jsonObjectOf(
+        STATUS to ProcessChainStatus.PAUSED.toString(),
+        "$RUNS.0.$AUTO_RESUME_AFTER" to jsonObjectOf(
+            "\$lt" to instantToTimestamp(now)
+        )
+    ), jsonObjectOf(
+        "\$set" to jsonObjectOf(
+            STATUS to ProcessChainStatus.REGISTERED.toString()
+        )
+    ))
+  }
+
   override suspend fun existsProcessChain(currentStatus: ProcessChainStatus,
       requiredCapabilities: Collection<String>?): Boolean {
     return collProcessChains.countDocumentsAwait(json {
@@ -729,6 +738,20 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     }, 1) == 1L
   }
 
+  private fun deserializeProcessChainRun(obj: JsonObject): Run {
+    // convert BSON timestamps to ISO strings
+    obj.getJsonObject(START_TIME)?.let { st ->
+      obj.put(START_TIME, ISO_INSTANT.format(timestampToInstant(st)))
+    }
+    obj.getJsonObject(END_TIME)?.let { et ->
+      obj.put(END_TIME, ISO_INSTANT.format(timestampToInstant(et)))
+    }
+    obj.getJsonObject(AUTO_RESUME_AFTER)?.let { ara ->
+      obj.put(AUTO_RESUME_AFTER, ISO_INSTANT.format(timestampToInstant(ara)))
+    }
+    return JsonUtils.fromJson(obj)
+  }
+
   override suspend fun getProcessChainRuns(processChainId: String): List<Run> {
     val pc = collProcessChains.findOneAwait(jsonObjectOf(
         INTERNAL_ID to processChainId
@@ -741,17 +764,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     // array is stored backwards
     val result = mutableListOf<Run>()
     for (i in runs.size() - 1 downTo 0) {
-      val r = runs.getJsonObject(i)
-
-      // convert BSON timestamps to ISO strings
-      r.getJsonObject(START_TIME)?.let { st ->
-        r.put(START_TIME, ISO_INSTANT.format(timestampToInstant(st)))
-      }
-      r.getJsonObject(END_TIME)?.let { et ->
-        r.put(END_TIME, ISO_INSTANT.format(timestampToInstant(et)))
-      }
-
-      result.add(JsonUtils.fromJson(r))
+      result.add(deserializeProcessChainRun(runs.getJsonObject(i)))
     }
     return result
   }
@@ -829,22 +842,13 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     }
 
     return pcs.first().let { pc ->
-      val r = pc.getJsonObject(RUNS) ?: return@let null
-
-      // convert BSON timestamps to ISO strings
-      r.getJsonObject(START_TIME)?.let { st ->
-        r.put(START_TIME, ISO_INSTANT.format(timestampToInstant(st)))
-      }
-      r.getJsonObject(END_TIME)?.let { et ->
-        r.put(END_TIME, ISO_INSTANT.format(timestampToInstant(et)))
-      }
-
-      JsonUtils.fromJson(r)
+      pc.getJsonObject(RUNS)?.let { deserializeProcessChainRun(it) }
     }
   }
 
   override suspend fun finishLastProcessChainRun(processChainId: String,
-      endTime: Instant, status: ProcessChainStatus, errorMessage: String?) {
+      endTime: Instant, status: ProcessChainStatus, errorMessage: String?,
+      autoResumeAfter: Instant?) {
     collProcessChains.updateOneAwait(jsonObjectOf(
         INTERNAL_ID to processChainId,
         "$RUNS.0" to jsonObjectOf(
@@ -854,8 +858,39 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         "\$set" to jsonObjectOf(
             "$RUNS.0.$END_TIME" to instantToTimestamp(endTime),
             "$RUNS.0.$STATUS" to status.toString()
-        ).also { obj -> if (errorMessage != null) obj.put("$RUNS.0.$ERROR_MESSAGE", errorMessage) }
+        ).also { obj ->
+          if (errorMessage != null) {
+            obj.put("$RUNS.0.$ERROR_MESSAGE", errorMessage)
+          }
+          if (autoResumeAfter != null) {
+            obj.put("$RUNS.0.$AUTO_RESUME_AFTER", instantToTimestamp(autoResumeAfter))
+          }
+        }
     ))
+  }
+
+  override suspend fun countProcessChainRuns(processChainId: String): Long {
+    val r = collProcessChains.aggregateAwait(listOf(
+        jsonObjectOf(
+            "\$match" to jsonObjectOf(
+                INTERNAL_ID to processChainId,
+                RUNS to jsonObjectOf(
+                    "\$type" to 4 // array
+                )
+            )
+        ),
+        jsonObjectOf(
+            "\$limit" to 1
+        ),
+        jsonObjectOf(
+            "\$project" to jsonObjectOf(
+                "c" to jsonObjectOf(
+                    "\$size" to "\$$RUNS"
+                )
+            )
+        )
+    ))
+    return r.firstOrNull()?.getLong("c") ?: 0L
   }
 
   override suspend fun getProcessChainSubmissionId(processChainId: String): String =

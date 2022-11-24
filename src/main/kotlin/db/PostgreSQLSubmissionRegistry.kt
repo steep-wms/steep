@@ -58,6 +58,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     private const val REQUIRED_CAPABILITIES = "requiredCapabilities"
     private const val RESULTS = "results"
     private const val ERROR_MESSAGE = "errorMessage"
+    private const val AUTO_RESUME_AFTER = "autoResumeAfter"
     private const val EXECUTION_STATE = "executionState"
     private const val SERIAL = "serial"
     private const val PRIORITY = "priority"
@@ -368,11 +369,10 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun findProcessChainIdsByStatus(
-      vararg statuses: ProcessChainStatus): Collection<String> {
-    require(statuses.isNotEmpty()) { "At least one status must be given" }
+      status: ProcessChainStatus): List<String> {
     val statement = "SELECT $ID FROM $PROCESS_CHAINS " +
-        "WHERE $STATUS=ANY($1) ORDER BY $SERIAL"
-    val params = Tuple.of(statuses.map { it.toString() }.toTypedArray())
+        "WHERE $STATUS=$1 ORDER BY $SERIAL"
+    val params = Tuple.of(status.toString())
     val rs = client.preparedQuery(statement).execute(params).await()
     return rs.map { it.getString(0) }
   }
@@ -502,6 +502,23 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     return rs?.firstOrNull()?.let { JsonUtils.mapper.readValue(it.getString(0)) }
   }
 
+  override suspend fun autoResumeProcessChains(now: Instant) {
+    val updateStatement = "UPDATE $PROCESS_CHAINS SET $STATUS=$1 " +
+        "WHERE $ID = ANY(" +
+          "SELECT $ID FROM $PROCESS_CHAINS WHERE " +
+          "$STATUS=$2 AND $RUNS->-1->'$AUTO_RESUME_AFTER' < $3 " +
+          "FOR UPDATE SKIP LOCKED" + // skip rows being updated concurrently
+        ")"
+
+    val params = Tuple.of(
+        ProcessChainStatus.REGISTERED.toString(),
+        ProcessChainStatus.PAUSED.toString(),
+        now.toString()
+    )
+
+    client.preparedQuery(updateStatement).execute(params).await()
+  }
+
   override suspend fun existsProcessChain(currentStatus: ProcessChainStatus,
       requiredCapabilities: Collection<String>?): Boolean {
     val (statement, params) = if (requiredCapabilities == null) {
@@ -559,17 +576,33 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun finishLastProcessChainRun(processChainId: String,
-      endTime: Instant, status: ProcessChainStatus, errorMessage: String?) {
+      endTime: Instant, status: ProcessChainStatus, errorMessage: String?,
+      autoResumeAfter: Instant?) {
     val updateStatement = "UPDATE $PROCESS_CHAINS " +
         "SET $RUNS=$RUNS - (-1) || ($RUNS->-1 || $1) WHERE $ID=$2"
     val updateParams = Tuple.of(
         jsonObjectOf(
             END_TIME to endTime,
             STATUS to status.toString()
-        ).also { obj -> if (errorMessage != null) obj.put(ERROR_MESSAGE, errorMessage) },
+        ).also { obj ->
+          if (errorMessage != null) {
+            obj.put(ERROR_MESSAGE, errorMessage)
+          }
+          if (autoResumeAfter != null) {
+            obj.put(AUTO_RESUME_AFTER, autoResumeAfter)
+          }
+        },
         processChainId
     )
     client.preparedQuery(updateStatement).execute(updateParams).await()
+  }
+
+  override suspend fun countProcessChainRuns(processChainId: String): Long {
+    val statement = "SELECT jsonb_array_length($RUNS) FROM $PROCESS_CHAINS " +
+        "WHERE $ID=$1"
+    val params = Tuple.of(processChainId)
+    val rs = client.preparedQuery(statement).execute(params).await()
+    return rs?.firstOrNull()?.getLong(0) ?: 0L
   }
 
   override suspend fun getProcessChainSubmissionId(processChainId: String): String {

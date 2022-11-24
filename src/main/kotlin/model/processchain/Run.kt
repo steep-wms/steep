@@ -28,5 +28,15 @@ data class Run(
      * An optional error message if [status] equals
      * [SubmissionRegistry.ProcessChainStatus.ERROR]
      */
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+
+    /**
+     * If the process chain's status is [SubmissionRegistry.ProcessChainStatus.PAUSED],
+     * this field defines a point in time after which the process chain should
+     * be automatically resumed. It is typically used in combination with a
+     * [model.retry.RetryPolicy]: if the process chain run has failed and there
+     * are still attempts left, this field defines when the next attempt should
+     * be performed.
+     */
+    val autoResumeAfter: Instant? = null
 )

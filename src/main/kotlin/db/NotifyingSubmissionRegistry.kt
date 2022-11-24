@@ -202,8 +202,10 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
   }
 
   override suspend fun finishLastProcessChainRun(processChainId: String,
-      endTime: Instant, status: ProcessChainStatus, errorMessage: String?) {
-    delegate.finishLastProcessChainRun(processChainId, endTime, status, errorMessage)
+      endTime: Instant, status: ProcessChainStatus, errorMessage: String?,
+      autoResumeAfter: Instant?) {
+    delegate.finishLastProcessChainRun(processChainId, endTime, status,
+        errorMessage, autoResumeAfter)
     // TODO rework messages sent to UI
     vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_ENDTIME_CHANGED, json {
       obj(

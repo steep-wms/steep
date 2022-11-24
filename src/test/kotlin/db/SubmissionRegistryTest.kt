@@ -993,19 +993,6 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  fun findProcessChainIdsByStatusNoStatus(vertx: Vertx, ctx: VertxTestContext) {
-    CoroutineScope(vertx.dispatcher()).launch {
-      ctx.coVerify {
-        assertThatThrownBy {
-          submissionRegistry.findProcessChainIdsByStatus()
-        }.isInstanceOf(IllegalArgumentException::class.java)
-            .hasMessageContaining("At least one status must be given")
-      }
-      ctx.completeNow()
-    }
-  }
-
-  @Test
   fun findProcessChainIdsByStatus(vertx: Vertx, ctx: VertxTestContext) {
     val s1 = Submission(workflow = Workflow())
     val pc1 = ProcessChain()
@@ -1036,21 +1023,6 @@ abstract class SubmissionRegistryTest {
         assertThat(statuses1).isEqualTo(listOf(pc1.id, pc2.id))
         assertThat(statuses2).isEqualTo(listOf(pc3.id))
         assertThat(statuses3).isEmpty()
-      }
-
-      val statuses4 = submissionRegistry.findProcessChainIdsByStatus(
-          SubmissionRegistry.ProcessChainStatus.REGISTERED,
-          SubmissionRegistry.ProcessChainStatus.RUNNING)
-      val statuses5 = submissionRegistry.findProcessChainIdsByStatus(
-          SubmissionRegistry.ProcessChainStatus.SUCCESS,
-          SubmissionRegistry.ProcessChainStatus.CANCELLED)
-      val statuses6 = submissionRegistry.findProcessChainIdsByStatus(
-          SubmissionRegistry.ProcessChainStatus.ERROR,
-          SubmissionRegistry.ProcessChainStatus.CANCELLED)
-      ctx.verify {
-        assertThat(statuses4).containsExactlyInAnyOrder(pc4.id, pc1.id, pc2.id)
-        assertThat(statuses5).isEqualTo(listOf(pc3.id))
-        assertThat(statuses6).isEmpty()
       }
 
       ctx.completeNow()
@@ -1647,6 +1619,71 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
+  fun autoResumeProcessChains(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc1 = ProcessChain() // status: RUNNING
+    val pc2 = ProcessChain() // status: RUNNING, with autoResumeAfter before now
+    val pc3 = ProcessChain() // status: PAUSED, but no previous run
+    val pc4 = ProcessChain() // status: PAUSED, but no autoResumeAfter
+    val pc5 = ProcessChain() // status: PAUSED, but autoResumeAfter later than now
+    val pc6 = ProcessChain() // status: PAUSED, but autoResumeAfter equals now
+    val pc7 = ProcessChain() // status: PAUSED, autoResumeAfter before now
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        submissionRegistry.addSubmission(s)
+        submissionRegistry.addProcessChains(listOf(pc1, pc2), s.id,
+            SubmissionRegistry.ProcessChainStatus.RUNNING)
+        submissionRegistry.addProcessChains(listOf(pc3, pc4, pc5, pc6, pc7), s.id,
+            SubmissionRegistry.ProcessChainStatus.PAUSED)
+
+        val now = Instant.now()
+        val startTime = now.minusSeconds(60)
+        val endTime = now.minusSeconds(30)
+        submissionRegistry.addProcessChainRun(pc2.id, startTime)
+        submissionRegistry.finishLastProcessChainRun(pc2.id, endTime,
+            SubmissionRegistry.ProcessChainStatus.ERROR, null, now.minusSeconds(10))
+
+        submissionRegistry.addProcessChainRun(pc4.id, startTime)
+
+        submissionRegistry.addProcessChainRun(pc5.id, startTime)
+        submissionRegistry.finishLastProcessChainRun(pc5.id, endTime,
+            SubmissionRegistry.ProcessChainStatus.ERROR, null, now.plusSeconds(10))
+
+        submissionRegistry.addProcessChainRun(pc6.id, startTime)
+        submissionRegistry.finishLastProcessChainRun(pc6.id, endTime,
+            SubmissionRegistry.ProcessChainStatus.ERROR, null, now)
+
+        submissionRegistry.addProcessChainRun(pc7.id, startTime)
+        submissionRegistry.finishLastProcessChainRun(pc7.id, endTime,
+            SubmissionRegistry.ProcessChainStatus.ERROR, null, now.minusSeconds(10))
+
+        submissionRegistry.autoResumeProcessChains(now)
+
+        // should not have changed
+        assertThat(submissionRegistry.getProcessChainStatus(pc1.id)).isEqualTo(
+            SubmissionRegistry.ProcessChainStatus.RUNNING)
+        assertThat(submissionRegistry.getProcessChainStatus(pc2.id)).isEqualTo(
+            SubmissionRegistry.ProcessChainStatus.RUNNING)
+        assertThat(submissionRegistry.getProcessChainStatus(pc3.id)).isEqualTo(
+            SubmissionRegistry.ProcessChainStatus.PAUSED)
+        assertThat(submissionRegistry.getProcessChainStatus(pc4.id)).isEqualTo(
+            SubmissionRegistry.ProcessChainStatus.PAUSED)
+        assertThat(submissionRegistry.getProcessChainStatus(pc5.id)).isEqualTo(
+            SubmissionRegistry.ProcessChainStatus.PAUSED)
+        assertThat(submissionRegistry.getProcessChainStatus(pc6.id)).isEqualTo(
+            SubmissionRegistry.ProcessChainStatus.PAUSED)
+
+        // should have changed
+        assertThat(submissionRegistry.getProcessChainStatus(pc7.id)).isEqualTo(
+            SubmissionRegistry.ProcessChainStatus.REGISTERED)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  @Test
   fun existsProcessChain(vertx: Vertx, ctx: VertxTestContext) {
     val s = Submission(workflow = Workflow())
     val pc1 = ProcessChain()
@@ -1941,9 +1978,31 @@ abstract class SubmissionRegistryTest {
 
         assertThat(submissionRegistry.getLastProcessChainRun(pc.id))
             .isEqualTo(Run(newStartTime2))
+
+        val endTime = Instant.now()
+        val status = SubmissionRegistry.ProcessChainStatus.ERROR
+        val errorMessage = "THIS IS AN ERROR"
+        val autoResumeAfter = endTime.plusSeconds(60)
+        submissionRegistry.finishLastProcessChainRun(pc.id, endTime, status,
+            errorMessage, autoResumeAfter)
+        assertThat(submissionRegistry.getLastProcessChainRun(pc.id))
+            .isEqualTo(Run(newStartTime2, endTime, status, errorMessage,
+                autoResumeAfter))
       }
 
       ctx.completeNow()
+    }
+  }
+
+  @Test
+  fun getLastRunOfMissingProcessChain(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        assertThatThrownBy {
+          submissionRegistry.getLastProcessChainRun("MISSING")
+        }.isInstanceOf(NoSuchElementException::class.java)
+        ctx.completeNow()
+      }
     }
   }
 
@@ -1996,12 +2055,15 @@ abstract class SubmissionRegistryTest {
 
         val errorMessage = "THIS IS an ErrOR"
         val endTime = Instant.now()
+        val autoResumeAfter = endTime.plusSeconds(60)
         submissionRegistry.finishLastProcessChainRun(pc.id, endTime,
-            SubmissionRegistry.ProcessChainStatus.ERROR, errorMessage)
+            SubmissionRegistry.ProcessChainStatus.ERROR, errorMessage,
+            autoResumeAfter)
 
         assertThat(submissionRegistry.getProcessChainRuns(pc.id))
             .isEqualTo(listOf(Run(newStartTime1, endTime,
-                SubmissionRegistry.ProcessChainStatus.ERROR, errorMessage)))
+                SubmissionRegistry.ProcessChainStatus.ERROR,
+                errorMessage, autoResumeAfter)))
       }
 
       ctx.completeNow()
@@ -2009,14 +2071,43 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  fun getLastRunOfMissingProcessChain(vertx: Vertx, ctx: VertxTestContext) {
+  fun countProcessChainRuns(vertx: Vertx, ctx: VertxTestContext) {
+    val s = Submission(workflow = Workflow())
+    val pc = ProcessChain()
+
     CoroutineScope(vertx.dispatcher()).launch {
+      submissionRegistry.addSubmission(s)
+      submissionRegistry.addProcessChains(listOf(pc), s.id)
       ctx.coVerify {
-        assertThatThrownBy {
-          submissionRegistry.getLastProcessChainRun("MISSING")
-        }.isInstanceOf(NoSuchElementException::class.java)
-        ctx.completeNow()
+        assertThat(submissionRegistry.countProcessChainRuns(pc.id)).isZero
+
+        val newStartTime1 = Instant.now().minusMillis(1000)
+        submissionRegistry.addProcessChainRun(pc.id, newStartTime1)
+
+        assertThat(submissionRegistry.countProcessChainRuns(pc.id)).isOne
+
+        val endTime = Instant.now()
+        val status = SubmissionRegistry.ProcessChainStatus.ERROR
+        submissionRegistry.finishLastProcessChainRun(pc.id, endTime, status)
+
+        assertThat(submissionRegistry.countProcessChainRuns(pc.id)).isOne
+
+        val newStartTime2 = Instant.now().minusMillis(2000)
+        submissionRegistry.addProcessChainRun(pc.id, newStartTime2)
+
+        assertThat(submissionRegistry.countProcessChainRuns(pc.id)).isEqualTo(2)
+
+        val newStartTime3 = Instant.now().minusMillis(3000)
+        submissionRegistry.addProcessChainRun(pc.id, newStartTime3)
+
+        assertThat(submissionRegistry.countProcessChainRuns(pc.id)).isEqualTo(3)
+
+        submissionRegistry.deleteLastUnfinishedProcessChainRun(pc.id)
+
+        assertThat(submissionRegistry.countProcessChainRuns(pc.id)).isEqualTo(2)
       }
+
+      ctx.completeNow()
     }
   }
 
