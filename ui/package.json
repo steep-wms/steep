@@ -28,7 +28,7 @@
     "dayjs": "^1.11.6",
     "favicons": "^7.0.1",
     "hast-to-hyperscript": "^10.0.1",
-    "highlight.js": "^11.6.0",
+    "highlight.js": "^11.7.0",
     "immer": "^9.0.15",
     "js-yaml": "^4.1.0",
     "json2yaml": "^1.1.0",
