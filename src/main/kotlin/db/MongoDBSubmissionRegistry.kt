@@ -577,17 +577,17 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       )).map { it.getString(INTERNAL_ID) }
 
   override suspend fun findProcessChainIdsBySubmissionIdAndStatus(
-      submissionId: String, vararg statuses: ProcessChainStatus): Collection<String> {
-    require(statuses.isNotEmpty()) { "At least one status must be given" }
-    return collProcessChains.findAwait(jsonObjectOf(
-        SUBMISSION_ID to submissionId,
-        STATUS to jsonObjectOf(
-            "\$in" to jsonArrayOf(*statuses.map { it.toString() }.toTypedArray())
+      submissionId: String, status: ProcessChainStatus) =
+      collProcessChains.findAwait(json {
+        obj(
+            SUBMISSION_ID to submissionId,
+            STATUS to status.toString()
         )
-    ), projection = jsonObjectOf(
-        INTERNAL_ID to 1
-    )).map { it.getString(INTERNAL_ID) }
-  }
+      }, projection = json {
+        obj(
+            INTERNAL_ID to 1
+        )
+      }).map { it.getString(INTERNAL_ID) }
 
   override suspend fun findProcessChainStatusesBySubmissionId(submissionId: String) =
       collProcessChains.findAwait(json {

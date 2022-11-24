@@ -378,11 +378,10 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun findProcessChainIdsBySubmissionIdAndStatus(
-      submissionId: String, vararg statuses: ProcessChainStatus): Collection<String> {
-    require(statuses.isNotEmpty()) { "At least one status must be given" }
+      submissionId: String, status: ProcessChainStatus): List<String> {
     val statement = "SELECT $ID FROM $PROCESS_CHAINS " +
-        "WHERE $SUBMISSION_ID=$1 AND $STATUS=ANY($2) ORDER BY $SERIAL"
-    val params = Tuple.of(submissionId, statuses.map { it.toString() }.toTypedArray())
+        "WHERE $SUBMISSION_ID=$1 AND $STATUS=$2 ORDER BY $SERIAL"
+    val params = Tuple.of(submissionId, status.toString())
     val rs = client.preparedQuery(statement).execute(params).await()
     return rs.map { it.getString(0) }
   }

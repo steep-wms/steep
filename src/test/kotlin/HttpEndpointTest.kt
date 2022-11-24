@@ -760,7 +760,7 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.findSubmissionById(s1.id) } returns s1
     coEvery { submissionRegistry.findSubmissionById("UNKNOWN") } returns null
     coEvery { submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
-        s1.id, ProcessChainStatus.RUNNING, ProcessChainStatus.PAUSED) } returns emptyList()
+        s1.id, ProcessChainStatus.RUNNING) } returns emptyList()
     coEvery { submissionRegistry.getSubmissionStatus(s1.id) } returns
         Submission.Status.RUNNING andThen Submission.Status.CANCELLED
 
@@ -857,6 +857,8 @@ class HttpEndpointTest {
         // now test valid requests (cancel submission)
         coEvery { submissionRegistry.setAllProcessChainsStatus(s1.id,
             ProcessChainStatus.REGISTERED, ProcessChainStatus.CANCELLED) } just Runs
+        coEvery { submissionRegistry.setAllProcessChainsStatus(s1.id,
+            ProcessChainStatus.PAUSED, ProcessChainStatus.CANCELLED) } just Runs
         coEvery { submissionRegistry.countProcessChainsPerStatus(s1.id) } returns mapOf(
             ProcessChainStatus.RUNNING to 1L,
             ProcessChainStatus.CANCELLED to 2L
@@ -885,6 +887,8 @@ class HttpEndpointTest {
         coVerify(exactly = 1) {
           submissionRegistry.setAllProcessChainsStatus(s1.id,
               ProcessChainStatus.REGISTERED, ProcessChainStatus.CANCELLED)
+          submissionRegistry.setAllProcessChainsStatus(s1.id,
+              ProcessChainStatus.PAUSED, ProcessChainStatus.CANCELLED)
         }
 
         // set priority
@@ -1655,6 +1659,11 @@ class HttpEndpointTest {
               "endTime" to endTime
           )
         })
+
+        coVerify(exactly = 1) {
+          submissionRegistry.setProcessChainStatus(pc5.id,
+              ProcessChainStatus.PAUSED, ProcessChainStatus.CANCELLED)
+        }
 
         // set process chain priority
         coEvery { submissionRegistry.getProcessChainStatus(pc4.id) } returns

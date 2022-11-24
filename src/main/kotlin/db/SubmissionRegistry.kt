@@ -242,15 +242,14 @@ interface SubmissionRegistry : Registry {
 
   /**
    * Find the IDs of all process chains that belong to a given submission
-   * and have one of the given statuses
+   * and have the given status
    * @param submissionId the submission's ID
-   * @param statuses the expected process chain statuses (at least one status
-   * must be given)
+   * @param status the expected process chain status
    * @return the list of process chain IDs (may be empty if the submission does
-   * not exist or if it has no process chains with the given statuses)
+   * not exist or if it has no process chains with the given status)
    */
   suspend fun findProcessChainIdsBySubmissionIdAndStatus(submissionId: String,
-      vararg statuses: ProcessChainStatus): Collection<String>
+      status: ProcessChainStatus): Collection<String>
 
   /**
    * Find all process chains that belong to a given submission and return their

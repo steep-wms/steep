@@ -381,12 +381,10 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
           .map { it.processChain.id }
 
   override suspend fun findProcessChainIdsBySubmissionIdAndStatus(
-      submissionId: String, vararg statuses: ProcessChainStatus): Collection<String> {
-    require(statuses.isNotEmpty()) { "At least one status must be given" }
-    return findProcessChainEntries()
-        .filter { it.submissionId == submissionId && it.status in statuses }
-        .map { it.processChain.id }
-  }
+      submissionId: String, status: ProcessChainStatus) =
+      findProcessChainEntries()
+          .filter { it.submissionId == submissionId && it.status == status }
+          .map { it.processChain.id }
 
   override suspend fun findProcessChainStatusesBySubmissionId(submissionId: String) =
       findProcessChainEntries()

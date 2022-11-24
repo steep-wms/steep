@@ -1030,21 +1030,6 @@ abstract class SubmissionRegistryTest {
   }
 
   @Test
-  fun findProcessChainIdsBySubmissionIdAndStatusNoStatus(vertx: Vertx, ctx: VertxTestContext) {
-    val s1 = Submission(workflow = Workflow())
-    CoroutineScope(vertx.dispatcher()).launch {
-      ctx.coVerify {
-        submissionRegistry.addSubmission(s1)
-        assertThatThrownBy {
-          submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(s1.id)
-        }.isInstanceOf(IllegalArgumentException::class.java)
-            .hasMessageContaining("At least one status must be given")
-      }
-      ctx.completeNow()
-    }
-  }
-
-  @Test
   fun findProcessChainIdsBySubmissionIdAndStatus(vertx: Vertx, ctx: VertxTestContext) {
     val s1 = Submission(workflow = Workflow())
     val pc1 = ProcessChain()
@@ -1081,20 +1066,6 @@ abstract class SubmissionRegistryTest {
         assertThat(statuses3).isEmpty()
         assertThat(statuses4).isEqualTo(listOf(pc4.id))
         assertThat(statuses5).isEmpty()
-      }
-
-      ctx.coVerify {
-        val statuses0 = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
-            s1.id, SubmissionRegistry.ProcessChainStatus.REGISTERED,
-            SubmissionRegistry.ProcessChainStatus.RUNNING,
-            SubmissionRegistry.ProcessChainStatus.SUCCESS)
-        val statuses1 = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
-            s2.id, SubmissionRegistry.ProcessChainStatus.CANCELLED,
-            SubmissionRegistry.ProcessChainStatus.REGISTERED,
-            SubmissionRegistry.ProcessChainStatus.RUNNING,
-            SubmissionRegistry.ProcessChainStatus.SUCCESS)
-        assertThat(statuses0).containsExactlyInAnyOrder(pc1.id, pc2.id, pc3.id)
-        assertThat(statuses1).isEqualTo(listOf(pc4.id))
       }
 
       ctx.completeNow()

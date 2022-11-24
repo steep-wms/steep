@@ -547,7 +547,7 @@ class ControllerTest {
     coEvery { submissionRegistry.setAllProcessChainsStatus(any(), any(), any()) } just Runs
 
     val processChainIds = ConcurrentHashSet<String>()
-    coEvery { submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(any(), any(), any()) } returns processChainIds
+    coEvery { submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(any(), any()) } returns processChainIds
 
     var statusRequested = 0
     var consumerRegistered = false

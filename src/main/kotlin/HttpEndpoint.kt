@@ -1242,15 +1242,17 @@ class HttpEndpoint : CoroutineVerticle() {
       } else {
         if (status != submission.status && status == Submission.Status.CANCELLED) {
           // first, atomically cancel all process chains that are currently
-          // registered but not running yet
+          // registered or paused but not running yet
           submissionRegistry.setAllProcessChainsStatus(id,
               SubmissionRegistry.ProcessChainStatus.REGISTERED,
               SubmissionRegistry.ProcessChainStatus.CANCELLED)
+          submissionRegistry.setAllProcessChainsStatus(id,
+              SubmissionRegistry.ProcessChainStatus.PAUSED,
+              SubmissionRegistry.ProcessChainStatus.CANCELLED)
 
-          // now cancel running and paused process chains
+          // now cancel running process chains
           val pcIds = submissionRegistry.findProcessChainIdsBySubmissionIdAndStatus(
-              id, SubmissionRegistry.ProcessChainStatus.RUNNING,
-              SubmissionRegistry.ProcessChainStatus.PAUSED)
+              id, SubmissionRegistry.ProcessChainStatus.RUNNING)
           // request cancellation (see also onPutProcessChainById())
           val cancelMsg = jsonObjectOf("action" to "cancel")
           for (pcId in pcIds) {
@@ -1645,10 +1647,10 @@ class HttpEndpoint : CoroutineVerticle() {
         }
 
         if (status == SubmissionRegistry.ProcessChainStatus.CANCELLED) {
-          if (currentStatus == SubmissionRegistry.ProcessChainStatus.REGISTERED) {
-            submissionRegistry.setProcessChainStatus(id, currentStatus, status)
-          } else if (currentStatus == SubmissionRegistry.ProcessChainStatus.RUNNING ||
+          if (currentStatus == SubmissionRegistry.ProcessChainStatus.REGISTERED ||
               currentStatus == SubmissionRegistry.ProcessChainStatus.PAUSED) {
+            submissionRegistry.setProcessChainStatus(id, currentStatus, status)
+          } else if (currentStatus == SubmissionRegistry.ProcessChainStatus.RUNNING) {
             // Ask local agent (running anywhere in the cluster) to cancel
             // the process chain. Its status should be set to CANCELLED by
             // the scheduler as soon as the local agent has aborted the
