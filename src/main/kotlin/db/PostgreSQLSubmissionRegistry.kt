@@ -548,19 +548,21 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       r.getJsonArray(0)?.let { JsonUtils.mapper.convertValue(it) } ?: emptyList() }
   }
 
-  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant) {
+  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Int {
     val updateStatement = "UPDATE $PROCESS_CHAINS SET " +
-        "$RUNS=COALESCE($RUNS, '[]'::jsonb) || $1 WHERE $ID=$2"
+        "$RUNS=COALESCE($RUNS, '[]'::jsonb) || $1 WHERE $ID=$2 " +
+        "RETURNING jsonb_array_length($RUNS)"
     val updateParams = Tuple.of(
         jsonArrayOf(JsonUtils.toJson(Run(startTime))),
         processChainId
     )
-    client.preparedQuery(updateStatement).execute(updateParams).await()
+    val r = client.preparedQuery(updateStatement).execute(updateParams).await()
+    return r.first().getInteger(0)
   }
 
-  override suspend fun deleteLastUnfinishedProcessChainRun(processChainId: String) {
+  override suspend fun deleteLastProcessChainRun(processChainId: String) {
     val updateStatement = "UPDATE $PROCESS_CHAINS SET $RUNS=$RUNS - (-1) " +
-        "WHERE $ID=$1 AND $RUNS->-1->>'$END_TIME' IS NULL"
+        "WHERE $ID=$1"
     val updateParams = Tuple.of(processChainId)
     client.preparedQuery(updateStatement).execute(updateParams).await()
   }
@@ -574,11 +576,16 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       r.getJsonObject(0)?.let { JsonUtils.mapper.convertValue(it) } }
   }
 
-  override suspend fun finishLastProcessChainRun(processChainId: String,
+  override suspend fun finishProcessChainRun(processChainId: String, runNumber: Int,
       endTime: Instant, status: ProcessChainStatus, errorMessage: String?,
       autoResumeAfter: Instant?) {
+    if (runNumber < 1) {
+      throw NoSuchElementException("There is no run $runNumber")
+    }
+    val i = runNumber - 1
     val updateStatement = "UPDATE $PROCESS_CHAINS " +
-        "SET $RUNS=$RUNS - (-1) || ($RUNS->-1 || $1) WHERE $ID=$2"
+        "SET $RUNS=jsonb_set($RUNS,'{$i}',$RUNS->$i || $1,false) " +
+        "WHERE $ID=$2 AND jsonb_array_length($RUNS)>$i RETURNING 1"
     val updateParams = Tuple.of(
         jsonObjectOf(
             END_TIME to endTime,
@@ -593,7 +600,11 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         },
         processChainId
     )
-    client.preparedQuery(updateStatement).execute(updateParams).await()
+    val r = client.preparedQuery(updateStatement).execute(updateParams).await()
+    if (r.size() == 0) {
+      throw NoSuchElementException("There is no process chain with ID " +
+          "`$processChainId' or no run $runNumber")
+    }
   }
 
   override suspend fun countProcessChainRuns(processChainId: String): Long {

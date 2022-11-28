@@ -518,14 +518,20 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     return getProcessChainEntryById(processChainId).runs
   }
 
-  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant) {
-    updateProcessChain(processChainId) { it.copy(runs = it.runs + Run(startTime)) }
+  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Int {
+    val n = AtomicInteger()
+    updateProcessChain(processChainId) {
+      val r = it.copy(runs = it.runs + Run(startTime))
+      n.set(r.runs.size)
+      r
+    }
+    return n.get()
   }
 
-  override suspend fun deleteLastUnfinishedProcessChainRun(processChainId: String) {
+  override suspend fun deleteLastProcessChainRun(processChainId: String) {
     updateProcessChain(processChainId) { e ->
       val l = e.runs.lastOrNull()
-      if (l != null && l.endTime == null) {
+      if (l != null) {
         e.copy(runs = e.runs.dropLast(1))
       } else {
         e
@@ -541,19 +547,29 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     return getProcessChainEntryById(processChainId).runs.lastOrNull()
   }
 
-  override suspend fun finishLastProcessChainRun(processChainId: String,
+  override suspend fun finishProcessChainRun(processChainId: String, runNumber: Int,
       endTime: Instant, status: ProcessChainStatus, errorMessage: String?,
       autoResumeAfter: Instant?) {
+    if (runNumber < 1) {
+      throw NoSuchElementException("There is no run $runNumber")
+    }
+
+    // make sure the process chain exists
+    getProcessChainEntryById(processChainId)
+
+    val index = runNumber - 1
     updateProcessChain(processChainId) {
-      if (it.runs.isEmpty()) {
-        it
+      if (it.runs.isEmpty() || it.runs.size <= index) {
+        throw NoSuchElementException("There is no run $runNumber")
       } else {
-        it.copy(runs = it.runs.dropLast(1) + it.runs.last().copy(
-            endTime = endTime,
-            status = status,
-            errorMessage = errorMessage,
-            autoResumeAfter = autoResumeAfter
-        ))
+        it.copy(runs = it.runs.toMutableList().also { runs ->
+          runs[index] = runs[index].copy(
+              endTime = endTime,
+              status = status,
+              errorMessage = errorMessage,
+              autoResumeAfter = autoResumeAfter
+          )
+        })
       }
     }
   }

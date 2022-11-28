@@ -8,6 +8,7 @@ import com.mongodb.client.model.IndexModel
 import com.mongodb.client.model.IndexOptions
 import com.mongodb.client.model.Indexes
 import com.mongodb.client.model.InsertOneModel
+import com.mongodb.client.model.ReturnDocument
 import com.mongodb.reactivestreams.client.MongoCollection
 import com.mongodb.reactivestreams.client.gridfs.GridFSBucket
 import com.mongodb.reactivestreams.client.gridfs.GridFSBuckets
@@ -761,16 +762,15 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
     val runs = pc.getJsonArray(RUNS) ?: return emptyList()
 
-    // array is stored backwards
     val result = mutableListOf<Run>()
-    for (i in runs.size() - 1 downTo 0) {
+    for (i in 0 until runs.size()) {
       result.add(deserializeProcessChainRun(runs.getJsonObject(i)))
     }
     return result
   }
 
-  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant) {
-    collProcessChains.updateOneAwait(jsonObjectOf(
+  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Int {
+    val r = collProcessChains.findOneAndUpdateAwait(jsonObjectOf(
         INTERNAL_ID to processChainId
     ), jsonObjectOf(
         "\$push" to jsonObjectOf(
@@ -779,31 +779,26 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
                     jsonObjectOf(
                         START_TIME to instantToTimestamp(startTime)
                     )
-                ),
-                "\$position" to 0 // prepend to array
+                )
             )
         )
-    ))
+    ), FindOneAndUpdateOptions()
+        .returnDocument(ReturnDocument.AFTER)
+        .projection(wrap(jsonObjectOf(
+            "c" to jsonObjectOf(
+                "\$size" to "\$$RUNS"
+            )
+        )))
+    )
+    return r!!.getInteger("c")
   }
 
-  override suspend fun deleteLastUnfinishedProcessChainRun(processChainId: String) {
+  override suspend fun deleteLastProcessChainRun(processChainId: String) {
     collProcessChains.updateOneAwait(jsonObjectOf(
-        INTERNAL_ID to processChainId,
-        "\$or" to jsonArrayOf(
-            jsonObjectOf(
-                "$RUNS.0.$END_TIME" to jsonObjectOf(
-                    "\$exists" to false
-                )
-            ),
-            jsonObjectOf(
-                "$RUNS.0.$END_TIME" to jsonObjectOf(
-                    "\$type" to 10 // null
-                )
-            )
-        )
+        INTERNAL_ID to processChainId
     ), jsonObjectOf(
         "\$pop" to jsonObjectOf(
-            RUNS to -1 // remove first element
+            RUNS to 1 // remove last element
         )
     ))
   }
@@ -831,7 +826,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         jsonObjectOf(
             "\$project" to jsonObjectOf(
                 RUNS to jsonObjectOf(
-                    "\$first" to "\$$RUNS"
+                    "\$last" to "\$$RUNS"
                 )
             )
         )
@@ -846,27 +841,35 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     }
   }
 
-  override suspend fun finishLastProcessChainRun(processChainId: String,
+  override suspend fun finishProcessChainRun(processChainId: String, runNumber: Int,
       endTime: Instant, status: ProcessChainStatus, errorMessage: String?,
       autoResumeAfter: Instant?) {
-    collProcessChains.updateOneAwait(jsonObjectOf(
+    if (runNumber < 1) {
+      throw NoSuchElementException("There is no run $runNumber")
+    }
+    val i = runNumber - 1
+    val r = collProcessChains.updateOneAwait(jsonObjectOf(
         INTERNAL_ID to processChainId,
-        "$RUNS.0" to jsonObjectOf(
+        "$RUNS.$i" to jsonObjectOf(
             "\$exists" to true
         )
     ), jsonObjectOf(
         "\$set" to jsonObjectOf(
-            "$RUNS.0.$END_TIME" to instantToTimestamp(endTime),
-            "$RUNS.0.$STATUS" to status.toString()
+            "$RUNS.$i.$END_TIME" to instantToTimestamp(endTime),
+            "$RUNS.$i.$STATUS" to status.toString()
         ).also { obj ->
           if (errorMessage != null) {
-            obj.put("$RUNS.0.$ERROR_MESSAGE", errorMessage)
+            obj.put("$RUNS.$i.$ERROR_MESSAGE", errorMessage)
           }
           if (autoResumeAfter != null) {
-            obj.put("$RUNS.0.$AUTO_RESUME_AFTER", instantToTimestamp(autoResumeAfter))
+            obj.put("$RUNS.$i.$AUTO_RESUME_AFTER", instantToTimestamp(autoResumeAfter))
           }
         }
     ))
+    if (r.matchedCount == 0L) {
+      throw NoSuchElementException("There is no process chain with ID " +
+          "`$processChainId' or no run $runNumber")
+    }
   }
 
   override suspend fun countProcessChainRuns(processChainId: String): Long {

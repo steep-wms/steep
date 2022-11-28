@@ -156,8 +156,8 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
     return pc
   }
 
-  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant) {
-    delegate.addProcessChainRun(processChainId, startTime)
+  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Int {
+    val n = delegate.addProcessChainRun(processChainId, startTime)
     // TODO rework messages sent to UI
     vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_STARTTIME_CHANGED, json {
       obj(
@@ -165,10 +165,11 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
           "startTime" to startTime
       )
     })
+    return n
   }
 
-  override suspend fun deleteLastUnfinishedProcessChainRun(processChainId: String) {
-    delegate.deleteLastUnfinishedProcessChainRun(processChainId)
+  override suspend fun deleteLastProcessChainRun(processChainId: String) {
+    delegate.deleteLastProcessChainRun(processChainId)
     // TODO rework messages sent to UI
     vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_STARTTIME_CHANGED, json {
       obj(
@@ -201,10 +202,10 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
     })
   }
 
-  override suspend fun finishLastProcessChainRun(processChainId: String,
+  override suspend fun finishProcessChainRun(processChainId: String, runNumber: Int,
       endTime: Instant, status: ProcessChainStatus, errorMessage: String?,
       autoResumeAfter: Instant?) {
-    delegate.finishLastProcessChainRun(processChainId, endTime, status,
+    delegate.finishProcessChainRun(processChainId, runNumber, endTime, status,
         errorMessage, autoResumeAfter)
     // TODO rework messages sent to UI
     vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_ENDTIME_CHANGED, json {

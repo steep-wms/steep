@@ -350,17 +350,15 @@ interface SubmissionRegistry : Registry {
 
   /**
    * Create a new run with the given [startTime] for the process chain with
-   * the given [processChainId]
+   * the given [processChainId] and return the new run number
    */
-  suspend fun addProcessChainRun(processChainId: String, startTime: Instant)
+  suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Int
 
   /**
-   * Delete the last unfinished run of the process chain with the given
-   * [processChainId]. A process chain run is unfinished if it has a start time
-   * but no end time. This method is a no-op if there are no runs for the
-   * process chain.
+   * Delete the last run of the process chain with the given [processChainId].
+   * This method is a no-op if there are no runs for the process chain.
    */
-  suspend fun deleteLastUnfinishedProcessChainRun(processChainId: String)
+  suspend fun deleteLastProcessChainRun(processChainId: String)
 
   /**
    * Delete all runs of the process chain with the given [processChainId].
@@ -370,22 +368,25 @@ interface SubmissionRegistry : Registry {
 
   /**
    * Get the last run of the process chain with the given [processChainId].
-   * Returns `null` if there if no run for the process chain yet.
+   * Return `null` if there if no run for the process chain yet.
    */
   suspend fun getLastProcessChainRun(processChainId: String): Run?
 
   /**
-   * Finishes the last unfinished run of the process chain with the given
-   * [processChainId] and sets the run's [endTime], [status] as well as
+   * Finish the run with the given [runNumber] of the process chain with the
+   * given [processChainId] and set the run's [endTime], [status] as well as
    * the [errorMessage] (if the run failed).
    *
-   * Also optionally sets an [autoResumeAfter] timestamp for process chains
+   * Also optionally set an [autoResumeAfter] timestamp for process chains
    * that failed (and now have the status [ProcessChainStatus.PAUSED]), so that
    * they can be retried after some time. See [autoResumeProcessChains] for
    * more information.
+   *
+   * Throw [NoSuchElementException] if either the process chain or the run does
+   * not exist.
    */
-  suspend fun finishLastProcessChainRun(processChainId: String, endTime: Instant,
-      status: ProcessChainStatus, errorMessage: String? = null,
+  suspend fun finishProcessChainRun(processChainId: String, runNumber: Int,
+      endTime: Instant, status: ProcessChainStatus, errorMessage: String? = null,
       autoResumeAfter: Instant? = null)
 
   /**

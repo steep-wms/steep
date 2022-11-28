@@ -415,22 +415,25 @@ class Scheduler : CoroutineVerticle() {
 
       // execute process chain
       launch {
+        var run: Int? = null
         try {
           gaugeProcessChains.labels(RUNNING.name).inc()
-          submissionRegistry.addProcessChainRun(processChain.id, Instant.now())
+          run = submissionRegistry.addProcessChainRun(processChain.id, Instant.now())
 
           val results = agent.execute(processChain)
 
           submissionRegistry.setProcessChainResults(processChain.id, results)
-          submissionRegistry.finishLastProcessChainRun(processChain.id,
+          submissionRegistry.finishProcessChainRun(processChain.id, run,
               Instant.now(), SUCCESS)
           submissionRegistry.setProcessChainStatus(processChain.id, SUCCESS)
           gaugeProcessChains.labels(SUCCESS.name).inc()
         } catch (_: CancellationException) {
           if (!shuttingDown) { // ignore cancellation on shutdown
             log.warn("Process chain execution was cancelled")
-            submissionRegistry.finishLastProcessChainRun(processChain.id,
-                Instant.now(), CANCELLED)
+            if (run != null) {
+              submissionRegistry.finishProcessChainRun(processChain.id, run,
+                  Instant.now(), CANCELLED)
+            }
             submissionRegistry.setProcessChainStatus(processChain.id, CANCELLED)
             gaugeProcessChains.labels(CANCELLED.name).inc()
           }
@@ -457,8 +460,10 @@ class Scheduler : CoroutineVerticle() {
             log.error("$msg Retrying execution after $delay milliseconds.")
 
             val autoResumeAfter = Instant.now().plusMillis(delay)
-            submissionRegistry.finishLastProcessChainRun(processChain.id,
-                Instant.now(), ERROR, t.message, autoResumeAfter)
+            if (run != null) {
+              submissionRegistry.finishProcessChainRun(processChain.id, run,
+                  Instant.now(), ERROR, t.message, autoResumeAfter)
+            }
             submissionRegistry.setProcessChainStatus(processChain.id, PAUSED)
 
             // trigger lookup explicitly if delay is very short
@@ -471,8 +476,10 @@ class Scheduler : CoroutineVerticle() {
               }
             }
           } else {
-            submissionRegistry.finishLastProcessChainRun(processChain.id,
-                Instant.now(), ERROR, t.message)
+            if (run != null) {
+              submissionRegistry.finishProcessChainRun(processChain.id, run,
+                  Instant.now(), ERROR, t.message)
+            }
             submissionRegistry.setProcessChainStatus(processChain.id, ERROR)
             gaugeProcessChains.labels(ERROR.name).inc()
           }
@@ -630,7 +637,11 @@ class Scheduler : CoroutineVerticle() {
       // executed by an agent
       for (id in orphansWithoutAgents) {
         submissionRegistry.setProcessChainStatus(id, REGISTERED)
-        submissionRegistry.deleteLastUnfinishedProcessChainRun(id)
+        submissionRegistry.getLastProcessChainRun(id)?.let { run ->
+          if (run.endTime == null) {
+            submissionRegistry.deleteLastProcessChainRun(id)
+          }
+        }
       }
 
       // resume process chains with agents in `lookup` method
