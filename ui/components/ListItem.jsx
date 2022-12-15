@@ -62,7 +62,7 @@ const ListItem = ({ title, linkHref, linkAs, subtitle, deleted = false, justAdde
       <div className="list-item-left">
         <div className="list-item-title">
           {titleLink}{labels.length > 0 && <>&ensp;</>}
-          {labels.map((l, i) => <Label key={i} small>{l}</Label>)}
+          {labels.map((l, i) => <><Label key={i} small>{l}</Label><wbr/></>)}
         </div>
         <div className="list-item-subtitle">{subtitle || defaultSubtitle}</div>
       </div>

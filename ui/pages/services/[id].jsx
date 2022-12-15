@@ -26,7 +26,7 @@ const Service = () => {
     if (data.requiredCapabilities === undefined || data.requiredCapabilities.length === 0) {
       reqcap = <>&ndash;</>
     } else {
-      reqcap = data.requiredCapabilities.map((r, i) => <Label key={i}>{r}</Label>)
+      reqcap = data.requiredCapabilities.map((r, i) => <><Label key={i}>{r}</Label><wbr/></>)
     }
     service = (<>
       <div className="service-details">

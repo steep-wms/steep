@@ -233,7 +233,7 @@ const ResultsRow = ({ result }) => {
           {result.type === "processChain" && <LinkIcon size="1.2rem" />}
         </span>
         <Link href={href}><a>{title}</a></Link>{labels.length > 0 && <>&ensp;</>}
-        {labels.map((l, i) => <Label key={i} small>{l}</Label>)}
+        {labels.map((l, i) => <><Label key={i} small>{l}</Label><wbr/></>)}
       </div>
       {errorMessage}
       {source}
