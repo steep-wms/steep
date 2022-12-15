@@ -46,7 +46,7 @@ function AgentDetails({ id }) {
     if (a.capabilities === undefined || a.capabilities.length === 0) {
       caps = <>&ndash;</>
     } else {
-      caps = a.capabilities.map((r, i) => <Label key={i}>{r}</Label>)
+      caps = a.capabilities.map((r, i) => <><Label key={i}>{r}</Label><wbr/></>)
     }
 
     let progress = agentToProgress(a)
