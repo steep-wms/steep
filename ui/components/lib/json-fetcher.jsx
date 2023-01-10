@@ -1,5 +1,4 @@
 import NProgress from "nprogress"
-import fetch from "unfetch"
 
 NProgress.configure({ showSpinner: false })
 
