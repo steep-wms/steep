@@ -1951,7 +1951,7 @@ abstract class SubmissionRegistryTest {
 
         // ... and another one
         val newStartTime3 = Instant.now()
-        val run3 = submissionRegistry.addProcessChainRun(pc.id, newStartTime3)
+        submissionRegistry.addProcessChainRun(pc.id, newStartTime3)
 
         assertThat(submissionRegistry.getLastProcessChainRun(pc.id))
             .isEqualTo(Run(newStartTime3))
