@@ -6,7 +6,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     application
     jacoco
-    kotlin("jvm") version "1.7.21"
+    kotlin("jvm") version "1.8.0"
     id("com.github.ben-manes.versions") version "0.44.0"
     id("se.patrikerdes.use-latest-versions") version "0.2.18"
 }
@@ -83,7 +83,7 @@ dependencies {
     implementation(kotlin("reflect"))
     implementation(kotlin("scripting-jvm"))
     implementation(kotlin("scripting-jvm-host"))
-    implementation(kotlin("stdlib-jdk8"))
+    implementation(kotlin("stdlib"))
     implementation(kotlin("script-runtime"))
 
     testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.5.1")
