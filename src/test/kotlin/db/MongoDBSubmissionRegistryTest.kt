@@ -8,5 +8,5 @@ import io.vertx.core.Vertx
  */
 class MongoDBSubmissionRegistryTest : MongoDBTest, SubmissionRegistryTest() {
   override fun createRegistry(vertx: Vertx) = MongoDBSubmissionRegistry(
-      vertx, MongoDBTest.CONNECTION_STRING, false)
+      vertx, MongoDBTest.connectionString, false)
 }

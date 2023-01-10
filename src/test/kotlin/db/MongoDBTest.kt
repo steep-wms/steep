@@ -2,11 +2,10 @@ package db
 
 import com.mongodb.ConnectionString
 import com.mongodb.reactivestreams.client.MongoClients
-import de.flapdoodle.embed.mongo.MongodExecutable
-import de.flapdoodle.embed.mongo.MongodProcess
-import de.flapdoodle.embed.mongo.MongodStarter
-import de.flapdoodle.embed.mongo.config.MongodConfig
 import de.flapdoodle.embed.mongo.distribution.Version
+import de.flapdoodle.embed.mongo.transitions.Mongod
+import de.flapdoodle.embed.mongo.transitions.RunningMongodProcess
+import de.flapdoodle.reverse.TransitionWalker
 import helper.deleteAllAwait
 import helper.listCollectionNamesAwait
 import io.vertx.core.Vertx
@@ -24,37 +23,31 @@ import org.junit.jupiter.api.BeforeAll
  */
 interface MongoDBTest {
   companion object {
-    private val STARTER = MongodStarter.getDefaultInstance()
+    private var mongod: TransitionWalker.ReachedState<RunningMongodProcess>? = null
 
-    private lateinit var MONGOD_EXE: MongodExecutable
-    private lateinit var MONGOD: MongodProcess
-    private val MONGOD_CONFIG = MongodConfig.builder()
-        .version(Version.Main.V4_4)
-        .build()
-    val CONNECTION_STRING = "mongodb://" +
-        MONGOD_CONFIG.net().serverAddress.hostAddress + ":" +
-        MONGOD_CONFIG.net().port + "/steep"
+    @JvmStatic
+    val connectionString: String get() = "mongodb://" +
+        mongod!!.current().serverAddress.host + ":" +
+        mongod!!.current().serverAddress.port + "/steep"
 
     @BeforeAll
     @JvmStatic
     @Suppress("UNUSED")
     fun startUp() {
-      MONGOD_EXE = STARTER.prepare(MONGOD_CONFIG)
-      MONGOD = MONGOD_EXE.start()
+      mongod = Mongod.instance().start(Version.V4_4_16)
     }
 
     @AfterAll
     @JvmStatic
     @Suppress("UNUSED")
     fun shutdown() {
-      MONGOD.stop()
-      MONGOD_EXE.stop()
+      mongod!!.close()
     }
   }
 
   @AfterEach
   fun tearDownDatabase(vertx: Vertx, ctx: VertxTestContext) {
-    val cs = ConnectionString(CONNECTION_STRING)
+    val cs = ConnectionString(connectionString)
     val client = MongoClients.create(cs)
 
     CoroutineScope(vertx.dispatcher()).launch {
