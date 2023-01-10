@@ -1,12 +1,12 @@
 package cloud.template
 
 import cloud.SSHClient
-import com.mitchellbosecke.pebble.extension.Function
-import com.mitchellbosecke.pebble.extension.escaper.SafeString
-import com.mitchellbosecke.pebble.template.EvaluationContext
-import com.mitchellbosecke.pebble.template.PebbleTemplate
 import helper.UniqueID
 import helper.glob
+import io.pebbletemplates.pebble.extension.Function
+import io.pebbletemplates.pebble.extension.escaper.SafeString
+import io.pebbletemplates.pebble.template.EvaluationContext
+import io.pebbletemplates.pebble.template.PebbleTemplate
 import org.apache.commons.io.FilenameUtils
 
 /**

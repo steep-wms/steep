@@ -6,11 +6,11 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import com.mitchellbosecke.pebble.PebbleEngine
-import com.mitchellbosecke.pebble.loader.ClasspathLoader
-import com.mitchellbosecke.pebble.loader.DelegatingLoader
-import com.mitchellbosecke.pebble.loader.FileLoader
-import com.mitchellbosecke.pebble.loader.StringLoader
+import io.pebbletemplates.pebble.PebbleEngine
+import io.pebbletemplates.pebble.loader.ClasspathLoader
+import io.pebbletemplates.pebble.loader.DelegatingLoader
+import io.pebbletemplates.pebble.loader.FileLoader
+import io.pebbletemplates.pebble.loader.StringLoader
 import org.apache.commons.lang3.BooleanUtils
 import org.yaml.snakeyaml.Yaml
 import java.io.Reader
@@ -53,7 +53,7 @@ object YamlUtils {
  */
 fun <T> Yaml.loadTemplate(yaml: String, context: Map<String, Any>): T {
   // try to extract front matter
-  val frontMatterRegex = """\s*^[-]{3,}\R(.*)\R^[-]{3,}(.*)$""".toRegex(
+  val frontMatterRegex = """\s*^-{3,}\R(.*)\R^-{3,}(.*)$""".toRegex(
     setOf(RegexOption.MULTILINE, RegexOption.DOT_MATCHES_ALL))
 
   val mr = frontMatterRegex.matchEntire(yaml)

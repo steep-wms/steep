@@ -13,12 +13,12 @@ import agent.AgentRegistry
 import agent.AgentRegistryFactory
 import cloud.template.ProvisioningTemplateExtension
 import com.fasterxml.jackson.module.kotlin.convertValue
-import com.mitchellbosecke.pebble.PebbleEngine
 import db.SetupRegistryFactory
 import db.VMRegistry
 import db.VMRegistryFactory
 import helper.JsonUtils
 import helper.toDuration
+import io.pebbletemplates.pebble.PebbleEngine
 import io.vertx.core.Promise
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject

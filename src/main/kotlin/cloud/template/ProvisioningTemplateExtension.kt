@@ -1,8 +1,8 @@
 package cloud.template
 
 import cloud.SSHClient
-import com.mitchellbosecke.pebble.extension.AbstractExtension
-import com.mitchellbosecke.pebble.extension.Function
+import io.pebbletemplates.pebble.extension.AbstractExtension
+import io.pebbletemplates.pebble.extension.Function
 
 /**
  * An extension for the template engine that the [cloud.CloudManager] uses for

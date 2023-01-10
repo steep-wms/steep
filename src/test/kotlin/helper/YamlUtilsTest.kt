@@ -1,6 +1,6 @@
 package helper
 
-import com.mitchellbosecke.pebble.error.RootAttributeNotFoundException
+import io.pebbletemplates.pebble.error.RootAttributeNotFoundException
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
