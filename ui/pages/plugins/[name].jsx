@@ -6,9 +6,11 @@ import DefinitionListItem from "../../components/DefinitionListItem"
 import PluginType from "../../components/plugins/PluginType"
 import Label from "../../components/Label"
 import Link from "next/link"
+import resolvedStyles from "./[name].scss?type=resolve"
 import styles from "./[name].scss"
 import useSWRImmutable from "swr/immutable"
 import fetcher from "../../components/lib/json-fetcher"
+import classNames from "classnames"
 
 const Plugin = () => {
   const router = useRouter()
@@ -45,7 +47,8 @@ const Plugin = () => {
             let linkHref = "/services/[id]"
             let linkAs = `/services/${r}`
             return (
-              <Link key={linkAs} href={linkHref} as={linkAs}><a className="list-item-title-link">{r}</a></Link>
+              <Link key={linkAs} href={linkHref} as={linkAs}
+                className={classNames(resolvedStyles.className, "list-item-title-link")}>{r}</Link>
             )
           })}
         </div>
@@ -58,12 +61,14 @@ const Plugin = () => {
             let linkHref = "/plugins/[name]"
             let linkAs = `/plugins/${r}`
             return (
-              <Link key={linkAs} href={linkHref} as={linkAs}><a className="list-item-title-link">{r}</a></Link>
+              <Link key={linkAs} href={linkHref} as={linkAs}
+                className={classNames(resolvedStyles.className, "list-item-title-link")}>{r}</Link>
             )
           })}
         </div>
       </>)}
 
+      {resolvedStyles.styles}
       <style jsx>{styles}</style>
     </>)
   }

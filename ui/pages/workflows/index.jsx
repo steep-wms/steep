@@ -6,6 +6,8 @@ import { useMemo } from "react"
 import Link from "next/link"
 import { PlusSquare } from "lucide-react"
 import workflowToProgress from "../../components/workflows/workflow-to-progress"
+import classNames from "classnames"
+import resolvedStyles from "./index.scss?type=resolve"
 import styles from "./index.scss"
 
 const FILTERS = [{
@@ -40,8 +42,10 @@ function WorkflowListItem({ item: workflow }) {
 const Workflows = () => {
   let additionalButtons = <>
     <Tooltip title="New workflow &hellip;">
-      <Link href="/new/workflow"><a className="plus-button"><PlusSquare /></a></Link>
+      <Link href="/new/workflow"
+        className={classNames(resolvedStyles.className, "plus-button")}><PlusSquare /></Link>
     </Tooltip>
+    {resolvedStyles.styles}
     <style jsx>{styles}</style>
   </>
 

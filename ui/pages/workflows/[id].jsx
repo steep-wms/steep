@@ -85,7 +85,7 @@ function WorkflowDetails({ id }) {
       [workflowSource])
 
   const breadcrumbs = useMemo(() => [
-    <Link href="/workflows/" key="workflows"><a>Workflows</a></Link>,
+    <Link href="/workflows/" key="workflows">Workflows</Link>,
     id
   ], [id])
 

@@ -52,9 +52,9 @@ const ProcessChains = () => {
   if (router.query.submissionId !== undefined) {
     let sid = router.query.submissionId
     breadcrumbs = [
-      <Link href="/workflows" key="workflows"><a>Workflows</a></Link>,
+      <Link href="/workflows" key="workflows">Workflows</Link>,
       <Link href="/workflows/[id]" as={`/workflows/${sid}`} key={sid}>
-        <a>{sid}</a>
+        {sid}
       </Link>,
       "Process chains"
     ]

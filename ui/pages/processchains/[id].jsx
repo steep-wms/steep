@@ -124,9 +124,9 @@ function ProcessChainDetails({ id }) {
     let pc = processChains.items[0]
     title = pc.id
     breadcrumbs = [
-      <Link href="/workflows" key="workflows"><a>Workflows</a></Link>,
+      <Link href="/workflows" key="workflows">Workflows</Link>,
       <Link href="/workflows/[id]" as={`/workflows/${pc.submissionId}`} key={pc.submissionId}>
-        <a>{pc.submissionId}</a>
+        {pc.submissionId}
       </Link>,
       <Link href={{
         pathname: "/processchains",
@@ -134,7 +134,7 @@ function ProcessChainDetails({ id }) {
           submissionId: pc.submissionId
         }
       }} key="processchains">
-        <a>Process chains</a>
+        Process chains
       </Link>,
       pc.id
     ]

@@ -39,7 +39,7 @@ function VMDetails({ id }) {
     let vm = vms.items[0]
     title = vm.id
     breadcrumbs = [
-      <Link href="/vms" key="vms"><a>VMs</a></Link>,
+      <Link href="/vms" key="vms">VMs</Link>,
       vm.id
     ]
 

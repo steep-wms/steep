@@ -10,7 +10,7 @@ const ProcessChainLogs = () => {
 
   let breadcrumbs = [
     <Link href="/processchains" key="processchains">
-      <a>Process chains</a>
+      Process chains
     </Link>,
     id
   ]

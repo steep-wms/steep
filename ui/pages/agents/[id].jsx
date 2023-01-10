@@ -38,7 +38,7 @@ function AgentDetails({ id }) {
     let a = agents.items[0]
     title = a.id
     breadcrumbs = [
-      <Link href="/agents" key="agents"><a>Agents</a></Link>,
+      <Link href="/agents" key="agents">Agents</Link>,
       a.id
     ]
 

@@ -28,7 +28,7 @@ export default function workflowToProgress(workflow) {
           submissionId: workflow.id
         }
       }}>
-        <a>{progressSubTitle}</a>
+        {progressSubTitle}
       </Link>
     )
   }

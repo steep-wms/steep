@@ -6,6 +6,7 @@ import Tooltip from "./Tooltip"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
 import { formatDate, formatDuration, formatDurationTitle } from "./lib/date-time-utils"
+import resolvedStyles from "./ListItem.scss?type=resolve"
 import styles from "./ListItem.scss"
 
 function formatterToNow(value, unit, suffix, epochSeconds) {
@@ -52,9 +53,13 @@ const ListItem = ({ title, linkHref, linkAs, subtitle, deleted = false, justAdde
 
   let titleLink
   if (!deleted) {
-    titleLink = <Link href={linkHref} as={linkAs}><a className="list-item-title-link">{title}<style jsx>{styles}</style></a></Link>
+    titleLink = <Link href={linkHref} as={linkAs}
+      className={classNames(resolvedStyles.className, "list-item-title-link")}>{title}{resolvedStyles.styles}
+      <style jsx>{styles}</style></Link>
   } else {
-    titleLink = <span className="list-item-title-link">{title}<style jsx>{styles}</style></span>
+    titleLink = <span
+      className={classNames(resolvedStyles.className, "list-item-title-link")}>{title}{resolvedStyles.styles}
+      <style jsx>{styles}</style></span>
   }
 
   return (
@@ -69,6 +74,7 @@ const ListItem = ({ title, linkHref, linkAs, subtitle, deleted = false, justAdde
       <div className="list-item-right">
         {progress && <ListItemProgressBox progress={progress} deleted={deleted} />}
       </div>
+      {resolvedStyles.styles}
       <style jsx>{styles}</style>
     </div>
   )

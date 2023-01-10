@@ -232,7 +232,7 @@ const ResultsRow = ({ result }) => {
           {result.type === "workflow" && <Send size="1.2rem" />}
           {result.type === "processChain" && <LinkIcon size="1.2rem" />}
         </span>
-        <Link href={href}><a>{title}</a></Link>{labels.length > 0 && <>&ensp;</>}
+        <Link href={href}>{title}</Link>{labels.length > 0 && <>&ensp;</>}
         {labels.map((l, i) => <><Label key={i} small>{l}</Label><wbr/></>)}
       </div>
       {errorMessage}
