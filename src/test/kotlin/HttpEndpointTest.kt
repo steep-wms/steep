@@ -1345,6 +1345,7 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainSubmissionId(pc1.id) } returns sid
     coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns
         ProcessChainStatus.SUCCESS
+    coEvery { submissionRegistry.countProcessChainRuns(pc1.id) } returns 3
     val startTime = Instant.now()
     val endTime = Instant.now().plusMillis(4321)
     coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns Run(startTime, endTime)
@@ -1385,6 +1386,8 @@ class HttpEndpointTest {
               "status" to ProcessChainStatus.SUCCESS.toString(),
               "startTime" to startTime,
               "endTime" to endTime,
+              "totalRuns" to 3,
+              "runNumber" to 3,
               "results" to obj(
                   "output_file1" to array("output.txt")
               )
@@ -1413,6 +1416,7 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainSubmissionId(pc1.id) } returns sid
     coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns
         ProcessChainStatus.RUNNING
+    coEvery { submissionRegistry.countProcessChainRuns(pc1.id) } returns 1
     val startTime = Instant.now()
     coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns Run(startTime)
 
@@ -1450,7 +1454,260 @@ class HttpEndpointTest {
               "submissionId" to sid,
               "status" to ProcessChainStatus.RUNNING.toString(),
               "startTime" to startTime,
+              "totalRuns" to 1,
+              "runNumber" to 1,
               "estimatedProgress" to expectedProgress
+          )
+        })
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  private fun doGetProcessChainRun(vertx: Vertx, ctx: VertxTestContext, running: Boolean = false) {
+    val eid = UniqueID.next()
+    val sid = UniqueID.next()
+    val pc1 = ProcessChain(executables = listOf(Executable(id = eid,
+        path = "path", serviceId = "foobar", arguments = emptyList())))
+
+    val startTime1 = Instant.now().minusMillis(6000)
+    val endTime1 = Instant.now().minusMillis(5000)
+    val error1 = "run1"
+    val run1 = Run(startTime1, endTime1, ProcessChainStatus.ERROR, error1)
+    val startTime2 = Instant.now().minusMillis(4000)
+    val endTime2 = Instant.now().minusMillis(3000)
+    val run2 = if (running) {
+      Run(startTime2)
+    } else {
+      Run(startTime2, endTime2, ProcessChainStatus.SUCCESS)
+    }
+
+    coEvery { submissionRegistry.findProcessChainById(pc1.id) } returns pc1
+    coEvery { submissionRegistry.findProcessChainById(neq(pc1.id)) } returns null
+    coEvery { submissionRegistry.getProcessChainSubmissionId(pc1.id) } returns sid
+    coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns
+        if (running) ProcessChainStatus.RUNNING else ProcessChainStatus.SUCCESS
+    coEvery { submissionRegistry.countProcessChainRuns(pc1.id) } returns 2
+    coEvery { submissionRegistry.getProcessChainRun(pc1.id, -1) } returns null
+    coEvery { submissionRegistry.getProcessChainRun(pc1.id, 0) } returns null
+    coEvery { submissionRegistry.getProcessChainRun(pc1.id, 1) } returns run1
+    coEvery { submissionRegistry.getProcessChainRun(pc1.id, 2) } returns run2
+    coEvery { submissionRegistry.getProcessChainRun(pc1.id, 3) } returns null
+    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns run2
+    coEvery { submissionRegistry.getProcessChainResults(pc1.id) } returns mapOf(
+        "output_file1" to listOf("output.txt"))
+
+    val client = WebClient.create(vertx)
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        client.get(port, "localhost", "/processchains/${pc1.id}_doesnotexist/runs/1")
+            .`as`(BodyCodec.none())
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .send()
+            .await()
+      }
+
+      ctx.coVerify {
+        val r = client.get(port, "localhost", "/processchains/${pc1.id}/runs/-1")
+            .`as`(BodyCodec.string())
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .send()
+            .await()
+            .body()
+        assertThat(r).isEqualTo("There is no run -1")
+      }
+
+      ctx.coVerify {
+        val r = client.get(port, "localhost", "/processchains/${pc1.id}/runs/0")
+            .`as`(BodyCodec.string())
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .send()
+            .await()
+            .body()
+        assertThat(r).isEqualTo("There is no run 0")
+      }
+
+      ctx.coVerify {
+        val r = client.get(port, "localhost", "/processchains/${pc1.id}/runs/3")
+            .`as`(BodyCodec.string())
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .send()
+            .await()
+            .body()
+        assertThat(r).isEqualTo("There is no run 3")
+      }
+
+      val expectedRun2 = json {
+        obj(
+            "id" to pc1.id,
+            "executables" to array(
+                obj(
+                    "id" to eid,
+                    "path" to "path",
+                    "serviceId" to "foobar",
+                    "arguments" to array(),
+                    "runtime" to "other",
+                    "runtimeArgs" to array()
+                )
+            ),
+            "requiredCapabilities" to array(),
+            "submissionId" to sid,
+            "status" to if (running) ProcessChainStatus.RUNNING.toString() else
+              ProcessChainStatus.SUCCESS.toString(),
+            "startTime" to startTime2,
+            "totalRuns" to 2,
+            "runNumber" to 2
+        )
+      }
+      if (!running) {
+        expectedRun2.put("endTime", endTime2)
+        expectedRun2.put("results", jsonObjectOf(
+            "output_file1" to jsonArrayOf("output.txt")
+        ))
+      }
+
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/processchains/${pc1.id}")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .expect(ResponsePredicate.JSON)
+            .send()
+            .await()
+
+        assertThat(response.body()).isEqualTo(expectedRun2)
+      }
+
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/processchains/${pc1.id}/runs/1")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .expect(ResponsePredicate.JSON)
+            .send()
+            .await()
+
+        assertThat(response.body()).isEqualTo(json {
+          obj(
+              "id" to pc1.id,
+              "executables" to array(
+                  obj(
+                      "id" to eid,
+                      "path" to "path",
+                      "serviceId" to "foobar",
+                      "arguments" to array(),
+                      "runtime" to "other",
+                      "runtimeArgs" to array()
+                  )
+              ),
+              "requiredCapabilities" to array(),
+              "submissionId" to sid,
+              "status" to ProcessChainStatus.ERROR.toString(),
+              "errorMessage" to error1,
+              "startTime" to startTime1,
+              "endTime" to endTime1,
+              "totalRuns" to 2,
+              "runNumber" to 1
+          )
+        })
+      }
+
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/processchains/${pc1.id}/runs/2")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .expect(ResponsePredicate.JSON)
+            .send()
+            .await()
+
+        assertThat(response.body()).isEqualTo(expectedRun2)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that the endpoint returns a process chain run
+   */
+  @Test
+  fun getProcessChainRun(vertx: Vertx, ctx: VertxTestContext) {
+    doGetProcessChainRun(vertx, ctx)
+  }
+
+  /**
+   * Test that the endpoint returns a run of a running process chain
+   */
+  @Test
+  fun getProcessChainRunRunning(vertx: Vertx, ctx: VertxTestContext) {
+    doGetProcessChainRun(vertx, ctx, true)
+  }
+
+  /**
+   * Test that the endpoint does not return a run if the process chain is still REGISTERED
+   */
+  @Test
+  fun getProcessChainRunRegistered(vertx: Vertx, ctx: VertxTestContext) {
+    val eid = UniqueID.next()
+    val sid = UniqueID.next()
+    val pc1 = ProcessChain(executables = listOf(Executable(id = eid,
+        path = "path", serviceId = "foobar", arguments = emptyList())))
+
+    coEvery { submissionRegistry.findProcessChainById(pc1.id) } returns pc1
+    coEvery { submissionRegistry.getProcessChainSubmissionId(pc1.id) } returns sid
+    coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns
+        ProcessChainStatus.REGISTERED
+    coEvery { submissionRegistry.countProcessChainRuns(pc1.id) } returns 0
+    coEvery { submissionRegistry.getProcessChainRun(pc1.id, 0) } returns null
+    coEvery { submissionRegistry.getProcessChainRun(pc1.id, 1) } returns null
+    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns null
+
+    val client = WebClient.create(vertx)
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        val r = client.get(port, "localhost", "/processchains/${pc1.id}/runs/0")
+            .`as`(BodyCodec.string())
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .send()
+            .await()
+            .body()
+        assertThat(r).isEqualTo("There is no run 0")
+      }
+
+      ctx.coVerify {
+        val r = client.get(port, "localhost", "/processchains/${pc1.id}/runs/1")
+            .`as`(BodyCodec.string())
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .send()
+            .await()
+            .body()
+        assertThat(r).isEqualTo("There is no run 1")
+      }
+
+      ctx.coVerify {
+        val response = client.get(port, "localhost", "/processchains/${pc1.id}")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .expect(ResponsePredicate.JSON)
+            .send()
+            .await()
+
+        assertThat(response.body()).isEqualTo(json {
+          obj(
+              "id" to pc1.id,
+              "executables" to array(
+                  obj(
+                      "id" to eid,
+                      "path" to "path",
+                      "serviceId" to "foobar",
+                      "arguments" to array(),
+                      "runtime" to "other",
+                      "runtimeArgs" to array()
+                  )
+              ),
+              "requiredCapabilities" to array(),
+              "submissionId" to sid,
+              "status" to ProcessChainStatus.REGISTERED.toString(),
+              "totalRuns" to 0
           )
         })
       }

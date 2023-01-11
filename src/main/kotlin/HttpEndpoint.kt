@@ -241,6 +241,11 @@ class HttpEndpoint : CoroutineVerticle() {
         .produces("text/html")
         .handler(this::onGetProcessChainById)
 
+    router.get("/processchains/:id/runs/:runNumber/?")
+        .handler(bodyHandler)
+        .produces("application/json")
+        .handler(this::onGetProcessChainById)
+
     router.put("/processchains/:id/?")
         .handler(bodyHandler)
         .produces("application/json")
@@ -1444,40 +1449,46 @@ class HttpEndpoint : CoroutineVerticle() {
   }
 
   private suspend fun amendProcessChain(processChain: JsonObject,
-      submissionId: String, includeDetails: Boolean = false) {
+      submissionId: String, includeDetails: Boolean = false, runNumber: Long? = null) {
     processChain.put("submissionId", submissionId)
 
     val id = processChain.getString("id")
 
-    val status = submissionRegistry.getProcessChainStatus(id)
-    processChain.put("status", status.toString())
-
-    val lastRun = object {
+    val run = object {
       private var loaded: Boolean = false
       private var r: Run? = null
 
       suspend fun get(): Run? {
         if (!loaded) {
-          r = submissionRegistry.getLastProcessChainRun(id)
+          r = if (runNumber == null) {
+            submissionRegistry.getLastProcessChainRun(id)
+          } else {
+            submissionRegistry.getProcessChainRun(id, runNumber)
+                ?: throw NoSuchElementException("There is no run $runNumber")
+          }
           loaded = true
         }
         return r
       }
     }
 
+    val status = (if (runNumber != null) run.get()?.status else null)
+        ?: submissionRegistry.getProcessChainStatus(id)
+    processChain.put("status", status.toString())
+
     if (status != SubmissionRegistry.ProcessChainStatus.REGISTERED) {
-      val lr = lastRun.get()
-      if (lr?.startTime != null) {
-        processChain.put("startTime", lr.startTime)
+      val r = run.get()
+      if (r?.startTime != null) {
+        processChain.put("startTime", r.startTime)
       }
     }
 
     if (status == SubmissionRegistry.ProcessChainStatus.SUCCESS ||
         status == SubmissionRegistry.ProcessChainStatus.ERROR ||
         status == SubmissionRegistry.ProcessChainStatus.CANCELLED) {
-      val lr = lastRun.get()
-      if (lr?.endTime != null) {
-        processChain.put("endTime", lr.endTime)
+      val r = run.get()
+      if (r?.endTime != null) {
+        processChain.put("endTime", r.endTime)
       }
     }
 
@@ -1487,6 +1498,13 @@ class HttpEndpoint : CoroutineVerticle() {
         if (results != null) {
           processChain.put("results", results)
         }
+      }
+
+      val totalRuns = submissionRegistry.countProcessChainRuns(id)
+      processChain.put("totalRuns", totalRuns)
+      val actualRunNumber = runNumber ?: totalRuns
+      if (actualRunNumber > 0L) {
+        processChain.put("runNumber", actualRunNumber)
       }
     }
 
@@ -1504,9 +1522,9 @@ class HttpEndpoint : CoroutineVerticle() {
         processChain.put("estimatedProgress", response.body())
       }
     } else if (status == SubmissionRegistry.ProcessChainStatus.ERROR) {
-      val lr = lastRun.get()
-      if (lr?.errorMessage != null) {
-        processChain.put("errorMessage", lr.errorMessage)
+      val r = run.get()
+      if (r?.errorMessage != null) {
+        processChain.put("errorMessage", r.errorMessage)
       }
     }
   }
@@ -1569,13 +1587,26 @@ class HttpEndpoint : CoroutineVerticle() {
     } else {
       launch {
         val id = ctx.pathParam("id")
+
+        val strRunNumber: String? = ctx.pathParam("runNumber")
+        val runNumber = strRunNumber?.toLongOrNull()
+        if (strRunNumber != null && runNumber == null) {
+          renderError(ctx, 400, "Invalid run number `$strRunNumber'")
+          return@launch
+        }
+
         val processChain = submissionRegistry.findProcessChainById(id)
         if (processChain == null) {
           renderError(ctx, 404, "There is no process chain with ID `$id'")
         } else {
           val json = JsonUtils.toJson(processChain)
           val submissionId = submissionRegistry.getProcessChainSubmissionId(id)
-          amendProcessChain(json, submissionId, true)
+          try {
+            amendProcessChain(json, submissionId, true, runNumber)
+          } catch (e: NoSuchElementException) {
+            renderError(ctx, 404, e.message)
+            return@launch
+          }
           ctx.response()
               .putHeader("content-type", "application/json")
               .end(json.encode())
