@@ -9,7 +9,11 @@ const VersionInfo = () => {
   const [error, setError] = useState()
 
   useEffect(() => {
-    fetcher(process.env.baseUrl)
+    let url = process.env.baseUrl
+    if (!url.endsWith("/")) {
+      url += "/"
+    }
+    fetcher(url)
       .then(setData)
       .catch(err => {
         console.log(err)
