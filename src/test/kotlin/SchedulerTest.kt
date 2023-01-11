@@ -45,7 +45,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.time.Instant
 import java.util.Collections
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -110,7 +109,7 @@ class SchedulerTest {
       onExecute: (suspend (String, List<String>) -> Unit)? = null,
       onAfterFetchNextProcessChain: (suspend () -> Unit)? = null,
       onAddProcessChainRun: ((String) -> Unit)? = null,
-      expectedRuns: Int = 1) {
+      expectedRuns: Long = 1L) {
     val allPcs = processChains.toMutableList()
     val remainingPcs = processChains.toMutableList()
     val executedPcIds = mutableListOf<String>()
@@ -196,7 +195,7 @@ class SchedulerTest {
       }
 
       // register mock for new run
-      val runs = AtomicInteger()
+      val runs = AtomicLong()
       coEvery { submissionRegistry.addProcessChainRun(pc.id, any()) } answers {
         onAddProcessChainRun?.invoke(pc.id)
         runs.incrementAndGet()
@@ -243,7 +242,7 @@ class SchedulerTest {
               submissionRegistry.setProcessChainStatus(pc.id, SUCCESS)
             }
           }
-          coVerify(exactly = expectedRuns) {
+          coVerify(exactly = expectedRuns.toInt()) {
             for (pc in allPcs) {
               submissionRegistry.addProcessChainRun(pc.id, any())
             }
@@ -396,7 +395,7 @@ class SchedulerTest {
 
     // mock submission registry
     coEvery { submissionRegistry.setProcessChainStatus(pc.id, ERROR) } just Runs
-    val runs = AtomicInteger()
+    val runs = AtomicLong()
     coEvery { submissionRegistry.addProcessChainRun(pc.id, any()) } answers { runs.incrementAndGet() }
     coEvery { submissionRegistry.finishProcessChainRun(pc.id, 1, any(), any(), any()) } just Runs
     coEvery { submissionRegistry.findProcessChainRequiredCapabilities(REGISTERED) } returns
@@ -468,7 +467,7 @@ class SchedulerTest {
       val runs = Collections.synchronizedList(mutableListOf<Run>())
       coEvery { submissionRegistry.addProcessChainRun(pc2.id, any()) } answers {
         runs.add(Run(secondArg()))
-        runs.size
+        runs.size.toLong()
       }
       coEvery { submissionRegistry.getLastProcessChainRun(pc2.id) } answers { runs.last() }
       coEvery { submissionRegistry.setProcessChainResults(pc2.id, pc2Results) } just Runs

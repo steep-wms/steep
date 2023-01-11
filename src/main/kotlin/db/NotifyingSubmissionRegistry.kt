@@ -156,7 +156,7 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
     return pc
   }
 
-  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Int {
+  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Long {
     val n = delegate.addProcessChainRun(processChainId, startTime)
     // TODO rework messages sent to UI
     vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_STARTTIME_CHANGED, json {
@@ -202,7 +202,7 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
     })
   }
 
-  override suspend fun finishProcessChainRun(processChainId: String, runNumber: Int,
+  override suspend fun finishProcessChainRun(processChainId: String, runNumber: Long,
       endTime: Instant, status: ProcessChainStatus, errorMessage: String?,
       autoResumeAfter: Instant?) {
     delegate.finishProcessChainRun(processChainId, runNumber, endTime, status,

@@ -548,7 +548,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       r.getJsonArray(0)?.let { JsonUtils.mapper.convertValue(it) } ?: emptyList() }
   }
 
-  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Int {
+  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Long {
     val updateStatement = "UPDATE $PROCESS_CHAINS SET " +
         "$RUNS=COALESCE($RUNS, '[]'::jsonb) || $1 WHERE $ID=$2 " +
         "RETURNING jsonb_array_length($RUNS)"
@@ -557,7 +557,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         processChainId
     )
     val r = client.preparedQuery(updateStatement).execute(updateParams).await()
-    return r.first().getInteger(0)
+    return r.first().getLong(0)
   }
 
   override suspend fun deleteLastProcessChainRun(processChainId: String) {
@@ -571,12 +571,23 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     updateColumn(PROCESS_CHAINS, processChainId, RUNS, null)
   }
 
+  override suspend fun getProcessChainRun(processChainId: String, runNumber: Long): Run? {
+    if (runNumber < 1) {
+      // check if process chain exists and throw if not
+      getProcessChainColumn(processChainId, "1") { null }
+      // if it exists, just return `null`
+      return null
+    }
+    return getProcessChainColumn(processChainId, "$RUNS->${runNumber - 1}") { r ->
+      r.getJsonObject(0)?.let { JsonUtils.mapper.convertValue(it) } }
+  }
+
   override suspend fun getLastProcessChainRun(processChainId: String): Run? {
     return getProcessChainColumn(processChainId, "$RUNS->-1") { r ->
       r.getJsonObject(0)?.let { JsonUtils.mapper.convertValue(it) } }
   }
 
-  override suspend fun finishProcessChainRun(processChainId: String, runNumber: Int,
+  override suspend fun finishProcessChainRun(processChainId: String, runNumber: Long,
       endTime: Instant, status: ProcessChainStatus, errorMessage: String?,
       autoResumeAfter: Instant?) {
     if (runNumber < 1) {

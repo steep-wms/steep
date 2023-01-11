@@ -769,7 +769,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     return result
   }
 
-  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Int {
+  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Long {
     val r = collProcessChains.findOneAndUpdateAwait(jsonObjectOf(
         INTERNAL_ID to processChainId
     ), jsonObjectOf(
@@ -790,7 +790,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
             )
         )))
     )
-    return r!!.getInteger("c")
+    return r!!.getLong("c")
   }
 
   override suspend fun deleteLastProcessChainRun(processChainId: String) {
@@ -813,7 +813,27 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     ))
   }
 
-  override suspend fun getLastProcessChainRun(processChainId: String): Run? {
+  private suspend fun doGetProcessChainRun(processChainId: String, runNumber: Long?): Run? {
+    if (runNumber != null && runNumber < 1) {
+      val processChainCount = collProcessChains.countDocumentsAwait(jsonObjectOf(
+          INTERNAL_ID to processChainId
+      ))
+      if (processChainCount == 0L) {
+        throw NoSuchElementException("There is no process chain with ID `$processChainId'")
+      }
+      return null
+    }
+
+    val project = if (runNumber == null) {
+      jsonObjectOf(
+          "\$last" to "\$$RUNS"
+      )
+    } else {
+      jsonObjectOf(
+          "\$arrayElemAt" to jsonArrayOf("\$$RUNS", runNumber - 1)
+      )
+    }
+
     val pcs = collProcessChains.aggregateAwait(listOf(
         jsonObjectOf(
             "\$match" to jsonObjectOf(
@@ -825,9 +845,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         ),
         jsonObjectOf(
             "\$project" to jsonObjectOf(
-                RUNS to jsonObjectOf(
-                    "\$last" to "\$$RUNS"
-                )
+                RUNS to project
             )
         )
     ))
@@ -841,7 +859,13 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     }
   }
 
-  override suspend fun finishProcessChainRun(processChainId: String, runNumber: Int,
+  override suspend fun getProcessChainRun(processChainId: String, runNumber: Long): Run? =
+      doGetProcessChainRun(processChainId, runNumber)
+
+  override suspend fun getLastProcessChainRun(processChainId: String): Run? =
+      doGetProcessChainRun(processChainId, null)
+
+  override suspend fun finishProcessChainRun(processChainId: String, runNumber: Long,
       endTime: Instant, status: ProcessChainStatus, errorMessage: String?,
       autoResumeAfter: Instant?) {
     if (runNumber < 1) {

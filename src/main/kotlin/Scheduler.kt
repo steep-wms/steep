@@ -415,7 +415,7 @@ class Scheduler : CoroutineVerticle() {
 
       // execute process chain
       launch {
-        var run: Int? = null
+        var run: Long? = null
         try {
           gaugeProcessChains.labels(RUNNING.name).inc()
           run = submissionRegistry.addProcessChainRun(processChain.id, Instant.now())

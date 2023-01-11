@@ -21,6 +21,7 @@ import search.SearchResultMatcher
 import search.Type
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * A submission registry that keeps objects in memory
@@ -518,11 +519,11 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     return getProcessChainEntryById(processChainId).runs
   }
 
-  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Int {
-    val n = AtomicInteger()
+  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Long {
+    val n = AtomicLong()
     updateProcessChain(processChainId) {
       val r = it.copy(runs = it.runs + Run(startTime))
-      n.set(r.runs.size)
+      n.set(r.runs.size.toLong())
       r
     }
     return n.get()
@@ -543,11 +544,15 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     updateProcessChain(processChainId) { it.copy(runs = emptyList()) }
   }
 
+  override suspend fun getProcessChainRun(processChainId: String, runNumber: Long): Run? {
+    return getProcessChainEntryById(processChainId).runs.getOrNull(runNumber.toInt() - 1)
+  }
+
   override suspend fun getLastProcessChainRun(processChainId: String): Run? {
     return getProcessChainEntryById(processChainId).runs.lastOrNull()
   }
 
-  override suspend fun finishProcessChainRun(processChainId: String, runNumber: Int,
+  override suspend fun finishProcessChainRun(processChainId: String, runNumber: Long,
       endTime: Instant, status: ProcessChainStatus, errorMessage: String?,
       autoResumeAfter: Instant?) {
     if (runNumber < 1) {
@@ -563,7 +568,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
         throw NoSuchElementException("There is no run $runNumber")
       } else {
         it.copy(runs = it.runs.toMutableList().also { runs ->
-          runs[index] = runs[index].copy(
+          runs[index.toInt()] = runs[index.toInt()].copy(
               endTime = endTime,
               status = status,
               errorMessage = errorMessage,

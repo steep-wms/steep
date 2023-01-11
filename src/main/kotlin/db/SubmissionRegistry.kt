@@ -350,9 +350,10 @@ interface SubmissionRegistry : Registry {
 
   /**
    * Create a new run with the given [startTime] for the process chain with
-   * the given [processChainId] and return the new run number
+   * the given [processChainId] and return the new run number. Run numbers start
+   * at 1.
    */
-  suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Int
+  suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Long
 
   /**
    * Delete the last run of the process chain with the given [processChainId].
@@ -367,8 +368,15 @@ interface SubmissionRegistry : Registry {
   suspend fun deleteAllProcessChainRuns(processChainId: String)
 
   /**
+   * Get the run with the given [runNumber] from the process chain with the
+   * given [processChainId]. Return `null` if there is no run with this
+   * [runNumber]. Run numbers start at 1.
+   */
+  suspend fun getProcessChainRun(processChainId: String, runNumber: Long): Run?
+
+  /**
    * Get the last run of the process chain with the given [processChainId].
-   * Return `null` if there if no run for the process chain yet.
+   * Return `null` if there is no run for the process chain yet.
    */
   suspend fun getLastProcessChainRun(processChainId: String): Run?
 
@@ -382,10 +390,12 @@ interface SubmissionRegistry : Registry {
    * they can be retried after some time. See [autoResumeProcessChains] for
    * more information.
    *
+   * Run numbers start at 1.
+   *
    * Throw [NoSuchElementException] if either the process chain or the run does
    * not exist.
    */
-  suspend fun finishProcessChainRun(processChainId: String, runNumber: Int,
+  suspend fun finishProcessChainRun(processChainId: String, runNumber: Long,
       endTime: Instant, status: ProcessChainStatus, errorMessage: String? = null,
       autoResumeAfter: Instant? = null)
 
