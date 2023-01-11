@@ -11,9 +11,9 @@ const config = {
     baseUrl: isProd ? "/$$MYBASEURL$$" : "http://localhost:8080"
   },
 
-  // Base path of the web application
+  // Prefix for assets loaded by the web application
   // Magic string will be replaced by Steep's HttpEndpoint verticle
-  basePath: isProd ? "/$$MYBASEPATH$$" : "",
+  assetPrefix: isProd ? "/$$MYBASEPATH$$" : "",
 
   // create a folder for each page
   trailingSlash: true,
@@ -58,7 +58,22 @@ const config = {
     }
   },
 
-  webpack: (config, { dev, defaultLoaders }) => {
+  webpack: (config, { dev, defaultLoaders, webpack }) => {
+    // Define __NEXT_ROUTER_BASEPATH so that it will be evaluated dynamically
+    // during runtime and not optimized away be the compiler (or webpack?).
+    // See the following URLs for more information about this workaround:
+    // - https://github.com/vercel/next.js/discussions/16059#discussioncomment-4556420
+    // - https://github.com/vercel/next.js/discussions/41769
+    // Magic string will be replaced by Steep's HttpEndpoint verticle
+    config.plugins.forEach((i) => {
+      if (i instanceof webpack.DefinePlugin) {
+        if (i.definitions["process.env.__NEXT_ROUTER_BASEPATH"]) {
+          i.definitions["process.env.__NEXT_ROUTER_BASEPATH"] =
+            "(function () { return \"/$$MYBASEPATH$$\" })()"
+        }
+      }
+    })
+
     config.module.rules.push({
       test: /\.scss$/,
       use: [
