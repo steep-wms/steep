@@ -1190,8 +1190,7 @@ class HttpEndpointTest {
                   "id" to pc5.id,
                   "requiredCapabilities" to array(),
                   "submissionId" to s2.id,
-                  "status" to "PAUSED",
-                  "startTime" to startTime
+                  "status" to "PAUSED"
               )
           )
         })
@@ -1642,11 +1641,8 @@ class HttpEndpointTest {
     doGetProcessChainRun(vertx, ctx, true)
   }
 
-  /**
-   * Test that the endpoint does not return a run if the process chain is still REGISTERED
-   */
-  @Test
-  fun getProcessChainRunRegistered(vertx: Vertx, ctx: VertxTestContext) {
+  private fun doGetProcessChainRunNoRunWithStatus(vertx: Vertx, ctx: VertxTestContext,
+      expectedStatus: ProcessChainStatus, existingRuns: List<Run> = emptyList()) {
     val eid = UniqueID.next()
     val sid = UniqueID.next()
     val pc1 = ProcessChain(executables = listOf(Executable(id = eid,
@@ -1655,34 +1651,19 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.findProcessChainById(pc1.id) } returns pc1
     coEvery { submissionRegistry.getProcessChainSubmissionId(pc1.id) } returns sid
     coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns
-        ProcessChainStatus.REGISTERED
-    coEvery { submissionRegistry.countProcessChainRuns(pc1.id) } returns 0
-    coEvery { submissionRegistry.getProcessChainRun(pc1.id, 0) } returns null
-    coEvery { submissionRegistry.getProcessChainRun(pc1.id, 1) } returns null
-    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns null
+        expectedStatus
+    coEvery { submissionRegistry.countProcessChainRuns(pc1.id) } returns
+        existingRuns.size.toLong()
+    for ((runIndex, r) in existingRuns.withIndex()) {
+      val runNumber = runIndex + 1
+      coEvery { submissionRegistry.getProcessChainRun(pc1.id,
+          runNumber.toLong()) } returns r
+    }
+    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns
+        existingRuns.lastOrNull()
 
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
-      ctx.coVerify {
-        val r = client.get(port, "localhost", "/processchains/${pc1.id}/runs/0")
-            .`as`(BodyCodec.string())
-            .expect(ResponsePredicate.SC_NOT_FOUND)
-            .send()
-            .await()
-            .body()
-        assertThat(r).isEqualTo("There is no run 0")
-      }
-
-      ctx.coVerify {
-        val r = client.get(port, "localhost", "/processchains/${pc1.id}/runs/1")
-            .`as`(BodyCodec.string())
-            .expect(ResponsePredicate.SC_NOT_FOUND)
-            .send()
-            .await()
-            .body()
-        assertThat(r).isEqualTo("There is no run 1")
-      }
-
       ctx.coVerify {
         val response = client.get(port, "localhost", "/processchains/${pc1.id}")
             .`as`(BodyCodec.jsonObject())
@@ -1706,14 +1687,54 @@ class HttpEndpointTest {
               ),
               "requiredCapabilities" to array(),
               "submissionId" to sid,
-              "status" to ProcessChainStatus.REGISTERED.toString(),
-              "totalRuns" to 0
+              "status" to expectedStatus.toString(),
+              "totalRuns" to existingRuns.size
           )
         })
       }
 
       ctx.completeNow()
     }
+  }
+
+  /**
+   * Test that the endpoint does not return a run if the process chain is still
+   * REGISTERED and no run has been performed yet
+   */
+  @Test
+  fun getProcessChainRunRegistered(vertx: Vertx, ctx: VertxTestContext) {
+    doGetProcessChainRunNoRunWithStatus(vertx, ctx, ProcessChainStatus.REGISTERED)
+  }
+
+  /**
+   * Test that the endpoint does not return a run if the process chain has been
+   * reset to REGISTERED after a run was performed
+   */
+  @Test
+  fun getProcessChainRunRegisteredAfterRun(vertx: Vertx, ctx: VertxTestContext) {
+    doGetProcessChainRunNoRunWithStatus(vertx, ctx, ProcessChainStatus.REGISTERED,
+        listOf(Run(Instant.now().minusMillis(1000), Instant.now(),
+            ProcessChainStatus.SUCCESS)))
+  }
+
+  /**
+   * Test that the endpoint does not return a run if the process chain has been
+   * PAUSED right at the beginning before any run could be performed
+   */
+  @Test
+  fun getProcessChainRunPaused(vertx: Vertx, ctx: VertxTestContext) {
+    doGetProcessChainRunNoRunWithStatus(vertx, ctx, ProcessChainStatus.PAUSED)
+  }
+
+  /**
+   * Test that the endpoint does not return a run if the process chain has been
+   * PAUSED after a run was be performed
+   */
+  @Test
+  fun getProcessChainRunPausedAfterRun(vertx: Vertx, ctx: VertxTestContext) {
+    doGetProcessChainRunNoRunWithStatus(vertx, ctx, ProcessChainStatus.PAUSED,
+        listOf(Run(Instant.now().minusMillis(1000), Instant.now(),
+            ProcessChainStatus.SUCCESS)))
   }
 
   /**

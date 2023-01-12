@@ -1476,7 +1476,8 @@ class HttpEndpoint : CoroutineVerticle() {
         ?: submissionRegistry.getProcessChainStatus(id)
     processChain.put("status", status.toString())
 
-    if (status != SubmissionRegistry.ProcessChainStatus.REGISTERED) {
+    if (status != SubmissionRegistry.ProcessChainStatus.REGISTERED &&
+        status != SubmissionRegistry.ProcessChainStatus.PAUSED) {
       val r = run.get()
       if (r?.startTime != null) {
         processChain.put("startTime", r.startTime)
@@ -1502,9 +1503,13 @@ class HttpEndpoint : CoroutineVerticle() {
 
       val totalRuns = submissionRegistry.countProcessChainRuns(id)
       processChain.put("totalRuns", totalRuns)
-      val actualRunNumber = runNumber ?: totalRuns
-      if (actualRunNumber > 0L) {
-        processChain.put("runNumber", actualRunNumber)
+      if (runNumber != null) {
+        processChain.put("runNumber", runNumber)
+      } else if (totalRuns > 0L &&
+          status != SubmissionRegistry.ProcessChainStatus.REGISTERED &&
+          status != SubmissionRegistry.ProcessChainStatus.PAUSED) {
+        // registered and paused process chains do not have a current run number
+        processChain.put("runNumber", totalRuns)
       }
     }
 
