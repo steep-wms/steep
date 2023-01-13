@@ -4,6 +4,7 @@ import Label from "./Label"
 import ListItemProgressBox from "./ListItemProgressBox"
 import Tooltip from "./Tooltip"
 import Link from "next/link"
+import { Fragment } from "react"
 import { formatDistanceToNow } from "date-fns"
 import { formatDate, formatDuration, formatDurationTitle } from "./lib/date-time-utils"
 import resolvedStyles from "./ListItem.scss?type=resolve"
@@ -67,7 +68,7 @@ const ListItem = ({ title, linkHref, linkAs, subtitle, deleted = false, justAdde
       <div className="list-item-left">
         <div className="list-item-title">
           {titleLink}{labels.length > 0 && <>&ensp;</>}
-          {labels.map((l, i) => <><Label key={i} small>{l}</Label><wbr/></>)}
+          {labels.map((l, i) => <Fragment key={i}><Label small>{l}</Label><wbr/></Fragment>)}
         </div>
         <div className="list-item-subtitle">{subtitle || defaultSubtitle}</div>
       </div>
