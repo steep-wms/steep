@@ -1737,6 +1737,71 @@ class HttpEndpointTest {
             ProcessChainStatus.SUCCESS)))
   }
 
+  @Test
+  fun onGetProcessChainRuns(vertx: Vertx, ctx: VertxTestContext) {
+    val pc1id = UniqueID.next()
+
+    val startTime1 = Instant.now().minusMillis(6000)
+    val endTime1 = Instant.now().minusMillis(5000)
+    val startTime2 = Instant.now().minusMillis(4000)
+    val endTime2 = Instant.now().minusMillis(3000)
+    val error1 = "error1"
+    val run1 = Run(
+        startTime = startTime1,
+        endTime = endTime1,
+        status = ProcessChainStatus.ERROR,
+        errorMessage = error1,
+        autoResumeAfter = startTime2)
+    val run2 = Run(
+        startTime = startTime2,
+        endTime = endTime2,
+        status = ProcessChainStatus.SUCCESS
+    )
+
+    coEvery { submissionRegistry.getProcessChainRuns(pc1id) } returns listOf(run1, run2)
+    coEvery { submissionRegistry.getProcessChainRuns(not(pc1id)) } throws
+        NoSuchElementException()
+
+    val client = WebClient.create(vertx)
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        val wrongId = "${pc1id}_doesnotexist"
+        val r = client.get(port, "localhost", "/processchains/$wrongId/runs")
+            .`as`(BodyCodec.string())
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .send()
+            .await()
+            .body()
+        assertThat(r).isEqualTo("There is no process chain with ID `$wrongId'")
+      }
+
+      ctx.coVerify {
+        val runs = client.get(port, "localhost", "/processchains/${pc1id}/runs")
+            .`as`(BodyCodec.jsonArray())
+            .expect(ResponsePredicate.SC_OK)
+            .send()
+            .await()
+            .body()
+        assertThat(runs).isEqualTo(jsonArrayOf(
+            jsonObjectOf(
+                "startTime" to startTime1,
+                "endTime" to endTime1,
+                "status" to "ERROR",
+                "errorMessage" to error1,
+                "autoResumeAfter" to startTime2
+            ),
+            jsonObjectOf(
+                "startTime" to startTime2,
+                "endTime" to endTime2,
+                "status" to "SUCCESS"
+            )
+        ))
+      }
+
+      ctx.completeNow()
+    }
+  }
+
   /**
    * Test if process chains can be updated
    */

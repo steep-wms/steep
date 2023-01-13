@@ -241,9 +241,16 @@ class HttpEndpoint : CoroutineVerticle() {
         .produces("text/html")
         .handler(this::onGetProcessChainById)
 
+    router.get("/processchains/:id/runs/?")
+        .handler(bodyHandler)
+        .produces("application/json")
+        .produces("text/html")
+        .handler(this::onGetProcessChainRuns)
+
     router.get("/processchains/:id/runs/:runNumber/?")
         .handler(bodyHandler)
         .produces("application/json")
+        .produces("text/html")
         .handler(this::onGetProcessChainById)
 
     router.put("/processchains/:id/?")
@@ -1616,6 +1623,41 @@ class HttpEndpoint : CoroutineVerticle() {
               .putHeader("content-type", "application/json")
               .end(json.encode())
         }
+      }
+    }
+  }
+
+  /**
+   * Get a list of process chain runs
+   * @param ctx the routing context
+   */
+  private fun onGetProcessChainRuns(ctx: RoutingContext) {
+    if (prefersHtml(ctx)) {
+      val request = ctx.request()
+      val response = ctx.response()
+      response.statusCode = 301
+      var location = request.path()
+          .removeSuffix("/")
+          .removeSuffix("/runs")
+      if (request.query() != null) {
+        location += "?${request.query()}"
+      }
+      response.putHeader("location", location)
+      response.end()
+    } else {
+      launch {
+        val id = ctx.pathParam("id")
+        val runs = try {
+          submissionRegistry.getProcessChainRuns(id)
+        } catch (e: NoSuchElementException) {
+          renderError(ctx, 404, "There is no process chain with ID `$id'")
+          return@launch
+        }
+
+        val json = JsonArray(runs.map { JsonUtils.toJson(it) })
+        ctx.response()
+            .putHeader("content-type", "application/json")
+            .end(json.encode())
       }
     }
   }
