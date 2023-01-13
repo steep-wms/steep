@@ -68,8 +68,13 @@ const config = {
     config.plugins.forEach((i) => {
       if (i instanceof webpack.DefinePlugin) {
         if (i.definitions["process.env.__NEXT_ROUTER_BASEPATH"]) {
-          i.definitions["process.env.__NEXT_ROUTER_BASEPATH"] =
-            "(function () { return \"/$$MYBASEPATH$$\" })()"
+          let f
+          if (isProd) {
+            f = "(function () { return \"/$$MYBASEPATH$$\" })()"
+          } else {
+            f = "(function () { return \"\" })()"
+          }
+          i.definitions["process.env.__NEXT_ROUTER_BASEPATH"] = f
         }
       }
     })
