@@ -1672,7 +1672,7 @@ class HttpEndpointTest {
             .send()
             .await()
 
-        assertThat(response.body()).isEqualTo(json {
+        val expectedResponse = json {
           obj(
               "id" to pc1.id,
               "executables" to array(
@@ -1690,7 +1690,13 @@ class HttpEndpointTest {
               "status" to expectedStatus.toString(),
               "totalRuns" to existingRuns.size
           )
-        })
+        }
+        if (expectedStatus == ProcessChainStatus.PAUSED &&
+            existingRuns.lastOrNull()?.autoResumeAfter != null) {
+          expectedResponse.put("autoResumeAfter", existingRuns.last().autoResumeAfter)
+        }
+
+        assertThat(response.body()).isEqualTo(expectedResponse)
       }
 
       ctx.completeNow()
@@ -1733,8 +1739,12 @@ class HttpEndpointTest {
   @Test
   fun getProcessChainRunPausedAfterRun(vertx: Vertx, ctx: VertxTestContext) {
     doGetProcessChainRunNoRunWithStatus(vertx, ctx, ProcessChainStatus.PAUSED,
-        listOf(Run(Instant.now().minusMillis(1000), Instant.now(),
-            ProcessChainStatus.SUCCESS)))
+        listOf(Run(
+            startTime = Instant.now().minusMillis(1000),
+            endTime = Instant.now(),
+            status = ProcessChainStatus.SUCCESS,
+            autoResumeAfter = Instant.now().plusMillis(1000)
+        )))
   }
 
   @Test

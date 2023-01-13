@@ -1520,6 +1520,13 @@ class HttpEndpoint : CoroutineVerticle() {
       }
     }
 
+    if (status == SubmissionRegistry.ProcessChainStatus.PAUSED) {
+      val r = run.get()
+      if (r?.autoResumeAfter != null) {
+        processChain.put("autoResumeAfter", r.autoResumeAfter)
+      }
+    }
+
     if (status == SubmissionRegistry.ProcessChainStatus.RUNNING) {
       val response = try {
         vertx.eventBus().request<Double?>(LOCAL_AGENT_ADDRESS_PREFIX + id, json {
