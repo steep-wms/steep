@@ -1520,7 +1520,7 @@ class HttpEndpoint : CoroutineVerticle() {
       }
     }
 
-    if (status == SubmissionRegistry.ProcessChainStatus.PAUSED) {
+    if (status == SubmissionRegistry.ProcessChainStatus.PAUSED || runNumber != null) {
       val r = run.get()
       if (r?.autoResumeAfter != null) {
         processChain.put("autoResumeAfter", r.autoResumeAfter)

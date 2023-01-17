@@ -1472,10 +1472,11 @@ class HttpEndpointTest {
 
     val startTime1 = Instant.now().minusMillis(6000)
     val endTime1 = Instant.now().minusMillis(5000)
-    val error1 = "run1"
-    val run1 = Run(startTime1, endTime1, ProcessChainStatus.ERROR, error1)
     val startTime2 = Instant.now().minusMillis(4000)
     val endTime2 = Instant.now().minusMillis(3000)
+    val error1 = "run1"
+    val run1 = Run(startTime1, endTime1, ProcessChainStatus.ERROR, error1,
+        autoResumeAfter = startTime2)
     val run2 = if (running) {
       Run(startTime2)
     } else {
@@ -1605,7 +1606,8 @@ class HttpEndpointTest {
               "startTime" to startTime1,
               "endTime" to endTime1,
               "totalRuns" to 2,
-              "runNumber" to 1
+              "runNumber" to 1,
+              "autoResumeAfter" to startTime2
           )
         })
       }
