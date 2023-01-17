@@ -1461,43 +1461,35 @@ class HttpEndpoint : CoroutineVerticle() {
 
     val id = processChain.getString("id")
 
-    val run = object {
-      private var loaded: Boolean = false
-      private var r: Run? = null
-
-      suspend fun get(): Run? {
-        if (!loaded) {
-          r = if (runNumber == null) {
-            submissionRegistry.getLastProcessChainRun(id)
-          } else {
-            submissionRegistry.getProcessChainRun(id, runNumber)
-                ?: throw NoSuchElementException("There is no run $runNumber")
-          }
-          loaded = true
-        }
-        return r
+    val processChainStatus = submissionRegistry.getProcessChainStatus(id)
+    val run = if (runNumber != null) {
+      submissionRegistry.getProcessChainRun(id, runNumber)
+          ?: throw NoSuchElementException("There is no run $runNumber")
+    } else {
+      val lastRun = submissionRegistry.getLastProcessChainRun(id)
+      if (lastRun == null ||
+          processChainStatus == SubmissionRegistry.ProcessChainStatus.REGISTERED ||
+          processChainStatus == SubmissionRegistry.ProcessChainStatus.PAUSED) {
+        null
+      } else if (processChainStatus == SubmissionRegistry.ProcessChainStatus.CANCELLED &&
+          processChainStatus != lastRun.status) {
+        // 'processChainStatus' will not be equal to 'lastRun.status' if the
+        // process chain was cancelled while it had the status REGISTERED or PAUSED.
+        // In this case, we should not return information about the last run.
+        null
+      } else {
+        lastRun
       }
     }
 
-    val status = (if (runNumber != null) run.get()?.status else null)
-        ?: submissionRegistry.getProcessChainStatus(id)
+    val status = run?.status ?: processChainStatus
     processChain.put("status", status.toString())
 
-    if (status != SubmissionRegistry.ProcessChainStatus.REGISTERED &&
-        status != SubmissionRegistry.ProcessChainStatus.PAUSED) {
-      val r = run.get()
-      if (r?.startTime != null) {
-        processChain.put("startTime", r.startTime)
-      }
+    if (run?.startTime != null) {
+      processChain.put("startTime", run.startTime)
     }
-
-    if (status == SubmissionRegistry.ProcessChainStatus.SUCCESS ||
-        status == SubmissionRegistry.ProcessChainStatus.ERROR ||
-        status == SubmissionRegistry.ProcessChainStatus.CANCELLED) {
-      val r = run.get()
-      if (r?.endTime != null) {
-        processChain.put("endTime", r.endTime)
-      }
+    if (run?.endTime != null) {
+      processChain.put("endTime", run.endTime)
     }
 
     if (includeDetails) {
@@ -1510,20 +1502,22 @@ class HttpEndpoint : CoroutineVerticle() {
 
       val totalRuns = submissionRegistry.countProcessChainRuns(id)
       processChain.put("totalRuns", totalRuns)
+
       if (runNumber != null) {
         processChain.put("runNumber", runNumber)
-      } else if (totalRuns > 0L &&
-          status != SubmissionRegistry.ProcessChainStatus.REGISTERED &&
-          status != SubmissionRegistry.ProcessChainStatus.PAUSED) {
-        // registered and paused process chains do not have a current run number
+      } else if (run != null) {
         processChain.put("runNumber", totalRuns)
       }
-    }
 
-    if (status == SubmissionRegistry.ProcessChainStatus.PAUSED || runNumber != null) {
-      val r = run.get()
-      if (r?.autoResumeAfter != null) {
-        processChain.put("autoResumeAfter", r.autoResumeAfter)
+      if (run?.autoResumeAfter != null) {
+        processChain.put("autoResumeAfter", run.autoResumeAfter)
+      } else if (status == SubmissionRegistry.ProcessChainStatus.PAUSED &&
+          run == null) {
+        // always include 'autoResumeAfter' if process chain is PAUSED
+        val lastRun = submissionRegistry.getLastProcessChainRun(id)
+        if (lastRun?.autoResumeAfter != null) {
+          processChain.put("autoResumeAfter", lastRun.autoResumeAfter)
+        }
       }
     }
 
@@ -1541,9 +1535,8 @@ class HttpEndpoint : CoroutineVerticle() {
         processChain.put("estimatedProgress", response.body())
       }
     } else if (status == SubmissionRegistry.ProcessChainStatus.ERROR) {
-      val r = run.get()
-      if (r?.errorMessage != null) {
-        processChain.put("errorMessage", r.errorMessage)
+      if (run?.errorMessage != null) {
+        processChain.put("errorMessage", run.errorMessage)
       }
     }
   }

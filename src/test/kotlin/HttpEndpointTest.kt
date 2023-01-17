@@ -1825,12 +1825,14 @@ class HttpEndpointTest {
     val pc3 = ProcessChain()
     val pc4 = ProcessChain()
     val pc5 = ProcessChain()
+    val pc6 = ProcessChain()
 
     coEvery { submissionRegistry.findProcessChainById(pc1.id) } returns pc1
     coEvery { submissionRegistry.findProcessChainById(pc2.id) } returns pc2
     coEvery { submissionRegistry.findProcessChainById(pc3.id) } returns pc3
     coEvery { submissionRegistry.findProcessChainById(pc4.id) } returns pc4
     coEvery { submissionRegistry.findProcessChainById(pc5.id) } returns pc5
+    coEvery { submissionRegistry.findProcessChainById(pc6.id) } returns pc6
     coEvery { submissionRegistry.findProcessChainById("UNKNOWN") } returns null
 
     coEvery { submissionRegistry.getProcessChainSubmissionId(pc1.id) } returns sid
@@ -1838,14 +1840,19 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainSubmissionId(pc3.id) } returns sid
     coEvery { submissionRegistry.getProcessChainSubmissionId(pc4.id) } returns sid
     coEvery { submissionRegistry.getProcessChainSubmissionId(pc5.id) } returns sid
+    coEvery { submissionRegistry.getProcessChainSubmissionId(pc6.id) } returns sid
 
     val startTime = Instant.now()
     val endTime = Instant.now().plusMillis(120)
-    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns Run(startTime, endTime)
+    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns
+        Run(startTime, endTime, ProcessChainStatus.SUCCESS)
     coEvery { submissionRegistry.getLastProcessChainRun(pc2.id) } returns Run(startTime)
     coEvery { submissionRegistry.getLastProcessChainRun(pc3.id) } returns null
     coEvery { submissionRegistry.getLastProcessChainRun(pc4.id) } returns null
-    coEvery { submissionRegistry.getLastProcessChainRun(pc5.id) } returns Run(startTime, endTime)
+    coEvery { submissionRegistry.getLastProcessChainRun(pc5.id) } returns
+        Run(startTime, endTime, ProcessChainStatus.ERROR)
+    coEvery { submissionRegistry.getLastProcessChainRun(pc6.id) } returns
+        Run(startTime, endTime, ProcessChainStatus.CANCELLED)
 
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
@@ -2009,15 +2016,37 @@ class HttpEndpointTest {
               "id" to pc5.id,
               "requiredCapabilities" to array(),
               "submissionId" to sid,
-              "status" to ProcessChainStatus.CANCELLED.toString(),
-              "startTime" to startTime,
-              "endTime" to endTime
+              "status" to ProcessChainStatus.CANCELLED.toString()
           )
         })
 
         coVerify(exactly = 1) {
           submissionRegistry.setProcessChainStatus(pc5.id,
               ProcessChainStatus.PAUSED, ProcessChainStatus.CANCELLED)
+        }
+
+        coEvery { submissionRegistry.getProcessChainStatus(pc6.id) } returns
+            ProcessChainStatus.CANCELLED
+        val response6 = client.put(port, "localhost", "/processchains/${pc6.id}")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .sendJsonObject(cancelledBody)
+            .await()
+
+        assertThat(response6.body()).isEqualTo(json {
+          obj(
+              "id" to pc6.id,
+              "requiredCapabilities" to array(),
+              "submissionId" to sid,
+              "status" to ProcessChainStatus.CANCELLED.toString(),
+              "startTime" to startTime,
+              "endTime" to endTime
+          )
+        })
+
+        coVerify(exactly = 0) {
+          submissionRegistry.setProcessChainStatus(pc6.id, any(),
+              ProcessChainStatus.CANCELLED)
         }
 
         // set process chain priority
