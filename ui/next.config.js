@@ -48,6 +48,7 @@ const config = {
       "/plugins/[name].html": { page: "/plugins/[name]" },
       "/processchains": { page: "/processchains" },
       "/processchains/[id].html": { page: "/processchains/[id]" },
+      "/processchains/[id].html/runs/[runNumber].html": { page: "/processchains/[id]/runs/[runNumber]" },
       "/search": { page: "/search" },
       "/services": { page: "/services" },
       "/services/[id].html": { page: "/services/[id]" },

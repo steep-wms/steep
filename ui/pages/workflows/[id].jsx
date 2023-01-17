@@ -182,8 +182,16 @@ function WorkflowDetails({ id }) {
     </>)
   }
 
+  let menus = []
+  if (menu !== undefined) {
+    menus.push({
+      title: "Actions",
+      menu
+    })
+  }
+
   return (
-    <DetailPage breadcrumbs={breadcrumbs} title={title} menu={menu} deleted={deleted}>
+    <DetailPage breadcrumbs={breadcrumbs} title={title} menus={menus} deleted={deleted}>
       {workflow}
       {error}
       <CancelModal isOpen={cancelModalOpen} contentLabel="Cancel modal"

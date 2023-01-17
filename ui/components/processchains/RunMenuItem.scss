@@ -1,0 +1,63 @@
+@import "css/variables";
+
+.run-menu-item ~ .run-menu-item {
+  border-top: 1px solid var(--gray-400);
+
+  :global([data-theme="dark"]) & {
+    border-top: 1px solid var(--gray-100);
+  }
+}
+
+.run-menu-item:first-child {
+  .run-menu-item-item {
+    padding-bottom: $spacer * 0.35;
+  }
+}
+
+.run-menu-item:not(:first-child):not(:last-child) {
+  .run-menu-item-item {
+    padding-top: $spacer * 0.35;
+    padding-bottom: $spacer * 0.35;
+  }
+}
+
+.run-menu-item:last-child {
+  .run-menu-item-item {
+    padding-top: $spacer * 0.35;
+  }
+}
+
+.run-menu-item-content {
+  display: grid;
+  grid-template-columns: 1.25em 1fr;
+  align-items: center;
+  column-gap: 6px;
+}
+
+.title, .status {
+  grid-column-start: 2;
+}
+
+.title {
+  font-weight: 400;
+}
+
+.status {
+  font-size: $font-size-sm;
+
+  &.running :global(svg), &.paused :global(svg) {
+    stroke: var(--gray-600);
+  }
+
+  &.cancelled :global(svg) {
+    stroke: var(--gray-500);
+  }
+
+  &.success :global(svg) {
+    stroke: var(--success);
+  }
+
+  &.error :global(svg) {
+    stroke: var(--error);
+  }
+}

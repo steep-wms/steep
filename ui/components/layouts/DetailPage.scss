@@ -63,4 +63,6 @@
 
 .drop-down-container {
   margin-top: 2rem;
+  display: flex;
+  gap: $spacer * 0.5;
 }

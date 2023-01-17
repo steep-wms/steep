@@ -1594,13 +1594,17 @@ class HttpEndpoint : CoroutineVerticle() {
    * @param ctx the routing context
    */
   private fun onGetProcessChainById(ctx: RoutingContext) {
+    val strRunNumber: String? = ctx.pathParam("runNumber")
     if (prefersHtml(ctx)) {
-      renderAsset("ui/processchains/[id].html/index.html", ctx.response())
+      if (strRunNumber == null) {
+        renderAsset("ui/processchains/[id].html/index.html", ctx.response())
+      } else {
+        renderAsset("ui/processchains/[id].html/runs/[runNumber].html/index.html", ctx.response())
+      }
     } else {
       launch {
         val id = ctx.pathParam("id")
 
-        val strRunNumber: String? = ctx.pathParam("runNumber")
         val runNumber = strRunNumber?.toLongOrNull()
         if (strRunNumber != null && runNumber == null) {
           renderError(ctx, 400, "Invalid run number `$strRunNumber'")

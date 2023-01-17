@@ -24,7 +24,10 @@ const ProcessChainLogs = () => {
   )
 
   return (
-    <DetailPage breadcrumbs={breadcrumbs} title={id} footerNoTopMargin={true} menu={menu}>
+    <DetailPage breadcrumbs={breadcrumbs} title={id} footerNoTopMargin={true} menus={[{
+      title: "Actions",
+      menu
+    }]}>
       <div className="log-container">
         <ProcessChainLog id={id} />
       </div>

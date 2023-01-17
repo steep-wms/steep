@@ -1,29 +1,30 @@
-import DetailPage from "../../components/layouts/DetailPage"
+import DetailPage from "../layouts/DetailPage"
 import Link from "next/link"
-import { useRouter } from "next/router"
 import { useContext, useEffect, useState } from "react"
-import Alert from "../../components/Alert"
-import CancelModal from "../../components/CancelModal"
-import CollapseButton from "../../components/CollapseButton"
-import CodeBox from "../../components/CodeBox"
-import DefinitionList from "../../components/DefinitionList"
-import DefinitionListItem from "../../components/DefinitionListItem"
-import EventBusContext from "../../components/lib/EventBusContext"
-import { LOGS_PROCESSCHAINS_PREFIX } from "../../components/lib/EventBusMessages"
-import Label from "../../components/Label"
-import ListItemProgressBox from "../../components/ListItemProgressBox"
-import LiveDuration from "../../components/LiveDuration"
-import Priority from "../../components/Priority"
-import ProcessChainContext from "../../components/processchains/ProcessChainContext"
-import ProcessChainLog from "../../components/ProcessChainLog"
-import Tooltip from "../../components/Tooltip"
-import { formatDate, formatDurationTitle } from "../../components/lib/date-time-utils"
-import fetcher from "../../components/lib/json-fetcher"
+import Alert from "../Alert"
+import CancelModal from "../CancelModal"
+import CollapseButton from "../CollapseButton"
+import CodeBox from "../CodeBox"
+import DefinitionList from "../DefinitionList"
+import DefinitionListItem from "../DefinitionListItem"
+import EventBusContext from "../lib/EventBusContext"
+import { LOGS_PROCESSCHAINS_PREFIX } from "../lib/EventBusMessages"
+import Label from "../Label"
+import ListItemProgressBox from "../ListItemProgressBox"
+import LiveDuration from "../LiveDuration"
+import Priority from "../Priority"
+import ProcessChainContext from "../processchains/ProcessChainContext"
+import ProcessChainLog from "../ProcessChainLog"
+import RunMenuItem from "../processchains/RunMenuItem"
+import Tooltip from "../Tooltip"
+import { formatDate, formatDurationTitle } from "../lib/date-time-utils"
+import fetcher from "../lib/json-fetcher"
+import useSWRImmutable from "swr/immutable"
 import EventBus from "@vertx/eventbus-bridge-client.js"
 import classNames from "classnames"
-import styles from "./[id].scss"
+import styles from "./ProcessChainDetails.scss"
 
-function ProcessChainDetails({ id }) {
+const ProcessChainDetails = ({ id, runNumber = undefined }) => {
   const processChains = useContext(ProcessChainContext.Items)
   const updateProcessChains = useContext(ProcessChainContext.UpdateItems)
   const eventBus = useContext(EventBusContext)
@@ -33,14 +34,37 @@ function ProcessChainDetails({ id }) {
   const [logCollapsed, setLogCollapsed] = useState()
   const [logError, setLogError] = useState()
   const [waitForLog, setWaitForLog] = useState(false)
+  const totalRuns = processChains.items?.[0]?.totalRuns
+  const { data: runs } = useSWRImmutable(
+    () => totalRuns !== undefined ?
+      [
+        `${process.env.baseUrl}/processchains/${id}/runs`,
+        totalRuns,
+        processChains.items?.[0]?.status,
+        processChains.items?.[1]?.status
+      ] : null,
+    ([url]) => fetcher(url)
+  )
 
   useEffect(() => {
     if (!id) {
       return
     }
 
-    fetcher(`${process.env.baseUrl}/processchains/${id}`)
-      .then(pc => updateProcessChains({ action: "set", items: [pc] }))
+    let url = `${process.env.baseUrl}/processchains/${id}`
+
+    // if runNumber equals undefined, processChains.items[0] contains information
+    // about the process chain. If runNumber is defined, processChains.items[0]
+    // contains information about the respective run and processChains.items[1]
+    // contains information about the process chain itself.
+    let promises = []
+    if (runNumber !== undefined) {
+      promises.push(fetcher(url + `/runs/${runNumber}`))
+    }
+    promises.push(fetcher(url))
+
+    Promise.all(promises)
+      .then(pcs => updateProcessChains({ action: "set", items: pcs }))
       .catch(err => {
         console.log(err)
         setError(<Alert error>Could not load process chain</Alert>)
@@ -54,7 +78,7 @@ function ProcessChainDetails({ id }) {
         setLogAvailable(false)
         setWaitForLog(true)
       })
-  }, [id, updateProcessChains])
+  }, [id, updateProcessChains, runNumber])
 
   useEffect(() => {
     let processChainLogConsumerAddress = LOGS_PROCESSCHAINS_PREFIX + id
@@ -231,8 +255,66 @@ function ProcessChainDetails({ id }) {
     </>)
   }
 
+  let runsMenu
+  let runsMenuTitle = "Runs"
+  if (
+    processChains.items !== undefined &&
+    processChains.items.length > 0 &&
+    runs !== undefined &&
+    runs.length > 0 &&
+    !(
+      totalRuns === 1 &&
+      runNumber === undefined &&
+      (processChains.items[0].status === "RUNNING" ||
+      processChains.items[0].status === runs[0].status)
+    )
+  ) {
+    let actualRunNumber = processChains.items[0].runNumber
+    if (actualRunNumber !== undefined) {
+      runsMenuTitle = `Run #${actualRunNumber}`
+    }
+
+    let latestRunNumber = processChains.items.length > 1 ?
+      processChains.items[1].runNumber : actualRunNumber
+
+    let menuItems = []
+    let latestRun
+    for (let i = runs.length; i > 0; --i) {
+      let run = runs[i - 1]
+      let isLatest = i === latestRunNumber
+      if (isLatest) {
+        latestRun = run
+      }
+      let enabled = (runNumber === undefined && isLatest) || (runNumber === i)
+      menuItems.push(<RunMenuItem processChainId={id} runNumber={i} run={run}
+        isLatest={isLatest} key={`run-${i}`} enabled={enabled} />)
+    }
+
+    if (latestRun === undefined) {
+      menuItems.unshift(<RunMenuItem processChainId={id} key="run-0"
+        run={processChains.items[1] ?? processChains.items[0]}
+        enabled={runNumber === undefined} />)
+    }
+
+    runsMenu = <ul>{menuItems}</ul>
+  }
+
+  let menus = []
+  if (runsMenu !== undefined) {
+    menus.push({
+      title: runsMenuTitle,
+      menu: runsMenu
+    })
+  }
+  if (menu !== undefined) {
+    menus.push({
+      title: "Actions",
+      menu
+    })
+  }
+
   return (
-    <DetailPage breadcrumbs={breadcrumbs} title={title} menu={menu} deleted={deleted}>
+    <DetailPage breadcrumbs={breadcrumbs} title={title} menus={menus} deleted={deleted}>
       {processchain}
       {error}
       <CancelModal isOpen={cancelModalOpen} contentLabel="Cancel modal"
@@ -244,15 +326,4 @@ function ProcessChainDetails({ id }) {
   )
 }
 
-const ProcessChain = () => {
-  const router = useRouter()
-  const { id } = router.query
-
-  return (
-    <ProcessChainContext.Provider pageSize={1} allowAdd={false}>
-      <ProcessChainDetails id={id} />
-    </ProcessChainContext.Provider>
-  )
-}
-
-export default ProcessChain
+export default ProcessChainDetails
