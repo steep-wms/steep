@@ -19,7 +19,6 @@ import RunMenuItem from "../processchains/RunMenuItem"
 import Tooltip from "../Tooltip"
 import { formatDate, formatDurationTitle } from "../lib/date-time-utils"
 import fetcher from "../lib/json-fetcher"
-import useSWRImmutable from "swr/immutable"
 import EventBus from "@vertx/eventbus-bridge-client.js"
 import classNames from "classnames"
 import styles from "./ProcessChainDetails.scss"
@@ -34,37 +33,60 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
   const [logCollapsed, setLogCollapsed] = useState()
   const [logError, setLogError] = useState()
   const [waitForLog, setWaitForLog] = useState(false)
-  const totalRuns = processChains.items?.[0]?.totalRuns
-  const { data: runs } = useSWRImmutable(
-    () => totalRuns !== undefined ?
-      [
-        `${process.env.baseUrl}/processchains/${id}/runs`,
-        totalRuns,
-        processChains.items?.[0]?.status,
-        processChains.items?.[1]?.status
-      ] : null,
-    ([url]) => fetcher(url)
-  )
+  const [runToShow, setRunToShow] = useState(runNumber)
 
   useEffect(() => {
     if (!id) {
       return
     }
 
-    let url = `${process.env.baseUrl}/processchains/${id}`
-
-    // if runNumber equals undefined, processChains.items[0] contains information
-    // about the process chain. If runNumber is defined, processChains.items[0]
-    // contains information about the respective run and processChains.items[1]
-    // contains information about the process chain itself.
     let promises = []
-    if (runNumber !== undefined) {
-      promises.push(fetcher(url + `/runs/${runNumber}`))
-    }
+    let url = `${process.env.baseUrl}/processchains/${id}`
     promises.push(fetcher(url))
+    promises.push(fetcher(`${url}/runs`))
 
     Promise.all(promises)
-      .then(pcs => updateProcessChains({ action: "set", items: pcs }))
+      .then(([pc, runs]) => {
+        let pcs = []
+        let i = 1
+        let totalRuns = runs.length
+        for (let run of runs) {
+          // create a copy of the main process chain
+          let npc = { ...pc }
+
+          // remove all attributes related to runs
+          delete npc.startTime
+          delete npc.endTime
+          delete npc.status
+          delete npc.errorMessage
+          delete npc.autoResumeAfter
+          delete npc.runNumber
+          delete npc.totalRuns
+
+          // add attributes from run
+          npc = { ...npc, ...run, runNumber: i, totalRuns }
+
+          pcs.push(npc)
+
+          ++i
+        }
+
+        // add artificial 'current' run if necessary
+        if (runs.length === 0 || pc.status === "REGISTERED" || pc.status === "PAUSED" ||
+          (pc.status === "CANCELLED" && pc.status !== runs[runs.length - 1].status)) {
+          let npc = { ...pc }
+          npc.totalRuns = runs.length
+          pcs.push(npc)
+        }
+
+        updateProcessChains({ action: "set", items: pcs })
+
+        if (runNumber === undefined) {
+          setRunToShow(pcs.length)
+        } else {
+          setRunToShow(runNumber)
+        }
+      })
       .catch(err => {
         console.log(err)
         setError(<Alert error>Could not load process chain</Alert>)
@@ -144,8 +166,8 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
   let menu
   let deleted
 
-  if (processChains.items !== undefined && processChains.items.length > 0) {
-    let pc = processChains.items[0]
+  if (processChains.items !== undefined && processChains.items.length >= runToShow) {
+    let pc = processChains.items[runToShow - 1]
     title = pc.id
     breadcrumbs = [
       <Link href="/workflows" key="workflows">Workflows</Link>,
@@ -257,43 +279,21 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
 
   let runsMenu
   let runsMenuTitle = "Runs"
-  if (
-    processChains.items !== undefined &&
-    processChains.items.length > 0 &&
-    runs !== undefined &&
-    runs.length > 0 &&
-    !(
-      totalRuns === 1 &&
-      runNumber === undefined &&
-      (processChains.items[0].status === "RUNNING" ||
-      processChains.items[0].status === runs[0].status)
-    )
-  ) {
-    let actualRunNumber = processChains.items[0].runNumber
-    if (actualRunNumber !== undefined) {
-      runsMenuTitle = `Run #${actualRunNumber}`
+  if (processChains.items !== undefined &&
+      processChains.items.length > 1 &&
+      processChains.items.length >= runToShow) {
+    if (processChains.items[runToShow - 1].runNumber !== undefined) {
+      runsMenuTitle = `Run #${processChains.items[runToShow - 1].runNumber}`
     }
-
-    let latestRunNumber = processChains.items.length > 1 ?
-      processChains.items[1].runNumber : actualRunNumber
 
     let menuItems = []
-    let latestRun
-    for (let i = runs.length; i > 0; --i) {
-      let run = runs[i - 1]
-      let isLatest = i === latestRunNumber
-      if (isLatest) {
-        latestRun = run
-      }
-      let enabled = (runNumber === undefined && isLatest) || (runNumber === i)
-      menuItems.push(<RunMenuItem processChainId={id} runNumber={i} run={run}
-        isLatest={isLatest} key={`run-${i}`} enabled={enabled} />)
-    }
-
-    if (latestRun === undefined) {
-      menuItems.unshift(<RunMenuItem processChainId={id} key="run-0"
-        run={processChains.items[1] ?? processChains.items[0]}
-        enabled={runNumber === undefined} />)
+    for (let i = processChains.items.length - 1; i >= 0; --i) {
+      let run = processChains.items[i]
+      let enabled = runToShow === i + 1
+      menuItems.push(<RunMenuItem processChainId={id}
+        runNumber={run.runNumber} run={run}
+        isLatest={i === processChains.items.length - 1}
+        key={`run-${i}`} enabled={enabled} />)
     }
 
     runsMenu = <ul>{menuItems}</ul>
