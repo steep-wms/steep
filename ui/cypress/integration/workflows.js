@@ -185,7 +185,7 @@ describe("has table", () => {
     }
   })
 
-  it('shows "running" workflows', () => {
+  it("shows running workflows", () => {
     cy.get(".dropdown-btn").click()
     cy.get(".dropdown-menu > ul > :nth-child(3)").click()
     cy.wait(2000)

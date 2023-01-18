@@ -107,24 +107,27 @@ routes.forEach(route => {
     })
 
     it("can access home page", () => {
+      // prettier-ignore
       cy.get(".footer-content")
-        .find('[href="https://steep-wms.github.io/"]')
+        .find("[href=\"https://steep-wms.github.io/\"]")
         .should("be.visible")
         .invoke("attr", "href")
         .should("eq", "https://steep-wms.github.io/")
     })
 
     it("can access documentation", () => {
+      // prettier-ignore
       cy.get(".footer-content")
-        .find('[href="https://steep-wms.github.io/#documentation"]')
+        .find("[href=\"https://steep-wms.github.io/#documentation\"]")
         .should("be.visible")
         .invoke("attr", "href")
         .should("eq", "https://steep-wms.github.io/#documentation")
     })
 
     it("can access GitHub", () => {
+      // prettier-ignore
       cy.get(".footer-content")
-        .find('[href="https://github.com/steep-wms/steep"]')
+        .find("[href=\"https://github.com/steep-wms/steep\"]")
         .should("be.visible")
         .invoke("attr", "href")
         .should("eq", "https://github.com/steep-wms/steep")
