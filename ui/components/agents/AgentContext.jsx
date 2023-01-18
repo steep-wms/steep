@@ -1,4 +1,4 @@
-import ListContext from "../lib/ListContext"
+import makeListContext from "../lib/ListContext"
 import fetcher from "../lib/json-fetcher"
 
 import {
@@ -55,6 +55,8 @@ const UPDATE_MESSAGES = {
     stateChangedTime: new Date(body.stateChangedTime)
   })
 }
+
+const ListContext = makeListContext()
 
 const Provider = (props) => (
   <ListContext.Provider {...props} addMessages={ADD_MESSAGES}

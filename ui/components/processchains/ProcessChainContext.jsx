@@ -1,4 +1,4 @@
-import ListContext from "../lib/ListContext"
+import makeListContext from "../lib/ListContext"
 
 import {
   PROCESS_CHAINS_ADDED,
@@ -92,6 +92,8 @@ function reducer(state, { action, items }, next) {
 
   return next(state, { action, items })
 }
+
+const ListContext = makeListContext()
 
 const Provider = (props) => {
   let reducers = [...(props.reducers || []), reducer]

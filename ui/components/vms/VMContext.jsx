@@ -1,4 +1,4 @@
-import ListContext from "../lib/ListContext"
+import makeListContext from "../lib/ListContext"
 
 import {
   VM_ADDED,
@@ -50,6 +50,8 @@ const UPDATE_MESSAGES = {
     deleted: true
   }))
 }
+
+const ListContext = makeListContext()
 
 const Provider = (props) => (
   <ListContext.Provider {...props} addMessages={ADD_MESSAGES}

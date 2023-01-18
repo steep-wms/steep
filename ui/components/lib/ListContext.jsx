@@ -2,11 +2,6 @@ import EventBusContext from "./EventBusContext"
 import EventBus from "@vertx/eventbus-bridge-client.js"
 import { createContext, useContext, useEffect, useReducer } from "react"
 
-const Items = createContext()
-const UpdateItems = createContext()
-const AddedItems = createContext()
-const UpdateAddedItems = createContext()
-
 function defaultItemsReducer(state, { action = "unshift", items }, pageSize, shouldAddItem) {
   switch (action) {
     case "update": {
@@ -71,8 +66,8 @@ function updateItemsReducer(reducers, pageSize, shouldAddItem) {
   }
 }
 
-const Provider = ({ pageSize, allowAdd = true, shouldAddItem,
-    addMessages, updateMessages, reducers = [], children }) => {
+const ProviderInternal = ({ pageSize, allowAdd = true, shouldAddItem,
+    addMessages, updateMessages, reducers = [], children, Items, UpdateItems }) => {
   const [items, updateItems] = useReducer(updateItemsReducer(reducers, pageSize,
       shouldAddItem), { items: undefined, added: 0 })
   const eventBus = useContext(EventBusContext)
@@ -147,12 +142,19 @@ const Provider = ({ pageSize, allowAdd = true, shouldAddItem,
   )
 }
 
-const ListContext = {
-  Items,
-  UpdateItems,
-  AddedItems,
-  UpdateAddedItems,
-  Provider
+function makeListContext() {
+  const Items = createContext()
+  const UpdateItems = createContext()
+  const AddedItems = createContext()
+  const UpdateAddedItems = createContext()
+
+  return {
+    Items,
+    UpdateItems,
+    AddedItems,
+    UpdateAddedItems,
+    Provider: (props) => <ProviderInternal {...props} Items={Items} UpdateItems={UpdateItems} />
+  }
 }
 
-export default ListContext
+export default makeListContext

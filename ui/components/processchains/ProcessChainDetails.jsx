@@ -14,6 +14,7 @@ import ListItemProgressBox from "../ListItemProgressBox"
 import LiveDuration from "../LiveDuration"
 import Priority from "../Priority"
 import ProcessChainContext from "../processchains/ProcessChainContext"
+import ProcessChainRunContext from "../processchains/ProcessChainRunContext"
 import ProcessChainLog from "../ProcessChainLog"
 import RunMenuItem from "../processchains/RunMenuItem"
 import Tooltip from "../Tooltip"
@@ -25,7 +26,9 @@ import styles from "./ProcessChainDetails.scss"
 
 const ProcessChainDetails = ({ id, runNumber = undefined }) => {
   const processChains = useContext(ProcessChainContext.Items)
+  const runs = useContext(ProcessChainRunContext.Items)
   const updateProcessChains = useContext(ProcessChainContext.UpdateItems)
+  const updateProcessChainRuns = useContext(ProcessChainRunContext.UpdateItems)
   const eventBus = useContext(EventBusContext)
   const [error, setError] = useState()
   const [cancelModalOpen, setCancelModalOpen] = useState()
@@ -33,63 +36,55 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
   const [logCollapsed, setLogCollapsed] = useState()
   const [logError, setLogError] = useState()
   const [waitForLog, setWaitForLog] = useState(false)
-  const [runToShow, setRunToShow] = useState(runNumber)
+
+  let processChain
+  if (processChains.items !== undefined && processChains.items.length > 0) {
+    if (runNumber === undefined) {
+      processChain = processChains.items[0]
+    } else {
+      if (runs.items === undefined) {
+        processChain = undefined
+      } else if (runs.items.length === 0) {
+        processChain = processChains.items[0]
+      } else {
+        processChain = { ...processChains.items[0] }
+
+        // remove all attributes related to runs
+        delete processChain.startTime
+        delete processChain.endTime
+        delete processChain.status
+        delete processChain.errorMessage
+        delete processChain.autoResumeAfter
+        delete processChain.runNumber
+
+        // add attributes from run
+        let run = runs.items[runNumber - 1]
+        processChain = { ...processChain, ...run, runNumber }
+      }
+    }
+  } else {
+    processChain = undefined
+  }
 
   useEffect(() => {
     if (!id) {
       return
     }
 
-    let promises = []
     let url = `${process.env.baseUrl}/processchains/${id}`
-    promises.push(fetcher(url))
-    promises.push(fetcher(`${url}/runs`))
 
-    Promise.all(promises)
-      .then(([pc, runs]) => {
-        let pcs = []
-        let i = 1
-        let totalRuns = runs.length
-        for (let run of runs) {
-          // create a copy of the main process chain
-          let npc = { ...pc }
-
-          // remove all attributes related to runs
-          delete npc.startTime
-          delete npc.endTime
-          delete npc.status
-          delete npc.errorMessage
-          delete npc.autoResumeAfter
-          delete npc.runNumber
-          delete npc.totalRuns
-
-          // add attributes from run
-          npc = { ...npc, ...run, runNumber: i, totalRuns }
-
-          pcs.push(npc)
-
-          ++i
-        }
-
-        // add artificial 'current' run if necessary
-        if (runs.length === 0 || pc.status === "REGISTERED" || pc.status === "PAUSED" ||
-          (pc.status === "CANCELLED" && pc.status !== runs[runs.length - 1].status)) {
-          let npc = { ...pc }
-          npc.totalRuns = runs.length
-          pcs.push(npc)
-        }
-
-        updateProcessChains({ action: "set", items: pcs })
-
-        if (runNumber === undefined) {
-          setRunToShow(pcs.length)
-        } else {
-          setRunToShow(runNumber)
-        }
-      })
+    fetcher(url)
+      .then(pc => updateProcessChains({ action: "set", items: [pc] }))
       .catch(err => {
         console.log(err)
         setError(<Alert error>Could not load process chain</Alert>)
+      })
+
+    fetcher(`${url}/runs`)
+      .then(runs => updateProcessChainRuns({ action: "set", items: runs }))
+      .catch(err => {
+        console.log(err)
+        setError(<Alert error>Could not load process chain runs</Alert>)
       })
 
     // check if a log file is available
@@ -100,7 +95,7 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
         setLogAvailable(false)
         setWaitForLog(true)
       })
-  }, [id, updateProcessChains, runNumber])
+  }, [id, updateProcessChains, updateProcessChainRuns, runNumber])
 
   useEffect(() => {
     let processChainLogConsumerAddress = LOGS_PROCESSCHAINS_PREFIX + id
@@ -166,23 +161,23 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
   let menu
   let deleted
 
-  if (processChains.items !== undefined && processChains.items.length >= runToShow) {
-    let pc = processChains.items[runToShow - 1]
-    title = pc.id
+  if (processChain !== undefined) {
+    title = processChain.id
     breadcrumbs = [
       <Link href="/workflows" key="workflows">Workflows</Link>,
-      <Link href="/workflows/[id]" as={`/workflows/${pc.submissionId}`} key={pc.submissionId}>
-        {pc.submissionId}
+      <Link href="/workflows/[id]" as={`/workflows/${processChain.submissionId}`}
+          key={processChain.submissionId}>
+        {processChain.submissionId}
       </Link>,
       <Link href={{
         pathname: "/processchains",
         query: {
-          submissionId: pc.submissionId
+          submissionId: processChain.submissionId
         }
       }} key="processchains">
         Process chains
       </Link>,
-      pc.id
+      processChain.id
     ]
 
     let menuItems = []
@@ -190,33 +185,39 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
       menuItems.push(<a href={`${process.env.baseUrl}/logs/processchains/${id}?forceDownload=true`}
         key="download-log"><li>Download log</li></a>)
     }
-    if (pc.status === "REGISTERED" || pc.status === "RUNNING" || pc.status === "PAUSED") {
+    if (processChain.status === "REGISTERED" ||
+        processChain.status === "RUNNING" ||
+        processChain.status === "PAUSED") {
       menuItems.push(<li key="cancel" onClick={onCancel}>Cancel</li>)
     }
     if (menuItems.length > 0) {
       menu = <ul>{menuItems}</ul>
     }
 
-    deleted = !!pc.deleted
+    deleted = !!processChain.deleted
 
     let reqcap
-    if (pc.requiredCapabilities === undefined || pc.requiredCapabilities.length === 0) {
+    if (processChain.requiredCapabilities === undefined ||
+        processChain.requiredCapabilities.length === 0) {
       reqcap = <>&ndash;</>
     } else {
-      reqcap = pc.requiredCapabilities.flatMap((r, i) => [<Label key={i}>{r}</Label>, <wbr key={`wbr${i}`}/>])
+      reqcap = processChain.requiredCapabilities
+        .flatMap((r, i) => [<Label key={i}>{r}</Label>, <wbr key={`wbr${i}`}/>])
     }
 
     let estimatedProgress
-    if (pc.status === "RUNNING" && pc.estimatedProgress !== undefined && pc.estimatedProgress !== null) {
+    if (processChain.status === "RUNNING" &&
+        processChain.estimatedProgress !== undefined &&
+        processChain.estimatedProgress !== null) {
       estimatedProgress = (
         <Tooltip title="Estimated progress">
-          {(pc.estimatedProgress * 100).toFixed()}&thinsp;%
+          {(processChain.estimatedProgress * 100).toFixed()}&thinsp;%
         </Tooltip>
       )
     }
 
     let progress = {
-      status: pc.status,
+      status: processChain.status,
       subtitle: estimatedProgress
     }
 
@@ -226,15 +227,16 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
           <div className="detail-header-left">
             <DefinitionList>
               <DefinitionListItem title="Start time">
-                {pc.startTime ? formatDate(pc.startTime) : <>&ndash;</>}
+                {processChain.startTime ? formatDate(processChain.startTime) : <>&ndash;</>}
               </DefinitionListItem>
               <DefinitionListItem title="End time">
-                {pc.endTime ? formatDate(pc.endTime) : <>&ndash;</>}
+                {processChain.endTime ? formatDate(processChain.endTime) : <>&ndash;</>}
               </DefinitionListItem>
               <DefinitionListItem title="Time elapsed">
                 {
-                  pc.startTime && pc.endTime ? formatDurationTitle(pc.startTime, pc.endTime) : (
-                    pc.startTime ? <LiveDuration startTime={pc.startTime} /> : <>&ndash;</>
+                  processChain.startTime && processChain.endTime ?
+                    formatDurationTitle(processChain.startTime, processChain.endTime) : (
+                    processChain.startTime ? <LiveDuration startTime={processChain.startTime} /> : <>&ndash;</>
                   )
                 }
               </DefinitionListItem>
@@ -243,10 +245,10 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
           <div className="detail-header-middle">
             <DefinitionList>
               <DefinitionListItem title="Priority">
-                <Priority value={pc.priority} onChange={v => onDoChangePriority(v)}
+                <Priority value={processChain.priority} onChange={v => onDoChangePriority(v)}
                   subjectShort="process chain" subjectLong="process chain"
-                  editable={pc.status === "REGISTERED" || pc.status === "RUNNING" ||
-                    pc.status === "PAUSED"} />
+                  editable={processChain.status === "REGISTERED" || processChain.status === "RUNNING" ||
+                    processChain.status === "PAUSED"} />
               </DefinitionListItem>
               <DefinitionListItem title="Required capabilities">
                 {reqcap}
@@ -258,9 +260,9 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
           <ListItemProgressBox progress={progress} deleted={deleted} />
         </div>
       </div>
-      {pc.errorMessage && (<>
+      {processChain.errorMessage && (<>
         <h2>Error message</h2>
-        <Alert error>{pc.errorMessage}</Alert>
+        <Alert error>{processChain.errorMessage}</Alert>
       </>)}
       {logAvailable && (<>
         <h2><CollapseButton collapsed={logCollapsed}
@@ -272,31 +274,49 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
         )}
       </>)}
       <h2>Executables</h2>
-      <CodeBox json={pc.executables} />
+      <CodeBox json={processChain.executables} />
       <style jsx>{styles}</style>
     </>)
   }
 
   let runsMenu
   let runsMenuTitle = "Runs"
-  if (processChains.items !== undefined &&
-      processChains.items.length > 1 &&
-      processChains.items.length >= runToShow) {
-    if (processChains.items[runToShow - 1].runNumber !== undefined) {
-      runsMenuTitle = `Run #${processChains.items[runToShow - 1].runNumber}`
+  if (runs.items !== undefined && processChain !== undefined) {
+    let runsToDisplay = [...runs.items]
+    // add artificial 'current' run if necessary
+    let originalProcessChain = processChains.items[0]
+    let artificial
+    if (runs.items.length === 0 ||
+        originalProcessChain.status === "REGISTERED" ||
+        originalProcessChain.status === "PAUSED" ||
+        (
+          originalProcessChain.status === "CANCELLED" &&
+          originalProcessChain.status !== runs.items[runs.items.length - 1].status
+        )
+    ) {
+      runsToDisplay.push(originalProcessChain)
+      artificial = originalProcessChain
     }
 
-    let menuItems = []
-    for (let i = processChains.items.length - 1; i >= 0; --i) {
-      let run = processChains.items[i]
-      let enabled = runToShow === i + 1
-      menuItems.push(<RunMenuItem processChainId={id}
-        runNumber={run.runNumber} run={run}
-        isLatest={i === processChains.items.length - 1}
-        key={`run-${i}`} enabled={enabled} />)
-    }
+    if (runsToDisplay.length > 1) {
+      let currentRun = runNumber ?? runsToDisplay.length
+      if (runsToDisplay[currentRun - 1].runNumber !== undefined) {
+        runsMenuTitle = `Run #${runsToDisplay[currentRun - 1].runNumber}`
+      }
 
-    runsMenu = <ul>{menuItems}</ul>
+      let menuItems = []
+      for (let i = runsToDisplay.length - 1; i >= 0; --i) {
+        let run = runsToDisplay[i]
+        let n = run === artificial ? run.runNumber : i + 1
+        let enabled = (runNumber === undefined && run === artificial) || (currentRun === n)
+        menuItems.push(<RunMenuItem processChainId={id}
+          runNumber={n} run={run}
+          isLatest={i === runsToDisplay.length - 1}
+          key={`run-${i}`} enabled={enabled} />)
+      }
+
+      runsMenu = <ul>{menuItems}</ul>
+    }
   }
 
   let menus = []
