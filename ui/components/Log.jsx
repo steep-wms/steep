@@ -1,6 +1,12 @@
 import Tooltip from "./Tooltip"
 import classNames from "classnames"
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState
+} from "react"
 import { ChevronsDown } from "lucide-react"
 import AutoSizer from "react-virtualized-auto-sizer"
 import { FixedSizeList } from "react-window"
@@ -43,7 +49,10 @@ const Log = ({ children = [], onLoadMore }) => {
 
   function onScroll({ scrollOffset }) {
     if (listOuterRef.current) {
-      let endOffset = listOuterRef.current.scrollHeight - listOuterRef.current.clientHeight - 5
+      let endOffset =
+        listOuterRef.current.scrollHeight -
+        listOuterRef.current.clientHeight -
+        5
       let atEnd = endOffset <= scrollOffset
       scrollLockedAtEnd.current = atEnd
       setFollowButtonVisible(!atEnd)
@@ -51,7 +60,9 @@ const Log = ({ children = [], onLoadMore }) => {
       if (children.length > 0 && scrollOffset < 5 && onLoadMore) {
         let oldScrollPosition = listOuterRef.current.scrollHeight
         onLoadMore(() => {
-          listRef.current.scrollTo(listOuterRef.current.scrollHeight - oldScrollPosition)
+          listRef.current.scrollTo(
+            listOuterRef.current.scrollHeight - oldScrollPosition
+          )
         })
       }
     }
@@ -74,31 +85,51 @@ const Log = ({ children = [], onLoadMore }) => {
       rest += "\n"
     }
 
-    return <div style={style}><span className="hljs-number">{timestamp}</span>
-      <span className="hljs-subst">{dash}</span>{rest}</div>
+    return (
+      <div style={style}>
+        <span className="hljs-number">{timestamp}</span>
+        <span className="hljs-subst">{dash}</span>
+        {rest}
+      </div>
+    )
   }
 
-  return (<>
-    <pre className="pre" ref={preRef}>
-      <code className="code">
-        <AutoSizer onResize={onResize}>
-          {({ height, width }) => (
-            <FixedSizeList height={height} width={width} ref={listRef} outerRef={listOuterRef}
-                itemCount={children.length} itemSize={itemSize} onScroll={onScroll}
-                overscanCount={20} itemKey={(i) => children[i].key}>
-              {Line}
-            </FixedSizeList>
-          )}
-        </AutoSizer>
-      </code>
-    </pre>
-    <div className={classNames("follow-button", { visible: followButtonVisible })} onClick={onFollowClick}>
-      <Tooltip title="Follow">
-        <ChevronsDown className="feather" />
-      </Tooltip>
-    </div>
-    <style jsx>{styles}</style>
-  </>)
+  return (
+    <>
+      <pre className="pre" ref={preRef}>
+        <code className="code">
+          <AutoSizer onResize={onResize}>
+            {({ height, width }) => (
+              <FixedSizeList
+                height={height}
+                width={width}
+                ref={listRef}
+                outerRef={listOuterRef}
+                itemCount={children.length}
+                itemSize={itemSize}
+                onScroll={onScroll}
+                overscanCount={20}
+                itemKey={i => children[i].key}
+              >
+                {Line}
+              </FixedSizeList>
+            )}
+          </AutoSizer>
+        </code>
+      </pre>
+      <div
+        className={classNames("follow-button", {
+          visible: followButtonVisible
+        })}
+        onClick={onFollowClick}
+      >
+        <Tooltip title="Follow">
+          <ChevronsDown className="feather" />
+        </Tooltip>
+      </div>
+      <style jsx>{styles}</style>
+    </>
+  )
 }
 
 export default Log

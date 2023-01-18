@@ -1,6 +1,13 @@
 import Link from "next/link"
 import dayjs from "dayjs"
-import { Check, RotateCw, Delete, CheckCircle, XCircle, PauseCircle } from "lucide-react"
+import {
+  Check,
+  RotateCw,
+  Delete,
+  CheckCircle,
+  XCircle,
+  PauseCircle
+} from "lucide-react"
 import classNames from "classnames"
 import styles from "./RunMenuItem.scss"
 
@@ -12,7 +19,13 @@ function formatDateOnAt(date) {
   return dayjs(date).format("[on] D MMM YYYY [at] h:mm:ss a")
 }
 
-const RunMenuItem = ({ processChainId, runNumber, isLatest, run, enabled = false }) => {
+const RunMenuItem = ({
+  processChainId,
+  runNumber,
+  isLatest,
+  run,
+  enabled = false
+}) => {
   let text
   let cls
   let statusIcon
@@ -63,9 +76,10 @@ const RunMenuItem = ({ processChainId, runNumber, isLatest, run, enabled = false
           <div className="run-menu-item-item">
             <li>
               <div className="run-menu-item-content">
-                { enabled ? <Check /> : undefined }
+                {enabled ? <Check /> : undefined}
                 <span className="title">
-                  {run.status === "PAUSED" && run.autoResumeAfter !== undefined ? (
+                  {run.status === "PAUSED" &&
+                  run.autoResumeAfter !== undefined ? (
                     <>Process chain</>
                   ) : runNumber === undefined ? (
                     <>Process chain</>
@@ -73,7 +87,9 @@ const RunMenuItem = ({ processChainId, runNumber, isLatest, run, enabled = false
                     <>Run #{runNumber}</>
                   )}
                 </span>
-                <div className={classNames("status", cls)}>{statusIcon} {text}</div>
+                <div className={classNames("status", cls)}>
+                  {statusIcon} {text}
+                </div>
               </div>
             </li>
           </div>

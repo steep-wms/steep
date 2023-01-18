@@ -9,16 +9,21 @@ export function addTypeExpression(query, type) {
 
 export function removeAllTypeExpressions(query) {
   let parts = query.match(pattern)
-  parts = parts.filter(p => !(p.toLowerCase().startsWith("is:") && p.length > 3))
+  parts = parts.filter(
+    p => !(p.toLowerCase().startsWith("is:") && p.length > 3)
+  )
   return parts.join(" ")
 }
 
 export function hasTypeExpression(query, type) {
   let lt = type.toLowerCase()
   let parts = query.match(pattern)
-  return parts.some(p => p.toLowerCase() === `is:${lt}` ||
+  return parts.some(
+    p =>
+      p.toLowerCase() === `is:${lt}` ||
       p.toLowerCase() === `is:"${lt}"` ||
-      p.toLowerCase() === `is:'${lt}'`)
+      p.toLowerCase() === `is:'${lt}'`
+  )
 }
 
 export function hasAnyTypeExpression(query) {
@@ -28,8 +33,18 @@ export function hasAnyTypeExpression(query) {
 
 function getLocatorAliases(locator) {
   if (locator === "rcs") {
-    return ["rc", "cap", "reqcap", "capability", "requiredcapability",
-    "rcs", "caps", "reqcaps", "capabilities", "requiredcapabilities"]
+    return [
+      "rc",
+      "cap",
+      "reqcap",
+      "capability",
+      "requiredcapability",
+      "rcs",
+      "caps",
+      "reqcaps",
+      "capabilities",
+      "requiredcapabilities"
+    ]
   } else if (locator === "error") {
     return ["error", "errormessage"]
   } else if (locator === "start") {

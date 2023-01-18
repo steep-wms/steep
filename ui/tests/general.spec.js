@@ -1,6 +1,13 @@
 import { test, expect } from "@playwright/test"
 
-const routes = ["/", "/workflows/", "/processchains/", "/agents/", "/vms/", "/services/"]
+const routes = [
+  "/",
+  "/workflows/",
+  "/processchains/",
+  "/agents/",
+  "/vms/",
+  "/services/"
+]
 
 let page
 
@@ -54,13 +61,19 @@ for (let route of routes) {
       await expect(logo).toBeVisible()
       await expect(logo).toHaveAttribute("href", "https://igd.fraunhofer.de")
 
-      let homepage = await footer.locator("[href='https://steep-wms.github.io/']")
+      let homepage = await footer.locator(
+        "[href='https://steep-wms.github.io/']"
+      )
       await expect(homepage).toBeVisible()
 
-      let documentation = await footer.locator("[href='https://steep-wms.github.io/#documentation']")
+      let documentation = await footer.locator(
+        "[href='https://steep-wms.github.io/#documentation']"
+      )
       await expect(documentation).toBeVisible()
 
-      let github = await footer.locator("[href='https://github.com/steep-wms/steep']")
+      let github = await footer.locator(
+        "[href='https://github.com/steep-wms/steep']"
+      )
       await expect(github).toBeVisible()
     })
   })

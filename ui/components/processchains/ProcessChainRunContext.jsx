@@ -9,13 +9,13 @@ import {
 } from "../../components/lib/EventBusMessages"
 
 const ADD_MESSAGES = {
-  [PROCESS_CHAIN_RUN_ADDED]: (body) => [{ ...body, id: body.runNumber }]
+  [PROCESS_CHAIN_RUN_ADDED]: body => [{ ...body, id: body.runNumber }]
 }
 
 const UPDATE_MESSAGES = {
-  [PROCESS_CHAIN_RUN_FINISHED]: (body) => ({ ...body, id: body.runNumber }),
-  [PROCESS_CHAIN_LAST_RUN_DELETED]: (body) => ({ ...body, deleteLastRun: true }),
-  [PROCESS_CHAIN_ALL_RUNS_DELETED]: (body) => ({ ...body, deleteAllRuns: true })
+  [PROCESS_CHAIN_RUN_FINISHED]: body => ({ ...body, id: body.runNumber }),
+  [PROCESS_CHAIN_LAST_RUN_DELETED]: body => ({ ...body, deleteLastRun: true }),
+  [PROCESS_CHAIN_ALL_RUNS_DELETED]: body => ({ ...body, deleteAllRuns: true })
 }
 
 function reducer(processChainId) {
@@ -57,10 +57,16 @@ function reducer(processChainId) {
 
 const ListContext = makeListContext()
 
-const Provider = (props) => {
+const Provider = props => {
   let reducers = [...(props.reducers || []), reducer(props.processChainId)]
-  return <ListContext.Provider {...props} addMessages={ADD_MESSAGES}
-      updateMessages={UPDATE_MESSAGES} reducers={reducers} />
+  return (
+    <ListContext.Provider
+      {...props}
+      addMessages={ADD_MESSAGES}
+      updateMessages={UPDATE_MESSAGES}
+      reducers={reducers}
+    />
+  )
 }
 
 const ProcessChainRunContext = {

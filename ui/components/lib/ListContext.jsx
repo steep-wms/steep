@@ -2,7 +2,12 @@ import EventBusContext from "./EventBusContext"
 import EventBus from "@vertx/eventbus-bridge-client.js"
 import { createContext, useContext, useEffect, useReducer } from "react"
 
-function defaultItemsReducer(state, { action = "unshift", items }, pageSize, shouldAddItem) {
+function defaultItemsReducer(
+  state,
+  { action = "unshift", items },
+  pageSize,
+  shouldAddItem
+) {
   switch (action) {
     case "update": {
       if (state.items !== undefined) {
@@ -30,8 +35,11 @@ function defaultItemsReducer(state, { action = "unshift", items }, pageSize, sho
       } else {
         itemsToAdd = []
         for (let item of items) {
-          if ((state.items === undefined || state.items.findIndex(w => w.id === item.id) < 0) &&
-              (!shouldAddItem || shouldAddItem(item) === true)) {
+          if (
+            (state.items === undefined ||
+              state.items.findIndex(w => w.id === item.id) < 0) &&
+            (!shouldAddItem || shouldAddItem(item) === true)
+          ) {
             itemsToAdd.unshift(item)
           }
         }
@@ -60,16 +68,28 @@ function updateItemsReducer(reducers, pageSize, shouldAddItem) {
         return defaultItemsReducer(state, action, pageSize, shouldAddItem)
       }
       return reducers[i](state, action, (newState, newAction) =>
-        callReducer(newState, newAction, i + 1))
+        callReducer(newState, newAction, i + 1)
+      )
     }
     return callReducer(state, action, 0)
   }
 }
 
-const ProviderInternal = ({ pageSize, allowAdd = true, shouldAddItem,
-    addMessages, updateMessages, reducers = [], children, Items, UpdateItems }) => {
-  const [items, updateItems] = useReducer(updateItemsReducer(reducers, pageSize,
-      shouldAddItem), { items: undefined, added: 0 })
+const ProviderInternal = ({
+  pageSize,
+  allowAdd = true,
+  shouldAddItem,
+  addMessages,
+  updateMessages,
+  reducers = [],
+  children,
+  Items,
+  UpdateItems
+}) => {
+  const [items, updateItems] = useReducer(
+    updateItemsReducer(reducers, pageSize, shouldAddItem),
+    { items: undefined, added: 0 }
+  )
   const eventBus = useContext(EventBusContext)
 
   useEffect(() => {
@@ -79,12 +99,14 @@ const ProviderInternal = ({ pageSize, allowAdd = true, shouldAddItem,
       for (let address in addMessages) {
         let f = addMessages[address]
         let handler = (error, message) => {
-          Promise.resolve(f(message.body)).then(items => {
-            for (let item of items) {
-              item.justAdded = true
-            }
-            updateItems({ action: "unshift", items })
-          }).catch(err => console.error(err))
+          Promise.resolve(f(message.body))
+            .then(items => {
+              for (let item of items) {
+                item.justAdded = true
+              }
+              updateItems({ action: "unshift", items })
+            })
+            .catch(err => console.error(err))
         }
         eventBus.registerHandler(address, handler)
         registeredHandlers[address] = handler
@@ -153,7 +175,9 @@ function makeListContext() {
     UpdateItems,
     AddedItems,
     UpdateAddedItems,
-    Provider: (props) => <ProviderInternal {...props} Items={Items} UpdateItems={UpdateItems} />
+    Provider: props => (
+      <ProviderInternal {...props} Items={Items} UpdateItems={UpdateItems} />
+    )
   }
 }
 

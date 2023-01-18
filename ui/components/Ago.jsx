@@ -1,7 +1,7 @@
 import TimeAgo from "react-timeago"
 import Tooltip from "./Tooltip"
 
-const Ago = (props) => (
+const Ago = props => (
   <Tooltip title={props.title}>
     <TimeAgo {...props} title="" />
   </Tooltip>

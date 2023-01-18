@@ -3,8 +3,15 @@ import { createPopper } from "@popperjs/core"
 import { useEffect, useRef, useState } from "react"
 import styles from "./Tooltip.scss"
 
-const Tooltip = ({ title, delay = 300, forceVisible = undefined, className,
-    onShow, onHide, children }) => {
+const Tooltip = ({
+  title,
+  delay = 300,
+  forceVisible = undefined,
+  className,
+  onShow,
+  onHide,
+  children
+}) => {
   const targetRef = useRef()
   const tooltipRef = useRef()
   const timer = useRef()
@@ -46,12 +53,14 @@ const Tooltip = ({ title, delay = 300, forceVisible = undefined, className,
     function showNow() {
       if (tooltip === undefined) {
         let options = {
-          modifiers: [{
-            name: "offset",
-            options: {
-              offset: [0, 8]
+          modifiers: [
+            {
+              name: "offset",
+              options: {
+                offset: [0, 8]
+              }
             }
-          }]
+          ]
         }
 
         setTooltip(createPopper(targetRef.current, tooltipRef.current, options))
@@ -91,8 +100,12 @@ const Tooltip = ({ title, delay = 300, forceVisible = undefined, className,
 
   return (
     <>
-      <span ref={targetRef} className={className}
-          onMouseEnter={() => show()} onMouseLeave={() => hide()}>
+      <span
+        ref={targetRef}
+        className={className}
+        onMouseEnter={() => show()}
+        onMouseLeave={() => hide()}
+      >
         {children}
       </span>
       <div className={classNames("tooltip", { visible })} ref={tooltipRef}>

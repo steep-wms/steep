@@ -6,16 +6,34 @@ import Tooltip from "./Tooltip"
 import Link from "next/link"
 import { Fragment } from "react"
 import { formatDistanceToNow } from "date-fns"
-import { formatDate, formatDuration, formatDurationTitle } from "./lib/date-time-utils"
+import {
+  formatDate,
+  formatDuration,
+  formatDurationTitle
+} from "./lib/date-time-utils"
 import resolvedStyles from "./ListItem.scss?type=resolve"
 import styles from "./ListItem.scss"
 
 function formatterToNow(value, unit, suffix, epochSeconds) {
-  return formatDistanceToNow(epochSeconds, { addSuffix: true, includeSeconds: true })
+  return formatDistanceToNow(epochSeconds, {
+    addSuffix: true,
+    includeSeconds: true
+  })
 }
 
-const ListItem = ({ title, linkHref, linkAs, subtitle, deleted = false, justAdded, justLeft,
-    startTime, endTime, labels = [], progress }) => {
+const ListItem = ({
+  title,
+  linkHref,
+  linkAs,
+  subtitle,
+  deleted = false,
+  justAdded,
+  justLeft,
+  startTime,
+  endTime,
+  labels = [],
+  progress
+}) => {
   let defaultSubtitle
   if (progress !== undefined) {
     switch (progress.status) {
@@ -29,7 +47,14 @@ const ListItem = ({ title, linkHref, linkAs, subtitle, deleted = false, justAdde
         if (startTime) {
           let agoTitle = formatDate(startTime)
           defaultSubtitle = (
-            <>Started <Ago date={startTime} formatter={formatterToNow} title={agoTitle} /></>
+            <>
+              Started{" "}
+              <Ago
+                date={startTime}
+                formatter={formatterToNow}
+                title={agoTitle}
+              />
+            </>
           )
         } else {
           defaultSubtitle = "Not started yet"
@@ -47,33 +72,64 @@ const ListItem = ({ title, linkHref, linkAs, subtitle, deleted = false, justAdde
     let duration = formatDuration(startTime, endTime)
     let durationTitle = formatDurationTitle(startTime, endTime)
     defaultSubtitle = (
-      <>Finished <Ago date={endTime} formatter={formatterToNow} title={agoTitle} /> and
-      took <Tooltip title={durationTitle}>{duration}</Tooltip></>
+      <>
+        Finished{" "}
+        <Ago date={endTime} formatter={formatterToNow} title={agoTitle} /> and
+        took <Tooltip title={durationTitle}>{duration}</Tooltip>
+      </>
     )
   }
 
   let titleLink
   if (!deleted) {
-    titleLink = <Link href={linkHref} as={linkAs}
-      className={classNames(resolvedStyles.className, "list-item-title-link")}>{title}{resolvedStyles.styles}
-      <style jsx>{styles}</style></Link>
+    titleLink = (
+      <Link
+        href={linkHref}
+        as={linkAs}
+        className={classNames(resolvedStyles.className, "list-item-title-link")}
+      >
+        {title}
+        {resolvedStyles.styles}
+        <style jsx>{styles}</style>
+      </Link>
+    )
   } else {
-    titleLink = <span
-      className={classNames(resolvedStyles.className, "list-item-title-link")}>{title}{resolvedStyles.styles}
-      <style jsx>{styles}</style></span>
+    titleLink = (
+      <span
+        className={classNames(resolvedStyles.className, "list-item-title-link")}
+      >
+        {title}
+        {resolvedStyles.styles}
+        <style jsx>{styles}</style>
+      </span>
+    )
   }
 
   return (
-    <div className={classNames("list-item", { "just-added": justAdded && !justLeft, "just-left": justLeft, deleted })}>
+    <div
+      className={classNames("list-item", {
+        "just-added": justAdded && !justLeft,
+        "just-left": justLeft,
+        deleted
+      })}
+    >
       <div className="list-item-left">
         <div className="list-item-title">
-          {titleLink}{labels.length > 0 && <>&ensp;</>}
-          {labels.map((l, i) => <Fragment key={i}><Label small>{l}</Label><wbr/></Fragment>)}
+          {titleLink}
+          {labels.length > 0 && <>&ensp;</>}
+          {labels.map((l, i) => (
+            <Fragment key={i}>
+              <Label small>{l}</Label>
+              <wbr />
+            </Fragment>
+          ))}
         </div>
         <div className="list-item-subtitle">{subtitle || defaultSubtitle}</div>
       </div>
       <div className="list-item-right">
-        {progress && <ListItemProgressBox progress={progress} deleted={deleted} />}
+        {progress && (
+          <ListItemProgressBox progress={progress} deleted={deleted} />
+        )}
       </div>
       {resolvedStyles.styles}
       <style jsx>{styles}</style>

@@ -48,7 +48,9 @@ const config = {
       "/plugins/[name].html": { page: "/plugins/[name]" },
       "/processchains": { page: "/processchains" },
       "/processchains/[id].html": { page: "/processchains/[id]" },
-      "/processchains/[id].html/runs/[runNumber].html": { page: "/processchains/[id]/runs/[runNumber]" },
+      "/processchains/[id].html/runs/[runNumber].html": {
+        page: "/processchains/[id]/runs/[runNumber]"
+      },
       "/search": { page: "/search" },
       "/services": { page: "/services" },
       "/services/[id].html": { page: "/services/[id]" },
@@ -66,14 +68,14 @@ const config = {
     // - https://github.com/vercel/next.js/discussions/16059#discussioncomment-4556420
     // - https://github.com/vercel/next.js/discussions/41769
     // Magic string will be replaced by Steep's HttpEndpoint verticle
-    config.plugins.forEach((i) => {
+    config.plugins.forEach(i => {
       if (i instanceof webpack.DefinePlugin) {
         if (i.definitions["process.env.__NEXT_ROUTER_BASEPATH"]) {
           let f
           if (isProd) {
-            f = "(function () { return \"/$$MYBASEPATH$$\" })()"
+            f = '(function () { return "/$$MYBASEPATH$$" })()'
           } else {
-            f = "(function () { return \"\" })()"
+            f = '(function () { return "" })()'
           }
           i.definitions["process.env.__NEXT_ROUTER_BASEPATH"] = f
         }
@@ -114,9 +116,11 @@ const config = {
     })
 
     if (dev) {
-      config.plugins.push(new ESLintPlugin({
-        extensions: ["js", "jsx"]
-      }))
+      config.plugins.push(
+        new ESLintPlugin({
+          extensions: ["js", "jsx"]
+        })
+      )
     }
 
     return config

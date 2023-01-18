@@ -23,7 +23,7 @@ function initWorkflow(w) {
 }
 
 const ADD_MESSAGES = {
-  [SUBMISSION_ADDED]: (body) => {
+  [SUBMISSION_ADDED]: body => {
     let w = body
     initWorkflow(w)
     return [w]
@@ -31,31 +31,32 @@ const ADD_MESSAGES = {
 }
 
 const UPDATE_MESSAGES = {
-  [SUBMISSION_START_TIME_CHANGED]: (body) => ({
+  [SUBMISSION_START_TIME_CHANGED]: body => ({
     id: body.submissionId,
     startTime: body.startTime
   }),
-  [SUBMISSION_END_TIME_CHANGED]: (body) => ({
+  [SUBMISSION_END_TIME_CHANGED]: body => ({
     id: body.submissionId,
     endTime: body.endTime
   }),
-  [SUBMISSION_STATUS_CHANGED]: (body) => ({
+  [SUBMISSION_STATUS_CHANGED]: body => ({
     id: body.submissionId,
     status: body.status
   }),
-  [SUBMISSION_PRIORITY_CHANGED]: (body) => ({
+  [SUBMISSION_PRIORITY_CHANGED]: body => ({
     id: body.submissionId,
     priority: body.priority
   }),
-  [SUBMISSION_ERROR_MESSAGE_CHANGED]: (body) => ({
+  [SUBMISSION_ERROR_MESSAGE_CHANGED]: body => ({
     id: body.submissionId,
     errorMessage: body.errorMessage
   }),
-  [SUBMISSIONS_DELETED]: (body) => body.submissionIds.map(submissionId => ({
-    id: submissionId,
-    deleted: true
-  })),
-  [PROCESS_CHAINS_ADDED_SIZE]: (body) => {
+  [SUBMISSIONS_DELETED]: body =>
+    body.submissionIds.map(submissionId => ({
+      id: submissionId,
+      deleted: true
+    })),
+  [PROCESS_CHAINS_ADDED_SIZE]: body => {
     let pcsSize = body.processChainsSize
     let status = body.status
 
@@ -78,7 +79,7 @@ const UPDATE_MESSAGES = {
 
     return workflow
   },
-  [PROCESS_CHAIN_STATUS_CHANGED]: (body) => {
+  [PROCESS_CHAIN_STATUS_CHANGED]: body => {
     let status = body.status
     let previousStatus = body.previousStatus
 
@@ -119,7 +120,7 @@ const UPDATE_MESSAGES = {
 
     return workflow
   },
-  [PROCESS_CHAIN_ALL_STATUS_CHANGED]: (body) => ({
+  [PROCESS_CHAIN_ALL_STATUS_CHANGED]: body => ({
     id: body.submissionId,
     newStatus: body.newStatus,
     currentStatus: body.currentStatus
@@ -127,13 +128,16 @@ const UPDATE_MESSAGES = {
 }
 
 function reducer(state, { action, items }, next) {
-  if (action === "update" && items.length > 0 &&
-      (items[0].totalProcessChains !== undefined ||
-        items[0].runningProcessChains !== undefined ||
-        items[0].pausedProcessChains !== undefined ||
-        items[0].cancelledProcessChains !== undefined ||
-        items[0].failedProcessChains !== undefined ||
-        items[0].succeededProcessChains !== undefined)) {
+  if (
+    action === "update" &&
+    items.length > 0 &&
+    (items[0].totalProcessChains !== undefined ||
+      items[0].runningProcessChains !== undefined ||
+      items[0].pausedProcessChains !== undefined ||
+      items[0].cancelledProcessChains !== undefined ||
+      items[0].failedProcessChains !== undefined ||
+      items[0].succeededProcessChains !== undefined)
+  ) {
     // add process chains or change status of process chains
     if (state.items !== undefined) {
       for (let item of items) {
@@ -144,28 +148,40 @@ function reducer(state, { action, items }, next) {
 
         let newItem = { ...state.items[i] }
         if (item.totalProcessChains !== undefined) {
-          newItem.totalProcessChains =
-              Math.max(0, newItem.totalProcessChains + item.totalProcessChains)
+          newItem.totalProcessChains = Math.max(
+            0,
+            newItem.totalProcessChains + item.totalProcessChains
+          )
         }
         if (item.runningProcessChains !== undefined) {
-          newItem.runningProcessChains =
-              Math.max(0, newItem.runningProcessChains + item.runningProcessChains)
+          newItem.runningProcessChains = Math.max(
+            0,
+            newItem.runningProcessChains + item.runningProcessChains
+          )
         }
         if (item.pausedProcessChains !== undefined) {
-          newItem.pausedProcessChains =
-              Math.max(0, newItem.pausedProcessChains + item.pausedProcessChains)
+          newItem.pausedProcessChains = Math.max(
+            0,
+            newItem.pausedProcessChains + item.pausedProcessChains
+          )
         }
         if (item.cancelledProcessChains !== undefined) {
-          newItem.cancelledProcessChains =
-              Math.max(0, newItem.cancelledProcessChains + item.cancelledProcessChains)
+          newItem.cancelledProcessChains = Math.max(
+            0,
+            newItem.cancelledProcessChains + item.cancelledProcessChains
+          )
         }
         if (item.failedProcessChains !== undefined) {
-          newItem.failedProcessChains =
-              Math.max(0, newItem.failedProcessChains + item.failedProcessChains)
+          newItem.failedProcessChains = Math.max(
+            0,
+            newItem.failedProcessChains + item.failedProcessChains
+          )
         }
         if (item.succeededProcessChains !== undefined) {
-          newItem.succeededProcessChains =
-              Math.max(0, newItem.succeededProcessChains + item.succeededProcessChains)
+          newItem.succeededProcessChains = Math.max(
+            0,
+            newItem.succeededProcessChains + item.succeededProcessChains
+          )
         }
 
         let newItems = [...state.items]
@@ -176,8 +192,12 @@ function reducer(state, { action, items }, next) {
     return state
   }
 
-  if (action === "update" && items.length > 0 &&
-      items[0].currentStatus !== undefined && items[0].newStatus !== undefined) {
+  if (
+    action === "update" &&
+    items.length > 0 &&
+    items[0].currentStatus !== undefined &&
+    items[0].newStatus !== undefined
+  ) {
     // change status of all process chains
     if (state.items !== undefined) {
       for (let item of items) {
@@ -193,9 +213,13 @@ function reducer(state, { action, items }, next) {
         let newItem = { ...state.items[i] }
         let n = 0
         if (item.currentStatus === "REGISTERED") {
-          n = newItem.totalProcessChains - newItem.runningProcessChains -
-              newItem.pausedProcessChains - newItem.failedProcessChains -
-              newItem.succeededProcessChains - newItem.cancelledProcessChains
+          n =
+            newItem.totalProcessChains -
+            newItem.runningProcessChains -
+            newItem.pausedProcessChains -
+            newItem.failedProcessChains -
+            newItem.succeededProcessChains -
+            newItem.cancelledProcessChains
         } else if (item.currentStatus === "RUNNING") {
           n = newItem.runningProcessChains
           newItem.runningProcessChains = 0
@@ -238,10 +262,16 @@ function reducer(state, { action, items }, next) {
 
 const ListContext = makeListContext()
 
-const Provider = (props) => {
+const Provider = props => {
   let reducers = [...(props.reducers || []), reducer]
-  return <ListContext.Provider {...props} addMessages={ADD_MESSAGES}
-      updateMessages={UPDATE_MESSAGES} reducers={reducers} />
+  return (
+    <ListContext.Provider
+      {...props}
+      addMessages={ADD_MESSAGES}
+      updateMessages={UPDATE_MESSAGES}
+      reducers={reducers}
+    />
+  )
 }
 
 const WorkflowContext = {

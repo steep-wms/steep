@@ -15,7 +15,7 @@ import {
 } from "../../components/lib/EventBusMessages"
 
 const ADD_MESSAGES = {
-  [PROCESS_CHAINS_ADDED]: (body) => {
+  [PROCESS_CHAINS_ADDED]: body => {
     for (let pc of body.processChains) {
       pc.status = body.status
       pc.submissionId = body.submissionId
@@ -25,34 +25,35 @@ const ADD_MESSAGES = {
 }
 
 const UPDATE_MESSAGES = {
-  [PROCESS_CHAIN_RUN_ADDED]: (body) => body,
-  [PROCESS_CHAIN_RUN_FINISHED]: (body) => body,
-  [PROCESS_CHAIN_PROGRESS_CHANGED]: (body) => ({
+  [PROCESS_CHAIN_RUN_ADDED]: body => body,
+  [PROCESS_CHAIN_RUN_FINISHED]: body => body,
+  [PROCESS_CHAIN_PROGRESS_CHANGED]: body => ({
     id: body.processChainId,
     estimatedProgress: body.estimatedProgress
   }),
-  [PROCESS_CHAIN_STATUS_CHANGED]: (body) => ({
+  [PROCESS_CHAIN_STATUS_CHANGED]: body => ({
     id: body.processChainId,
     status: body.status,
     submissionId: body.submissionId
   }),
-  [PROCESS_CHAIN_ALL_STATUS_CHANGED]: (body) => ({
+  [PROCESS_CHAIN_ALL_STATUS_CHANGED]: body => ({
     currentStatus: body.currentStatus,
     status: body.newStatus,
     submissionId: body.submissionId
   }),
-  [PROCESS_CHAIN_PRIORITY_CHANGED]: (body) => ({
+  [PROCESS_CHAIN_PRIORITY_CHANGED]: body => ({
     id: body.processChainId,
     priority: body.priority
   }),
-  [PROCESS_CHAIN_ALL_PRIORITY_CHANGED]: (body) => ({
+  [PROCESS_CHAIN_ALL_PRIORITY_CHANGED]: body => ({
     priority: body.priority,
     submissionId: body.submissionId
   }),
-  [SUBMISSIONS_DELETED]: (body) => body.submissionIds.map(submissionId => ({
-    submissionId,
-    deleted: true
-  }))
+  [SUBMISSIONS_DELETED]: body =>
+    body.submissionIds.map(submissionId => ({
+      submissionId,
+      deleted: true
+    }))
 }
 
 function reducer(state, { action, items }, next) {
@@ -65,14 +66,21 @@ function reducer(state, { action, items }, next) {
             if (pc.submissionId === item.submissionId) {
               if (item.deleted) {
                 pc.deleted = item.deleted
-              } else if (item.currentStatus !== undefined && pc.status === item.currentStatus) {
+              } else if (
+                item.currentStatus !== undefined &&
+                pc.status === item.currentStatus
+              ) {
                 if (item.status === "REGISTERED" || item.status === "PAUSED") {
                   // remove run information
                   deleteRunInformation(pc)
                 }
                 pc.status = item.status
-              } else if (item.priority !== undefined &&
-                  (pc.status === "REGISTERED" || pc.status === "RUNNING" || pc.status === "PAUSED")) {
+              } else if (
+                item.priority !== undefined &&
+                (pc.status === "REGISTERED" ||
+                  pc.status === "RUNNING" ||
+                  pc.status === "PAUSED")
+              ) {
                 pc.priority = item.priority
               }
             }
@@ -81,8 +89,10 @@ function reducer(state, { action, items }, next) {
       })
     }
 
-    if (items[0].id !== undefined &&
-        (items[0].status === "REGISTERED" || items[0].status === "PAUSED")) {
+    if (
+      items[0].id !== undefined &&
+      (items[0].status === "REGISTERED" || items[0].status === "PAUSED")
+    ) {
       // remove run information
       state = produce(state, draft => {
         for (let item of items) {
@@ -126,7 +136,10 @@ function reducer(state, { action, items }, next) {
       return produce(state, draft => {
         for (let item of items) {
           for (let pc of draft.items) {
-            if (pc.id !== item.processChainId || pc.runNumber !== item.runNumber) {
+            if (
+              pc.id !== item.processChainId ||
+              pc.runNumber !== item.runNumber
+            ) {
               continue
             }
 
@@ -145,10 +158,16 @@ function reducer(state, { action, items }, next) {
 
 const ListContext = makeListContext()
 
-const Provider = (props) => {
+const Provider = props => {
   let reducers = [...(props.reducers || []), reducer]
-  return <ListContext.Provider {...props} addMessages={ADD_MESSAGES}
-      updateMessages={UPDATE_MESSAGES} reducers={reducers} />
+  return (
+    <ListContext.Provider
+      {...props}
+      addMessages={ADD_MESSAGES}
+      updateMessages={UPDATE_MESSAGES}
+      reducers={reducers}
+    />
+  )
 }
 
 const ProcessChainContext = {

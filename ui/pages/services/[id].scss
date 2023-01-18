@@ -1,6 +1,8 @@
 @import "css/variables";
 
-.service-details, .retry-policy-details, .timeout-policy-details {
+.service-details,
+.retry-policy-details,
+.timeout-policy-details {
   .service-details-dl {
     display: flex;
     flex-wrap: wrap;
@@ -39,7 +41,8 @@
   }
 }
 
-.retry-policy-details, .timeout-policy-details {
+.retry-policy-details,
+.timeout-policy-details {
   border-top: 1px solid var(--border-color);
   padding-top: $spacer * 2;
 }
@@ -49,7 +52,8 @@
   border-top: 1px solid var(--border-color);
   padding-top: $spacer * 2;
 
-  h4, h5 {
+  h4,
+  h5 {
     font-size: 1rem;
     margin: 0;
   }

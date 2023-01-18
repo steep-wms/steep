@@ -38,7 +38,9 @@ function AgentDetails({ id }) {
     let a = agents.items[0]
     title = a.id
     breadcrumbs = [
-      <Link href="/agents" key="agents">Agents</Link>,
+      <Link href="/agents" key="agents">
+        Agents
+      </Link>,
       a.id
     ]
 
@@ -46,41 +48,59 @@ function AgentDetails({ id }) {
     if (a.capabilities === undefined || a.capabilities.length === 0) {
       caps = <>&ndash;</>
     } else {
-      caps = a.capabilities.map((r, i) => <><Label key={i}>{r}</Label><wbr/></>)
+      caps = a.capabilities.map((r, i) => (
+        <>
+          <Label key={i}>{r}</Label>
+          <wbr />
+        </>
+      ))
     }
 
     let progress = agentToProgress(a)
 
-    agent = (<>
-      <div className="detail-header">
-        <div className="detail-header-left">
-          <DefinitionList>
-            <DefinitionListItem title="Start time">
-              {a.startTime ? formatDate(a.startTime) : <>&ndash;</>}
-            </DefinitionListItem>
-            <DefinitionListItem title="Uptime">
-              {a.startTime && !a.left ? <LiveDuration startTime={a.startTime} /> : <>&ndash;</>}
-            </DefinitionListItem>
-            <DefinitionListItem title="Capabilities">
-              {caps}
-            </DefinitionListItem>
-            <DefinitionListItem title="Allocated process chain">
-              {a.processChainId ? <Link href={`/processchains/${a.processChainId}`}>
-                {a.processChainId}</Link> : <>&ndash;</>}
-            </DefinitionListItem>
-          </DefinitionList>
+    agent = (
+      <>
+        <div className="detail-header">
+          <div className="detail-header-left">
+            <DefinitionList>
+              <DefinitionListItem title="Start time">
+                {a.startTime ? formatDate(a.startTime) : <>&ndash;</>}
+              </DefinitionListItem>
+              <DefinitionListItem title="Uptime">
+                {a.startTime && !a.left ? (
+                  <LiveDuration startTime={a.startTime} />
+                ) : (
+                  <>&ndash;</>
+                )}
+              </DefinitionListItem>
+              <DefinitionListItem title="Capabilities">
+                {caps}
+              </DefinitionListItem>
+              <DefinitionListItem title="Allocated process chain">
+                {a.processChainId ? (
+                  <Link href={`/processchains/${a.processChainId}`}>
+                    {a.processChainId}
+                  </Link>
+                ) : (
+                  <>&ndash;</>
+                )}
+              </DefinitionListItem>
+            </DefinitionList>
+          </div>
+          <div className="detail-header-right">
+            <ListItemProgressBox progress={progress} />
+          </div>
         </div>
-        <div className="detail-header-right">
-          <ListItemProgressBox progress={progress} />
-        </div>
-      </div>
-      {a.left && (<>
-        <div className="agent-detail-left">
-          <Alert error>Agent has left the cluster</Alert>
-        </div>
-      </>)}
-      <style jsx>{styles}</style>
-    </>)
+        {a.left && (
+          <>
+            <div className="agent-detail-left">
+              <Alert error>Agent has left the cluster</Alert>
+            </div>
+          </>
+        )}
+        <style jsx>{styles}</style>
+      </>
+    )
   }
 
   return (

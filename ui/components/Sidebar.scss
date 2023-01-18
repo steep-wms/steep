@@ -1,6 +1,7 @@
 @import "../css/variables";
 
-aside, .sidebar {
+aside,
+.sidebar {
   width: 14rem;
   z-index: 1;
 
@@ -24,7 +25,7 @@ aside, .sidebar {
 
     @media (max-width: $lg) {
       margin-left: 1rem;
-      margin-top: .5rem;
+      margin-top: 0.5rem;
     }
   }
 
@@ -104,7 +105,7 @@ aside, .sidebar {
       :global(svg) {
         height: 1.1em;
         width: auto;
-        margin-right: .5em;
+        margin-right: 0.5em;
         margin-bottom: 2px;
         line-height: 1.7;
 

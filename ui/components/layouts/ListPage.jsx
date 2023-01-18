@@ -13,16 +13,27 @@ import { useRouter } from "next/router"
 import { Check } from "lucide-react"
 import debounce from "lodash/debounce"
 
-function List({ Context, ListItem, subjects, path, pagination, pageSize,
-    pageOffset, enabledFilterValues, forceUpdate }) {
+function List({
+  Context,
+  ListItem,
+  subjects,
+  path,
+  pagination,
+  pageSize,
+  pageOffset,
+  enabledFilterValues,
+  forceUpdate
+}) {
   const workflows = useContext(Context.Items)
   const updateItems = useContext(Context.UpdateItems)
   const [error, setError] = useState()
   const [pageTotal, setPageTotal] = useState(0)
 
   const router = useRouter()
-  const initialRender = Object.keys(router.query).length === 0 &&
-      typeof window !== "undefined" && !!window.location.search
+  const initialRender =
+    Object.keys(router.query).length === 0 &&
+    typeof window !== "undefined" &&
+    !!window.location.search
 
   const forceReset = useCallback(() => {
     updateItems({ action: "set" })
@@ -68,7 +79,15 @@ function List({ Context, ListItem, subjects, path, pagination, pageSize,
         console.error(err)
         setError(<Alert error>Could not load {subjects}</Alert>)
       })
-  }, [url, subjects, pagination, updateItems, forceReset, forceUpdate, initialRender])
+  }, [
+    url,
+    subjects,
+    pagination,
+    updateItems,
+    forceReset,
+    forceUpdate,
+    initialRender
+  ])
 
   function reset(newOffset) {
     if ((newOffset || 0) !== (pageOffset || 0)) {
@@ -81,21 +100,31 @@ function List({ Context, ListItem, subjects, path, pagination, pageSize,
     listItems = workflows.items.map(i => <ListItem key={i.id} item={i} />)
   }
 
-  return (<div className={classNames("list-container", { loading: listItems === undefined })}>
-    {listItems}
-    {listItems && listItems.length === 0 && <>There are no {subjects}.</>}
-    {error}
-    {pagination && pageTotal + workflows.added > 0 && (
-      <div className="pagination">
-        <Pagination pageSize={pageSize} pageOffset={pageOffset}
-          pageTotal={pageTotal + workflows.added} onChangeOffset={reset} />
-      </div>
-    )}
-    <style jsx>{styles}</style>
-  </div>)
+  return (
+    <div
+      className={classNames("list-container", {
+        loading: listItems === undefined
+      })}
+    >
+      {listItems}
+      {listItems && listItems.length === 0 && <>There are no {subjects}.</>}
+      {error}
+      {pagination && pageTotal + workflows.added > 0 && (
+        <div className="pagination">
+          <Pagination
+            pageSize={pageSize}
+            pageOffset={pageOffset}
+            pageTotal={pageTotal + workflows.added}
+            onChangeOffset={reset}
+          />
+        </div>
+      )}
+      <style jsx>{styles}</style>
+    </div>
+  )
 }
 
-const ListPage = (props) => {
+const ListPage = props => {
   let pagination = props.pagination
   if (pagination === undefined) {
     pagination = true
@@ -105,9 +134,13 @@ const ListPage = (props) => {
   const [updatesAvailable, setUpdatesAvailableNow] = useState(false)
   const [forceUpdate, setForceUpdate] = useState(0)
 
-  const setUpdatesAvailable = useMemo(() => debounce((updatesAvailable) => {
-    setUpdatesAvailableNow(updatesAvailable)
-  }, 100), [setUpdatesAvailableNow])
+  const setUpdatesAvailable = useMemo(
+    () =>
+      debounce(updatesAvailable => {
+        setUpdatesAvailableNow(updatesAvailable)
+      }, 100),
+    [setUpdatesAvailableNow]
+  )
 
   let pageOffset
   let pageSize
@@ -164,8 +197,12 @@ const ListPage = (props) => {
       setUpdatesAvailable(false)
     }
 
-    if (!updatesAvailable && action === "update" && state.items !== undefined &&
-        enabledFilterValues !== undefined) {
+    if (
+      !updatesAvailable &&
+      action === "update" &&
+      state.items !== undefined &&
+      enabledFilterValues !== undefined
+    ) {
       // Check if any of the items would match the current filter (if there
       // is any) after the update - OR if it would not match anymore. If so,
       // set the updates-available flag.
@@ -228,9 +265,16 @@ const ListPage = (props) => {
         }
         let enabled = currentValue === f.enabledValue
         filterDropDownElements.push(
-          <li onClick={() => toggleFilter(f, enabled)} key={i}
-              className={classNames({ enabled: enabled })}>
-            {enabled && <><Check /> </>}
+          <li
+            onClick={() => toggleFilter(f, enabled)}
+            key={i}
+            className={classNames({ enabled: enabled })}
+          >
+            {enabled && (
+              <>
+                <Check />{" "}
+              </>
+            )}
             {f.title}
           </li>
         )
@@ -241,33 +285,59 @@ const ListPage = (props) => {
   return (
     <Page {...props}>
       <div className="list-page">
-        <div className={classNames("list-page-title", { "no-margin-bottom": props.breadcrumbs })}>
+        <div
+          className={classNames("list-page-title", {
+            "no-margin-bottom": props.breadcrumbs
+          })}
+        >
           <h1 className="no-margin-bottom">{props.title}</h1>
           <div className="title-right">
             {props.additionalButtons}
-            <div className="search-container">
-              {search}
-            </div>
+            <div className="search-container">{search}</div>
             {filterDropDownElements.length > 0 && (
               <DropDown title="Filter" right primary={hasEnabledFilters}>
-                <ul className={classNames("filter-list", { "has-enabled-filters": hasEnabledFilters })}>
+                <ul
+                  className={classNames("filter-list", {
+                    "has-enabled-filters": hasEnabledFilters
+                  })}
+                >
                   {filterDropDownElements}
                 </ul>
               </DropDown>
             )}
           </div>
         </div>
-        {props.breadcrumbs && <div className="breadcrumbs"><Breadcrumbs breadcrumbs={props.breadcrumbs} /></div>}
-        <props.Context.Provider pageSize={pageSize} shouldAddItem={shouldAddItem} reducers={[reducer]}>
-          <List Context={props.Context} ListItem={props.ListItem} subjects={props.subjects}
-              path={props.path} pagination={pagination} pageSize={pageSize}
-              pageOffset={pageOffset} enabledFilterValues={enabledFilterValues}
-              forceUpdate={forceUpdate} />
+        {props.breadcrumbs && (
+          <div className="breadcrumbs">
+            <Breadcrumbs breadcrumbs={props.breadcrumbs} />
+          </div>
+        )}
+        <props.Context.Provider
+          pageSize={pageSize}
+          shouldAddItem={shouldAddItem}
+          reducers={[reducer]}
+        >
+          <List
+            Context={props.Context}
+            ListItem={props.ListItem}
+            subjects={props.subjects}
+            path={props.path}
+            pagination={pagination}
+            pageSize={pageSize}
+            pageOffset={pageOffset}
+            enabledFilterValues={enabledFilterValues}
+            forceUpdate={forceUpdate}
+          />
         </props.Context.Provider>
-        {updatesAvailable && (<Notification>
-          Updates available. <a href="#" onClick={() =>
-            setForceUpdate(forceUpdate + 1)}>Refresh</a>.
-        </Notification>)}
+        {updatesAvailable && (
+          <Notification>
+            Updates available.{" "}
+            <a href="#" onClick={() => setForceUpdate(forceUpdate + 1)}>
+              Refresh
+            </a>
+            .
+          </Notification>
+        )}
       </div>
       <style jsx>{styles}</style>
     </Page>

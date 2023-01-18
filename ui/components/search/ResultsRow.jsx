@@ -2,8 +2,18 @@ import Alert from "../../components/Alert"
 import Label from "../../components/Label"
 import Link from "next/link"
 import { formatIsoLocalDateTime } from "../../components/lib/date-time-utils"
-import { AlertCircle, Clock, CheckCircle, Coffee, Delete, Link as LinkIcon,
-  RotateCw, PauseCircle, Send, XCircle } from "lucide-react"
+import {
+  AlertCircle,
+  Clock,
+  CheckCircle,
+  Coffee,
+  Delete,
+  Link as LinkIcon,
+  RotateCw,
+  PauseCircle,
+  Send,
+  XCircle
+} from "lucide-react"
 import classNames from "classnames"
 import styles from "./ResultsRow.scss"
 
@@ -135,8 +145,13 @@ function Status({ status, statusMatch }) {
     text = highlightMatch(statusMatch, text)
   }
 
-  return <span className={classNames("status", cls)}>{statusIcon}{text}
-      <style jsx>{styles}</style></span>
+  return (
+    <span className={classNames("status", cls)}>
+      {statusIcon}
+      {text}
+      <style jsx>{styles}</style>
+    </span>
+  )
 }
 
 function Time({ startTime, endTime, startTimeMatch, endTimeMatch }) {
@@ -160,10 +175,18 @@ function Time({ startTime, endTime, startTimeMatch, endTimeMatch }) {
     }
   }
 
-  return <span className="time">
-    <Clock />{s} .. {e || <span className="ongoing-icon"><RotateCw /></span> }
-    <style jsx>{styles}</style>
-  </span>
+  return (
+    <span className="time">
+      <Clock />
+      {s} ..{" "}
+      {e || (
+        <span className="ongoing-icon">
+          <RotateCw />
+        </span>
+      )}
+      <style jsx>{styles}</style>
+    </span>
+  )
 }
 
 const ResultsRow = ({ result }) => {
@@ -175,7 +198,11 @@ const ResultsRow = ({ result }) => {
 
   let title
   if (name) {
-    title = <>{name} ({id})</>
+    title = (
+      <>
+        {name} ({id})
+      </>
+    )
   } else {
     title = id
   }
@@ -196,8 +223,9 @@ const ResultsRow = ({ result }) => {
   let labels = []
   if (result.requiredCapabilities !== undefined) {
     for (let rc of result.requiredCapabilities) {
-      let rcMatch = result.matches.find(m => m.locator === "requiredCapabilities" &&
-          m.fragment === rc)
+      let rcMatch = result.matches.find(
+        m => m.locator === "requiredCapabilities" && m.fragment === rc
+      )
       let hrc = rcMatch ? highlightMatch(rcMatch) : rc
       labels.push(hrc)
     }
@@ -206,46 +234,70 @@ const ResultsRow = ({ result }) => {
   let errorMatch = result.matches.find(m => m.locator === "errorMessage")
   let errorMessage
   if (errorMatch) {
-    errorMessage = <div className="results-row-error-message">
-      <Alert error small>{highlightMatch(errorMatch)}</Alert>
-      <style jsx>{styles}</style>
-    </div>
+    errorMessage = (
+      <div className="results-row-error-message">
+        <Alert error small>
+          {highlightMatch(errorMatch)}
+        </Alert>
+        <style jsx>{styles}</style>
+      </div>
+    )
   }
 
   let sourceMatch = result.matches.find(m => m.locator === "source")
   let source
   if (sourceMatch) {
-    source = <div className="results-row-source">
-      <pre><code className="hljs language-json">{highlightMatch(sourceMatch)}</code></pre>
-      <style jsx>{styles}</style>
-    </div>
+    source = (
+      <div className="results-row-source">
+        <pre>
+          <code className="hljs language-json">
+            {highlightMatch(sourceMatch)}
+          </code>
+        </pre>
+        <style jsx>{styles}</style>
+      </div>
+    )
   }
 
   let statusMatch = result.matches.find(m => m.locator === "status")
   let startTimeMatch = result.matches.find(m => m.locator === "startTime")
   let endTimeMatch = result.matches.find(m => m.locator === "endTime")
 
-  return (<>
-    <div className="results-row">
-      <div className="results-row-title">
-        <span className="results-row-icon">
-          {result.type === "workflow" && <Send size="1.2rem" />}
-          {result.type === "processChain" && <LinkIcon size="1.2rem" />}
-        </span>
-        <Link href={href}>{title}</Link>{labels.length > 0 && <>&ensp;</>}
-        {labels.map((l, i) => <><Label key={i} small>{l}</Label><wbr/></>)}
+  return (
+    <>
+      <div className="results-row">
+        <div className="results-row-title">
+          <span className="results-row-icon">
+            {result.type === "workflow" && <Send size="1.2rem" />}
+            {result.type === "processChain" && <LinkIcon size="1.2rem" />}
+          </span>
+          <Link href={href}>{title}</Link>
+          {labels.length > 0 && <>&ensp;</>}
+          {labels.map((l, i) => (
+            <>
+              <Label key={i} small>
+                {l}
+              </Label>
+              <wbr />
+            </>
+          ))}
+        </div>
+        {errorMessage}
+        {source}
+        <div className="results-row-info">
+          {type && <>{type}</>}
+          <Status status={result.status} statusMatch={statusMatch} />
+          <Time
+            startTime={result.startTime}
+            endTime={result.endTime}
+            startTimeMatch={startTimeMatch}
+            endTimeMatch={endTimeMatch}
+          />
+        </div>
       </div>
-      {errorMessage}
-      {source}
-      <div className="results-row-info">
-        {type && <>{type}</>}
-        <Status status={result.status} statusMatch={statusMatch} />
-        <Time startTime={result.startTime} endTime={result.endTime}
-          startTimeMatch={startTimeMatch} endTimeMatch={endTimeMatch} />
-      </div>
-    </div>
-    <style jsx>{styles}</style>
-  </>)
+      <style jsx>{styles}</style>
+    </>
+  )
 }
 
 export default ResultsRow

@@ -21,7 +21,7 @@ export function formatDurationTitle(startTime, endTime) {
   let diff = dayjs(endTime).diff(dayjs(startTime))
   let duration = Math.ceil(dayjs.duration(diff).asSeconds())
   let seconds = Math.floor(duration % 60)
-  let minutes = Math.floor(duration / 60 % 60)
+  let minutes = Math.floor((duration / 60) % 60)
   let hours = Math.floor(duration / 60 / 60)
   let result = ""
   if (hours > 0) {
@@ -39,15 +39,21 @@ export function formatDurationTitle(startTime, endTime) {
 // easily added (see code of formatDurationTitle).
 export function formatDurationMilliseconds(durationMilliseconds, trimRight) {
   let milliseconds = Math.floor(durationMilliseconds % 1000)
-  let seconds = Math.floor(durationMilliseconds / 1000 % 60)
-  let minutes = Math.floor(durationMilliseconds / 1000 / 60 % 60)
-  let hours = Math.floor(durationMilliseconds / 1000 / 60 / 60 % 24)
+  let seconds = Math.floor((durationMilliseconds / 1000) % 60)
+  let minutes = Math.floor((durationMilliseconds / 1000 / 60) % 60)
+  let hours = Math.floor((durationMilliseconds / 1000 / 60 / 60) % 24)
   let days = Math.floor(durationMilliseconds / 1000 / 60 / 60 / 24)
   let result = ""
   if (days > 0) {
     result += days + "d "
   }
-  if (!trimRight || hours > 0 || minutes > 0 || seconds > 0 || milliseconds > 0) {
+  if (
+    !trimRight ||
+    hours > 0 ||
+    minutes > 0 ||
+    seconds > 0 ||
+    milliseconds > 0
+  ) {
     if (result !== "" || hours > 0) {
       result += hours + "h "
     }

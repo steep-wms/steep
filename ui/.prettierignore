@@ -1,0 +1,6 @@
+.gradle/
+.next/
+node_modules/
+out/
+*.md
+*.mdx

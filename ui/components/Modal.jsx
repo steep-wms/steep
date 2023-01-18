@@ -7,7 +7,7 @@ import classNames from "classnames"
 
 ReactModal.setAppElement("#__next")
 
-const Modal = (props) => {
+const Modal = props => {
   const ref = useRef()
 
   function onModalOpen() {
@@ -21,9 +21,14 @@ const Modal = (props) => {
   }
 
   return (
-    <ReactModal {...props} className={classNames(resolvedStyles.className, "modal")}
-        overlayClassName={classNames(resolvedStyles.className, "modal-overlay")}
-        onAfterOpen={onModalOpen} onAfterClose={onModalClose} ref={ref}>
+    <ReactModal
+      {...props}
+      className={classNames(resolvedStyles.className, "modal")}
+      overlayClassName={classNames(resolvedStyles.className, "modal-overlay")}
+      onAfterOpen={onModalOpen}
+      onAfterClose={onModalClose}
+      ref={ref}
+    >
       <div className="modal-title">{props.title}</div>
       {props.children}
       {resolvedStyles.styles}

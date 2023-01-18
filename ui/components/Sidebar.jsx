@@ -2,7 +2,15 @@ import classNames from "classnames"
 import Link from "next/link"
 import resolvedStyles from "./Sidebar.scss?type=resolve"
 import styles from "./Sidebar.scss"
-import { LayoutGrid, Link as LinkIcon, Pocket, Puzzle, Search, Send, Server } from "lucide-react"
+import {
+  LayoutGrid,
+  Link as LinkIcon,
+  Pocket,
+  Puzzle,
+  Search,
+  Send,
+  Server
+} from "lucide-react"
 import { useContext, useState } from "react"
 import SteepLogo from "../assets/steep-logo.svg"
 import SteepLogoWhite from "../assets/steep-logo-white.svg"
@@ -20,9 +28,17 @@ function NavItem({ href, icon, text }) {
 
   return (
     <div className="nav-item">
-      <Link href={href} className={classNames(resolvedStyles.className, "nav-item", "nav-item-link", { hover })}
-          onMouseEnter={() => setHover(true)}
-          onMouseLeave={() => setHover(false)}>
+      <Link
+        href={href}
+        className={classNames(
+          resolvedStyles.className,
+          "nav-item",
+          "nav-item-link",
+          { hover }
+        )}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+      >
         {icon} <span className="nav-item-text">{text}</span>
       </Link>
       {resolvedStyles.styles}
@@ -41,13 +57,30 @@ const Sidebar = () => {
     <aside>
       <div className="sidebar">
         <div className="sidebar-main">
-          <Link href="/" className={classNames(resolvedStyles.className, "sidebar-logo")}>
-            <img src={logo} width="160" className="steep-logo" alt="Steep logo" />
-            <img src={icon} width="1000" className="steep-icon" alt="Steep logo (icon only)" />
+          <Link
+            href="/"
+            className={classNames(resolvedStyles.className, "sidebar-logo")}
+          >
+            <img
+              src={logo}
+              width="160"
+              className="steep-logo"
+              alt="Steep logo"
+            />
+            <img
+              src={icon}
+              width="1000"
+              className="steep-icon"
+              alt="Steep logo (icon only)"
+            />
           </Link>
           <nav>
             <NavItem href="/workflows/" icon={<Send />} text="Workflows" />
-            <NavItem href="/processchains/" icon={<LinkIcon />} text="Process Chains" />
+            <NavItem
+              href="/processchains/"
+              icon={<LinkIcon />}
+              text="Process Chains"
+            />
             <NavItem href="/agents/" icon={<Pocket />} text="Agents" />
             <NavItem href="/vms/" icon={<Server />} text="VMs" />
             <NavItem href="/services/" icon={<LayoutGrid />} text="Services" />

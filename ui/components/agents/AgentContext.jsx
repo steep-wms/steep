@@ -10,19 +10,21 @@ import {
 } from "../../components/lib/EventBusMessages"
 
 const ADD_MESSAGES = {
-  [AGENT_ADDED]: (body) => {
-    return fetcher(`${process.env.baseUrl}/agents/${body}`).then(agent => [agent])
+  [AGENT_ADDED]: body => {
+    return fetcher(`${process.env.baseUrl}/agents/${body}`).then(agent => [
+      agent
+    ])
   }
 }
 
 const UPDATE_MESSAGES = {
-  [AGENT_ADDED]: (body) => ({
+  [AGENT_ADDED]: body => ({
     id: body,
     left: false, // make agent visible again if it's already in the list
     processChainId: undefined,
     stateChangedTime: new Date()
   }),
-  [CLUSTER_NODE_LEFT]: (body) => {
+  [CLUSTER_NODE_LEFT]: body => {
     let agentId = body.agentId
     let instances = body.instances || 1
     let r = []
@@ -36,19 +38,19 @@ const UPDATE_MESSAGES = {
     }
     return r
   },
-  [AGENT_LEFT]: (body) => ({
+  [AGENT_LEFT]: body => ({
     id: body,
     left: true,
     processChainId: undefined,
     stateChangedTime: new Date()
   }),
-  [AGENT_BUSY]: (body) => ({
+  [AGENT_BUSY]: body => ({
     id: body.id,
     available: false,
     processChainId: body.processChainId,
     stateChangedTime: new Date(body.stateChangedTime)
   }),
-  [AGENT_IDLE]: (body) => ({
+  [AGENT_IDLE]: body => ({
     id: body.id,
     available: true,
     processChainId: undefined,
@@ -58,9 +60,12 @@ const UPDATE_MESSAGES = {
 
 const ListContext = makeListContext()
 
-const Provider = (props) => (
-  <ListContext.Provider {...props} addMessages={ADD_MESSAGES}
-      updateMessages={UPDATE_MESSAGES} />
+const Provider = props => (
+  <ListContext.Provider
+    {...props}
+    addMessages={ADD_MESSAGES}
+    updateMessages={UPDATE_MESSAGES}
+  />
 )
 
 const AgentContext = {

@@ -3,7 +3,10 @@ import { formatDistanceToNow } from "date-fns"
 import { formatDate } from "../lib/date-time-utils"
 
 function formatterToNow(value, unit, suffix, epochSeconds) {
-  return formatDistanceToNow(epochSeconds, { addSuffix: false, includeSeconds: true })
+  return formatDistanceToNow(epochSeconds, {
+    addSuffix: false,
+    includeSeconds: true
+  })
 }
 
 export default function vmToProgress(vm) {
@@ -13,8 +16,13 @@ export default function vmToProgress(vm) {
     case "RUNNING": {
       progress.status = "UP"
       let upTitle = formatDate(vm.agentJoinTime)
-      progress.subtitle = <Ago date={vm.agentJoinTime}
-        formatter={formatterToNow} title={upTitle} />
+      progress.subtitle = (
+        <Ago
+          date={vm.agentJoinTime}
+          formatter={formatterToNow}
+          title={upTitle}
+        />
+      )
       break
     }
 

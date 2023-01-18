@@ -30,7 +30,8 @@ footer {
       }
     }
 
-    .logo, .social-icons {
+    .logo,
+    .social-icons {
       width: 30%;
     }
 
@@ -38,7 +39,7 @@ footer {
       width: 100%;
       max-width: 7rem;
       filter: grayscale(1);
-      opacity: .75;
+      opacity: 0.75;
       transition: opacity 150ms ease-in-out, filter 150ms ease-in-out;
 
       &:hover {
@@ -61,7 +62,7 @@ footer {
       }
 
       a {
-        opacity: .7;
+        opacity: 0.7;
         transition: opacity 150ms ease-in-out;
 
         &:hover {

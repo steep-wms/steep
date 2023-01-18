@@ -1,6 +1,7 @@
 @use "sass:color";
 
-:root, [data-theme="default"]  {
+:root,
+[data-theme="default"] {
   $-primary: #1d71b8;
   $-success: #1a6;
   $-warning: #ffa46c;
@@ -52,9 +53,9 @@
   // colors from Chakra UI (https://github.com/chakra-ui/chakra-ui)
   // released under the MIT license. Copyright (c) 2019 Segun Adebayo
   $-primary: #4299e1;
-  $-success: #48BB78;
-  $-warning: #F6AD55;
-  $-error: #F56565;
+  $-success: #48bb78;
+  $-warning: #f6ad55;
+  $-error: #f56565;
 
   $-gray-100: #2d3748;
   $-gray-200: #4a5568;
@@ -95,5 +96,5 @@
   --border-color: var(--gray-100);
   --placeholder-color: var(--gray-300);
 
-  --drop-down-box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);;
+  --drop-down-box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
 }

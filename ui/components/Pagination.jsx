@@ -40,14 +40,19 @@ function makePages(curPage, numPages) {
 
 function makeQueryWithOffset(query, page, pageSize) {
   query = { ...query }
-  query.offset = page *  pageSize
+  query.offset = page * pageSize
   if (query.offset <= 0) {
     delete query.offset
   }
   return query
 }
 
-const Pagination = ({ pageSize = 10, pageOffset = 0, pageTotal = 0, onChangeOffset }) => {
+const Pagination = ({
+  pageSize = 10,
+  pageOffset = 0,
+  pageTotal = 0,
+  onChangeOffset
+}) => {
   const router = useRouter()
   let pathname = router.pathname
 
@@ -70,8 +75,13 @@ const Pagination = ({ pageSize = 10, pageOffset = 0, pageTotal = 0, onChangeOffs
       let query = makeQueryWithOffset(router.query, text - 1, pageSize)
       return (
         <div className={classNames("pagination-page", { active })} key={key}>
-          <Link href={{ pathname, query }} className={classNames(resolvedStyles.className, "page-link")}
-            onClick={() => onChangeOffset(query.offset || 0)}>{text}</Link>
+          <Link
+            href={{ pathname, query }}
+            className={classNames(resolvedStyles.className, "page-link")}
+            onClick={() => onChangeOffset(query.offset || 0)}
+          >
+            {text}
+          </Link>
           {resolvedStyles.styles}
           <style jsx>{styles}</style>
         </div>
@@ -91,8 +101,13 @@ const Pagination = ({ pageSize = 10, pageOffset = 0, pageTotal = 0, onChangeOffs
     let query = makeQueryWithOffset(router.query, curPage - 1, pageSize)
     pages.unshift(
       <div className="pagination-page" key="prev-page">
-        <Link href={{ pathname, query }} className={classNames(resolvedStyles.className, "page-link")}
-          onClick={() => onChangeOffset(query.offset || 0)}>&laquo;</Link>
+        <Link
+          href={{ pathname, query }}
+          className={classNames(resolvedStyles.className, "page-link")}
+          onClick={() => onChangeOffset(query.offset || 0)}
+        >
+          &laquo;
+        </Link>
         {resolvedStyles.styles}
         <style jsx>{styles}</style>
       </div>
@@ -111,8 +126,13 @@ const Pagination = ({ pageSize = 10, pageOffset = 0, pageTotal = 0, onChangeOffs
     let query = makeQueryWithOffset(router.query, curPage + 1, pageSize)
     pages.push(
       <div className="pagination-page" key="next-page">
-        <Link href={{ pathname, query }} className={classNames(resolvedStyles.className, "page-link")}
-          onClick={() => onChangeOffset(query.offset || 0)}>&raquo;</Link>
+        <Link
+          href={{ pathname, query }}
+          className={classNames(resolvedStyles.className, "page-link")}
+          onClick={() => onChangeOffset(query.offset || 0)}
+        >
+          &raquo;
+        </Link>
         {resolvedStyles.styles}
         <style jsx>{styles}</style>
       </div>

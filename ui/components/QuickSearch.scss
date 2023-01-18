@@ -15,7 +15,8 @@
   margin-bottom: 1px;
 }
 
-.slash-icon, .close-icon {
+.slash-icon,
+.close-icon {
   position: absolute;
 }
 
@@ -43,7 +44,7 @@
   right: 0.65rem;
   margin-bottom: 2px;
   cursor: pointer;
-  
+
   :global(svg) {
     stroke: var(--gray-600);
   }

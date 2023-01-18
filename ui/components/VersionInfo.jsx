@@ -24,9 +24,7 @@ const VersionInfo = () => {
   if (error !== undefined) {
     return error
   } else if (data === undefined) {
-    return (
-      <></>
-    )
+    return <></>
   } else {
     let options = {
       day: "numeric",
@@ -38,8 +36,9 @@ const VersionInfo = () => {
       second: "numeric",
       timeZoneName: "short"
     }
-    let timestamp = new Intl.DateTimeFormat("en-GB", options)
-      .format(new Date(data.timestamp))
+    let timestamp = new Intl.DateTimeFormat("en-GB", options).format(
+      new Date(data.timestamp)
+    )
     return (
       <DefinitionList>
         <DefinitionListItem title="Version">{data.version}</DefinitionListItem>

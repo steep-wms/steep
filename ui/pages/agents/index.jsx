@@ -8,7 +8,10 @@ import agentToProgress from "../../components/agents/agent-to-progress"
 import { formatDate } from "../../components/lib/date-time-utils"
 
 function formatterToNow(value, unit, suffix, epochSeconds) {
-  return formatDistanceToNow(epochSeconds, { addSuffix: false, includeSeconds: true })
+  return formatDistanceToNow(epochSeconds, {
+    addSuffix: false,
+    includeSeconds: true
+  })
 }
 
 function AgentListItem({ item: agent }) {
@@ -19,18 +22,42 @@ function AgentListItem({ item: agent }) {
     let progress = agentToProgress(agent)
 
     let upSinceTitle = formatDate(agent.startTime)
-    let subtitle = <>Up since <Ago date={agent.startTime}
-      formatter={formatterToNow} title={upSinceTitle} /></>
+    let subtitle = (
+      <>
+        Up since{" "}
+        <Ago
+          date={agent.startTime}
+          formatter={formatterToNow}
+          title={upSinceTitle}
+        />
+      </>
+    )
 
-    return <ListItem key={agent.id} justAdded={agent.justAdded}
-        justLeft={agent.left} linkHref={href} linkAs={as} title={agent.id}
-        subtitle={subtitle} progress={progress} labels={agent.capabilities} />
+    return (
+      <ListItem
+        key={agent.id}
+        justAdded={agent.justAdded}
+        justLeft={agent.left}
+        linkHref={href}
+        linkAs={as}
+        title={agent.id}
+        subtitle={subtitle}
+        progress={progress}
+        labels={agent.capabilities}
+      />
+    )
   }, [agent])
 }
 
 const Agents = () => (
-  <ListPage title="Agents" Context={AgentContext}
-      ListItem={AgentListItem} subjects="agents" path="agents" pagination={false} />
+  <ListPage
+    title="Agents"
+    Context={AgentContext}
+    ListItem={AgentListItem}
+    subjects="agents"
+    path="agents"
+    pagination={false}
+  />
 )
 
 export default Agents

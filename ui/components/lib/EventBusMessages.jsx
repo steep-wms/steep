@@ -1,23 +1,35 @@
 module.exports = {
   SUBMISSION_ADDED: "steep.submissionRegistry.submissionAdded",
-  SUBMISSION_START_TIME_CHANGED: "steep.submissionRegistry.submissionStartTimeChanged",
-  SUBMISSION_END_TIME_CHANGED: "steep.submissionRegistry.submissionEndTimeChanged",
+  SUBMISSION_START_TIME_CHANGED:
+    "steep.submissionRegistry.submissionStartTimeChanged",
+  SUBMISSION_END_TIME_CHANGED:
+    "steep.submissionRegistry.submissionEndTimeChanged",
   SUBMISSION_STATUS_CHANGED: "steep.submissionRegistry.submissionStatusChanged",
-  SUBMISSION_PRIORITY_CHANGED: "steep.submissionRegistry.submissionPriorityChanged",
-  SUBMISSION_ERROR_MESSAGE_CHANGED: "steep.submissionRegistry.submissionErrorMessageChanged",
+  SUBMISSION_PRIORITY_CHANGED:
+    "steep.submissionRegistry.submissionPriorityChanged",
+  SUBMISSION_ERROR_MESSAGE_CHANGED:
+    "steep.submissionRegistry.submissionErrorMessageChanged",
   SUBMISSIONS_DELETED: "steep.submissionRegistry.submissionsDeleted",
 
   PROCESS_CHAINS_ADDED: "steep.submissionRegistry.processChainsAdded",
   PROCESS_CHAINS_ADDED_SIZE: "steep.submissionRegistry.processChainsAddedSize",
   PROCESS_CHAIN_RUN_ADDED: "steep.submissionRegistry.processChainRunAdded",
-  PROCESS_CHAIN_RUN_FINISHED: "steep.submissionRegistry.processChainRunFinished",
-  PROCESS_CHAIN_LAST_RUN_DELETED: "steep.submissionRegistry.processChainLastRunDeleted",
-  PROCESS_CHAIN_ALL_RUNS_DELETED: "steep.submissionRegistry.processChainAllRunsDeleted",
-  PROCESS_CHAIN_STATUS_CHANGED: "steep.submissionRegistry.processChainStatusChanged",
-  PROCESS_CHAIN_ALL_STATUS_CHANGED: "steep.submissionRegistry.processChainAllStatusChanged",
-  PROCESS_CHAIN_PRIORITY_CHANGED: "steep.submissionRegistry.processChainPriorityChanged",
-  PROCESS_CHAIN_ALL_PRIORITY_CHANGED: "steep.submissionRegistry.processChainAllPriorityChanged",
-  PROCESS_CHAIN_PROGRESS_CHANGED: "steep.submissionRegistry.processChainProgressChanged",
+  PROCESS_CHAIN_RUN_FINISHED:
+    "steep.submissionRegistry.processChainRunFinished",
+  PROCESS_CHAIN_LAST_RUN_DELETED:
+    "steep.submissionRegistry.processChainLastRunDeleted",
+  PROCESS_CHAIN_ALL_RUNS_DELETED:
+    "steep.submissionRegistry.processChainAllRunsDeleted",
+  PROCESS_CHAIN_STATUS_CHANGED:
+    "steep.submissionRegistry.processChainStatusChanged",
+  PROCESS_CHAIN_ALL_STATUS_CHANGED:
+    "steep.submissionRegistry.processChainAllStatusChanged",
+  PROCESS_CHAIN_PRIORITY_CHANGED:
+    "steep.submissionRegistry.processChainPriorityChanged",
+  PROCESS_CHAIN_ALL_PRIORITY_CHANGED:
+    "steep.submissionRegistry.processChainAllPriorityChanged",
+  PROCESS_CHAIN_PROGRESS_CHANGED:
+    "steep.submissionRegistry.processChainProgressChanged",
 
   CLUSTER_NODE_LEFT: "steep.cluster.nodeLeft",
 

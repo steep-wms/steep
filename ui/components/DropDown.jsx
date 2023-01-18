@@ -3,7 +3,14 @@ import { ChevronDown } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import styles from "./DropDown.scss"
 
-const DropDown = ({ title, right, primary, small, forceTitleVisible, children }) => {
+const DropDown = ({
+  title,
+  right,
+  primary,
+  small,
+  forceTitleVisible,
+  children
+}) => {
   const [visible, setVisible] = useState(false)
   const ref = useRef()
   const btnRef = useRef()
@@ -41,11 +48,29 @@ const DropDown = ({ title, right, primary, small, forceTitleVisible, children })
 
   return (
     <div className="dropdown" ref={ref}>
-      <button className={classNames("dropdown-btn", { primary, small })} ref={btnRef}
-          onClick={onDropDownClick}>
-        <span className={classNames("dropdown-text", { "force-visible": forceTitleVisible })}>{title} </span><ChevronDown />
-       </button>
-      <div className={classNames("dropdown-menu", { visible, right, "force-title-visible": forceTitleVisible })}>{children}</div>
+      <button
+        className={classNames("dropdown-btn", { primary, small })}
+        ref={btnRef}
+        onClick={onDropDownClick}
+      >
+        <span
+          className={classNames("dropdown-text", {
+            "force-visible": forceTitleVisible
+          })}
+        >
+          {title}{" "}
+        </span>
+        <ChevronDown />
+      </button>
+      <div
+        className={classNames("dropdown-menu", {
+          visible,
+          right,
+          "force-title-visible": forceTitleVisible
+        })}
+      >
+        {children}
+      </div>
       <style jsx>{styles}</style>
     </div>
   )

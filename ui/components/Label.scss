@@ -1,15 +1,15 @@
 @import "../css/variables";
 
 .label {
-  font-size: .75rem;
-  margin-top: .15rem;
+  font-size: 0.75rem;
+  margin-top: 0.15rem;
   background-color: var(--gray-200);
-  padding: .15rem .5rem .25rem .5rem;
+  padding: 0.15rem 0.5rem 0.25rem 0.5rem;
   border-radius: $border-radius;
   white-space: nowrap;
 
   &.label-small {
-    font-size: .6rem;
+    font-size: 0.6rem;
   }
 
   margin-right: $spacer * 0.25;

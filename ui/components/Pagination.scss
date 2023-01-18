@@ -14,7 +14,7 @@
     .page-link {
       border-radius: $border-radius;
       margin: 0 1px;
-      padding: .5rem .75rem;
+      padding: 0.5rem 0.75rem;
 
       &:hover {
         background-color: var(--gray-200);
@@ -22,18 +22,18 @@
       }
 
       @media (max-width: $sm) {
-        padding-left: .5rem;
-        padding-right: .5rem;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
       }
     }
 
     &.disabled {
       color: var(--gray-600);
-      padding: .5rem .75rem;
+      padding: 0.5rem 0.75rem;
 
       @media (max-width: $sm) {
-        padding-left: .5rem;
-        padding-right: .5rem;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
       }
     }
 

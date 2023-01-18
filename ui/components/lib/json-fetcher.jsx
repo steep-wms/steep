@@ -9,13 +9,17 @@ async function defaultHandleResponse(r) {
   return await r.text()
 }
 
-async function fetcher(url, withHeaders = false, options = {},
-    handleResponse = undefined) {
+async function fetcher(
+  url,
+  withHeaders = false,
+  options = {},
+  handleResponse = undefined
+) {
   let timer = setTimeout(NProgress.start, 100)
   try {
     let r = await fetch(url, {
       headers: {
-        "accept": "application/json"
+        accept: "application/json"
       },
       ...options
     })

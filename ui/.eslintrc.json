@@ -1,8 +1,5 @@
 {
-  "extends": [
-    "next/core-web-vitals",
-    "plugin:cypress/recommended"
-  ],
+  "extends": ["next/core-web-vitals", "plugin:cypress/recommended", "prettier"],
   "rules": {
     "@next/next/google-font-display": "off",
     "@next/next/no-img-element": "off",

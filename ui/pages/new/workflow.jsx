@@ -29,44 +29,54 @@ const Submit = () => {
     return Color(rootStyle.getPropertyValue(name)).hex()
   }
 
-  const defineTheme = useCallback((name, backgroundColor, foregroundColor,
-      lineHighlightBorderColor, editorLineNumberColor) => {
-    monaco.editor.defineTheme(name, {
-      base: "vs-dark",
-      inherit: true,
-      rules: [
-        { token: "comment", foreground: "7f9f7f" },
-        { token: "keyword", foreground: "e3ceab" },
-        { token: "number", foreground: "8cd0d3" },
-        { token: "type", foreground: "ffffff" },
-        { token: "operators", foreground: "ffffff" },
-        { token: "string", foreground: "cc9393" }
-      ],
-      colors: {
-        "editor.background": backgroundColor,
-        "editor.foreground": foregroundColor,
-        "editor.lineHighlightBorder": lineHighlightBorderColor,
-        "editorLineNumber.foreground": editorLineNumberColor,
-        "editor.selectionBackground": "#6590cc",
-        "editor.inactiveSelectionBackground": "#5580bb",
-        "scrollbar.shadow": backgroundColor
-      }
-    })
-  }, [monaco])
+  const defineTheme = useCallback(
+    (
+      name,
+      backgroundColor,
+      foregroundColor,
+      lineHighlightBorderColor,
+      editorLineNumberColor
+    ) => {
+      monaco.editor.defineTheme(name, {
+        base: "vs-dark",
+        inherit: true,
+        rules: [
+          { token: "comment", foreground: "7f9f7f" },
+          { token: "keyword", foreground: "e3ceab" },
+          { token: "number", foreground: "8cd0d3" },
+          { token: "type", foreground: "ffffff" },
+          { token: "operators", foreground: "ffffff" },
+          { token: "string", foreground: "cc9393" }
+        ],
+        colors: {
+          "editor.background": backgroundColor,
+          "editor.foreground": foregroundColor,
+          "editor.lineHighlightBorder": lineHighlightBorderColor,
+          "editorLineNumber.foreground": editorLineNumberColor,
+          "editor.selectionBackground": "#6590cc",
+          "editor.inactiveSelectionBackground": "#5580bb",
+          "scrollbar.shadow": backgroundColor
+        }
+      })
+    },
+    [monaco]
+  )
 
   useEffect(() => {
     if (monaco) {
       let defaultStyle = window.getComputedStyle(themeDefaultRef.current)
       let darkStyle = window.getComputedStyle(themeDarkRef.current)
 
-      defineTheme("steep-default",
+      defineTheme(
+        "steep-default",
         getThemeColor(defaultStyle, "--code-bg"),
         getThemeColor(defaultStyle, "--code-fg"),
         getThemeColor(defaultStyle, "--gray-700"),
         getThemeColor(defaultStyle, "--gray-600")
       )
 
-      defineTheme("steep-dark",
+      defineTheme(
+        "steep-dark",
         getThemeColor(darkStyle, "--code-bg"),
         getThemeColor(darkStyle, "--code-fg"),
         getThemeColor(darkStyle, "--gray-700"),
@@ -86,16 +96,18 @@ const Submit = () => {
 
   useEffect(() => {
     if (router.query.from !== undefined) {
-      fetcher(`${process.env.baseUrl}/workflows/${router.query.from}`).then(response => {
-        setValue(submissionToSource(response).yaml)
-        setReady(true)
-        if (editorRef.current && monaco) {
-          editorRef.current.setSelection(new monaco.Selection(0, 0, 0, 0))
-        }
-      }).catch(error => {
-        setError(error.message)
-        console.log(error)
-      })
+      fetcher(`${process.env.baseUrl}/workflows/${router.query.from}`)
+        .then(response => {
+          setValue(submissionToSource(response).yaml)
+          setReady(true)
+          if (editorRef.current && monaco) {
+            editorRef.current.setSelection(new monaco.Selection(0, 0, 0, 0))
+          }
+        })
+        .catch(error => {
+          setError(error.message)
+          console.log(error)
+        })
     }
   }, [router.query.from, monaco])
 
@@ -119,27 +131,34 @@ const Submit = () => {
     fetcher(`${process.env.baseUrl}/workflows/`, false, {
       method: "POST",
       body: value
-    }).then(response => {
-      router.push("/workflows/[id]", `/workflows/${response.id}`)
-    }).catch(error => {
-      setError(error.message)
-      console.log(error)
-      setReady(true)
     })
+      .then(response => {
+        router.push("/workflows/[id]", `/workflows/${response.id}`)
+      })
+      .catch(error => {
+        setError(error.message)
+        console.log(error)
+        setReady(true)
+      })
   }
 
   function onCancel() {
     router.back()
   }
 
-  const loading = (<>
-    <div className="loading"><Circle /></div>
-    <style jsx>{styles}</style>
-  </>)
+  const loading = (
+    <>
+      <div className="loading">
+        <Circle />
+      </div>
+      <style jsx>{styles}</style>
+    </>
+  )
 
   const options = {
     // see main.scss
-    fontFamily: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+    fontFamily:
+      "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
     fontSize: "16.74px",
     lineHeight: "28.458px",
 
@@ -156,20 +175,41 @@ const Submit = () => {
     <DetailPage title="New workflow" footerNoTopMargin={true}>
       <div data-theme="default" ref={themeDefaultRef}></div>
       <div data-theme="dark" ref={themeDarkRef}></div>
-      <div className={classNames("editor-container", { "with-error": error !== undefined })}>
-        {error && <div>
-          <Alert error>{error}</Alert>
-        </div>}
+      <div
+        className={classNames("editor-container", {
+          "with-error": error !== undefined
+        })}
+      >
+        {error && (
+          <div>
+            <Alert error>{error}</Alert>
+          </div>
+        )}
         <div className="editor-main">
           <div className="editor-wrapper">
-            <Editor width="100%" height="100%" language="yaml" value={value}
-              onMount={handleEditorOnMount} onChange={handleEditorChange}
-              theme="steep" loading={loading} options={options} />
+            <Editor
+              width="100%"
+              height="100%"
+              language="yaml"
+              value={value}
+              onMount={handleEditorOnMount}
+              onChange={handleEditorChange}
+              theme="steep"
+              loading={loading}
+              options={options}
+            />
           </div>
           <div className="buttons">
-            <button className="btn primary submit-button" disabled={!ready}
-              onClick={onSubmit}>Submit</button>
-            <button className="btn cancel-button" onClick={onCancel}>Cancel</button>
+            <button
+              className="btn primary submit-button"
+              disabled={!ready}
+              onClick={onSubmit}
+            >
+              Submit
+            </button>
+            <button className="btn cancel-button" onClick={onCancel}>
+              Cancel
+            </button>
           </div>
         </div>
       </div>

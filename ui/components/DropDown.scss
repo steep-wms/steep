@@ -22,7 +22,7 @@
     background-color: var(--gray-100);
     border: 1px solid var(--border-color);
     border-radius: $border-radius;
-    padding: .6em .75em .4em 1em;
+    padding: 0.6em 0.75em 0.4em 1em;
     cursor: pointer;
     white-space: nowrap;
 
@@ -38,7 +38,7 @@
     }
 
     &.small {
-      padding: .3em .5em .2em .5em;
+      padding: 0.3em 0.5em 0.2em 0.5em;
       font-weight: 300;
       font-size: $font-size-sm;
 
@@ -48,15 +48,16 @@
       }
     }
 
-    &:hover, &:focus {
+    &:hover,
+    &:focus {
       background-color: var(--gray-700);
       border-color: var(--gray-700);
-      color:  var(--bg);
+      color: var(--bg);
       outline: none;
     }
 
     @media (max-width: $sm) {
-      padding: .5em;
+      padding: 0.5em;
       .dropdown-text:not(.force-visible) {
         display: none;
       }
@@ -94,7 +95,7 @@
       color: var(--gray-700);
       border: 1px solid var(--border-color);
       border-radius: $border-radius;
-      padding: .35em 0em;
+      padding: 0.35em 0em;
 
       box-shadow: var(--drop-down-box-shadow);
 

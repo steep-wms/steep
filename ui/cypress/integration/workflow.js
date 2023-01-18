@@ -2,23 +2,29 @@ const timeoutOffset = 5
 const timeoutLength = 5
 const numOfActions = 1
 const payload = {
-  "api": "4.6.0",
-  "vars": [{
-    "id": "sleep_seconds",
-    "value": timeoutLength
-  }],
-  "actions": [{
-    "type": "execute",
-    "service": "sleep",
-    "inputs": [{
-      "id": "seconds",
-      "var": "sleep_seconds"
-    }]
-  }]
+  api: "4.6.0",
+  vars: [
+    {
+      id: "sleep_seconds",
+      value: timeoutLength
+    }
+  ],
+  actions: [
+    {
+      type: "execute",
+      service: "sleep",
+      inputs: [
+        {
+          id: "seconds",
+          var: "sleep_seconds"
+        }
+      ]
+    }
+  ]
 }
 
 const payloadCancelled = {
-  "status": "CANCELLED"
+  status: "CANCELLED"
 }
 
 describe("Workflow item page attributes are not hidden", () => {
@@ -36,45 +42,69 @@ describe("Workflow item page attributes are not hidden", () => {
   })
 
   it("has correct header", () => {
-    cy.get(".detail-page-title > h1").should("be.visible").should("have.text", res.body.id)
-    cy.get(".breadcrumbs > :nth-child(2)").should("be.visible").should("have.text", res.body.id)
-    cy.get(".breadcrumbs > :nth-child(1) > a").should("be.visible").should("have.text", "Workflows")
-    cy.get(".breadcrumbs > :nth-child(1) > a").invoke("attr", "href").should("include", "/workflows/")
+    cy.get(".detail-page-title > h1")
+      .should("be.visible")
+      .should("have.text", res.body.id)
+    cy.get(".breadcrumbs > :nth-child(2)")
+      .should("be.visible")
+      .should("have.text", res.body.id)
+    cy.get(".breadcrumbs > :nth-child(1) > a")
+      .should("be.visible")
+      .should("have.text", "Workflows")
+    cy.get(".breadcrumbs > :nth-child(1) > a")
+      .invoke("attr", "href")
+      .should("include", "/workflows/")
   })
 
   it("can access actions combobox", () => {
     cy.get(".dropdown-btn").should("have.text", "Actions ").click()
     cy.get("li").should("have.text", "Cancel").click()
-    cy.get(".cancel-modal-buttons > :nth-child(1)").should("have.text", "Keep it").click()
+    cy.get(".cancel-modal-buttons > :nth-child(1)")
+      .should("have.text", "Keep it")
+      .click()
     cy.get(".list-item-progress-box > div > strong").contains("Running")
   })
 
   it("can access start time", () => {
-    cy.get(".definition-list > :nth-child(1)").should("be.visible").should("have.text", "Start time")
+    cy.get(".definition-list > :nth-child(1)")
+      .should("be.visible")
+      .should("have.text", "Start time")
   })
 
   it("can access actual start time", () => {
-    cy.get(".definition-list > :nth-child(2)").should("be.visible").should("have.not.text", "–")
+    cy.get(".definition-list > :nth-child(2)")
+      .should("be.visible")
+      .should("have.not.text", "–")
   })
 
   it("can access end time", () => {
-    cy.get(".definition-list > :nth-child(3)").should("be.visible").should("have.text", "End time")
+    cy.get(".definition-list > :nth-child(3)")
+      .should("be.visible")
+      .should("have.text", "End time")
   })
 
   it("can access actual end time", () => {
-    cy.get(".definition-list > :nth-child(4)").should("be.visible").should("have.text", "–")
+    cy.get(".definition-list > :nth-child(4)")
+      .should("be.visible")
+      .should("have.text", "–")
   })
 
   it("can access time elapsed", () => {
-    cy.get(".definition-list > :nth-child(5)").should("be.visible").should("have.text", "Time elapsed")
+    cy.get(".definition-list > :nth-child(5)")
+      .should("be.visible")
+      .should("have.text", "Time elapsed")
   })
 
   it("can access actual time elapsed", () => {
-    cy.get(".definition-list > :nth-child(6)").should("be.visible").should("have.not.text", "–")
+    cy.get(".definition-list > :nth-child(6)")
+      .should("be.visible")
+      .should("have.not.text", "–")
   })
 
   it("can access required capabilities", () => {
-    cy.get(".definition-list > :nth-child(7)").should("be.visible").should("have.text", "Required capabilities")
+    cy.get(".definition-list > :nth-child(7)")
+      .should("be.visible")
+      .should("have.text", "Required capabilities")
   })
 
   it("can access actual required capabilities", () => {
@@ -120,12 +150,13 @@ describe("Workflow item page successfully done", () => {
 
   it("has correct running flags", () => {
     cy.get(".list-item-progress-box > div > strong").contains("Running")
-    cy.get(".list-item-progress-box > div > strong").contains("Success",
-        { timeout: (timeoutLength + timeoutOffset) * 1000 })
+    cy.get(".list-item-progress-box > div > strong").contains("Success", {
+      timeout: (timeoutLength + timeoutOffset) * 1000
+    })
   })
 })
 
-describe("Resubmission", ()=> {
+describe("Resubmission", () => {
   let res
 
   before(() => {
@@ -141,24 +172,37 @@ describe("Resubmission", ()=> {
 
   // TODO this test has been disabled for the time being. It does not run reliably.
   it.skip("can resubmit", () => {
-    cy.get(".list-item-progress-box > div > strong", { timeout: (timeoutLength + timeoutOffset) * 1000 })
-      .should("have.text", "Success")
+    cy.get(".list-item-progress-box > div > strong", {
+      timeout: (timeoutLength + timeoutOffset) * 1000
+    }).should("have.text", "Success")
     cy.get(".dropdown-btn").click()
     cy.get("li").click()
     cy.wait(1000)
     cy.get(".buttons > .primary").click()
 
-    cy.get(".list-item-progress-box > div > strong").should("have.text", `${numOfActions} Running`)
-    cy.get(".list-item-progress-box > div > a").should("have.text", `0 of ${numOfActions} completed`)
+    cy.get(".list-item-progress-box > div > strong").should(
+      "have.text",
+      `${numOfActions} Running`
+    )
+    cy.get(".list-item-progress-box > div > a").should(
+      "have.text",
+      `0 of ${numOfActions} completed`
+    )
 
-    cy.get(".list-item-progress-box > div > strong", { timeout: (timeoutLength + timeoutOffset) * 1000 })
-      .should("have.text", "0 Running")
-    cy.get(".list-item-progress-box > div > a", { timeout: (timeoutLength + timeoutOffset) * 1000 })
-      .should("have.text", `${numOfActions} of ${numOfActions} completed`)
+    cy.get(".list-item-progress-box > div > strong", {
+      timeout: (timeoutLength + timeoutOffset) * 1000
+    }).should("have.text", "0 Running")
+    cy.get(".list-item-progress-box > div > a", {
+      timeout: (timeoutLength + timeoutOffset) * 1000
+    }).should("have.text", `${numOfActions} of ${numOfActions} completed`)
 
-    cy.get(".list-item-progress-box > div > strong", { timeout: (timeoutLength + timeoutOffset) * 1000 })
-      .should("have.text", "Success")
-    cy.get(".list-item-progress-box > div > a").should("have.text", `${numOfActions} completed`)
+    cy.get(".list-item-progress-box > div > strong", {
+      timeout: (timeoutLength + timeoutOffset) * 1000
+    }).should("have.text", "Success")
+    cy.get(".list-item-progress-box > div > a").should(
+      "have.text",
+      `${numOfActions} completed`
+    )
   })
 })
 
@@ -166,7 +210,7 @@ describe("Workflow item page cancelling", () => {
   let res
 
   before(() => {
-    cy.request("POST", "/workflows", payload).then((response) => {
+    cy.request("POST", "/workflows", payload).then(response => {
       cy.visit(`/workflows/${response.body.id}/`)
       res = response
     })
@@ -180,9 +224,18 @@ describe("Workflow item page cancelling", () => {
     cy.get(".dropdown-btn").should("have.text", "Actions ").click()
     cy.get("li").should("have.text", "Cancel").click()
     cy.get(".btn-error").should("have.text", "Cancel it now").click()
-    cy.get(".list-item-progress-box > div > a").should("have.text", `${numOfActions} of ${numOfActions} completed`)
-    cy.get(".list-item-progress-box > div > strong").should("have.text", "Cancelled")
-    cy.get(".list-item-progress-box > div > a").should("have.text", `${numOfActions} completed`)
+    cy.get(".list-item-progress-box > div > a").should(
+      "have.text",
+      `${numOfActions} of ${numOfActions} completed`
+    )
+    cy.get(".list-item-progress-box > div > strong").should(
+      "have.text",
+      "Cancelled"
+    )
+    cy.get(".list-item-progress-box > div > a").should(
+      "have.text",
+      `${numOfActions} completed`
+    )
   })
 })
 

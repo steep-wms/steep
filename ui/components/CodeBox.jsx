@@ -23,11 +23,22 @@ const Row = memo(({ data, index, style }) => {
 }, areEqual)
 
 const List = forwardRef(({ language, codeLineHeight, blocks }, ref) => {
-  return <pre><code lang={language} className={`hljs language-${language}`} ref={ref}><VariableSizeList
-    height={codeLineHeight * Math.min(blocks[0].lines, 100.5)}
-    itemCount={blocks.length} itemData={blocks}
-    estimatedItemSize={codeLineHeight * BLOCK_SIZE} width="100%"
-    itemSize={(index) => codeLineHeight * blocks[index].lines}>{Row}</VariableSizeList></code></pre>
+  return (
+    <pre>
+      <code lang={language} className={`hljs language-${language}`} ref={ref}>
+        <VariableSizeList
+          height={codeLineHeight * Math.min(blocks[0].lines, 100.5)}
+          itemCount={blocks.length}
+          itemData={blocks}
+          estimatedItemSize={codeLineHeight * BLOCK_SIZE}
+          width="100%"
+          itemSize={index => codeLineHeight * blocks[index].lines}
+        >
+          {Row}
+        </VariableSizeList>
+      </code>
+    </pre>
+  )
 })
 
 function splitIntoBlocks(str) {
@@ -82,16 +93,20 @@ const CodeBox = ({ json, yaml = undefined }) => {
   })
   const [copyTooltipVisible, setCopyTooltipVisible] = useState(false)
   const [copyTooltipTitle, setCopyTooltipTitle] = useState(COPY)
-  const [activeLang, setActiveLang] = useState(localStorage.activeCodeLanguage || "yaml")
+  const [activeLang, setActiveLang] = useState(
+    localStorage.activeCodeLanguage || "yaml"
+  )
   const [codeLineHeight, setCodeLineHeight] = useState(28)
   const router = useRouter()
 
   function highlight(code, language, updateBlocks) {
-    let worker = new Worker(new URL("./lib/highlight-worker.js", import.meta.url))
+    let worker = new Worker(
+      new URL("./lib/highlight-worker.js", import.meta.url)
+    )
     let count = 0
     worker.onmessage = ({ data: { hast, finished } }) => {
       if (hast !== undefined) {
-        updateBlocks((state) => {
+        updateBlocks(state => {
           let newBlocks = [...state]
           newBlocks[count] = { ...newBlocks[count], block: hast }
           ++count
@@ -127,7 +142,7 @@ const CodeBox = ({ json, yaml = undefined }) => {
 
   useEffect(() => {
     let clipboardYaml = new Clipboard(copyBtnRef.current, {
-      text: () => activeLang === "yaml" ? yamlStr : jsonStr
+      text: () => (activeLang === "yaml" ? yamlStr : jsonStr)
     })
     clipboardYaml.on("success", e => {
       e.clearSelection()
@@ -152,23 +167,54 @@ const CodeBox = ({ json, yaml = undefined }) => {
   return (
     <div className="code-box">
       <div className="code-box-title">
-        <div className={classNames("code-box-title-tab", { active: activeLang === "yaml" })}
-          onClick={() => onClickLanguage("yaml")}>YAML</div>
-        <div className={classNames("code-box-title-tab", { active: activeLang === "json" })}
-          onClick={() => onClickLanguage("json")}>JSON</div>
+        <div
+          className={classNames("code-box-title-tab", {
+            active: activeLang === "yaml"
+          })}
+          onClick={() => onClickLanguage("yaml")}
+        >
+          YAML
+        </div>
+        <div
+          className={classNames("code-box-title-tab", {
+            active: activeLang === "json"
+          })}
+          onClick={() => onClickLanguage("json")}
+        >
+          JSON
+        </div>
       </div>
       <div className="code-box-main">
-        <div className={classNames("code-box-tab", { active: activeLang === "yaml" })}>
-          <List language="yaml" codeLineHeight={codeLineHeight} blocks={yamlBlocks}
-            ref={yamlRef} />
+        <div
+          className={classNames("code-box-tab", {
+            active: activeLang === "yaml"
+          })}
+        >
+          <List
+            language="yaml"
+            codeLineHeight={codeLineHeight}
+            blocks={yamlBlocks}
+            ref={yamlRef}
+          />
         </div>
-        <div className={classNames("code-box-tab", { active: activeLang === "json" })}>
-          <List language="json" codeLineHeight={codeLineHeight} blocks={jsonBlocks} />
+        <div
+          className={classNames("code-box-tab", {
+            active: activeLang === "json"
+          })}
+        >
+          <List
+            language="json"
+            codeLineHeight={codeLineHeight}
+            blocks={jsonBlocks}
+          />
         </div>
         <span className="code-box-copy-btn">
-          <Tooltip title={copyTooltipTitle} forceVisible={copyTooltipVisible}
-              onShow={() => setCopyTooltipVisible(true)}
-              onHide={onCopyBtnMouseLeave}>
+          <Tooltip
+            title={copyTooltipTitle}
+            forceVisible={copyTooltipVisible}
+            onShow={() => setCopyTooltipVisible(true)}
+            onHide={onCopyBtnMouseLeave}
+          >
             <span ref={copyBtnRef}>
               <ClipboardIcon className="feather" />
             </span>

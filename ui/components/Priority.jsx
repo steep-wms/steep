@@ -36,7 +36,13 @@ function formatPriority(priority) {
   }
 }
 
-const Priority = ({ value = 0, editable, onChange, subjectShort, subjectLong }) => {
+const Priority = ({
+  value = 0,
+  editable,
+  onChange,
+  subjectShort,
+  subjectLong
+}) => {
   const [confirmModalOpen, setConfirmModalOpen] = useState()
   const [editing, setEditing] = useState()
   const [inputValue, setInputValue] = useState(value)
@@ -94,27 +100,50 @@ const Priority = ({ value = 0, editable, onChange, subjectShort, subjectLong }) 
   }
 
   if (editable) {
-    return <span className={classNames({ editing })}>
-      <span className="priority-label" onClick={startEditing}>
-        <span className="number">{formatPriority(value)}</span> <span className="icon"><Edit2 size="1em" /></span>
+    return (
+      <span className={classNames({ editing })}>
+        <span className="priority-label" onClick={startEditing}>
+          <span className="number">{formatPriority(value)}</span>{" "}
+          <span className="icon">
+            <Edit2 size="1em" />
+          </span>
+        </span>
+
+        <input
+          className="priority-input small"
+          ref={inputRef}
+          onBlur={() => stopEditing()}
+          type="number"
+          value={inputValue}
+          onChange={e => setInputValue(e.target.value)}
+          onKeyDown={onInputKeyDown}
+        />
+
+        <Modal
+          isOpen={confirmModalOpen}
+          contentLabel="Confirm modal"
+          onRequestClose={onDeny}
+          title={`Change ${subjectShort} priority`}
+          onConfirm={onConfirm}
+          onDeny={onDeny}
+        >
+          <p>
+            Are you sure you want to change the priority of this {subjectLong}{" "}
+            to <strong>{+inputValue}</strong>?
+          </p>
+          <ModalButtons>
+            <button className="btn" onClick={onDeny}>
+              Cancel
+            </button>
+            <button className="btn btn-primary" onClick={onConfirm}>
+              Change priority
+            </button>
+          </ModalButtons>
+        </Modal>
+
+        <style jsx>{styles}</style>
       </span>
-
-      <input className="priority-input small" ref={inputRef}
-        onBlur={() => stopEditing()} type="number" value={inputValue}
-        onChange={e => setInputValue(e.target.value)} onKeyDown={onInputKeyDown} />
-
-      <Modal isOpen={confirmModalOpen} contentLabel="Confirm modal"
-          onRequestClose={onDeny} title={`Change ${subjectShort} priority`}
-          onConfirm={onConfirm} onDeny={onDeny}>
-        <p>Are you sure you want to change the priority of this {subjectLong} to <strong>{+inputValue}</strong>?</p>
-        <ModalButtons>
-          <button className="btn" onClick={onDeny}>Cancel</button>
-          <button className="btn btn-primary" onClick={onConfirm}>Change priority</button>
-        </ModalButtons>
-      </Modal>
-
-      <style jsx>{styles}</style>
-    </span>
+    )
   } else {
     return <>{formatPriority(value)}</>
   }

@@ -9,13 +9,15 @@ const Results = ({ results = {} }) => {
   if (rows.length === 0) {
     info = <Alert info>Your search did not yield any results.</Alert>
   }
-  return (<>
-    <div className="results-container">
-      {rows}
-      {info}
-    </div>
-    <style jsx>{styles}</style>
-  </>)
+  return (
+    <>
+      <div className="results-container">
+        {rows}
+        {info}
+      </div>
+      <style jsx>{styles}</style>
+    </>
+  )
 }
 
 export default Results

@@ -16,7 +16,7 @@
   }
 
   60% {
-    opacity: 1
+    opacity: 1;
   }
 }
 
@@ -42,7 +42,9 @@
       animation: list-item-spin 4s linear infinite;
     }
 
-    &.provisioning, &.leaving, &.destroying {
+    &.provisioning,
+    &.leaving,
+    &.destroying {
       stroke: var(--gray-600);
       animation: list-item-pulse 2s linear infinite;
     }
@@ -60,7 +62,9 @@
       animation: list-item-spin 4s linear infinite;
     }
 
-    &.cancelled, &.idle, &.destroyed {
+    &.cancelled,
+    &.idle,
+    &.destroyed {
       stroke: var(--gray-500);
     }
 
@@ -72,7 +76,8 @@
       stroke: var(--success);
     }
 
-    &.error, &.left {
+    &.error,
+    &.left {
       stroke: var(--error);
     }
   }

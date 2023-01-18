@@ -9,17 +9,31 @@ const ThemeSwitcher = () => {
   const settings = useContext(SettingsContext.State)
   const updateSettings = useContext(SettingsContext.Dispatch)
 
-  return (<>
-    <Tooltip title="Light theme">
-      <span className={classNames("switch-button", { visible: settings.theme === "dark" })}
-        onClick={() => updateSettings({ theme: "default" })}><Sun /></span>
-    </Tooltip>
-    <Tooltip title="Dark theme">
-      <span className={classNames("switch-button", { visible: settings.theme !== "dark" })}
-        onClick={() => updateSettings({ theme: "dark" })}><Moon /></span>
-    </Tooltip>
-    <style jsx>{styles}</style>
-  </>)
+  return (
+    <>
+      <Tooltip title="Light theme">
+        <span
+          className={classNames("switch-button", {
+            visible: settings.theme === "dark"
+          })}
+          onClick={() => updateSettings({ theme: "default" })}
+        >
+          <Sun />
+        </span>
+      </Tooltip>
+      <Tooltip title="Dark theme">
+        <span
+          className={classNames("switch-button", {
+            visible: settings.theme !== "dark"
+          })}
+          onClick={() => updateSettings({ theme: "dark" })}
+        >
+          <Moon />
+        </span>
+      </Tooltip>
+      <style jsx>{styles}</style>
+    </>
+  )
 }
 
 export default ThemeSwitcher

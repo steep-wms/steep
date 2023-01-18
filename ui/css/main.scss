@@ -24,7 +24,9 @@ html {
   }
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: inherit;
 }
 
@@ -40,7 +42,11 @@ body {
   }
 }
 
-h1, h2, h3, h4, h5 {
+h1,
+h2,
+h3,
+h4,
+h5 {
   margin: 2rem 0 2rem 0;
   font-weight: 400;
   color: var(--heading-fg);
@@ -68,7 +74,7 @@ h4 {
 }
 
 h5 {
-  font-size: 1.10rem;
+  font-size: 1.1rem;
 }
 
 h6 {
@@ -116,7 +122,7 @@ a {
 
   &:hover {
     text-decoration: underline;
-    color: var(--primary-dark)
+    color: var(--primary-dark);
   }
 }
 
@@ -153,7 +159,7 @@ a {
     background-color: var(--primary);
 
     &:hover {
-      background-color: var(--primary-dark)
+      background-color: var(--primary-dark);
     }
   }
 
@@ -182,7 +188,7 @@ svg {
   color: var(--bg);
 
   &:hover {
-    background-color: var(--primary-dark)
+    background-color: var(--primary-dark);
   }
 }
 
@@ -200,12 +206,14 @@ svg {
 }
 
 code {
-  font-size: .93em;
+  font-size: 0.93em;
   color: #cc6b6b;
 }
 
-code, pre {
-  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+code,
+pre {
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
 }
 
 #nprogress {
@@ -235,7 +243,7 @@ input {
   border: 1px solid var(--border-color);
   border-radius: $border-radius;
   outline: none;
-  padding: .5rem;
+  padding: 0.5rem;
 
   &:focus {
     border-color: var(--gray-500);

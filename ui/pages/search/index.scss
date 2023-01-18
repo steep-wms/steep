@@ -4,7 +4,8 @@
   margin-top: $spacer * 2.6;
 }
 
-.search-input-container, .search-body-container {
+.search-input-container,
+.search-body-container {
   display: grid;
   grid-template-columns: minmax(1px, 1fr) 13.5rem;
   column-gap: $spacer * 2;

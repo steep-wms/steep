@@ -12,7 +12,7 @@
       position: relative;
       cursor: pointer;
       display: inline-block;
-      padding: .5rem 1rem;
+      padding: 0.5rem 1rem;
       border-top-left-radius: $border-radius;
       border-top-right-radius: $border-radius;
       border: 1px solid var(--border-color);
@@ -59,7 +59,8 @@
     position: relative;
   }
 
-  :global(.hljs), :global(pre) {
+  :global(.hljs),
+  :global(pre) {
     background: var(--code-bg);
     color: var(--code-fg);
   }
@@ -80,7 +81,7 @@
 
 .highlighting-disabled {
   position: relative;
-  padding: .5rem 1rem;
+  padding: 0.5rem 1rem;
   flex: 1;
   text-align: right;
   color: var(--error);

@@ -12,7 +12,10 @@ import ListItemProgressBox from "../../components/ListItemProgressBox"
 import LiveDuration from "../../components/LiveDuration"
 import Priority from "../../components/Priority"
 import WorkflowContext from "../../components/workflows/WorkflowContext"
-import { formatDate, formatDurationTitle } from "../../components/lib/date-time-utils"
+import {
+  formatDate,
+  formatDurationTitle
+} from "../../components/lib/date-time-utils"
 import submissionToSource from "../../components/lib/submission-source"
 import workflowToProgress from "../../components/workflows/workflow-to-progress"
 import fetcher from "../../components/lib/json-fetcher"
@@ -80,14 +83,23 @@ function WorkflowDetails({ id }) {
     status = w.status
   }
 
-  const codeBox = useMemo(() => (workflowSource &&
-      <CodeBox json={workflowSource.json} yaml={workflowSource.yaml} />),
-      [workflowSource])
+  const codeBox = useMemo(
+    () =>
+      workflowSource && (
+        <CodeBox json={workflowSource.json} yaml={workflowSource.yaml} />
+      ),
+    [workflowSource]
+  )
 
-  const breadcrumbs = useMemo(() => [
-    <Link href="/workflows/" key="workflows">Workflows</Link>,
-    id
-  ], [id])
+  const breadcrumbs = useMemo(
+    () => [
+      <Link href="/workflows/" key="workflows">
+        Workflows
+      </Link>,
+      id
+    ],
+    [id]
+  )
 
   const detailHeaderLeft = useMemo(() => {
     function onDoChangePriority(priority) {
@@ -102,44 +114,58 @@ function WorkflowDetails({ id }) {
     }
 
     let reqcap
-    if (requiredCapabilities === undefined || requiredCapabilities.length === 0) {
+    if (
+      requiredCapabilities === undefined ||
+      requiredCapabilities.length === 0
+    ) {
       reqcap = <>&ndash;</>
     } else {
-      reqcap = requiredCapabilities.flatMap((r, i) => [<Label key={i}>{r}</Label>, <wbr key={`wbr${i}`}/>])
+      reqcap = requiredCapabilities.flatMap((r, i) => [
+        <Label key={i}>{r}</Label>,
+        <wbr key={`wbr${i}`} />
+      ])
     }
 
-    return (<div className="left-two-columns">
-      <div className="detail-header-left">
-        <DefinitionList>
-          <DefinitionListItem title="Start time">
-            {startTime ? formatDate(startTime) : <>&ndash;</>}
-          </DefinitionListItem>
-          <DefinitionListItem title="End time">
-            {endTime ? formatDate(endTime) : <>&ndash;</>}
-          </DefinitionListItem>
-          <DefinitionListItem title="Time elapsed">
-            {
-              startTime && endTime ? formatDurationTitle(startTime, endTime) : (
-                startTime ? <LiveDuration startTime={startTime} /> : <>&ndash;</>
-              )
-            }
-          </DefinitionListItem>
-        </DefinitionList>
+    return (
+      <div className="left-two-columns">
+        <div className="detail-header-left">
+          <DefinitionList>
+            <DefinitionListItem title="Start time">
+              {startTime ? formatDate(startTime) : <>&ndash;</>}
+            </DefinitionListItem>
+            <DefinitionListItem title="End time">
+              {endTime ? formatDate(endTime) : <>&ndash;</>}
+            </DefinitionListItem>
+            <DefinitionListItem title="Time elapsed">
+              {startTime && endTime ? (
+                formatDurationTitle(startTime, endTime)
+              ) : startTime ? (
+                <LiveDuration startTime={startTime} />
+              ) : (
+                <>&ndash;</>
+              )}
+            </DefinitionListItem>
+          </DefinitionList>
+        </div>
+        <div className="detail-header-middle">
+          <DefinitionList>
+            <DefinitionListItem title="Priority">
+              <Priority
+                value={priority}
+                onChange={v => onDoChangePriority(v)}
+                subjectShort="workflow"
+                subjectLong="workflow and all its process chains"
+                editable={status === "ACCEPTED" || status === "RUNNING"}
+              />
+            </DefinitionListItem>
+            <DefinitionListItem title="Required capabilities">
+              {reqcap}
+            </DefinitionListItem>
+          </DefinitionList>
+        </div>
+        <style jsx>{styles}</style>
       </div>
-      <div className="detail-header-middle">
-        <DefinitionList>
-          <DefinitionListItem title="Priority">
-            <Priority value={priority} onChange={v => onDoChangePriority(v)}
-              subjectShort="workflow" subjectLong="workflow and all its process chains"
-              editable={status === "ACCEPTED" || status === "RUNNING"} />
-          </DefinitionListItem>
-          <DefinitionListItem title="Required capabilities">
-            {reqcap}
-          </DefinitionListItem>
-        </DefinitionList>
-      </div>
-      <style jsx>{styles}</style>
-    </div>)
+    )
   }, [id, startTime, endTime, requiredCapabilities, priority, status])
 
   let title
@@ -166,20 +192,24 @@ function WorkflowDetails({ id }) {
 
     let progress = workflowToProgress(w)
 
-    workflow = (<>
-      <div className="detail-header">
-        {detailHeaderLeft}
-        <div className="detail-header-right">
-          <ListItemProgressBox progress={progress} deleted={deleted} />
+    workflow = (
+      <>
+        <div className="detail-header">
+          {detailHeaderLeft}
+          <div className="detail-header-right">
+            <ListItemProgressBox progress={progress} deleted={deleted} />
+          </div>
         </div>
-      </div>
-      {w.errorMessage && (<>
-        <h2>Error message</h2>
-        <Alert error>{w.errorMessage}</Alert>
-      </>)}
-      <h2>Source</h2>
-      {codeBox}
-    </>)
+        {w.errorMessage && (
+          <>
+            <h2>Error message</h2>
+            <Alert error>{w.errorMessage}</Alert>
+          </>
+        )}
+        <h2>Source</h2>
+        {codeBox}
+      </>
+    )
   }
 
   let menus = []
@@ -191,12 +221,22 @@ function WorkflowDetails({ id }) {
   }
 
   return (
-    <DetailPage breadcrumbs={breadcrumbs} title={title} menus={menus} deleted={deleted}>
+    <DetailPage
+      breadcrumbs={breadcrumbs}
+      title={title}
+      menus={menus}
+      deleted={deleted}
+    >
       {workflow}
       {error}
-      <CancelModal isOpen={cancelModalOpen} contentLabel="Cancel modal"
-          onRequestClose={() => setCancelModalOpen(false)} title="Cancel workflow"
-          onConfirm={onDoCancel} onDeny={() => setCancelModalOpen(false)}>
+      <CancelModal
+        isOpen={cancelModalOpen}
+        contentLabel="Cancel modal"
+        onRequestClose={() => setCancelModalOpen(false)}
+        title="Cancel workflow"
+        onConfirm={onDoCancel}
+        onDeny={() => setCancelModalOpen(false)}
+      >
         <p>Are you sure you want to cancel this workflow?</p>
       </CancelModal>
     </DetailPage>

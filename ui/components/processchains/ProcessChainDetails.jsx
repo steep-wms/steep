@@ -94,7 +94,8 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
     // check if a log file is available
     fetcher(`${process.env.baseUrl}/logs/processchains/${id}`, false, {
       method: "HEAD"
-    }).then(() => setLogAvailable(true))
+    })
+      .then(() => setLogAvailable(true))
       .catch(() => {
         setLogAvailable(false)
         setWaitForLog(true)
@@ -168,17 +169,25 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
   if (processChain !== undefined) {
     title = processChain.id
     breadcrumbs = [
-      <Link href="/workflows" key="workflows">Workflows</Link>,
-      <Link href="/workflows/[id]" as={`/workflows/${processChain.submissionId}`}
-          key={processChain.submissionId}>
+      <Link href="/workflows" key="workflows">
+        Workflows
+      </Link>,
+      <Link
+        href="/workflows/[id]"
+        as={`/workflows/${processChain.submissionId}`}
+        key={processChain.submissionId}
+      >
         {processChain.submissionId}
       </Link>,
-      <Link href={{
-        pathname: "/processchains",
-        query: {
-          submissionId: processChain.submissionId
-        }
-      }} key="processchains">
+      <Link
+        href={{
+          pathname: "/processchains",
+          query: {
+            submissionId: processChain.submissionId
+          }
+        }}
+        key="processchains"
+      >
         Process chains
       </Link>,
       processChain.id
@@ -186,13 +195,25 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
 
     let menuItems = []
     if (logAvailable) {
-      menuItems.push(<a href={`${process.env.baseUrl}/logs/processchains/${id}?forceDownload=true`}
-        key="download-log"><li>Download log</li></a>)
+      menuItems.push(
+        <a
+          href={`${process.env.baseUrl}/logs/processchains/${id}?forceDownload=true`}
+          key="download-log"
+        >
+          <li>Download log</li>
+        </a>
+      )
     }
-    if (processChain.status === "REGISTERED" ||
-        processChain.status === "RUNNING" ||
-        processChain.status === "PAUSED") {
-      menuItems.push(<li key="cancel" onClick={onCancel}>Cancel</li>)
+    if (
+      processChain.status === "REGISTERED" ||
+      processChain.status === "RUNNING" ||
+      processChain.status === "PAUSED"
+    ) {
+      menuItems.push(
+        <li key="cancel" onClick={onCancel}>
+          Cancel
+        </li>
+      )
     }
     if (menuItems.length > 0) {
       menu = <ul>{menuItems}</ul>
@@ -201,18 +222,24 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
     deleted = !!processChain.deleted
 
     let reqcap
-    if (processChain.requiredCapabilities === undefined ||
-        processChain.requiredCapabilities.length === 0) {
+    if (
+      processChain.requiredCapabilities === undefined ||
+      processChain.requiredCapabilities.length === 0
+    ) {
       reqcap = <>&ndash;</>
     } else {
-      reqcap = processChain.requiredCapabilities
-        .flatMap((r, i) => [<Label key={i}>{r}</Label>, <wbr key={`wbr${i}`}/>])
+      reqcap = processChain.requiredCapabilities.flatMap((r, i) => [
+        <Label key={i}>{r}</Label>,
+        <wbr key={`wbr${i}`} />
+      ])
     }
 
     let estimatedProgress
-    if (processChain.status === "RUNNING" &&
-        processChain.estimatedProgress !== undefined &&
-        processChain.estimatedProgress !== null) {
+    if (
+      processChain.status === "RUNNING" &&
+      processChain.estimatedProgress !== undefined &&
+      processChain.estimatedProgress !== null
+    ) {
       estimatedProgress = (
         <Tooltip title="Estimated progress">
           {(processChain.estimatedProgress * 100).toFixed()}&thinsp;%
@@ -225,62 +252,97 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
       subtitle: estimatedProgress
     }
 
-    processchain = (<>
-      <div className="detail-header">
-        <div className="left-two-columns">
-          <div className="detail-header-left">
-            <DefinitionList>
-              <DefinitionListItem title="Start time">
-                {processChain.startTime ? formatDate(processChain.startTime) : <>&ndash;</>}
-              </DefinitionListItem>
-              <DefinitionListItem title="End time">
-                {processChain.endTime ? formatDate(processChain.endTime) : <>&ndash;</>}
-              </DefinitionListItem>
-              <DefinitionListItem title="Time elapsed">
-                {
-                  processChain.startTime && processChain.endTime ?
-                    formatDurationTitle(processChain.startTime, processChain.endTime) : (
-                    processChain.startTime ? <LiveDuration startTime={processChain.startTime} /> : <>&ndash;</>
-                  )
-                }
-              </DefinitionListItem>
-            </DefinitionList>
+    processchain = (
+      <>
+        <div className="detail-header">
+          <div className="left-two-columns">
+            <div className="detail-header-left">
+              <DefinitionList>
+                <DefinitionListItem title="Start time">
+                  {processChain.startTime ? (
+                    formatDate(processChain.startTime)
+                  ) : (
+                    <>&ndash;</>
+                  )}
+                </DefinitionListItem>
+                <DefinitionListItem title="End time">
+                  {processChain.endTime ? (
+                    formatDate(processChain.endTime)
+                  ) : (
+                    <>&ndash;</>
+                  )}
+                </DefinitionListItem>
+                <DefinitionListItem title="Time elapsed">
+                  {processChain.startTime && processChain.endTime ? (
+                    formatDurationTitle(
+                      processChain.startTime,
+                      processChain.endTime
+                    )
+                  ) : processChain.startTime ? (
+                    <LiveDuration startTime={processChain.startTime} />
+                  ) : (
+                    <>&ndash;</>
+                  )}
+                </DefinitionListItem>
+              </DefinitionList>
+            </div>
+            <div className="detail-header-middle">
+              <DefinitionList>
+                <DefinitionListItem title="Priority">
+                  <Priority
+                    value={processChain.priority}
+                    onChange={v => onDoChangePriority(v)}
+                    subjectShort="process chain"
+                    subjectLong="process chain"
+                    editable={
+                      processChain.status === "REGISTERED" ||
+                      processChain.status === "RUNNING" ||
+                      processChain.status === "PAUSED"
+                    }
+                  />
+                </DefinitionListItem>
+                <DefinitionListItem title="Required capabilities">
+                  {reqcap}
+                </DefinitionListItem>
+              </DefinitionList>
+            </div>
           </div>
-          <div className="detail-header-middle">
-            <DefinitionList>
-              <DefinitionListItem title="Priority">
-                <Priority value={processChain.priority} onChange={v => onDoChangePriority(v)}
-                  subjectShort="process chain" subjectLong="process chain"
-                  editable={processChain.status === "REGISTERED" || processChain.status === "RUNNING" ||
-                    processChain.status === "PAUSED"} />
-              </DefinitionListItem>
-              <DefinitionListItem title="Required capabilities">
-                {reqcap}
-              </DefinitionListItem>
-            </DefinitionList>
+          <div className="detail-header-right">
+            <ListItemProgressBox progress={progress} deleted={deleted} />
           </div>
         </div>
-        <div className="detail-header-right">
-          <ListItemProgressBox progress={progress} deleted={deleted} />
-        </div>
-      </div>
-      {processChain.errorMessage && (<>
-        <h2>Error message</h2>
-        <Alert error>{processChain.errorMessage}</Alert>
-      </>)}
-      {logAvailable && (<>
-        <h2><CollapseButton collapsed={logCollapsed}
-          onCollapse={() => setLogCollapsed(!logCollapsed)}>Log</CollapseButton></h2>
-        {logCollapsed && (
-          <div className={classNames("log-wrapper", { error: logError !== undefined })}>
-            <ProcessChainLog id={id} onError={setLogError} />
-          </div>
+        {processChain.errorMessage && (
+          <>
+            <h2>Error message</h2>
+            <Alert error>{processChain.errorMessage}</Alert>
+          </>
         )}
-      </>)}
-      <h2>Executables</h2>
-      <CodeBox json={processChain.executables} />
-      <style jsx>{styles}</style>
-    </>)
+        {logAvailable && (
+          <>
+            <h2>
+              <CollapseButton
+                collapsed={logCollapsed}
+                onCollapse={() => setLogCollapsed(!logCollapsed)}
+              >
+                Log
+              </CollapseButton>
+            </h2>
+            {logCollapsed && (
+              <div
+                className={classNames("log-wrapper", {
+                  error: logError !== undefined
+                })}
+              >
+                <ProcessChainLog id={id} onError={setLogError} />
+              </div>
+            )}
+          </>
+        )}
+        <h2>Executables</h2>
+        <CodeBox json={processChain.executables} />
+        <style jsx>{styles}</style>
+      </>
+    )
   }
 
   let runsMenu
@@ -291,13 +353,12 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
     // add artificial 'current' run if necessary
     let originalProcessChain = processChains.items[0]
     let artificial
-    if (runs.items.length === 0 ||
-        originalProcessChain.status === "REGISTERED" ||
-        originalProcessChain.status === "PAUSED" ||
-        (
-          originalProcessChain.status === "CANCELLED" &&
-          originalProcessChain.status !== runs.items[0].status
-        )
+    if (
+      runs.items.length === 0 ||
+      originalProcessChain.status === "REGISTERED" ||
+      originalProcessChain.status === "PAUSED" ||
+      (originalProcessChain.status === "CANCELLED" &&
+        originalProcessChain.status !== runs.items[0].status)
     ) {
       runsToDisplay.push(originalProcessChain)
       artificial = originalProcessChain
@@ -313,11 +374,18 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
       for (let i = runsToDisplay.length - 1; i >= 0; --i) {
         let run = runsToDisplay[i]
         let n = run === artificial ? run.runNumber : i + 1
-        let enabled = (runNumber === undefined && run === artificial) || (currentRun === n)
-        menuItems.push(<RunMenuItem processChainId={id}
-          runNumber={n} run={run}
-          isLatest={i === runsToDisplay.length - 1}
-          key={`run-${i}`} enabled={enabled} />)
+        let enabled =
+          (runNumber === undefined && run === artificial) || currentRun === n
+        menuItems.push(
+          <RunMenuItem
+            processChainId={id}
+            runNumber={n}
+            run={run}
+            isLatest={i === runsToDisplay.length - 1}
+            key={`run-${i}`}
+            enabled={enabled}
+          />
+        )
       }
 
       runsMenu = <ul>{menuItems}</ul>
@@ -339,12 +407,22 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
   }
 
   return (
-    <DetailPage breadcrumbs={breadcrumbs} title={title} menus={menus} deleted={deleted}>
+    <DetailPage
+      breadcrumbs={breadcrumbs}
+      title={title}
+      menus={menus}
+      deleted={deleted}
+    >
       {processchain}
       {error}
-      <CancelModal isOpen={cancelModalOpen} contentLabel="Cancel modal"
-          onRequestClose={() => setCancelModalOpen(false)} title="Cancel process chain"
-          onConfirm={onDoCancel} onDeny={() => setCancelModalOpen(false)}>
+      <CancelModal
+        isOpen={cancelModalOpen}
+        contentLabel="Cancel modal"
+        onRequestClose={() => setCancelModalOpen(false)}
+        title="Cancel process chain"
+        onConfirm={onDoCancel}
+        onDeny={() => setCancelModalOpen(false)}
+      >
         <p>Are you sure you want to cancel this process chain?</p>
       </CancelModal>
     </DetailPage>

@@ -4,9 +4,13 @@ export default function workflowToProgress(workflow) {
   let progressTitle
   let progressSubTitle
   if (workflow.status === "RUNNING") {
-    let completed = workflow.succeededProcessChains +
-       workflow.failedProcessChains + workflow.cancelledProcessChains
-    progressTitle = `${workflow.runningProcessChains + workflow.pausedProcessChains} Running`
+    let completed =
+      workflow.succeededProcessChains +
+      workflow.failedProcessChains +
+      workflow.cancelledProcessChains
+    progressTitle = `${
+      workflow.runningProcessChains + workflow.pausedProcessChains
+    } Running`
     progressSubTitle = `${completed} of ${workflow.totalProcessChains} completed`
   } else if (workflow.status !== "ACCEPTED" && workflow.status !== "RUNNING") {
     if (workflow.failedProcessChains > 0) {
@@ -22,12 +26,14 @@ export default function workflowToProgress(workflow) {
 
   if (progressSubTitle !== undefined) {
     progressSubTitle = (
-      <Link href={{
-        pathname: "/processchains",
-        query: {
-          submissionId: workflow.id
-        }
-      }}>
+      <Link
+        href={{
+          pathname: "/processchains",
+          query: {
+            submissionId: workflow.id
+          }
+        }}
+      >
         {progressSubTitle}
       </Link>
     )

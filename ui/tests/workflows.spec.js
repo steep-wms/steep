@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test"
 
 test.describe.configure({ mode: "parallel" })
 
-test("submit workflow", async({ page, request }) => {
+test("submit workflow", async ({ page, request }) => {
   let workflow = `api: 4.6.0
 actions:
   - type: execute
@@ -34,7 +34,7 @@ actions:
   await expect(status).toContainText("Success")
 })
 
-test("submit named workflow", async({ page, request }) => {
+test("submit named workflow", async ({ page, request }) => {
   let name = "fred"
   let workflow = `api: 4.6.0
 name: ${name}
@@ -61,13 +61,15 @@ actions:
   await expect(row).toBeVisible()
 
   // check if list does not contain a row with the submission id
-  let rowNotPresent = page.locator(`div.list-item:has(a:text("${submissionId}"))`)
+  let rowNotPresent = page.locator(
+    `div.list-item:has(a:text("${submissionId}"))`
+  )
   await expect(rowNotPresent).not.toBeVisible()
 
   await expect(row.locator(".list-item-right")).toContainText("Success")
 })
 
-test("submit workflow with empty name", async({ page, request }) => {
+test("submit workflow with empty name", async ({ page, request }) => {
   let workflow = `api: 4.6.0
 name: ""
 actions:
@@ -97,7 +99,7 @@ actions:
   await expect(row.locator(".list-item-right")).toContainText("Success")
 })
 
-test("submit workflow and check details", async({ page, request }) => {
+test("submit workflow and check details", async ({ page, request }) => {
   // visit page before the workflow has been submitted
   // wait until the workflow list has been loaded
   await page.goto("/workflows", { waitUntil: "networkidle" })
@@ -133,7 +135,7 @@ actions:
   await expect(status).toContainText("Success")
 })
 
-test("submit and cancel a workflow", async({ page, request }) => {
+test("submit and cancel a workflow", async ({ page, request }) => {
   // visit page before the workflow has been submitted
   // wait until the workflow list has been loaded
   await page.goto("/workflows", { waitUntil: "networkidle" })
@@ -179,7 +181,7 @@ actions:
   await expect(status).toContainText("Cancelled")
 })
 
-test("submit and don't cancel a workflow", async({ page, request }) => {
+test("submit and don't cancel a workflow", async ({ page, request }) => {
   // visit page before the workflow has been submitted
   // wait until the workflow list has been loaded
   await page.goto("/workflows", { waitUntil: "networkidle" })
@@ -225,7 +227,7 @@ actions:
   await expect(status).toContainText("Success", { timeout: 10000 })
 })
 
-test("check tooltips and labels", async({ page, request }) => {
+test("check tooltips and labels", async ({ page, request }) => {
   // visit page before the workflow has been submitted
   // wait until the workflow list has been loaded
   await page.goto("/workflows", { waitUntil: "networkidle" })
@@ -278,7 +280,9 @@ actions:
   await expect(end).toHaveText("\u2013")
   await expect(elapsed).not.toHaveText("\u2013")
 
-  let labelsMiddle = page.locator(".detail-header-middle .definition-list-content")
+  let labelsMiddle = page.locator(
+    ".detail-header-middle .definition-list-content"
+  )
   let priority = labelsMiddle.nth(0)
   await expect(priority).toHaveText("0 (normal)")
 
@@ -291,7 +295,7 @@ actions:
   await expect(elapsed).not.toHaveText("\u2013")
   let elapsedSecondsStr = await elapsed.textContent()
   expect(elapsedSecondsStr).toMatch(/[0-9]+s/)
-  let elapsedSeconds = +(elapsedSecondsStr.match(/([0-9])+s/)[1])
+  let elapsedSeconds = +elapsedSecondsStr.match(/([0-9])+s/)[1]
   expect(elapsedSeconds).toBeGreaterThanOrEqual(3)
 
   page.goBack()
@@ -321,7 +325,7 @@ actions:
   await expect(tooltip1).not.toHaveClass(/visible/)
 })
 
-test("change workflow priority", async({ page, request }) => {
+test("change workflow priority", async ({ page, request }) => {
   await page.goto("/workflows", { waitUntil: "networkidle" })
 
   let workflow = `api: 4.6.0

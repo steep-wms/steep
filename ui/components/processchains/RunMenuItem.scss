@@ -34,7 +34,8 @@
   column-gap: 6px;
 }
 
-.title, .status {
+.title,
+.status {
   grid-column-start: 2;
 }
 
@@ -45,7 +46,8 @@
 .status {
   font-size: $font-size-sm;
 
-  &.running :global(svg), &.paused :global(svg) {
+  &.running :global(svg),
+  &.paused :global(svg) {
     stroke: var(--gray-600);
   }
 
