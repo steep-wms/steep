@@ -9,13 +9,14 @@ module.exports = {
 
   PROCESS_CHAINS_ADDED: "steep.submissionRegistry.processChainsAdded",
   PROCESS_CHAINS_ADDED_SIZE: "steep.submissionRegistry.processChainsAddedSize",
-  PROCESS_CHAIN_START_TIME_CHANGED: "steep.submissionRegistry.processChainStartTimeChanged",
-  PROCESS_CHAIN_END_TIME_CHANGED: "steep.submissionRegistry.processChainEndTimeChanged",
+  PROCESS_CHAIN_RUN_ADDED: "steep.submissionRegistry.processChainRunAdded",
+  PROCESS_CHAIN_RUN_FINISHED: "steep.submissionRegistry.processChainRunFinished",
+  PROCESS_CHAIN_LAST_RUN_DELETED: "steep.submissionRegistry.processChainLastRunDeleted",
+  PROCESS_CHAIN_ALL_RUNS_DELETED: "steep.submissionRegistry.processChainAllRunsDeleted",
   PROCESS_CHAIN_STATUS_CHANGED: "steep.submissionRegistry.processChainStatusChanged",
   PROCESS_CHAIN_ALL_STATUS_CHANGED: "steep.submissionRegistry.processChainAllStatusChanged",
   PROCESS_CHAIN_PRIORITY_CHANGED: "steep.submissionRegistry.processChainPriorityChanged",
   PROCESS_CHAIN_ALL_PRIORITY_CHANGED: "steep.submissionRegistry.processChainAllPriorityChanged",
-  PROCESS_CHAIN_ERROR_MESSAGE_CHANGED: "steep.submissionRegistry.processChainErrorMessageChanged",
   PROCESS_CHAIN_PROGRESS_CHANGED: "steep.submissionRegistry.processChainProgressChanged",
 
   CLUSTER_NODE_LEFT: "steep.cluster.nodeLeft",

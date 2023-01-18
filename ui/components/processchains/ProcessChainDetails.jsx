@@ -13,6 +13,7 @@ import Label from "../Label"
 import ListItemProgressBox from "../ListItemProgressBox"
 import LiveDuration from "../LiveDuration"
 import Priority from "../Priority"
+import { deleteRunInformation } from "./processChainUtil"
 import ProcessChainContext from "../processchains/ProcessChainContext"
 import ProcessChainRunContext from "../processchains/ProcessChainRunContext"
 import ProcessChainLog from "../ProcessChainLog"
@@ -50,16 +51,19 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
         processChain = { ...processChains.items[0] }
 
         // remove all attributes related to runs
-        delete processChain.startTime
-        delete processChain.endTime
-        delete processChain.status
-        delete processChain.errorMessage
-        delete processChain.autoResumeAfter
-        delete processChain.runNumber
+        deleteRunInformation(processChain)
 
         // add attributes from run
-        let run = runs.items[runNumber - 1]
-        processChain = { ...processChain, ...run, runNumber }
+        let run = runs.items[runs.items.length - runNumber]
+        processChain = {
+          ...processChain,
+          startTime: run.startTime,
+          endTime: run.endTime,
+          status: run.status,
+          errorMessage: run.errorMessage,
+          autoResumeAfter: run.autoResumeAfter,
+          runNumber
+        }
       }
     }
   } else {
@@ -283,6 +287,7 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
   let runsMenuTitle = "Runs"
   if (runs.items !== undefined && processChain !== undefined) {
     let runsToDisplay = [...runs.items]
+    runsToDisplay.reverse()
     // add artificial 'current' run if necessary
     let originalProcessChain = processChains.items[0]
     let artificial
@@ -291,7 +296,7 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
         originalProcessChain.status === "PAUSED" ||
         (
           originalProcessChain.status === "CANCELLED" &&
-          originalProcessChain.status !== runs.items[runs.items.length - 1].status
+          originalProcessChain.status !== runs.items[0].status
         )
     ) {
       runsToDisplay.push(originalProcessChain)

@@ -6,6 +6,7 @@ import helper.JsonUtils
 import io.vertx.core.Vertx
 import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
 import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 import model.Submission
 import model.processchain.ProcessChain
@@ -158,10 +159,10 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
 
   override suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Long {
     val n = delegate.addProcessChainRun(processChainId, startTime)
-    // TODO rework messages sent to UI
-    vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_STARTTIME_CHANGED, json {
+    vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_RUN_ADDED, json {
       obj(
           "processChainId" to processChainId,
+          "runNumber" to n,
           "startTime" to startTime
       )
     })
@@ -170,36 +171,16 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
 
   override suspend fun deleteLastProcessChainRun(processChainId: String) {
     delegate.deleteLastProcessChainRun(processChainId)
-    // TODO rework messages sent to UI
-    vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_STARTTIME_CHANGED, json {
-      obj(
-          "processChainId" to processChainId,
-          "startTime" to null
-      )
-    })
+    vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_LAST_RUN_DELETED, jsonObjectOf(
+        "processChainId" to processChainId
+    ))
   }
 
   override suspend fun deleteAllProcessChainRuns(processChainId: String) {
     delegate.deleteAllProcessChainRuns(processChainId)
-    // TODO rework messages sent to UI
-    vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_STARTTIME_CHANGED, json {
-      obj(
-          "processChainId" to processChainId,
-          "startTime" to null
-      )
-    })
-    vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_ENDTIME_CHANGED, json {
-      obj(
-          "processChainId" to processChainId,
-          "endTime" to null
-      )
-    })
-    vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_ERRORMESSAGE_CHANGED, json {
-      obj(
-          "processChainId" to processChainId,
-          "errorMessage" to null
-      )
-    })
+    vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_ALL_RUNS_DELETED, jsonObjectOf(
+        "processChainId" to processChainId
+    ))
   }
 
   override suspend fun finishProcessChainRun(processChainId: String, runNumber: Long,
@@ -207,21 +188,19 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
       autoResumeAfter: Instant?) {
     delegate.finishProcessChainRun(processChainId, runNumber, endTime, status,
         errorMessage, autoResumeAfter)
-    // TODO rework messages sent to UI
-    vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_ENDTIME_CHANGED, json {
-      obj(
-          "processChainId" to processChainId,
-          "endTime" to endTime
-      )
-    })
+    val msg = jsonObjectOf(
+        "processChainId" to processChainId,
+        "runNumber" to runNumber,
+        "endTime" to endTime,
+        "status" to status.name
+    )
     if (errorMessage != null) {
-      vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_ERRORMESSAGE_CHANGED, json {
-        obj(
-            "processChainId" to processChainId,
-            "errorMessage" to errorMessage
-        )
-      })
+      msg.put("errorMessage", errorMessage)
     }
+    if (autoResumeAfter != null) {
+      msg.put("autoResumeAfter", autoResumeAfter)
+    }
+    vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_RUN_FINISHED, msg)
   }
 
   override suspend fun setProcessChainStatus(processChainId: String, status: ProcessChainStatus) {

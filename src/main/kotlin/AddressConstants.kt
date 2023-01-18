@@ -156,14 +156,26 @@ object AddressConstants {
   const val PROCESSCHAINS_ADDED_SIZE = "steep.submissionRegistry.processChainsAddedSize"
 
   /**
-   * Will be published when a process chain's start time has changed
+   * Will be published when a process chain run has been added to the registry
    */
-  const val PROCESSCHAIN_STARTTIME_CHANGED = "steep.submissionRegistry.processChainStartTimeChanged"
+  const val PROCESSCHAIN_RUN_ADDED = "steep.submissionRegistry.processChainRunAdded"
 
   /**
-   * Will be published when a process chain's end time has changed
+   * Will be published when a process chain run has finished
    */
-  const val PROCESSCHAIN_ENDTIME_CHANGED = "steep.submissionRegistry.processChainEndTimeChanged"
+  const val PROCESSCHAIN_RUN_FINISHED = "steep.submissionRegistry.processChainRunFinished"
+
+  /**
+   * Will be published when the last run of a process chain run has been deleted
+   * from the registry
+   */
+  const val PROCESSCHAIN_LAST_RUN_DELETED = "steep.submissionRegistry.processChainLastRunDeleted"
+
+  /**
+   * Will be published when all runs of a process chain run have been deleted
+   * from the registry
+   */
+  const val PROCESSCHAIN_ALL_RUNS_DELETED = "steep.submissionRegistry.processChainAllRunsDeleted"
 
   /**
    * Will be published when a process chain's status has changed
@@ -189,11 +201,6 @@ object AddressConstants {
    * Will be published when a process chain's results have changed
    */
   const val PROCESSCHAIN_RESULTS_CHANGED = "steep.submissionRegistry.processChainResultsChanged"
-
-  /**
-   * Will be published when a process chain's error message have changed
-   */
-  const val PROCESSCHAIN_ERRORMESSAGE_CHANGED = "steep.submissionRegistry.processChainErrorMessageChanged"
 
   /**
    * Will be published when a process chain is currently running and its

@@ -38,7 +38,7 @@ const RunMenuItem = ({ processChainId, runNumber, isLatest, run, enabled = false
 
     case "PAUSED":
       statusIcon = <PauseCircle />
-      text = `Scheduled ${formatDateOnAt(run.autoResumeAfter)}`
+      text = `Will resume ${formatDateOnAt(run.autoResumeAfter)}`
       cls = "paused"
       break
 
@@ -66,7 +66,7 @@ const RunMenuItem = ({ processChainId, runNumber, isLatest, run, enabled = false
                 { enabled ? <Check /> : undefined }
                 <span className="title">
                   {run.status === "PAUSED" && run.autoResumeAfter !== undefined ? (
-                    <>Next run</>
+                    <>Process chain</>
                   ) : runNumber === undefined ? (
                     <>Process chain</>
                   ) : (

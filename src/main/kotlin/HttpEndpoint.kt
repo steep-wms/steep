@@ -6,11 +6,10 @@ import AddressConstants.PROCESSCHAINS_ADDED
 import AddressConstants.PROCESSCHAINS_ADDED_SIZE
 import AddressConstants.PROCESSCHAIN_ALL_PRIORITY_CHANGED
 import AddressConstants.PROCESSCHAIN_ALL_STATUS_CHANGED
-import AddressConstants.PROCESSCHAIN_ENDTIME_CHANGED
-import AddressConstants.PROCESSCHAIN_ERRORMESSAGE_CHANGED
 import AddressConstants.PROCESSCHAIN_PRIORITY_CHANGED
 import AddressConstants.PROCESSCHAIN_PROGRESS_CHANGED
-import AddressConstants.PROCESSCHAIN_STARTTIME_CHANGED
+import AddressConstants.PROCESSCHAIN_RUN_ADDED
+import AddressConstants.PROCESSCHAIN_RUN_FINISHED
 import AddressConstants.PROCESSCHAIN_STATUS_CHANGED
 import AddressConstants.REMOTE_AGENT_ADDED
 import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
@@ -94,7 +93,6 @@ import kotlinx.coroutines.launch
 import model.Submission
 import model.Version
 import model.cloud.VM
-import model.processchain.Run
 import model.workflow.Workflow
 import org.apache.commons.text.WordUtils
 import org.parboiled.errors.ParserRuntimeException
@@ -337,9 +335,9 @@ class HttpEndpoint : CoroutineVerticle() {
         .addOutboundPermitted(PermittedOptions()
             .setAddress(PROCESSCHAINS_ADDED_SIZE))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(PROCESSCHAIN_STARTTIME_CHANGED))
+            .setAddress(PROCESSCHAIN_RUN_ADDED))
         .addOutboundPermitted(PermittedOptions()
-            .setAddress(PROCESSCHAIN_ENDTIME_CHANGED))
+            .setAddress(PROCESSCHAIN_RUN_FINISHED))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(PROCESSCHAIN_STATUS_CHANGED))
         .addOutboundPermitted(PermittedOptions()
@@ -348,8 +346,6 @@ class HttpEndpoint : CoroutineVerticle() {
             .setAddress(PROCESSCHAIN_PRIORITY_CHANGED))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(PROCESSCHAIN_ALL_PRIORITY_CHANGED))
-        .addOutboundPermitted(PermittedOptions()
-            .setAddress(PROCESSCHAIN_ERRORMESSAGE_CHANGED))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(PROCESSCHAIN_PROGRESS_CHANGED))
         .addOutboundPermitted(PermittedOptions()
