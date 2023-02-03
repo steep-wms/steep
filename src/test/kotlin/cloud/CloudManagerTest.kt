@@ -84,7 +84,7 @@ class CloudManagerTest {
     mockkObject(ClusterMap)
     every { ClusterMap.create<Any, Any>(any(), any()) } answers { DummyClusterMap(arg(0), arg(1)) }
     mockkObject(ClusterSemaphore)
-    every { ClusterSemaphore.create(any(), any()) } answers { DummyClusterSemaphore() }
+    coEvery { ClusterSemaphore.create(any(), any(), any()) } answers { DummyClusterSemaphore(arg(1)) }
 
     // mock cloud client
     client = mockk()

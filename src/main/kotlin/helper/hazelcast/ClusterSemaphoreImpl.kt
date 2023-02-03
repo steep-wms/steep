@@ -10,6 +10,12 @@ import java.util.concurrent.TimeUnit
  * @author Michel Kraemer
  */
 class ClusterSemaphoreImpl(private val semaphore: ISemaphore, private val vertx: Vertx) : ClusterSemaphore {
+  suspend fun init(permits: Int): Boolean {
+    return vertx.executeBlocking({ p ->
+      p.complete(semaphore.init(permits))
+    }, false).await()
+  }
+
   override suspend fun acquire() {
     vertx.executeBlocking<Unit>({ p ->
       semaphore.acquire()

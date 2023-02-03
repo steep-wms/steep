@@ -131,7 +131,7 @@ class Scheduler : CoroutineVerticle() {
         throw IllegalStateException("Missing configuration item " +
             "`${ConfigConstants.AGENT_ID}'")
 
-    lookupOrphansSemaphore = ClusterSemaphore.create(SEMAPHORE_LOOKUP_ORPHANS, vertx)
+    lookupOrphansSemaphore = ClusterSemaphore.create(SEMAPHORE_LOOKUP_ORPHANS, 1, vertx)
 
     // register scheduler in cluster-wide map
     registerScheduler()

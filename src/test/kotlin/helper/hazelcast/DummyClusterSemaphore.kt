@@ -7,8 +7,8 @@ import java.util.concurrent.TimeUnit
  * Local implementation of [ClusterMap] that can be used for testing purposes
  * @author Michel Kraemer
  */
-class DummyClusterSemaphore : ClusterSemaphore {
-  private val semaphore = Semaphore(1)
+class DummyClusterSemaphore(permits: Int) : ClusterSemaphore {
+  private val semaphore = Semaphore(permits)
 
   @Suppress("BlockingMethodInNonBlockingContext")
   override suspend fun acquire() {

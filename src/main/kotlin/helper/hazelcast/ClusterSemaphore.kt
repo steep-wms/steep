@@ -11,8 +11,10 @@ import java.util.concurrent.TimeUnit
  */
 interface ClusterSemaphore {
   companion object {
-    fun create(name: String, vertx: Vertx): ClusterSemaphore {
-      return ClusterSemaphoreImpl(globalHazelcastInstance.cpSubsystem.getSemaphore(name), vertx)
+    suspend fun create(name: String, permits: Int, vertx: Vertx): ClusterSemaphore {
+      val s = ClusterSemaphoreImpl(globalHazelcastInstance.cpSubsystem.getSemaphore(name), vertx)
+      s.init(permits)
+      return s
     }
   }
 

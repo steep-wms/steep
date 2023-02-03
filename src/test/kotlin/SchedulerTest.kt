@@ -63,7 +63,7 @@ class SchedulerTest {
   fun setUp(vertx: Vertx, ctx: VertxTestContext) {
     // mock ClusterSemaphore
     mockkObject(ClusterSemaphore)
-    every { ClusterSemaphore.create(any(), any()) } answers { DummyClusterSemaphore() }
+    coEvery { ClusterSemaphore.create(any(), any(), any()) } answers { DummyClusterSemaphore(arg(1)) }
 
     // mock submission registry
     submissionRegistry = mockk()

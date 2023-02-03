@@ -254,7 +254,7 @@ class CloudManager : CoroutineVerticle() {
     setupSelector = SetupSelector(vmRegistry, poolAgentParams)
 
     // create sync semaphore
-    syncSemaphore = ClusterSemaphore.create(SEMAPHORE_SYNC, vertx)
+    syncSemaphore = ClusterSemaphore.create(SEMAPHORE_SYNC, 1, vertx)
 
     // keep track of left cluster nodes
     vertx.eventBus().consumer<JsonObject>(CLUSTER_NODE_LEFT) { msg ->
