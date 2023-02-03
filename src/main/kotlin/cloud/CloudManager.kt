@@ -17,6 +17,7 @@ import db.SetupRegistryFactory
 import db.VMRegistry
 import db.VMRegistryFactory
 import helper.JsonUtils
+import helper.hazelcast.ClusterSemaphore
 import helper.toDuration
 import io.pebbletemplates.pebble.PebbleEngine
 import io.vertx.core.Promise
@@ -85,9 +86,9 @@ class CloudManager : CoroutineVerticle() {
     private const val VM_CREATION_LOCK_PREFIX = "CloudManager.VMs.CreationLock."
 
     /**
-     * Name of a cluster-wide lock used to run [sync] only once at the same time
+     * Name of a cluster-wide semaphore used to run [sync] only once at the same time
      */
-    private const val LOCK_SYNC = "CloudManager.Sync.Lock"
+    private const val SEMAPHORE_SYNC = "CloudManager.Sync.Semaphore"
 
     /**
      * Name of a cluster-wide map to store circuit breaker states
@@ -153,6 +154,12 @@ class CloudManager : CoroutineVerticle() {
    * to create a VM, delays, and whether another attempt can be performed or not
    */
   private lateinit var setupCircuitBreakers: VMCircuitBreakerMap
+
+  /**
+   * A cluster-wide semaphore to prevent [sync] from being called multiple
+   * times in parallel
+   */
+  private lateinit var syncSemaphore: ClusterSemaphore
 
   /**
    * The maximum time the cloud manager should try to log in to a new VM via SSH
@@ -246,6 +253,9 @@ class CloudManager : CoroutineVerticle() {
     // create setup selector
     setupSelector = SetupSelector(vmRegistry, poolAgentParams)
 
+    // create sync semaphore
+    syncSemaphore = ClusterSemaphore.create(SEMAPHORE_SYNC, vertx)
+
     // keep track of left cluster nodes
     vertx.eventBus().consumer<JsonObject>(CLUSTER_NODE_LEFT) { msg ->
       val agentId = msg.body().getString("agentId")
@@ -324,9 +334,14 @@ class CloudManager : CoroutineVerticle() {
    * Synchronize the VM registry with the Cloud
    */
   private suspend fun sync(cleanupOnly: Boolean = false) {
-    val syncLock = try {
-      vertx.sharedData().getLockWithTimeout(LOCK_SYNC, 5000).await()
+    val acquired = try {
+      syncSemaphore.tryAcquire()
     } catch (t: Throwable) {
+      log.warn("Could not acquire semaphore", t)
+      return
+    }
+
+    if (!acquired) {
       // Someone else in the cluster is current syncing. No need to do it twice
       log.trace("Another instance is already syncing VMs")
       return
@@ -456,7 +471,7 @@ class CloudManager : CoroutineVerticle() {
         }
       }
     } finally {
-      syncLock.release()
+      syncSemaphore.release()
     }
   }
 

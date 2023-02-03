@@ -12,7 +12,9 @@ import helper.LazyJsonObjectMessageCodec
 import helper.UniqueID
 import helper.YamlUtils
 import helper.hazelcast.ClusterMap
+import helper.hazelcast.ClusterSemaphore
 import helper.hazelcast.DummyClusterMap
+import helper.hazelcast.DummyClusterSemaphore
 import helper.toDuration
 import io.mockk.Runs
 import io.mockk.coEvery
@@ -78,9 +80,11 @@ class CloudManagerTest {
 
   @BeforeEach
   fun setUp(vertx: Vertx) {
-    // mock hazelcast instance used by agent registry
+    // mock cluster data structures
     mockkObject(ClusterMap)
     every { ClusterMap.create<Any, Any>(any(), any()) } answers { DummyClusterMap(arg(0), arg(1)) }
+    mockkObject(ClusterSemaphore)
+    every { ClusterSemaphore.create(any(), any()) } answers { DummyClusterSemaphore() }
 
     // mock cloud client
     client = mockk()
