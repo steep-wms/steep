@@ -88,7 +88,7 @@ class CloudManager : CoroutineVerticle() {
     /**
      * Name of a cluster-wide semaphore used to run [sync] only once at the same time
      */
-    private const val SEMAPHORE_SYNC = "CloudManager.Sync.Semaphore"
+    private const val SEMAPHORE_SYNC = "CloudManager.Sync.Lock"
 
     /**
      * Name of a cluster-wide map to store circuit breaker states
