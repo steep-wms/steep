@@ -6,8 +6,8 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     application
     jacoco
-    kotlin("jvm") version "1.8.0"
-    id("com.github.ben-manes.versions") version "0.44.0"
+    kotlin("jvm") version "1.8.10"
+    id("com.github.ben-manes.versions") version "0.45.0"
     id("se.patrikerdes.use-latest-versions") version "0.2.18"
 }
 
@@ -55,25 +55,25 @@ dependencies {
 
     implementation("commons-codec:commons-codec:1.15")
     implementation("commons-io:commons-io:2.11.0")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.14.1")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.1")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.14.2")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.2")
     implementation("com.github.luben:zstd-jni:1.5.2-5")
     implementation("com.github.zafarkhaja:java-semver:0.9.0")
     implementation("com.google.guava:guava:31.1-jre")
     implementation("com.zaxxer:HikariCP:5.0.1")
     implementation("io.airlift:aircompressor:0.21")
     implementation("io.pebbletemplates:pebble:3.2.0")
-    implementation("io.projectreactor:reactor-core:3.5.1") // necessary for reactive MongoDB driver
+    implementation("io.projectreactor:reactor-core:3.5.2") // necessary for reactive MongoDB driver
     implementation("io.prometheus:simpleclient:$prometheusClientVersion")
-    implementation("io.micrometer:micrometer-registry-prometheus:1.10.2")
-    implementation("org.apache.ant:ant:1.10.12")
+    implementation("io.micrometer:micrometer-registry-prometheus:1.10.3")
+    implementation("org.apache.ant:ant:1.10.13")
     implementation("org.apache.commons:commons-lang3:3.12.0")
     implementation("org.apache.commons:commons-text:1.10.0")
-    implementation("org.flywaydb:flyway-core:9.11.0")
-    implementation("org.mongodb:mongodb-driver-reactivestreams:4.8.1")
+    implementation("org.flywaydb:flyway-core:9.14.1")
+    implementation("org.mongodb:mongodb-driver-reactivestreams:4.8.2")
     implementation("com.github.openstack4j.core:openstack4j:3.10")
     implementation("org.parboiled:parboiled-java:1.4.1")
-    implementation("org.postgresql:postgresql:42.5.1")
+    implementation("org.postgresql:postgresql:42.5.2")
     implementation("org.quartz-scheduler:quartz:2.3.2") {
         // we only need org.quartz.CronExpression, so we can exclude all dependencies
         isTransitive = false
@@ -86,10 +86,10 @@ dependencies {
     implementation(kotlin("stdlib"))
     implementation(kotlin("script-runtime"))
 
-    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:4.3.3")
-    testImplementation("io.mockk:mockk:1.13.3")
+    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:4.4.0")
+    testImplementation("io.mockk:mockk:1.13.4")
     testImplementation("io.vertx:vertx-junit5:$vertxVersion")
-    testImplementation("org.assertj:assertj-core:3.24.1")
+    testImplementation("org.assertj:assertj-core:3.24.2")
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-params:$junitVersion")
