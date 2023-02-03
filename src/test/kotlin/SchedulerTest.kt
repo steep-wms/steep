@@ -11,6 +11,8 @@ import db.SubmissionRegistry.ProcessChainStatus.RUNNING
 import db.SubmissionRegistry.ProcessChainStatus.SUCCESS
 import db.SubmissionRegistryFactory
 import helper.UniqueID
+import helper.hazelcast.ClusterSemaphore
+import helper.hazelcast.DummyClusterSemaphore
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -59,6 +61,10 @@ class SchedulerTest {
 
   @BeforeEach
   fun setUp(vertx: Vertx, ctx: VertxTestContext) {
+    // mock ClusterSemaphore
+    mockkObject(ClusterSemaphore)
+    every { ClusterSemaphore.create(any(), any()) } answers { DummyClusterSemaphore() }
+
     // mock submission registry
     submissionRegistry = mockk()
     mockkObject(SubmissionRegistryFactory)
@@ -588,6 +594,58 @@ class SchedulerTest {
         agentRegistry.tryAllocate(agentAddress, pc.id)
       }
     })
+  }
+
+  /**
+   * Test that `lookupOrphans` cannot be called multiple times in parallel
+   */
+  @Test
+  fun concurrentOrphanLookups(vertx: Vertx, ctx: VertxTestContext) {
+    val pc = ProcessChain()
+
+    // pretend that a process chain is running but orphaned
+    coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING) } returns listOf(pc.id)
+    coEvery { submissionRegistry.findProcessChainById(pc.id) } returns pc
+
+    // mock all required methods
+    coEvery { submissionRegistry.setProcessChainStatus(pc.id, REGISTERED) } just Runs
+    coEvery { submissionRegistry.getLastProcessChainRun(pc.id) } returns null
+    coEvery { submissionRegistry.findProcessChainRequiredCapabilities(REGISTERED) } returns emptyList()
+
+    // selectCandidates will be the last mocked method to be called in this test
+    val finished = Promise.promise<Unit>()
+    coEvery { agentRegistry.selectCandidates(any()) } answers {
+      finished.complete()
+      emptyList()
+    }
+
+    // mock agent and pretend that this call is taking some time so the other
+    // call to lookupOrphans can catch up
+    coEvery { agentRegistry.getAgentIds() } coAnswers {
+      delay(500)
+      emptySet()
+    }
+
+    // force two lookups for orphans now
+    vertx.eventBus().publish(AddressConstants.SCHEDULER_LOOKUP_ORPHANS_NOW, null)
+    vertx.eventBus().publish(AddressConstants.SCHEDULER_LOOKUP_ORPHANS_NOW, null)
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        finished.future().await()
+
+        // check that all mocked methods have only been called once (except for
+        // findProcessChainIdsByStatus() and findProcessChainById(), which are
+        // typically called multiple times during a lookup operation)
+        coVerify(exactly = 1) {
+          submissionRegistry.setProcessChainStatus(pc.id, REGISTERED)
+          submissionRegistry.getLastProcessChainRun(pc.id)
+          submissionRegistry.findProcessChainRequiredCapabilities(REGISTERED)
+          agentRegistry.selectCandidates(any())
+        }
+      }
+      ctx.completeNow()
+    }
   }
 
   @Test

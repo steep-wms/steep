@@ -22,6 +22,7 @@ import db.SubmissionRegistry.ProcessChainStatus.RUNNING
 import db.SubmissionRegistry.ProcessChainStatus.SUCCESS
 import db.SubmissionRegistryFactory
 import helper.debounce
+import helper.hazelcast.ClusterSemaphore
 import helper.toDuration
 import io.prometheus.client.Gauge
 import io.vertx.core.Promise
@@ -68,6 +69,11 @@ class Scheduler : CoroutineVerticle() {
      * Name of a cluster-wide map keeping IDs of [Scheduler] instances
      */
     private const val ASYNC_MAP_NAME = "Scheduler.Async"
+
+    /**
+     * Name of a cluster-wide semaphore used to run [lookupOrphans] only once at a time
+     */
+    private const val SEMAPHORE_LOOKUP_ORPHANS = "Scheduler.LookupOrphans.Semaphore"
   }
 
   private lateinit var submissionRegistry: SubmissionRegistry
@@ -102,6 +108,12 @@ class Scheduler : CoroutineVerticle() {
   private lateinit var agentId: String
 
   /**
+   * A cluster-wide semaphore that prevents [lookupOrphans] from being called
+   * multiple times in parallel
+   */
+  private lateinit var lookupOrphansSemaphore: ClusterSemaphore
+
+  /**
    * A list of pairs of process chain IDs and agent info objects specifying
    * which process chain should be resumed on which agent
    */
@@ -118,6 +130,8 @@ class Scheduler : CoroutineVerticle() {
     agentId = config.getString(ConfigConstants.AGENT_ID) ?:
         throw IllegalStateException("Missing configuration item " +
             "`${ConfigConstants.AGENT_ID}'")
+
+    lookupOrphansSemaphore = ClusterSemaphore.create(SEMAPHORE_LOOKUP_ORPHANS, vertx)
 
     // register scheduler in cluster-wide map
     registerScheduler()
@@ -555,6 +569,23 @@ class Scheduler : CoroutineVerticle() {
       return
     }
 
+    val acquired = try {
+      lookupOrphansSemaphore.tryAcquire()
+    } catch (t: Throwable) {
+      log.warn("Could not acquire semaphore", t)
+      return
+    }
+
+    if (!acquired) {
+      // Someone else in the cluster is currently looking for orphans.
+      // No need to do it twice
+      // (As a matter of fact, it is really important that no two scheduler
+      // instances look for orphans at the same time. If they would, they'd
+      // probably find and try to resume the same process chains!)
+      log.trace("Another scheduler instance is already looking for orphans")
+      return
+    }
+
     try {
       // get all process chains with status RUNNING from the registry
       // IMPORTANT: we need to do this first before we ask the schedulers which
@@ -654,6 +685,8 @@ class Scheduler : CoroutineVerticle() {
       // next lookup and then try again. We should only resume process chains
       // if everything runs through without any problems.
       log.error("Failed to resume orphaned process chains", t)
+    } finally {
+      lookupOrphansSemaphore.release()
     }
   }
 
