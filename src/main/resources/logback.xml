@@ -34,6 +34,11 @@
     <logger name="com.mitchellbosecke.pebble" level="INFO" />
     <logger name="com.zaxxer.hikari.pool" level="INFO" />
 
+    <!-- Disable log messages from RaftSessionService (mostly messages
+         about CP session being created, which typically happens every
+         few minutes) -->
+    <logger name="com.hazelcast.cp.internal.session.RaftSessionService" level="WARN" />
+
     <!-- Suppress errors if migration status could not be read (which happens
          on the OTC for instance). We don't need it anyhow. -->
     <logger name="org.openstack4j.model.storage.block.Volume$MigrationStatus" level="OFF" />
