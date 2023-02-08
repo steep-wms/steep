@@ -630,7 +630,7 @@ class Steep : CoroutineVerticle() {
           // send answer to all reply addresses (in parallel)
           replyAddresses.map { address ->
             async {
-              withRetry(RetryPolicy(5, delay = 1000L, exponentialBackoff = 2)) {
+              withRetry(RetryPolicy(10, delay = 1000L, exponentialBackoff = 2)) {
                 try {
                   log.info("Sending results of process chain ${processChain.id} " +
                       "to $address ...")
