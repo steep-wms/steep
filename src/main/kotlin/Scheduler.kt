@@ -178,7 +178,10 @@ class Scheduler : CoroutineVerticle() {
         "$SCHEDULER_PREFIX$agentId$SCHEDULER_RUNNING_PROCESS_CHAINS_SUFFIX"
     vertx.eventBus().consumer<Any?>(addressRunningProcessChains) { msg ->
       launch {
-        msg.reply(JsonArray(executingProcessChainIds.getAll()))
+        msg.reply(JsonArray(
+            executingProcessChainIds.getAll() +
+            processChainsToResume.map { it.first }
+        ))
       }
     }
 
