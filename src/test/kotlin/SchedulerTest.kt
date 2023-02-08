@@ -46,7 +46,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.time.Instant
-import java.util.Collections
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -470,12 +469,15 @@ class SchedulerTest {
       coEvery { submissionRegistry.deleteLastProcessChainRun(pc1.id) } just Runs
 
       coEvery { submissionRegistry.findProcessChainById(pc2.id) } returns pc2
-      val runs = Collections.synchronizedList(mutableListOf<Run>())
+      val pc2run = Run(Instant.now().minusSeconds(60)) // pc2 is running since 60s
       coEvery { submissionRegistry.addProcessChainRun(pc2.id, any()) } answers {
-        runs.add(Run(secondArg()))
-        runs.size.toLong()
+        ctx.failNow("Scheduler must not add another run for a process chain " +
+            "that was already running!")
+        1
       }
-      coEvery { submissionRegistry.getLastProcessChainRun(pc2.id) } answers { runs.last() }
+      coEvery { submissionRegistry.countProcessChainRuns(pc2.id) } returns 1
+      coEvery { submissionRegistry.getLastProcessChainRun(pc2.id) } answers { pc2run }
+      coEvery { submissionRegistry.getProcessChainRun(pc2.id, 1) } answers { pc2run }
       coEvery { submissionRegistry.setProcessChainResults(pc2.id, pc2Results) } just Runs
       coEvery { submissionRegistry.setProcessChainStatus(pc2.id, SUCCESS) } just Runs
       coEvery { submissionRegistry.finishProcessChainRun(pc2.id, 1, any(), any(), null) } just Runs
@@ -521,7 +523,8 @@ class SchedulerTest {
 
             // check that pc2 was successfully resumed
             submissionRegistry.findProcessChainById(pc2.id)
-            submissionRegistry.addProcessChainRun(pc2.id, any())
+            submissionRegistry.countProcessChainRuns(pc2.id)
+            submissionRegistry.getProcessChainRun(pc2.id, 1)
             submissionRegistry.setProcessChainResults(pc2.id, pc2Results)
             submissionRegistry.setProcessChainStatus(pc2.id, SUCCESS)
             submissionRegistry.finishProcessChainRun(pc2.id, 1, any(), SUCCESS, null)

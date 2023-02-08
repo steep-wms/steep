@@ -383,9 +383,9 @@ class Scheduler : CoroutineVerticle() {
       // for a short time while no scheduler is executing it yet and a concurrent
       // call to `lookupOrphans` (in this exact period of time) will consider
       // the process chain orphaned and schedule it twice.
-      val processChain = executingProcessChainIds.compute {
+      val (processChain, isProcessChainResumed) = executingProcessChainIds.compute {
         val r = fetchNextProcessChain(address, requiredCapabilities, minPriority)
-        r?.id to r
+        r.first?.id to r
       }
       if (processChain == null) {
         // We didn't find a process chain for these required capabilities.
@@ -432,7 +432,23 @@ class Scheduler : CoroutineVerticle() {
         var run: Long? = null
         try {
           gaugeProcessChains.labels(RUNNING.name).inc()
-          run = submissionRegistry.addProcessChainRun(processChain.id, Instant.now())
+          if (isProcessChainResumed) {
+            // get existing run if process chain was orphaned
+            run = submissionRegistry.countProcessChainRuns(processChain.id)
+            if (run != 0L) {
+              // Better be safe than sorry - check if the process chain run
+              // really has no status and no end time (i.e. if it actually
+              // inidicates it is running). Otherwise, start a new run.
+              val r = submissionRegistry.getProcessChainRun(processChain.id, run)
+              if (r == null || r.status != null || r.endTime != null) {
+                run = null
+              }
+            }
+          }
+          if (run == null || run == 0L) {
+            // add a new run
+            run = submissionRegistry.addProcessChainRun(processChain.id, Instant.now())
+          }
 
           val results = agent.execute(processChain)
 
@@ -538,10 +554,11 @@ class Scheduler : CoroutineVerticle() {
 
   /**
    * Fetch next process chain to schedule either from [processChainsToResume]
-   * or from the [submissionRegistry]
+   * or from the [submissionRegistry]. Return a pair with the process chain
+   * and a flag specifying if the process chain is resumed or not.
    */
   private suspend fun fetchNextProcessChain(agentAddress: String,
-      requiredCapabilities: Collection<String>, minPriority: Int?): ProcessChain? {
+      requiredCapabilities: Collection<String>, minPriority: Int?): Pair<ProcessChain?, Boolean> {
     if (processChainsToResume.isNotEmpty()) {
       val pci = processChainsToResume.indexOfFirst { pair ->
         val agentId = pair.second.getString("id")
@@ -551,12 +568,12 @@ class Scheduler : CoroutineVerticle() {
       if (pci >= 0) {
         val processChainId = processChainsToResume[pci].first
         processChainsToResume.removeAt(pci)
-        return submissionRegistry.findProcessChainById(processChainId)
+        return submissionRegistry.findProcessChainById(processChainId) to true
       }
     }
 
     return submissionRegistry.fetchNextProcessChain(
-        REGISTERED, RUNNING, requiredCapabilities, minPriority)
+        REGISTERED, RUNNING, requiredCapabilities, minPriority) to false
   }
 
   /**
