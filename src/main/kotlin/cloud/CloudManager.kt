@@ -472,6 +472,7 @@ class CloudManager : CoroutineVerticle() {
       }
     } finally {
       syncSemaphore.release()
+      log.trace("Finished syncing VMs.")
     }
   }
 
