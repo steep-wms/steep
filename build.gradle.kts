@@ -73,7 +73,7 @@ dependencies {
     implementation("org.mongodb:mongodb-driver-reactivestreams:4.8.2")
     implementation("com.github.openstack4j.core:openstack4j:3.10")
     implementation("org.parboiled:parboiled-java:1.4.1")
-    implementation("org.postgresql:postgresql:42.5.2")
+    implementation("org.postgresql:postgresql:42.5.4")
     implementation("org.quartz-scheduler:quartz:2.3.2") {
         // we only need org.quartz.CronExpression, so we can exclude all dependencies
         isTransitive = false
