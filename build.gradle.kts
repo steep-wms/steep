@@ -78,7 +78,7 @@ dependencies {
         // we only need org.quartz.CronExpression, so we can exclude all dependencies
         isTransitive = false
     }
-    implementation("org.yaml:snakeyaml:1.33")
+    implementation("org.yaml:snakeyaml:2.0")
 
     implementation(kotlin("reflect"))
     implementation(kotlin("scripting-jvm"))
