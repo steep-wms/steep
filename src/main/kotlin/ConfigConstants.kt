@@ -197,6 +197,11 @@ object ConfigConstants {
   const val HTTP_BASE_PATH = "steep.http.basePath"
 
   /**
+   * A regular expression for a whitelist of enabled routes on the HTTP server
+   */
+  const val HTTP_ALLOW_ROUTES = "steep.http.allowRoutes"
+
+  /**
    * `true` if Cross-Origin Resource Sharing (CORS) should be enabled
    */
   const val HTTP_CORS_ENABLE = "steep.http.cors.enable"
