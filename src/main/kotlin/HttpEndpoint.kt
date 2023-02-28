@@ -381,6 +381,12 @@ class HttpEndpoint : CoroutineVerticle() {
             .setBodyLimit(config.getLong(ConfigConstants.HTTP_POST_MAX_SIZE, 1024L * 1024L)))
         .subRouter(sockJSRouter)
 
+    // disable all routes that are not whitelisted
+    val allowRoutes = config.getString(ConfigConstants.HTTP_ALLOW_ROUTES, ".*").toRegex()
+    router.routes
+        .filter { !it.path.matches(allowRoutes) }
+        .forEach { it.disable() }
+
     val baseRouter = Router.router(vertx)
     baseRouter.route("$basePath/*").subRouter(router)
     server.requestHandler(baseRouter).listen(port, host).await()
