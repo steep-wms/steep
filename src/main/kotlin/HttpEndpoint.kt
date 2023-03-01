@@ -382,10 +382,11 @@ class HttpEndpoint : CoroutineVerticle() {
         .subRouter(sockJSRouter)
 
     // disable all routes that are not whitelisted
-    val allowRoutes = config.getString(ConfigConstants.HTTP_ALLOW_ROUTES, ".*").toRegex()
-    router.routes
-        .filter { !it.path.matches(allowRoutes) }
-        .forEach { it.disable() }
+    config.getString(ConfigConstants.HTTP_ALLOW_ROUTES)?.toRegex()?.let { allowRoutes ->
+      router.routes
+          .filter { !it.path.matches(allowRoutes) }
+          .forEach { it.disable() }
+    }
 
     val baseRouter = Router.router(vertx)
     baseRouter.route("$basePath/*").subRouter(router)
