@@ -42,6 +42,7 @@ import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.awaitResult
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -244,6 +245,56 @@ class HttpEndpointTest {
             .send()
             .await()
         assertThat(JsonObject(response7.body().toString(StandardCharsets.UTF_8)).map).containsKey("version")
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test that only allowed routes are deployed
+   */
+  @Test
+  fun allowSubsetOfRoutes(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      // stop original HTTP server because it has no custom routes allowed
+      vertx.deploymentIDs().forEach { deploymentId ->
+        awaitResult<Void> { vertx.undeploy(deploymentId, it) }
+      }
+
+      // start new HTTP server with only selected endpoints allowed
+      val config = json {
+        obj(
+            ConfigConstants.HTTP_HOST to "localhost",
+            ConfigConstants.HTTP_PORT to port,
+            ConfigConstants.HTTP_POST_MAX_SIZE to maxPostSize,
+            ConfigConstants.HTTP_ALLOW_ROUTES to "/|/services"
+        )
+      }
+      val options = deploymentOptionsOf(config = config)
+      awaitResult {
+        vertx.deployVerticle(HttpEndpoint::class.qualifiedName, options, it)
+      }
+
+      coEvery { metadataRegistry.findServices() } returns emptyList()
+
+      val client = WebClient.create(vertx)
+      ctx.coVerify {
+        client.get(port, "localhost", "/")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .expect(ResponsePredicate.JSON)
+            .send()
+            .await()
+        client.get(port, "localhost", "/services")
+            .`as`(BodyCodec.jsonArray())
+            .expect(ResponsePredicate.SC_OK)
+            .expect(ResponsePredicate.JSON)
+            .send()
+            .await()
+        client.get(port, "localhost", "/plugins")
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .send()
+            .await()
       }
       ctx.completeNow()
     }
