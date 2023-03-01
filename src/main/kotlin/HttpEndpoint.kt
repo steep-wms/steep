@@ -384,7 +384,7 @@ class HttpEndpoint : CoroutineVerticle() {
     // disable all routes that are not whitelisted
     config.getString(ConfigConstants.HTTP_ALLOW_ROUTES)?.toRegex()?.let { allowRoutes ->
       router.routes
-          .filter { !it.path.matches(allowRoutes) }
+          .filter { it.path?.matches(allowRoutes) == false }
           .forEach { it.disable() }
     }
 
