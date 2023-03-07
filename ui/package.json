@@ -52,7 +52,7 @@
     "sockjs-client": "^1.6.1",
     "spinkit": "^2.0.1",
     "svgo-loader": "^4.0.0",
-    "swr": "^2.0.4",
+    "swr": "^2.1.0",
     "webpack": "^5.75.0"
   },
   "devDependencies": {
