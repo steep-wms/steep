@@ -57,28 +57,28 @@ dependencies {
     implementation("commons-io:commons-io:2.11.0")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.14.2")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.2")
-    implementation("com.github.luben:zstd-jni:1.5.4-1")
+    implementation("com.github.luben:zstd-jni:1.5.4-2")
     implementation("com.github.zafarkhaja:java-semver:0.9.0")
     implementation("com.google.guava:guava:31.1-jre")
     implementation("com.zaxxer:HikariCP:5.0.1")
-    implementation("io.airlift:aircompressor:0.21")
+    implementation("io.airlift:aircompressor:0.24")
     implementation("io.pebbletemplates:pebble:3.2.0")
-    implementation("io.projectreactor:reactor-core:3.5.3") // necessary for reactive MongoDB driver
+    implementation("io.projectreactor:reactor-core:3.5.4") // necessary for reactive MongoDB driver
     implementation("io.prometheus:simpleclient:$prometheusClientVersion")
-    implementation("io.micrometer:micrometer-registry-prometheus:1.10.4")
+    implementation("io.micrometer:micrometer-registry-prometheus:1.10.5")
     implementation("org.apache.ant:ant:1.10.13")
     implementation("org.apache.commons:commons-lang3:3.12.0")
     implementation("org.apache.commons:commons-text:1.10.0")
-    implementation("org.flywaydb:flyway-core:9.15.1")
+    implementation("org.flywaydb:flyway-core:9.16.1")
     implementation("org.mongodb:mongodb-driver-reactivestreams:4.9.0")
     implementation("com.github.openstack4j.core:openstack4j:3.11")
     implementation("org.parboiled:parboiled-java:1.4.1")
-    implementation("org.postgresql:postgresql:42.5.4")
+    implementation("org.postgresql:postgresql:42.6.0")
     implementation("org.quartz-scheduler:quartz:2.3.2") {
         // we only need org.quartz.CronExpression, so we can exclude all dependencies
         isTransitive = false
     }
-    implementation("org.yaml:snakeyaml:1.33")
+    implementation("org.yaml:snakeyaml:2.0")
 
     implementation(kotlin("reflect"))
     implementation(kotlin("scripting-jvm"))
@@ -86,7 +86,7 @@ dependencies {
     implementation(kotlin("stdlib"))
     implementation(kotlin("script-runtime"))
 
-    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:4.6.1")
+    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:4.6.2")
     testImplementation("io.mockk:mockk:1.13.4")
     testImplementation("io.vertx:vertx-junit5:$vertxVersion")
     testImplementation("org.assertj:assertj-core:3.24.2")
