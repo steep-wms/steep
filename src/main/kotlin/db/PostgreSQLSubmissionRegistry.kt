@@ -9,10 +9,8 @@ import helper.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.Tuple
@@ -176,11 +174,9 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
           "ORDER BY $DATA->'$WORKFLOW'->'$PRIORITY' DESC, $SERIAL ASC LIMIT 1 " +
           "FOR UPDATE SKIP LOCKED" + // skip rows being updated concurrently
         ") RETURNING $DATA::varchar"
-    val newObj = json {
-      obj(
-          STATUS to newStatus.toString()
-      )
-    }
+    val newObj = jsonObjectOf(
+        STATUS to newStatus.toString()
+    )
     val updateParams = Tuple.of(newObj, currentStatus.toString())
     val rs = client.preparedQuery(updateStatement).execute(updateParams).await()
     return rs?.firstOrNull()?.let { JsonUtils.mapper.readValue<Submission>(it.getString(0))
@@ -188,29 +184,23 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun setSubmissionStartTime(submissionId: String, startTime: Instant) {
-    val newObj = json {
-      obj(
-          START_TIME to startTime
-      )
-    }
+    val newObj = jsonObjectOf(
+        START_TIME to startTime
+    )
     updateProperties(SUBMISSIONS, submissionId, newObj)
   }
 
   override suspend fun setSubmissionEndTime(submissionId: String, endTime: Instant) {
-    val newObj = json {
-      obj(
-          END_TIME to endTime
-      )
-    }
+    val newObj = jsonObjectOf(
+        END_TIME to endTime
+    )
     updateProperties(SUBMISSIONS, submissionId, newObj)
   }
 
   override suspend fun setSubmissionStatus(submissionId: String, status: Submission.Status) {
-    val newObj = json {
-      obj(
-          STATUS to status.toString()
-      )
-    }
+    val newObj = jsonObjectOf(
+        STATUS to status.toString()
+    )
     updateProperties(SUBMISSIONS, submissionId, newObj)
   }
 
@@ -521,14 +511,12 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   override suspend fun existsProcessChain(currentStatus: ProcessChainStatus,
       requiredCapabilities: Collection<String>?): Boolean {
     val (statement, params) = if (requiredCapabilities == null) {
-      "SELECT 1 FROM $PROCESS_CHAINS WHERE $STATUS=$1 LIMIT 1" to json {
-        Tuple.of(currentStatus.toString())
-      }
+      "SELECT 1 FROM $PROCESS_CHAINS WHERE $STATUS=$1 LIMIT 1" to
+          Tuple.of(currentStatus.toString())
     } else {
       "SELECT 1 FROM $PROCESS_CHAINS WHERE $STATUS=$1 " +
-          "AND $DATA->'$REQUIRED_CAPABILITIES'=$2 LIMIT 1" to json {
-        Tuple.of(currentStatus.toString(), JsonArray(requiredCapabilities.toList()))
-      }
+          "AND $DATA->'$REQUIRED_CAPABILITIES'=$2 LIMIT 1" to
+          Tuple.of(currentStatus.toString(), JsonArray(requiredCapabilities.toList()))
     }
 
     return client.preparedQuery(statement).execute(params).await()?.firstOrNull() != null

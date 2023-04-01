@@ -10,9 +10,7 @@ import helper.updateOneAwait
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.mongo.impl.codec.json.JsonObjectCodec
-import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.kotlin.core.json.obj
 import java.time.Instant
 import java.time.format.DateTimeFormatter.ISO_INSTANT
 
@@ -54,17 +52,13 @@ open class MongoDBRegistry(vertx: Vertx, connectionString: String) : Registry {
    * Get a next [n] sequential numbers for a given [collection]
    */
   protected suspend fun getNextSequence(collection: String, n: Int = 1): Long {
-    val doc = collSequence.findOneAndUpdateAwait(json {
-      obj(
-          INTERNAL_ID to collection
-      )
-    }, json {
-      obj(
-          "\$inc" to obj(
-              VALUE to n.toLong()
-          )
-      )
-    }, FindOneAndUpdateOptions().upsert(true))
+    val doc = collSequence.findOneAndUpdateAwait(jsonObjectOf(
+        INTERNAL_ID to collection
+    ), jsonObjectOf(
+        "\$inc" to jsonObjectOf(
+            VALUE to n.toLong()
+        )
+    ), FindOneAndUpdateOptions().upsert(true))
     return doc?.getLong(VALUE, 0L) ?: 0L
   }
 
@@ -74,23 +68,19 @@ open class MongoDBRegistry(vertx: Vertx, connectionString: String) : Registry {
    */
   protected suspend fun updateField(collection: MongoCollection<JsonObject>,
       id: String, field: String, value: Any?) {
-    collection.updateOneAwait(json {
-      obj(
-          INTERNAL_ID to id
-      )
-    }, json {
-      obj(
-          if (value != null) {
-            "\$set" to obj(
-                field to value
-            )
-          } else {
-            "\$unset" to obj(
-                field to ""
-            )
-          }
-      )
-    })
+    collection.updateOneAwait(jsonObjectOf(
+        INTERNAL_ID to id
+    ), jsonObjectOf(
+        if (value != null) {
+          "\$set" to jsonObjectOf(
+              field to value
+          )
+        } else {
+          "\$unset" to jsonObjectOf(
+              field to ""
+          )
+        }
+    ))
   }
 
   /**
@@ -99,24 +89,20 @@ open class MongoDBRegistry(vertx: Vertx, connectionString: String) : Registry {
    */
   protected suspend fun updateField(collection: MongoCollection<JsonObject>,
       id: String, field: String, expectedValue: Any?, newValue: Any?) {
-    collection.updateOneAwait(json {
-      obj(
-          INTERNAL_ID to id,
-          field to expectedValue
-      )
-    }, json {
-      obj(
-          if (newValue != null) {
-            "\$set" to obj(
-                field to newValue
-            )
-          } else {
-            "\$unset" to obj(
-                field to ""
-            )
-          }
-      )
-    })
+    collection.updateOneAwait(jsonObjectOf(
+        INTERNAL_ID to id,
+        field to expectedValue
+    ), jsonObjectOf(
+        if (newValue != null) {
+          "\$set" to jsonObjectOf(
+              field to newValue
+          )
+        } else {
+          "\$unset" to jsonObjectOf(
+              field to ""
+          )
+        }
+    ))
   }
 
   /**

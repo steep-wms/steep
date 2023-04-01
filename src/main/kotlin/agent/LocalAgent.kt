@@ -15,8 +15,7 @@ import io.prometheus.client.Gauge
 import io.vertx.core.Context
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CancellationException
@@ -142,12 +141,10 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
         progress = roundedNew
       }
       if (progress != oldProgress) {
-        vertx.eventBus().send(PROCESSCHAIN_PROGRESS_CHANGED, json {
-          obj(
-              "processChainId" to processChain.id,
-              "estimatedProgress" to progress
-          )
-        })
+        vertx.eventBus().send(PROCESSCHAIN_PROGRESS_CHANGED, jsonObjectOf(
+            "processChainId" to processChain.id,
+            "estimatedProgress" to progress
+        ))
       }
     }
 

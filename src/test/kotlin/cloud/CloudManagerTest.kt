@@ -34,9 +34,8 @@ import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.deploymentOptionsOf
-import io.vertx.kotlin.core.json.array
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.core.json.jsonArrayOf
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -125,17 +124,15 @@ class CloudManagerTest {
 
     CoroutineScope(vertx.dispatcher()).launch {
       // deploy verticle under test
-      val config = json {
-        obj(
-            ConfigConstants.CLOUD_CREATED_BY_TAG to CREATED_BY_TAG,
-            ConfigConstants.CLOUD_SSH_USERNAME to sshUsername,
-            ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION to "myprivatekey.pem",
-            ConfigConstants.CLOUD_SETUPS_FILE to setupFile.toString(),
-            ConfigConstants.CLOUD_SYNC_INTERVAL to SYNC_INTERVAL,
-            ConfigConstants.CLOUD_KEEP_ALIVE_INTERVAL to KEEP_ALIVE_INTERVAL,
-            ConfigConstants.CLOUD_AGENTPOOL to agentPool
-        )
-      }
+      val config = jsonObjectOf(
+          ConfigConstants.CLOUD_CREATED_BY_TAG to CREATED_BY_TAG,
+          ConfigConstants.CLOUD_SSH_USERNAME to sshUsername,
+          ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION to "myprivatekey.pem",
+          ConfigConstants.CLOUD_SETUPS_FILE to setupFile.toString(),
+          ConfigConstants.CLOUD_SYNC_INTERVAL to SYNC_INTERVAL,
+          ConfigConstants.CLOUD_KEEP_ALIVE_INTERVAL to KEEP_ALIVE_INTERVAL,
+          ConfigConstants.CLOUD_AGENTPOOL to agentPool
+      )
       val options = deploymentOptionsOf(config = config)
       cloudManager = CloudManager()
       vertx.deployVerticle(cloudManager, options, completionHandler)
@@ -237,14 +234,12 @@ class CloudManagerTest {
 
     CoroutineScope(vertx.dispatcher()).launch {
       // deploy verticle under test
-      val config = json {
-        obj(
-            ConfigConstants.CLOUD_CREATED_BY_TAG to CREATED_BY_TAG,
-            ConfigConstants.CLOUD_SSH_USERNAME to "elvis",
-            ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION to "myprivatekey.pem",
-            ConfigConstants.CLOUD_SETUPS_FILE to setupFile.toString()
-        )
-      }
+      val config = jsonObjectOf(
+          ConfigConstants.CLOUD_CREATED_BY_TAG to CREATED_BY_TAG,
+          ConfigConstants.CLOUD_SSH_USERNAME to "elvis",
+          ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION to "myprivatekey.pem",
+          ConfigConstants.CLOUD_SETUPS_FILE to setupFile.toString()
+      )
       val options = deploymentOptionsOf(config = config)
       cloudManager = CloudManager()
 
@@ -920,26 +915,26 @@ class CloudManagerTest {
         vertx.eventBus().publish(REMOTE_AGENT_ADDED, agentId)
       }
 
-      deployCloudManager(tempDir, listOf(testSetup, testSetup2, testSetup3),
-          vertx, ctx, json {
-        array(
-            obj(
-                "capabilities" to array("foo"),
-                "min" to 2,
-                "max" to 3
-            ),
-            obj(
-                "capabilities" to array("bar"),
-                "min" to 2,
-                "max" to 2
-            ),
-            obj(
-                "capabilities" to array("test"),
-                "min" to 1,
-                "max" to 4
-            )
-        )
-      })
+      deployCloudManager(
+          tempDir, listOf(testSetup, testSetup2, testSetup3), vertx, ctx,
+          jsonArrayOf(
+              jsonObjectOf(
+                  "capabilities" to jsonArrayOf("foo"),
+                  "min" to 2,
+                  "max" to 3
+              ),
+              jsonObjectOf(
+                  "capabilities" to jsonArrayOf("bar"),
+                  "min" to 2,
+                  "max" to 2
+              ),
+              jsonObjectOf(
+                  "capabilities" to jsonArrayOf("test"),
+                  "min" to 1,
+                  "max" to 4
+              )
+          )
+      )
     }
 
     /**

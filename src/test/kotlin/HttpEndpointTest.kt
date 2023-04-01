@@ -36,11 +36,8 @@ import io.vertx.ext.web.codec.BodyCodec
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.deploymentOptionsOf
-import io.vertx.kotlin.core.json.array
-import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitResult
 import io.vertx.kotlin.coroutines.dispatcher
@@ -134,13 +131,11 @@ class HttpEndpointTest {
     every { VMRegistryFactory.create(any()) } returns vmRegistry
 
     // deploy verticle under test
-    val config = json {
-      obj(
-          ConfigConstants.HTTP_HOST to "localhost",
-          ConfigConstants.HTTP_PORT to port,
-          ConfigConstants.HTTP_POST_MAX_SIZE to maxPostSize
-      )
-    }
+    val config = jsonObjectOf(
+        ConfigConstants.HTTP_HOST to "localhost",
+        ConfigConstants.HTTP_PORT to port,
+        ConfigConstants.HTTP_POST_MAX_SIZE to maxPostSize
+    )
     val options = deploymentOptionsOf(config = config)
     vertx.deployVerticle(HttpEndpoint::class.qualifiedName, options,
       ctx.succeedingThenComplete())
@@ -262,14 +257,12 @@ class HttpEndpointTest {
       }
 
       // start new HTTP server with only selected endpoints allowed
-      val config = json {
-        obj(
-            ConfigConstants.HTTP_HOST to "localhost",
-            ConfigConstants.HTTP_PORT to port,
-            ConfigConstants.HTTP_POST_MAX_SIZE to maxPostSize,
-            ConfigConstants.HTTP_ALLOW_ROUTES to "/|/services"
-        )
-      }
+      val config = jsonObjectOf(
+          ConfigConstants.HTTP_HOST to "localhost",
+          ConfigConstants.HTTP_PORT to port,
+          ConfigConstants.HTTP_POST_MAX_SIZE to maxPostSize,
+          ConfigConstants.HTTP_ALLOW_ROUTES to "/|/services"
+      )
       val options = deploymentOptionsOf(config = config)
       awaitResult {
         vertx.deployVerticle(HttpEndpoint::class.qualifiedName, options, it)
@@ -504,44 +497,42 @@ class HttpEndpointTest {
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
         assertThat(response.headers()["x-page-total"]).isEqualTo("3")
 
-        assertThat(response.body()).isEqualTo(json {
-          array(
-              obj(
-                  "id" to s1.id,
-                  "status" to Submission.Status.ACCEPTED.toString(),
-                  "runningProcessChains" to 2,
-                  "pausedProcessChains" to 6,
-                  "cancelledProcessChains" to 3,
-                  "failedProcessChains" to 4,
-                  "succeededProcessChains" to 5,
-                  "totalProcessChains" to 21,
-                  "requiredCapabilities" to array()
-              ),
-              obj(
-                  "id" to s2.id,
-                  "status" to Submission.Status.ACCEPTED.toString(),
-                  "runningProcessChains" to 12,
-                  "pausedProcessChains" to 0,
-                  "cancelledProcessChains" to 13,
-                  "failedProcessChains" to 14,
-                  "succeededProcessChains" to 15,
-                  "totalProcessChains" to 65,
-                  "requiredCapabilities" to array()
-              ),
-              obj(
-                  "id" to s3.id,
-                  "status" to Submission.Status.SUCCESS.toString(),
-                  "priority" to 10,
-                  "runningProcessChains" to 0,
-                  "pausedProcessChains" to 0,
-                  "cancelledProcessChains" to 0,
-                  "failedProcessChains" to 0,
-                  "succeededProcessChains" to 1,
-                  "totalProcessChains" to 1,
-                  "requiredCapabilities" to array()
-              )
-          )
-        })
+        assertThat(response.body()).isEqualTo(jsonArrayOf(
+            jsonObjectOf(
+                "id" to s1.id,
+                "status" to Submission.Status.ACCEPTED.toString(),
+                "runningProcessChains" to 2,
+                "pausedProcessChains" to 6,
+                "cancelledProcessChains" to 3,
+                "failedProcessChains" to 4,
+                "succeededProcessChains" to 5,
+                "totalProcessChains" to 21,
+                "requiredCapabilities" to jsonArrayOf()
+            ),
+            jsonObjectOf(
+                "id" to s2.id,
+                "status" to Submission.Status.ACCEPTED.toString(),
+                "runningProcessChains" to 12,
+                "pausedProcessChains" to 0,
+                "cancelledProcessChains" to 13,
+                "failedProcessChains" to 14,
+                "succeededProcessChains" to 15,
+                "totalProcessChains" to 65,
+                "requiredCapabilities" to jsonArrayOf()
+            ),
+            jsonObjectOf(
+                "id" to s3.id,
+                "status" to Submission.Status.SUCCESS.toString(),
+                "priority" to 10,
+                "runningProcessChains" to 0,
+                "pausedProcessChains" to 0,
+                "cancelledProcessChains" to 0,
+                "failedProcessChains" to 0,
+                "succeededProcessChains" to 1,
+                "totalProcessChains" to 1,
+                "requiredCapabilities" to jsonArrayOf()
+            )
+        ))
       }
       ctx.completeNow()
     }
@@ -581,21 +572,19 @@ class HttpEndpointTest {
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
         assertThat(response.headers()["x-page-total"]).isEqualTo("1")
 
-        assertThat(response.body()).isEqualTo(json {
-          array(
-              obj(
-                  "id" to s3.id,
-                  "status" to Submission.Status.SUCCESS.toString(),
-                  "runningProcessChains" to 0,
-                  "pausedProcessChains" to 0,
-                  "cancelledProcessChains" to 0,
-                  "failedProcessChains" to 0,
-                  "succeededProcessChains" to 1,
-                  "totalProcessChains" to 1,
-                  "requiredCapabilities" to array()
-              )
-          )
-        })
+        assertThat(response.body()).isEqualTo(jsonArrayOf(
+            jsonObjectOf(
+                "id" to s3.id,
+                "status" to Submission.Status.SUCCESS.toString(),
+                "runningProcessChains" to 0,
+                "pausedProcessChains" to 0,
+                "cancelledProcessChains" to 0,
+                "failedProcessChains" to 0,
+                "succeededProcessChains" to 1,
+                "totalProcessChains" to 1,
+                "requiredCapabilities" to jsonArrayOf()
+            )
+        ))
       }
       ctx.completeNow()
     }
@@ -638,22 +627,20 @@ class HttpEndpointTest {
             .send()
             .await()
 
-        assertThat(response.body()).isEqualTo(json {
-            obj(
-                "id" to s1.id,
-                "workflow" to JsonUtils.toJson(s1.workflow),
-                "status" to Submission.Status.ACCEPTED.toString(),
-                "priority" to -10,
-                "runningProcessChains" to 2,
-                "pausedProcessChains" to 6,
-                "cancelledProcessChains" to 3,
-                "failedProcessChains" to 4,
-                "succeededProcessChains" to 5,
-                "totalProcessChains" to 21,
-                "requiredCapabilities" to array(),
-                "source" to source
-            )
-        })
+        assertThat(response.body()).isEqualTo(jsonObjectOf(
+            "id" to s1.id,
+            "workflow" to JsonUtils.toJson(s1.workflow),
+            "status" to Submission.Status.ACCEPTED.toString(),
+            "priority" to -10,
+            "runningProcessChains" to 2,
+            "pausedProcessChains" to 6,
+            "cancelledProcessChains" to 3,
+            "failedProcessChains" to 4,
+            "succeededProcessChains" to 5,
+            "totalProcessChains" to 21,
+            "requiredCapabilities" to jsonArrayOf(),
+            "source" to source
+        ))
       }
 
       ctx.completeNow()
@@ -685,20 +672,18 @@ class HttpEndpointTest {
             .send()
             .await()
 
-        assertThat(response.body()).isEqualTo(json {
-          obj(
-              "id" to s1.id,
-              "workflow" to JsonUtils.toJson(s1.workflow),
-              "status" to Submission.Status.ACCEPTED.toString(),
-              "runningProcessChains" to 0,
-              "pausedProcessChains" to 0,
-              "cancelledProcessChains" to 0,
-              "failedProcessChains" to 0,
-              "succeededProcessChains" to 0,
-              "totalProcessChains" to 1,
-              "requiredCapabilities" to array("cap1", "cap2", "cap3")
-          )
-        })
+        assertThat(response.body()).isEqualTo(jsonObjectOf(
+            "id" to s1.id,
+            "workflow" to JsonUtils.toJson(s1.workflow),
+            "status" to Submission.Status.ACCEPTED.toString(),
+            "runningProcessChains" to 0,
+            "pausedProcessChains" to 0,
+            "cancelledProcessChains" to 0,
+            "failedProcessChains" to 0,
+            "succeededProcessChains" to 0,
+            "totalProcessChains" to 1,
+            "requiredCapabilities" to jsonArrayOf("cap1", "cap2", "cap3")
+        ))
       }
 
       ctx.completeNow()
@@ -731,21 +716,19 @@ class HttpEndpointTest {
             .send()
             .await()
 
-        assertThat(response.body()).isEqualTo(json {
-          obj(
-              "id" to s1.id,
-              "workflow" to JsonUtils.toJson(s1.workflow),
-              "status" to Submission.Status.SUCCESS.toString(),
-              "runningProcessChains" to 0,
-              "pausedProcessChains" to 0,
-              "cancelledProcessChains" to 0,
-              "failedProcessChains" to 0,
-              "succeededProcessChains" to 1,
-              "totalProcessChains" to 1,
-              "results" to JsonUtils.toJson(results),
-              "requiredCapabilities" to array()
-          )
-        })
+        assertThat(response.body()).isEqualTo(jsonObjectOf(
+            "id" to s1.id,
+            "workflow" to JsonUtils.toJson(s1.workflow),
+            "status" to Submission.Status.SUCCESS.toString(),
+            "runningProcessChains" to 0,
+            "pausedProcessChains" to 0,
+            "cancelledProcessChains" to 0,
+            "failedProcessChains" to 0,
+            "succeededProcessChains" to 1,
+            "totalProcessChains" to 1,
+            "results" to JsonUtils.toJson(results),
+            "requiredCapabilities" to jsonArrayOf()
+        ))
       }
 
       ctx.completeNow()
@@ -778,21 +761,19 @@ class HttpEndpointTest {
             .send()
             .await()
 
-        assertThat(response.body()).isEqualTo(json {
-          obj(
-              "id" to s1.id,
-              "workflow" to JsonUtils.toJson(s1.workflow),
-              "status" to Submission.Status.ERROR.toString(),
-              "runningProcessChains" to 0,
-              "pausedProcessChains" to 0,
-              "cancelledProcessChains" to 0,
-              "failedProcessChains" to 1,
-              "succeededProcessChains" to 0,
-              "totalProcessChains" to 1,
-              "errorMessage" to errorMessage,
-              "requiredCapabilities" to array()
-          )
-        })
+        assertThat(response.body()).isEqualTo(jsonObjectOf(
+            "id" to s1.id,
+            "workflow" to JsonUtils.toJson(s1.workflow),
+            "status" to Submission.Status.ERROR.toString(),
+            "runningProcessChains" to 0,
+            "pausedProcessChains" to 0,
+            "cancelledProcessChains" to 0,
+            "failedProcessChains" to 1,
+            "succeededProcessChains" to 0,
+            "totalProcessChains" to 1,
+            "errorMessage" to errorMessage,
+            "requiredCapabilities" to jsonArrayOf()
+        ))
       }
 
       ctx.completeNow()
@@ -818,42 +799,30 @@ class HttpEndpointTest {
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        val cancelledBody = json {
-          obj(
-              "status" to "CANCELLED"
-          )
-        }
+        val cancelledBody = jsonObjectOf(
+            "status" to "CANCELLED"
+        )
 
         val expectedPriority = 100
-        val priorityBody = json {
-          obj(
-              "priority" to expectedPriority
-          )
-        }
+        val priorityBody = jsonObjectOf(
+            "priority" to expectedPriority
+        )
 
-        val missingBody = json {
-          obj(
-              "foo" to "bar"
-          )
-        }
+        val missingBody = jsonObjectOf(
+            "foo" to "bar"
+        )
 
-        val invalidBody1 = json {
-          obj(
-              "status" to "INVALID"
-          )
-        }
+        val invalidBody1 = jsonObjectOf(
+            "status" to "INVALID"
+        )
 
-        val invalidBody2 = json {
-          obj(
-              "status" to 5
-          )
-        }
+        val invalidBody2 = jsonObjectOf(
+            "status" to 5
+        )
 
-        val invalidBody3 = json {
-          obj(
-              "priority" to "INVALID"
-          )
-        }
+        val invalidBody3 = jsonObjectOf(
+            "priority" to "INVALID"
+        )
 
         // test invalid requests
         client.put(port, "localhost", "/workflows/${s1.id}")
@@ -920,20 +889,18 @@ class HttpEndpointTest {
             .sendJsonObject(cancelledBody)
             .await()
 
-        assertThat(response1.body()).isEqualTo(json {
-          obj(
-              "id" to s1.id,
-              "status" to Submission.Status.RUNNING.toString(),
-              "requiredCapabilities" to array(),
-              "source" to source,
-              "runningProcessChains" to 1,
-              "pausedProcessChains" to 0,
-              "cancelledProcessChains" to 2,
-              "succeededProcessChains" to 0,
-              "failedProcessChains" to 0,
-              "totalProcessChains" to 3
-          )
-        })
+        assertThat(response1.body()).isEqualTo(jsonObjectOf(
+            "id" to s1.id,
+            "status" to Submission.Status.RUNNING.toString(),
+            "requiredCapabilities" to jsonArrayOf(),
+            "source" to source,
+            "runningProcessChains" to 1,
+            "pausedProcessChains" to 0,
+            "cancelledProcessChains" to 2,
+            "succeededProcessChains" to 0,
+            "failedProcessChains" to 0,
+            "totalProcessChains" to 3
+        ))
 
         coVerify(exactly = 1) {
           submissionRegistry.setAllProcessChainsStatus(s1.id,
@@ -952,21 +919,19 @@ class HttpEndpointTest {
             .sendJsonObject(priorityBody)
             .await()
 
-        assertThat(response2.body()).isEqualTo(json {
-          obj(
-              "id" to s1.id,
-              "status" to Submission.Status.RUNNING.toString(),
-              "requiredCapabilities" to array(),
-              "source" to source,
-              "runningProcessChains" to 1,
-              "pausedProcessChains" to 0,
-              "cancelledProcessChains" to 2,
-              "succeededProcessChains" to 0,
-              "failedProcessChains" to 0,
-              "totalProcessChains" to 3,
-              "priority" to expectedPriority
-          )
-        })
+        assertThat(response2.body()).isEqualTo(jsonObjectOf(
+            "id" to s1.id,
+            "status" to Submission.Status.RUNNING.toString(),
+            "requiredCapabilities" to jsonArrayOf(),
+            "source" to source,
+            "runningProcessChains" to 1,
+            "pausedProcessChains" to 0,
+            "cancelledProcessChains" to 2,
+            "succeededProcessChains" to 0,
+            "failedProcessChains" to 0,
+            "totalProcessChains" to 3,
+            "priority" to expectedPriority
+        ))
 
         coVerify(exactly = 1) {
           submissionRegistry.setSubmissionPriority(s1.id, expectedPriority)
@@ -1081,15 +1046,13 @@ class HttpEndpointTest {
             .sendBuffer(body)
             .await()
 
-        assertThat(response.body()).isEqualTo(json {
-          obj(
-              "id" to submissionSlot.captured.id,
-              "workflow" to JsonUtils.toJson(expectedWorkflow),
-              "status" to Submission.Status.ACCEPTED.toString(),
-              "requiredCapabilities" to JsonArray(expectedRequiredCapabilities),
-              "source" to body.toString()
-          )
-        })
+        assertThat(response.body()).isEqualTo(jsonObjectOf(
+            "id" to submissionSlot.captured.id,
+            "workflow" to JsonUtils.toJson(expectedWorkflow),
+            "status" to Submission.Status.ACCEPTED.toString(),
+            "requiredCapabilities" to JsonArray(expectedRequiredCapabilities),
+            "source" to body.toString()
+        ))
       }
 
       ctx.completeNow()
@@ -1205,46 +1168,44 @@ class HttpEndpointTest {
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
         assertThat(response.headers()["x-page-total"]).isEqualTo("5")
 
-        assertThat(response.body()).isEqualTo(json {
-          array(
-              obj(
-                  "id" to pc1.id,
-                  "requiredCapabilities" to array(),
-                  "submissionId" to s1.id,
-                  "status" to "SUCCESS",
-                  "startTime" to startTime,
-                  "endTime" to endTime
-              ),
-              obj(
-                  "id" to pc2.id,
-                  "requiredCapabilities" to array(),
-                  "submissionId" to s1.id,
-                  "status" to "RUNNING",
-                  "startTime" to startTime
-              ),
-              obj(
-                  "id" to pc3.id,
-                  "requiredCapabilities" to array(),
-                  "submissionId" to s2.id,
-                  "status" to "REGISTERED"
-              ),
-              obj(
-                  "id" to pc4.id,
-                  "requiredCapabilities" to array(),
-                  "submissionId" to s2.id,
-                  "status" to "ERROR",
-                  "startTime" to startTime,
-                  "endTime" to endTime,
-                  "errorMessage" to "THIS is an ERROR"
-              ),
-              obj(
-                  "id" to pc5.id,
-                  "requiredCapabilities" to array(),
-                  "submissionId" to s2.id,
-                  "status" to "PAUSED"
-              )
-          )
-        })
+        assertThat(response.body()).isEqualTo(jsonArrayOf(
+            jsonObjectOf(
+                "id" to pc1.id,
+                "requiredCapabilities" to jsonArrayOf(),
+                "submissionId" to s1.id,
+                "status" to "SUCCESS",
+                "startTime" to startTime,
+                "endTime" to endTime
+            ),
+            jsonObjectOf(
+                "id" to pc2.id,
+                "requiredCapabilities" to jsonArrayOf(),
+                "submissionId" to s1.id,
+                "status" to "RUNNING",
+                "startTime" to startTime
+            ),
+            jsonObjectOf(
+                "id" to pc3.id,
+                "requiredCapabilities" to jsonArrayOf(),
+                "submissionId" to s2.id,
+                "status" to "REGISTERED"
+            ),
+            jsonObjectOf(
+                "id" to pc4.id,
+                "requiredCapabilities" to jsonArrayOf(),
+                "submissionId" to s2.id,
+                "status" to "ERROR",
+                "startTime" to startTime,
+                "endTime" to endTime,
+                "errorMessage" to "THIS is an ERROR"
+            ),
+            jsonObjectOf(
+                "id" to pc5.id,
+                "requiredCapabilities" to jsonArrayOf(),
+                "submissionId" to s2.id,
+                "status" to "PAUSED"
+            )
+        ))
       }
       ctx.completeNow()
     }
@@ -1296,25 +1257,23 @@ class HttpEndpointTest {
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
         assertThat(response.headers()["x-page-total"]).isEqualTo("2")
 
-        assertThat(response.body()).isEqualTo(json {
-          array(
-              obj(
-                  "id" to pc1.id,
-                  "requiredCapabilities" to array(),
-                  "submissionId" to s1.id,
-                  "status" to "SUCCESS",
-                  "startTime" to startTime,
-                  "endTime" to endTime
-              ),
-              obj(
-                  "id" to pc2.id,
-                  "requiredCapabilities" to array(),
-                  "submissionId" to s1.id,
-                  "status" to "RUNNING",
-                  "startTime" to startTime
-              )
-          )
-        })
+        assertThat(response.body()).isEqualTo(jsonArrayOf(
+            jsonObjectOf(
+                "id" to pc1.id,
+                "requiredCapabilities" to jsonArrayOf(),
+                "submissionId" to s1.id,
+                "status" to "SUCCESS",
+                "startTime" to startTime,
+                "endTime" to endTime
+            ),
+            jsonObjectOf(
+                "id" to pc2.id,
+                "requiredCapabilities" to jsonArrayOf(),
+                "submissionId" to s1.id,
+                "status" to "RUNNING",
+                "startTime" to startTime
+            )
+        ))
       }
       ctx.completeNow()
     }
@@ -1363,18 +1322,16 @@ class HttpEndpointTest {
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
         assertThat(response.headers()["x-page-total"]).isEqualTo("1")
 
-        assertThat(response.body()).isEqualTo(json {
-          array(
-              obj(
-                  "id" to pc1.id,
-                  "requiredCapabilities" to array(),
-                  "submissionId" to s1.id,
-                  "status" to "SUCCESS",
-                  "startTime" to startTime,
-                  "endTime" to endTime
-              )
-          )
-        })
+        assertThat(response.body()).isEqualTo(jsonArrayOf(
+            jsonObjectOf(
+                "id" to pc1.id,
+                "requiredCapabilities" to jsonArrayOf(),
+                "submissionId" to s1.id,
+                "status" to "SUCCESS",
+                "startTime" to startTime,
+                "endTime" to endTime
+            )
+        ))
       }
       ctx.completeNow()
     }
@@ -1418,31 +1375,29 @@ class HttpEndpointTest {
             .send()
             .await()
 
-        assertThat(response.body()).isEqualTo(json {
-          obj(
-              "id" to pc1.id,
-              "executables" to array(
-                  obj(
-                      "id" to eid,
-                      "path" to "path",
-                      "serviceId" to "foobar",
-                      "arguments" to array(),
-                      "runtime" to "other",
-                      "runtimeArgs" to array()
-                  )
-              ),
-              "requiredCapabilities" to array(),
-              "submissionId" to sid,
-              "status" to ProcessChainStatus.SUCCESS.toString(),
-              "startTime" to startTime,
-              "endTime" to endTime,
-              "totalRuns" to 3,
-              "runNumber" to 3,
-              "results" to obj(
-                  "output_file1" to array("output.txt")
-              )
-          )
-        })
+        assertThat(response.body()).isEqualTo(jsonObjectOf(
+            "id" to pc1.id,
+            "executables" to jsonArrayOf(
+                jsonObjectOf(
+                    "id" to eid,
+                    "path" to "path",
+                    "serviceId" to "foobar",
+                    "arguments" to jsonArrayOf(),
+                    "runtime" to "other",
+                    "runtimeArgs" to jsonArrayOf()
+                )
+            ),
+            "requiredCapabilities" to jsonArrayOf(),
+            "submissionId" to sid,
+            "status" to ProcessChainStatus.SUCCESS.toString(),
+            "startTime" to startTime,
+            "endTime" to endTime,
+            "totalRuns" to 3,
+            "runNumber" to 3,
+            "results" to jsonObjectOf(
+                "output_file1" to jsonArrayOf("output.txt")
+            )
+        ))
       }
 
       ctx.completeNow()
@@ -1487,28 +1442,26 @@ class HttpEndpointTest {
             .send()
             .await()
 
-        assertThat(response.body()).isEqualTo(json {
-          obj(
-              "id" to pc1.id,
-              "executables" to array(
-                  obj(
-                      "id" to eid,
-                      "path" to "path",
-                      "serviceId" to "foobar",
-                      "arguments" to array(),
-                      "runtime" to "other",
-                      "runtimeArgs" to array()
-                  )
-              ),
-              "requiredCapabilities" to array(),
-              "submissionId" to sid,
-              "status" to ProcessChainStatus.RUNNING.toString(),
-              "startTime" to startTime,
-              "totalRuns" to 1,
-              "runNumber" to 1,
-              "estimatedProgress" to expectedProgress
-          )
-        })
+        assertThat(response.body()).isEqualTo(jsonObjectOf(
+            "id" to pc1.id,
+            "executables" to jsonArrayOf(
+                jsonObjectOf(
+                    "id" to eid,
+                    "path" to "path",
+                    "serviceId" to "foobar",
+                    "arguments" to jsonArrayOf(),
+                    "runtime" to "other",
+                    "runtimeArgs" to jsonArrayOf()
+                )
+            ),
+            "requiredCapabilities" to jsonArrayOf(),
+            "submissionId" to sid,
+            "status" to ProcessChainStatus.RUNNING.toString(),
+            "startTime" to startTime,
+            "totalRuns" to 1,
+            "runNumber" to 1,
+            "estimatedProgress" to expectedProgress
+        ))
       }
 
       ctx.completeNow()
@@ -1589,28 +1542,26 @@ class HttpEndpointTest {
         assertThat(r).isEqualTo("There is no run 3")
       }
 
-      val expectedRun2 = json {
-        obj(
-            "id" to pc1.id,
-            "executables" to array(
-                obj(
-                    "id" to eid,
-                    "path" to "path",
-                    "serviceId" to "foobar",
-                    "arguments" to array(),
-                    "runtime" to "other",
-                    "runtimeArgs" to array()
-                )
-            ),
-            "requiredCapabilities" to array(),
-            "submissionId" to sid,
-            "status" to if (running) ProcessChainStatus.RUNNING.toString() else
-              ProcessChainStatus.SUCCESS.toString(),
-            "startTime" to startTime2,
-            "totalRuns" to 2,
-            "runNumber" to 2
-        )
-      }
+      val expectedRun2 = jsonObjectOf(
+          "id" to pc1.id,
+          "executables" to jsonArrayOf(
+              jsonObjectOf(
+                  "id" to eid,
+                  "path" to "path",
+                  "serviceId" to "foobar",
+                  "arguments" to jsonArrayOf(),
+                  "runtime" to "other",
+                  "runtimeArgs" to jsonArrayOf()
+              )
+          ),
+          "requiredCapabilities" to jsonArrayOf(),
+          "submissionId" to sid,
+          "status" to if (running) ProcessChainStatus.RUNNING.toString() else
+            ProcessChainStatus.SUCCESS.toString(),
+          "startTime" to startTime2,
+          "totalRuns" to 2,
+          "runNumber" to 2
+      )
       if (!running) {
         expectedRun2.put("endTime", endTime2)
         expectedRun2.put("results", jsonObjectOf(
@@ -1637,30 +1588,28 @@ class HttpEndpointTest {
             .send()
             .await()
 
-        assertThat(response.body()).isEqualTo(json {
-          obj(
-              "id" to pc1.id,
-              "executables" to array(
-                  obj(
-                      "id" to eid,
-                      "path" to "path",
-                      "serviceId" to "foobar",
-                      "arguments" to array(),
-                      "runtime" to "other",
-                      "runtimeArgs" to array()
-                  )
-              ),
-              "requiredCapabilities" to array(),
-              "submissionId" to sid,
-              "status" to ProcessChainStatus.ERROR.toString(),
-              "errorMessage" to error1,
-              "startTime" to startTime1,
-              "endTime" to endTime1,
-              "totalRuns" to 2,
-              "runNumber" to 1,
-              "autoResumeAfter" to startTime2
-          )
-        })
+        assertThat(response.body()).isEqualTo(jsonObjectOf(
+            "id" to pc1.id,
+            "executables" to jsonArrayOf(
+                jsonObjectOf(
+                    "id" to eid,
+                    "path" to "path",
+                    "serviceId" to "foobar",
+                    "arguments" to jsonArrayOf(),
+                    "runtime" to "other",
+                    "runtimeArgs" to jsonArrayOf()
+                )
+            ),
+            "requiredCapabilities" to jsonArrayOf(),
+            "submissionId" to sid,
+            "status" to ProcessChainStatus.ERROR.toString(),
+            "errorMessage" to error1,
+            "startTime" to startTime1,
+            "endTime" to endTime1,
+            "totalRuns" to 2,
+            "runNumber" to 1,
+            "autoResumeAfter" to startTime2
+        ))
       }
 
       ctx.coVerify {
@@ -1725,25 +1674,23 @@ class HttpEndpointTest {
             .send()
             .await()
 
-        val expectedResponse = json {
-          obj(
-              "id" to pc1.id,
-              "executables" to array(
-                  obj(
-                      "id" to eid,
-                      "path" to "path",
-                      "serviceId" to "foobar",
-                      "arguments" to array(),
-                      "runtime" to "other",
-                      "runtimeArgs" to array()
-                  )
-              ),
-              "requiredCapabilities" to array(),
-              "submissionId" to sid,
-              "status" to expectedStatus.toString(),
-              "totalRuns" to existingRuns.size
-          )
-        }
+        val expectedResponse = jsonObjectOf(
+            "id" to pc1.id,
+            "executables" to jsonArrayOf(
+                jsonObjectOf(
+                    "id" to eid,
+                    "path" to "path",
+                    "serviceId" to "foobar",
+                    "arguments" to jsonArrayOf(),
+                    "runtime" to "other",
+                    "runtimeArgs" to jsonArrayOf()
+                )
+            ),
+            "requiredCapabilities" to jsonArrayOf(),
+            "submissionId" to sid,
+            "status" to expectedStatus.toString(),
+            "totalRuns" to existingRuns.size
+        )
         if (expectedStatus == ProcessChainStatus.PAUSED &&
             existingRuns.lastOrNull()?.autoResumeAfter != null) {
           expectedResponse.put("autoResumeAfter", existingRuns.last().autoResumeAfter)
@@ -1908,42 +1855,30 @@ class HttpEndpointTest {
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        val cancelledBody = json {
-          obj(
-              "status" to "CANCELLED"
-          )
-        }
+        val cancelledBody = jsonObjectOf(
+            "status" to "CANCELLED"
+        )
 
         val expectedPriority = 100
-        val priorityBody = json {
-          obj(
-              "priority" to expectedPriority
-          )
-        }
+        val priorityBody = jsonObjectOf(
+            "priority" to expectedPriority
+        )
 
-        val missingBody = json {
-          obj(
-              "foo" to "bar"
-          )
-        }
+        val missingBody = jsonObjectOf(
+            "foo" to "bar"
+        )
 
-        val invalidBody1 = json {
-          obj(
-              "status" to "INVALID"
-          )
-        }
+        val invalidBody1 = jsonObjectOf(
+            "status" to "INVALID"
+        )
 
-        val invalidBody2 = json {
-          obj(
-              "status" to 5
-          )
-        }
+        val invalidBody2 = jsonObjectOf(
+            "status" to 5
+        )
 
-        val invalidBody3 = json {
-          obj(
-              "priority" to "INVALID"
-          )
-        }
+        val invalidBody3 = jsonObjectOf(
+            "priority" to "INVALID"
+        )
 
         // test invalid requests
         client.put(port, "localhost", "/processchains/${pc1.id}")
@@ -2004,16 +1939,14 @@ class HttpEndpointTest {
             .sendJsonObject(cancelledBody)
             .await()
 
-        assertThat(response1.body()).isEqualTo(json {
-          obj(
-              "id" to pc1.id,
-              "requiredCapabilities" to array(),
-              "submissionId" to sid,
-              "status" to ProcessChainStatus.SUCCESS.toString(),
-              "startTime" to startTime,
-              "endTime" to endTime
-          )
-        })
+        assertThat(response1.body()).isEqualTo(jsonObjectOf(
+            "id" to pc1.id,
+            "requiredCapabilities" to jsonArrayOf(),
+            "submissionId" to sid,
+            "status" to ProcessChainStatus.SUCCESS.toString(),
+            "startTime" to startTime,
+            "endTime" to endTime
+        ))
 
         coEvery { submissionRegistry.getProcessChainStatus(pc2.id) } returns
             ProcessChainStatus.RUNNING
@@ -2023,15 +1956,13 @@ class HttpEndpointTest {
             .sendJsonObject(cancelledBody)
             .await()
 
-        assertThat(response2.body()).isEqualTo(json {
-          obj(
-              "id" to pc2.id,
-              "requiredCapabilities" to array(),
-              "submissionId" to sid,
-              "status" to ProcessChainStatus.RUNNING.toString(),
-              "startTime" to startTime
-          )
-        })
+        assertThat(response2.body()).isEqualTo(jsonObjectOf(
+            "id" to pc2.id,
+            "requiredCapabilities" to jsonArrayOf(),
+            "submissionId" to sid,
+            "status" to ProcessChainStatus.RUNNING.toString(),
+            "startTime" to startTime
+        ))
 
         coEvery { submissionRegistry.getProcessChainStatus(pc3.id) } returns
             ProcessChainStatus.REGISTERED andThen ProcessChainStatus.CANCELLED
@@ -2043,14 +1974,12 @@ class HttpEndpointTest {
             .sendJsonObject(cancelledBody)
             .await()
 
-        assertThat(response3.body()).isEqualTo(json {
-          obj(
-              "id" to pc3.id,
-              "requiredCapabilities" to array(),
-              "submissionId" to sid,
-              "status" to ProcessChainStatus.CANCELLED.toString()
-          )
-        })
+        assertThat(response3.body()).isEqualTo(jsonObjectOf(
+            "id" to pc3.id,
+            "requiredCapabilities" to jsonArrayOf(),
+            "submissionId" to sid,
+            "status" to ProcessChainStatus.CANCELLED.toString()
+        ))
 
         coEvery { submissionRegistry.getProcessChainStatus(pc5.id) } returns
             ProcessChainStatus.PAUSED andThen ProcessChainStatus.CANCELLED
@@ -2062,14 +1991,12 @@ class HttpEndpointTest {
             .sendJsonObject(cancelledBody)
             .await()
 
-        assertThat(response5.body()).isEqualTo(json {
-          obj(
-              "id" to pc5.id,
-              "requiredCapabilities" to array(),
-              "submissionId" to sid,
-              "status" to ProcessChainStatus.CANCELLED.toString()
-          )
-        })
+        assertThat(response5.body()).isEqualTo(jsonObjectOf(
+            "id" to pc5.id,
+            "requiredCapabilities" to jsonArrayOf(),
+            "submissionId" to sid,
+            "status" to ProcessChainStatus.CANCELLED.toString()
+        ))
 
         coVerify(exactly = 1) {
           submissionRegistry.setProcessChainStatus(pc5.id,
@@ -2084,16 +2011,14 @@ class HttpEndpointTest {
             .sendJsonObject(cancelledBody)
             .await()
 
-        assertThat(response6.body()).isEqualTo(json {
-          obj(
-              "id" to pc6.id,
-              "requiredCapabilities" to array(),
-              "submissionId" to sid,
-              "status" to ProcessChainStatus.CANCELLED.toString(),
-              "startTime" to startTime,
-              "endTime" to endTime
-          )
-        })
+        assertThat(response6.body()).isEqualTo(jsonObjectOf(
+            "id" to pc6.id,
+            "requiredCapabilities" to jsonArrayOf(),
+            "submissionId" to sid,
+            "status" to ProcessChainStatus.CANCELLED.toString(),
+            "startTime" to startTime,
+            "endTime" to endTime
+        ))
 
         coVerify(exactly = 0) {
           submissionRegistry.setProcessChainStatus(pc6.id, any(),
@@ -2111,15 +2036,13 @@ class HttpEndpointTest {
             .sendJsonObject(priorityBody)
             .await()
 
-        assertThat(response4.body()).isEqualTo(json {
-          obj(
-              "id" to pc4.id,
-              "requiredCapabilities" to array(),
-              "submissionId" to sid,
-              "status" to ProcessChainStatus.REGISTERED.toString(),
-              "priority" to expectedPriority
-          )
-        })
+        assertThat(response4.body()).isEqualTo(jsonObjectOf(
+            "id" to pc4.id,
+            "requiredCapabilities" to jsonArrayOf(),
+            "submissionId" to sid,
+            "status" to ProcessChainStatus.REGISTERED.toString(),
+            "priority" to expectedPriority
+        ))
         coVerify(exactly = 1) {
           submissionRegistry.setProcessChainPriority(pc4.id, expectedPriority)
         }
@@ -2164,25 +2087,23 @@ class HttpEndpointTest {
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
         assertThat(response.headers()["x-page-total"]).isEqualTo("3")
 
-        assertThat(response.body()).isEqualTo(json {
-          array(
-              obj(
-                  "id" to vm1.id,
-                  "setup" to JsonUtils.toJson(setup),
-                  "status" to VM.Status.CREATING.toString()
-              ),
-              obj(
-                  "id" to vm2.id,
-                  "setup" to JsonUtils.toJson(setup),
-                  "status" to VM.Status.PROVISIONING.toString()
-              ),
-              obj(
-                  "id" to vm3.id,
-                  "setup" to JsonUtils.toJson(setup),
-                  "status" to VM.Status.RUNNING.toString()
-              )
-          )
-        })
+        assertThat(response.body()).isEqualTo(jsonArrayOf(
+            jsonObjectOf(
+                "id" to vm1.id,
+                "setup" to JsonUtils.toJson(setup),
+                "status" to VM.Status.CREATING.toString()
+            ),
+            jsonObjectOf(
+                "id" to vm2.id,
+                "setup" to JsonUtils.toJson(setup),
+                "status" to VM.Status.PROVISIONING.toString()
+            ),
+            jsonObjectOf(
+                "id" to vm3.id,
+                "setup" to JsonUtils.toJson(setup),
+                "status" to VM.Status.RUNNING.toString()
+            )
+        ))
       }
       ctx.completeNow()
     }
@@ -2214,20 +2135,18 @@ class HttpEndpointTest {
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
         assertThat(response.headers()["x-page-total"]).isEqualTo("2")
 
-        assertThat(response.body()).isEqualTo(json {
-          array(
-              obj(
-                  "id" to vm1.id,
-                  "setup" to JsonUtils.toJson(setup),
-                  "status" to VM.Status.CREATING.toString()
-              ),
-              obj(
-                  "id" to vm2.id,
-                  "setup" to JsonUtils.toJson(setup),
-                  "status" to VM.Status.CREATING.toString()
-              )
-          )
-        })
+        assertThat(response.body()).isEqualTo(jsonArrayOf(
+            jsonObjectOf(
+                "id" to vm1.id,
+                "setup" to JsonUtils.toJson(setup),
+                "status" to VM.Status.CREATING.toString()
+            ),
+            jsonObjectOf(
+                "id" to vm2.id,
+                "setup" to JsonUtils.toJson(setup),
+                "status" to VM.Status.CREATING.toString()
+            )
+        ))
       }
       ctx.completeNow()
     }
@@ -2316,17 +2235,13 @@ class HttpEndpointTest {
         val end = startEnd[runNumber - 1].second
         assertThat(replyAddress).matches(Pattern.quote("$address1.reply.") + ".+")
         if (end < start) {
-          vertx.eventBus().send(replyAddress, json {
-            obj(
-                "error" to 416
-            )
-          })
+          vertx.eventBus().send(replyAddress, jsonObjectOf(
+              "error" to 416
+          ))
         } else {
-          vertx.eventBus().send(replyAddress, json {
-            obj(
-                "error" to 404
-            )
-          })
+          vertx.eventBus().send(replyAddress, jsonObjectOf(
+              "error" to 404
+          ))
         }
       }
     }
@@ -2354,28 +2269,22 @@ class HttpEndpointTest {
           assertThat(replyAddress).matches(Pattern.quote("$address2.reply.") + ".+")
 
           if (errorMessage != null) {
-            vertx.eventBus().send(replyAddress, json {
-              obj(
-                  "error" to 500,
-                  "message" to errorMessage
-              )
-            })
+            vertx.eventBus().send(replyAddress, jsonObjectOf(
+                "error" to 500,
+                "message" to errorMessage
+            ))
           } else {
-            vertx.eventBus().request<Unit>(replyAddress, json {
-              obj(
-                  "size" to cts.length.toLong(),
-                  "start" to start.toLong(),
-                  "end" to end.toLong() - 1L,
-                  "length" to (end - start).toLong()
-              )
-            }).await()
+            vertx.eventBus().request<Unit>(replyAddress, jsonObjectOf(
+                "size" to cts.length.toLong(),
+                "start" to start.toLong(),
+                "end" to end.toLong() - 1L,
+                "length" to (end - start).toLong()
+            )).await()
 
             if (!checkOnly) {
-              val chunk = json {
-                obj(
-                    "data" to cts.substring(start, end)
-                )
-              }
+              val chunk = jsonObjectOf(
+                  "data" to cts.substring(start, end)
+              )
               vertx.eventBus().request<Unit>(replyAddress, chunk).await()
               vertx.eventBus().send(replyAddress, JsonObject())
             }

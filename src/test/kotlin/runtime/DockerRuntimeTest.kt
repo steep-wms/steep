@@ -8,9 +8,8 @@ import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.core.json.array
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.core.json.jsonArrayOf
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -68,11 +67,9 @@ class DockerRuntimeTest {
    */
   @Test
   fun executeEcho(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
-    val config = json {
-      obj(
-          ConfigConstants.TMP_PATH to tempDir.toString()
-      )
-    }
+    val config = jsonObjectOf(
+        ConfigConstants.TMP_PATH to tempDir.toString()
+    )
 
     val exec = Executable(path = "alpine", serviceId = "echo", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "echo"),
@@ -100,11 +97,9 @@ class DockerRuntimeTest {
     val f = File(tempDir.toFile(), "test.txt")
     f.writeText(EXPECTED)
 
-    val config = json {
-      obj(
-          ConfigConstants.TMP_PATH to tempDir.toString()
-      )
-    }
+    val config = jsonObjectOf(
+        ConfigConstants.TMP_PATH to tempDir.toString()
+    )
 
     val exec = Executable(path = "alpine", serviceId = "cat", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "cat"),
@@ -133,11 +128,9 @@ class DockerRuntimeTest {
     val f = File(tempDir2.toFile(), "test.txt")
     f.writeText(EXPECTED)
 
-    val config = json {
-      obj(
-          ConfigConstants.TMP_PATH to tempDir.toString()
-      )
-    }
+    val config = jsonObjectOf(
+        ConfigConstants.TMP_PATH to tempDir.toString()
+    )
 
     val containerFileName = "/tmp/test.txt"
     val exec = Executable(path = "alpine", serviceId = "cat", arguments = listOf(
@@ -169,11 +162,9 @@ class DockerRuntimeTest {
    */
   @Test
   fun executeEnv(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
-    val config = json {
-      obj(
-          ConfigConstants.TMP_PATH to tempDir.toString()
-      )
-    }
+    val config = jsonObjectOf(
+        ConfigConstants.TMP_PATH to tempDir.toString()
+    )
 
     val exec = Executable(path = "alpine", serviceId = "sh", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "sh"),
@@ -211,14 +202,12 @@ class DockerRuntimeTest {
     f.writeText(EXPECTED)
 
     val containerFileName = "/tmp/test.txt"
-    val config = json {
-      obj(
-          ConfigConstants.TMP_PATH to tempDir.toString(),
-          ConfigConstants.RUNTIMES_DOCKER_VOLUMES to array(
-              "${f.absolutePath}:$containerFileName"
-          )
-      )
-    }
+    val config = jsonObjectOf(
+        ConfigConstants.TMP_PATH to tempDir.toString(),
+        ConfigConstants.RUNTIMES_DOCKER_VOLUMES to jsonArrayOf(
+            "${f.absolutePath}:$containerFileName"
+        )
+    )
 
     val exec = Executable(path = "alpine", serviceId = "cat", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "cat"),
@@ -244,14 +233,12 @@ class DockerRuntimeTest {
    */
   @Test
   fun executeEnvConf(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
-    val config = json {
-      obj(
-          ConfigConstants.TMP_PATH to tempDir.toString(),
-          ConfigConstants.RUNTIMES_DOCKER_ENV to array(
-              "MYVAR=$EXPECTED"
-          )
-      )
-    }
+    val config = jsonObjectOf(
+        ConfigConstants.TMP_PATH to tempDir.toString(),
+        ConfigConstants.RUNTIMES_DOCKER_ENV to jsonArrayOf(
+            "MYVAR=$EXPECTED"
+        )
+    )
 
     val exec = Executable(path = "alpine", serviceId = "sh", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "sh"),
@@ -288,11 +275,9 @@ class DockerRuntimeTest {
    */
   @Test
   fun killContainerOnCancel(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
-    val config = json {
-      obj(
-          ConfigConstants.TMP_PATH to tempDir.toString()
-      )
-    }
+    val config = jsonObjectOf(
+        ConfigConstants.TMP_PATH to tempDir.toString()
+    )
 
     val exec = Executable(path = "alpine", serviceId = "sleep", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "sleep"),
@@ -341,11 +326,9 @@ class DockerRuntimeTest {
    */
   @Test
   fun setContainerName(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
-    val config = json {
-      obj(
+    val config = jsonObjectOf(
         ConfigConstants.TMP_PATH to tempDir.toString()
-      )
-    }
+    )
 
     val containerName = "testing-steep-container-names-" + UniqueID.next()
     val exec = Executable(path = "alpine", serviceId = "sleep",

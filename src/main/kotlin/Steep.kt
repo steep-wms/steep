@@ -24,11 +24,9 @@ import io.vertx.core.json.JsonObject
 import io.vertx.core.streams.ReadStream
 import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
 import io.vertx.kotlin.core.file.openOptionsOf
-import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.get
-import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.toReceiveChannel
@@ -252,45 +250,37 @@ class Steep : CoroutineVerticle() {
     // get process chain ID
     val id = jsonObj.getString("id")
     if (id == null) {
-      vertx.eventBus().send(replyAddress, json {
-        obj(
-            "error" to 400,
-            "message" to "Missing process chain ID"
-        )
-      })
+      vertx.eventBus().send(replyAddress, jsonObjectOf(
+          "error" to 400,
+          "message" to "Missing process chain ID"
+      ))
       return
     }
 
     // get run number
     val runNumber = jsonObj.getLong("runNumber")
     if (runNumber == null) {
-      vertx.eventBus().send(replyAddress, json {
-        obj(
-            "error" to 400,
-            "message" to "Missing run number"
-        )
-      })
+      vertx.eventBus().send(replyAddress, jsonObjectOf(
+          "error" to 400,
+          "message" to "Missing run number"
+      ))
       return
     }
     if (runNumber < 1) {
-      vertx.eventBus().send(replyAddress, json {
-        obj(
-            "error" to 400,
-            "message" to "Run number must be greater than 0"
-        )
-      })
+      vertx.eventBus().send(replyAddress, jsonObjectOf(
+          "error" to 400,
+          "message" to "Run number must be greater than 0"
+      ))
       return
     }
 
     // create log file path
     val path = config.getString(ConfigConstants.LOGS_PROCESSCHAINS_PATH)
     if (path == null) {
-      vertx.eventBus().send(replyAddress, json {
-        obj(
-            "error" to 404,
-            "message" to "Path to process chain logs not configured"
-        )
-      })
+      vertx.eventBus().send(replyAddress, jsonObjectOf(
+          "error" to 404,
+          "message" to "Path to process chain logs not configured"
+      ))
       return
     }
 
@@ -314,20 +304,16 @@ class Steep : CoroutineVerticle() {
         (props.size() to f)
       } catch (t: Throwable) {
         if (t.cause is NoSuchFileException || t.cause?.cause is NoSuchFileException) {
-          vertx.eventBus().send(replyAddress, json {
-            obj(
-                "error" to 404,
-                "message" to "Log file does not exist"
-            )
-          })
+          vertx.eventBus().send(replyAddress, jsonObjectOf(
+              "error" to 404,
+              "message" to "Log file does not exist"
+          ))
         } else {
           log.error("Could not open process chain log file `$filepath'", t)
-          vertx.eventBus().send(replyAddress, json {
-            obj(
-                "error" to 500,
-                "message" to "Could not open process chain log file"
-            )
-          })
+          vertx.eventBus().send(replyAddress, jsonObjectOf(
+              "error" to 500,
+              "message" to "Could not open process chain log file"
+          ))
         }
         return@launch
       }
@@ -335,12 +321,10 @@ class Steep : CoroutineVerticle() {
       val givenStart = jsonObj.getLong("start", 0)
       val (start, end) = if (givenStart >= 0) {
         if (givenStart >= size) {
-          vertx.eventBus().send(replyAddress, json {
-            obj(
-                "error" to 416,
-                "message" to "Range start position out of bounds"
-            )
-          })
+          vertx.eventBus().send(replyAddress, jsonObjectOf(
+              "error" to 416,
+              "message" to "Range start position out of bounds"
+          ))
           return@launch
         }
 
@@ -348,13 +332,11 @@ class Steep : CoroutineVerticle() {
         val e = when {
           givenEnd == null -> size
           givenEnd < givenStart -> {
-            vertx.eventBus().send(replyAddress, json {
-              obj(
-                  "error" to 416,
-                  "message" to "Range end position must not be less than " +
-                      "range start position"
-              )
-            })
+            vertx.eventBus().send(replyAddress, jsonObjectOf(
+                "error" to 416,
+                "message" to "Range end position must not be less than " +
+                    "range start position"
+            ))
             return@launch
           }
           else -> (givenEnd + 1).coerceAtMost(size)
@@ -371,35 +353,29 @@ class Steep : CoroutineVerticle() {
       try {
         // We were able to open the file. Respond immediately and let the
         // client know that we will send the file
-        vertx.eventBus().request<Unit>(replyAddress, json {
-          obj(
-              "size" to size,
-              "start" to start,
-              "end" to (end - 1),
-              "length" to length
-          )
-        }).await()
+        vertx.eventBus().request<Unit>(replyAddress, jsonObjectOf(
+            "size" to size,
+            "start" to start,
+            "end" to (end - 1),
+            "length" to length
+        )).await()
 
         if (!checkOnly) {
           // send the file to the reply address
           val channel = (file as ReadStream<Buffer>).toReceiveChannel(vertx)
 
           file.exceptionHandler { t ->
-            vertx.eventBus().send(replyAddress, json {
-              obj(
-                  "error" to 500,
-                  "message" to t.message
-              )
-            })
+            vertx.eventBus().send(replyAddress, jsonObjectOf(
+                "error" to 500,
+                "message" to t.message
+            ))
             channel.cancel()
           }
 
           for (buf in channel) {
-            val chunk = json {
-              obj(
-                  "data" to buf.toString()
-              )
-            }
+            val chunk = jsonObjectOf(
+                "data" to buf.toString()
+            )
             vertx.eventBus().request<Unit>(replyAddress, chunk, deliveryOptionsOf(
                 codecName = CompressedJsonObjectMessageCodec.NAME
             )).await()
@@ -438,13 +414,11 @@ class Steep : CoroutineVerticle() {
     if (marker != null) {
       if (this.busy == null) {
         stateChangedTime = Instant.now()
-        val msg = json {
-          obj(
+        val msg = jsonObjectOf(
             "id" to agentId,
             "available" to false,
             "stateChangedTime" to stateChangedTime
-          )
-        }
+        )
         if (marker.processChainId != null) {
           msg.put("processChainId", marker.processChainId)
         }
@@ -454,13 +428,11 @@ class Steep : CoroutineVerticle() {
     } else {
       if (this.busy != null) {
         stateChangedTime = Instant.now()
-        val msg = json {
-          obj(
-              "id" to agentId,
-              "available" to true,
-              "stateChangedTime" to stateChangedTime
-          )
-        }
+        val msg = jsonObjectOf(
+            "id" to agentId,
+            "available" to true,
+            "stateChangedTime" to stateChangedTime
+        )
         vertx.eventBus().publish(REMOTE_AGENT_IDLE, msg)
       }
       this.busy = null
@@ -471,15 +443,13 @@ class Steep : CoroutineVerticle() {
    * Return information about this agent
    */
   private fun onAgentInfo(msg: Message<JsonObject>) {
-    val reply = json {
-      obj(
-          "id" to agentId,
-          "available" to !isBusy(),
-          "capabilities" to array(*capabilities.toTypedArray()),
-          "startTime" to startTime,
-          "stateChangedTime" to stateChangedTime
-      )
-    }
+    val reply = jsonObjectOf(
+        "id" to agentId,
+        "available" to !isBusy(),
+        "capabilities" to jsonArrayOf(*capabilities.toTypedArray()),
+        "startTime" to startTime,
+        "stateChangedTime" to stateChangedTime
+    )
 
     val processChainId = busy?.processChainId
     if (processChainId != null) {
@@ -534,19 +504,17 @@ class Steep : CoroutineVerticle() {
       sorted.firstOrNull()?.first?.first ?: -1
     }
 
-    val reply = json {
-      if (bestRequiredCapabilities != -1) {
-        obj(
-            "available" to true,
-            "bestRequiredCapabilities" to bestRequiredCapabilities,
-            "lastSequence" to lastProcessChainSequence
-        )
-      } else {
-        obj(
-            "available" to false,
-            "lastSequence" to lastProcessChainSequence
-        )
-      }
+    val reply = if (bestRequiredCapabilities != -1) {
+      jsonObjectOf(
+          "available" to true,
+          "bestRequiredCapabilities" to bestRequiredCapabilities,
+          "lastSequence" to lastProcessChainSequence
+      )
+    } else {
+      jsonObjectOf(
+          "available" to false,
+          "lastSequence" to lastProcessChainSequence
+      )
     }
 
     if (msg.body().getBoolean("includeCapabilities", false)) {
@@ -692,19 +660,15 @@ class Steep : CoroutineVerticle() {
       runNumber: Long) = try {
     val la = LocalAgent(vertx, localAgentDispatcher)
     val results = la.execute(processChain, runNumber)
-    json {
-      obj(
-          "results" to JsonUtils.toJson(results),
-          "status" to SubmissionRegistry.ProcessChainStatus.SUCCESS.toString()
-      )
-    }
+    jsonObjectOf(
+        "results" to JsonUtils.toJson(results),
+        "status" to SubmissionRegistry.ProcessChainStatus.SUCCESS.toString()
+    )
   } catch (_: CancellationException) {
     log.debug("Process chain execution was cancelled")
-    json {
-      obj(
-          "status" to SubmissionRegistry.ProcessChainStatus.CANCELLED.toString()
-      )
-    }
+    jsonObjectOf(
+        "status" to SubmissionRegistry.ProcessChainStatus.CANCELLED.toString()
+    )
   } catch (t: Throwable) {
     val message = if (t is Shell.ExecutionException) {
       """
@@ -718,11 +682,9 @@ class Steep : CoroutineVerticle() {
       log.debug("Could not execute process chain", t)
       t.message ?: "Unknown internal error"
     }
-    json {
-      obj(
-          "errorMessage" to message,
-          "status" to SubmissionRegistry.ProcessChainStatus.ERROR.toString()
-      )
-    }
+    jsonObjectOf(
+        "errorMessage" to message,
+        "status" to SubmissionRegistry.ProcessChainStatus.ERROR.toString()
+    )
   }
 }

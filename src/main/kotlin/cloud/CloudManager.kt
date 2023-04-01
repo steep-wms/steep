@@ -24,8 +24,7 @@ import io.vertx.core.Promise
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.Lock
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import kotlinx.coroutines.Deferred
@@ -515,11 +514,9 @@ class CloudManager : CoroutineVerticle() {
     // send keep-alive messages to these VMs
     for (vm in vmsToKeep) {
       val address = REMOTE_AGENT_ADDRESS_PREFIX + vm.id
-      val msg = json {
-        obj(
-            "action" to "keepAlive"
-        )
-      }
+      val msg = jsonObjectOf(
+          "action" to "keepAlive"
+      )
       vertx.eventBus().send(address, msg)
     }
   }

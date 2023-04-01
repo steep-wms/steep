@@ -29,9 +29,8 @@ import io.vertx.core.shareddata.AsyncMap
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.deploymentOptionsOf
-import io.vertx.kotlin.core.json.array
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.core.json.jsonArrayOf
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -79,11 +78,9 @@ class SchedulerTest {
 
     // deploy verticle under test
     agentId = UniqueID.next()
-    val options = deploymentOptionsOf(config = json {
-      obj(
-          ConfigConstants.AGENT_ID to agentId
-      )
-    })
+    val options = deploymentOptionsOf(config = jsonObjectOf(
+        ConfigConstants.AGENT_ID to agentId
+    ))
     vertx.deployVerticle(Scheduler::class.qualifiedName, options, ctx.succeedingThenComplete())
   }
 
@@ -457,9 +454,7 @@ class SchedulerTest {
           "$otherSchedulerId${AddressConstants.SCHEDULER_RUNNING_PROCESS_CHAINS_SUFFIX}"
       vertx.eventBus().consumer<Any?>(schedulerRunningAddress) { msg ->
         otherSchedulerCalled = true
-        msg.reply(json {
-          array(pc3.id)
-        })
+        msg.reply(jsonArrayOf(pc3.id))
       }
 
       // mock submission registry
@@ -495,12 +490,10 @@ class SchedulerTest {
         ctx.verify {
           assertThat(msg.body().getString("action")).isEqualTo("info")
         }
-        msg.reply(json {
-          obj(
-              "id" to agentId,
-              "processChainId" to pc2.id
-          )
-        })
+        msg.reply(jsonObjectOf(
+            "id" to agentId,
+            "processChainId" to pc2.id
+        ))
       }
       val mockAgent = mockk<RemoteAgent>()
       coEvery { agentRegistry.tryAllocate(agentAddress, pc2.id) } returns mockAgent
@@ -577,12 +570,10 @@ class SchedulerTest {
         // a chance yet to schedule it.
         ctx.failNow("Process chain is considered an orphan!")
 
-        msg.reply(json {
-          obj(
-              "id" to mockAgentId,
-              "processChainId" to pc.id
-          )
-        })
+        msg.reply(jsonObjectOf(
+            "id" to mockAgentId,
+            "processChainId" to pc.id
+        ))
       }
 
       // force lookup for orphans now

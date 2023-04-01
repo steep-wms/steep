@@ -15,9 +15,7 @@ import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.LocalMap
 import io.vertx.core.shareddata.Shareable
 import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
-import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -342,12 +340,10 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
   }
 
   override suspend fun tryAllocate(address: String, processChainId: String): Agent? {
-    val msgAllocate = json {
-      obj(
-          "action" to "allocate",
-          "processChainId" to processChainId
-      )
-    }
+    val msgAllocate = jsonObjectOf(
+        "action" to "allocate",
+        "processChainId" to processChainId
+    )
 
     try {
       val replyAllocate = vertx.eventBus().request<String>(address, msgAllocate).await()
@@ -364,11 +360,9 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
   }
 
   override suspend fun deallocate(agent: Agent) {
-    val msg = json {
-      obj(
-          "action" to "deallocate"
-      )
-    }
+    val msg = jsonObjectOf(
+        "action" to "deallocate"
+    )
 
     try {
       val reply = vertx.eventBus().request<String>(agent.id, msg).await()

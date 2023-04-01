@@ -13,9 +13,7 @@ import io.vertx.core.eventbus.ReplyException
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.json.get
-import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -77,19 +75,15 @@ class RemoteAgentTest : AgentTest() {
         val la = LocalAgent(vertx, localAgentDispatcher)
         try {
           val results = la.execute(processChain, 1)
-          vertx.eventBus().send(replyAddress, json {
-            obj(
-                "results" to JsonUtils.toJson(results),
-                "status" to SubmissionRegistry.ProcessChainStatus.SUCCESS.toString()
-            )
-          })
+          vertx.eventBus().send(replyAddress, jsonObjectOf(
+              "results" to JsonUtils.toJson(results),
+              "status" to SubmissionRegistry.ProcessChainStatus.SUCCESS.toString()
+          ))
         } catch (t: Throwable) {
-          vertx.eventBus().send(replyAddress, json {
-            obj(
-                "errorMessage" to t.message,
-                "status" to SubmissionRegistry.ProcessChainStatus.ERROR.toString()
-            )
-          })
+          vertx.eventBus().send(replyAddress, jsonObjectOf(
+              "errorMessage" to t.message,
+              "status" to SubmissionRegistry.ProcessChainStatus.ERROR.toString()
+          ))
         }
       }
 
@@ -190,12 +184,10 @@ class RemoteAgentTest : AgentTest() {
       // but then send an error message
       val jsonObj: JsonObject = msg.body()
       val replyAddress: String = jsonObj["replyAddress"]
-      vertx.eventBus().send(replyAddress, json {
-        obj(
-            "errorMessage" to errorMessage,
-            "status" to SubmissionRegistry.ProcessChainStatus.ERROR.toString()
-        )
-      })
+      vertx.eventBus().send(replyAddress, jsonObjectOf(
+          "errorMessage" to errorMessage,
+          "status" to SubmissionRegistry.ProcessChainStatus.ERROR.toString()
+      ))
     }
 
     val agent = createAgent(vertx)
@@ -221,11 +213,9 @@ class RemoteAgentTest : AgentTest() {
       // but then cancel it
       val jsonObj: JsonObject = msg.body()
       val replyAddress: String = jsonObj["replyAddress"]
-      vertx.eventBus().send(replyAddress, json {
-        obj(
-            "status" to SubmissionRegistry.ProcessChainStatus.CANCELLED.toString()
-        )
-      })
+      vertx.eventBus().send(replyAddress, jsonObjectOf(
+          "status" to SubmissionRegistry.ProcessChainStatus.CANCELLED.toString()
+      ))
     }
 
     val agent = createAgent(vertx)
@@ -254,12 +244,10 @@ class RemoteAgentTest : AgentTest() {
       }
 
       val replyAddress: String = jsonObj["replyAddress"]
-      vertx.eventBus().send(replyAddress, json {
-        obj(
-            "results" to obj(),
-            "status" to SubmissionRegistry.ProcessChainStatus.SUCCESS.toString()
-        )
-      })
+      vertx.eventBus().send(replyAddress, jsonObjectOf(
+          "results" to jsonObjectOf(),
+          "status" to SubmissionRegistry.ProcessChainStatus.SUCCESS.toString()
+      ))
 
       msg.reply("ACK")
     }

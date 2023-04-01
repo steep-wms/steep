@@ -33,11 +33,8 @@ import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.core.json.array
-import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.kotlin.core.json.obj
 import model.Submission
 import model.processchain.Executable
 import model.processchain.ProcessChain
@@ -100,12 +97,10 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     /**
      * Fields to exclude when querying the `submissions` collection
      */
-    private val SUBMISSION_EXCLUDES = json {
-      obj(
-          ERROR_MESSAGE to 0,
-          SEQUENCE to 0
-      )
-    }
+    private val SUBMISSION_EXCLUDES = jsonObjectOf(
+        ERROR_MESSAGE to 0,
+        SEQUENCE to 0
+    )
     private val SUBMISSION_EXCLUDES_WITH_WORKFLOW = SUBMISSION_EXCLUDES.copy()
         .put(WORKFLOW, 0)
     private val SUBMISSION_EXCLUDES_WITH_SOURCE = SUBMISSION_EXCLUDES.copy()
@@ -117,17 +112,15 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     /**
      * Fields to exclude when querying the `processChains` collection
      */
-    private val PROCESS_CHAIN_EXCLUDES = json {
-      obj(
-          SUBMISSION_ID to 0,
-          STATUS to 0,
-          START_TIME to 0,
-          END_TIME to 0,
-          ERROR_MESSAGE to 0,
-          SEQUENCE to 0,
-          REQUIRED_CAPABILITIES to 0
-      )
-    }
+    private val PROCESS_CHAIN_EXCLUDES = jsonObjectOf(
+        SUBMISSION_ID to 0,
+        STATUS to 0,
+        START_TIME to 0,
+        END_TIME to 0,
+        ERROR_MESSAGE to 0,
+        SEQUENCE to 0,
+        REQUIRED_CAPABILITIES to 0
+    )
     private val PROCESS_CHAIN_EXCLUDES_BUT_SUBMISSION_ID =
         PROCESS_CHAIN_EXCLUDES.copy().also { it.remove(SUBMISSION_ID) }
 
@@ -251,34 +244,26 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       if (status != null) {
         it.put(STATUS, status.toString())
       }
-    }, size, offset, json {
-      obj(
-          SEQUENCE to order
-      )
-    }, excludes)
+    }, size, offset, jsonObjectOf(
+        SEQUENCE to order
+    ), excludes)
     docs.forEach { cleanSubmissionDocument(it) }
     return docs
   }
 
   override suspend fun findSubmissionById(submissionId: String): Submission? {
-    val doc = collSubmissions.findOneAwait(json {
-      obj(
-          INTERNAL_ID to submissionId
-      )
-    }, SUBMISSION_EXCLUDES)
+    val doc = collSubmissions.findOneAwait(jsonObjectOf(
+        INTERNAL_ID to submissionId
+    ), SUBMISSION_EXCLUDES)
     return doc?.let { deserializeSubmission(it) }
   }
 
   override suspend fun findSubmissionIdsByStatus(status: Submission.Status) =
-      collSubmissions.findAwait(json {
-        obj(
-            STATUS to status.toString()
-        )
-      }, projection = json {
-        obj(
-            INTERNAL_ID to 1
-        )
-      }).map { it.getString(INTERNAL_ID) }
+      collSubmissions.findAwait(jsonObjectOf(
+          STATUS to status.toString()
+      ), projection = jsonObjectOf(
+          INTERNAL_ID to 1
+      )).map { it.getString(INTERNAL_ID) }
 
   override suspend fun countSubmissions(status: Submission.Status?) =
       collSubmissions.countDocumentsAwait(JsonObject().also {
@@ -293,15 +278,11 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
    */
   private suspend inline fun <reified T> getField(collection: MongoCollection<JsonObject>,
       type: String, id: String, field: String): T {
-    val doc = collection.findOneAwait(json {
-      obj(
-          INTERNAL_ID to id
-      )
-    }, json {
-      obj(
-          field to 1
-      )
-    })
+    val doc = collection.findOneAwait(jsonObjectOf(
+        INTERNAL_ID to id
+    ), jsonObjectOf(
+        field to 1
+    ))
 
     @Suppress
     if (doc == null) {
@@ -319,24 +300,19 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   override suspend fun fetchNextSubmission(currentStatus: Submission.Status,
       newStatus: Submission.Status): Submission? {
-    val doc: JsonObject? = collSubmissions.findOneAndUpdateAwait(json {
-      obj(
-          STATUS to currentStatus.toString()
-      )
-    }, json {
-      obj(
-          "\$set" to obj(
-              STATUS to newStatus.toString()
-          )
-      )
-    }, FindOneAndUpdateOptions()
+    val doc: JsonObject? = collSubmissions.findOneAndUpdateAwait(jsonObjectOf(
+        STATUS to currentStatus.toString()
+    ), jsonObjectOf(
+        "\$set" to jsonObjectOf(
+            STATUS to newStatus.toString()
+        )
+    ), FindOneAndUpdateOptions()
         .projection(wrap(SUBMISSION_EXCLUDES))
-        .sort(wrap(json {
-          obj(
-              "$WORKFLOW.$PRIORITY" to -1,
-              SEQUENCE to 1
-          )
-        })))
+        .sort(wrap(jsonObjectOf(
+            "$WORKFLOW.$PRIORITY" to -1,
+            SEQUENCE to 1
+        )))
+    )
     return doc?.let { deserializeSubmission(it) }
   }
 
@@ -381,11 +357,9 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   private suspend fun writeGridFSDocument(bucket: GridFSBucket, id: String,
       obj: JsonObject?) {
     if (obj == null) {
-      bucket.findAwait(json {
-        obj(
-            "filename" to id
-        )
-      })?.let {
+      bucket.findAwait(jsonObjectOf(
+          "filename" to id
+      ))?.let {
         bucket.deleteAwait(it.id)
       }
     } else {
@@ -411,11 +385,9 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   }
 
   override suspend fun getSubmissionResults(submissionId: String): Map<String, List<Any>>? {
-    val submissionCount = collSubmissions.countDocumentsAwait(json {
-      obj(
-          INTERNAL_ID to submissionId
-      )
-    })
+    val submissionCount = collSubmissions.countDocumentsAwait(jsonObjectOf(
+        INTERNAL_ID to submissionId
+    ))
     if (submissionCount == 0L) {
       throw NoSuchElementException("There is no submission with ID `$submissionId'")
     }
@@ -454,52 +426,44 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     // find IDs of finished submissions that do not have an endTime but
     // whose ID was created before the given timestamp (this will also
     // include submissions without a startTime)
-    val submissionIDs2 = collSubmissions.findAwait(json {
-      obj(
-        "\$and" to array(
-          obj(
-            STATUS to obj(
-              "\$ne" to Submission.Status.ACCEPTED.toString()
+    val submissionIDs2 = collSubmissions.findAwait(jsonObjectOf(
+        "\$and" to jsonArrayOf(
+            jsonObjectOf(
+                STATUS to jsonObjectOf(
+                    "\$ne" to Submission.Status.ACCEPTED.toString()
+                )
+            ),
+            jsonObjectOf(
+                STATUS to jsonObjectOf(
+                    "\$ne" to Submission.Status.RUNNING.toString()
+                )
+            ),
+            jsonObjectOf(
+                END_TIME to null
             )
-          ),
-          obj(
-            STATUS to obj(
-              "\$ne" to Submission.Status.RUNNING.toString()
-            )
-          ),
-          obj(
-            END_TIME to null
-          )
         )
-      )
-    }, projection = json {
-      obj(
+    ), projection = jsonObjectOf(
         INTERNAL_ID to 1
-      )
-    }).map { it.getString(INTERNAL_ID) }
-      .filter { Instant.ofEpochMilli(UniqueID.toMillis(it)).isBefore(timestamp) }
+    )).map { it.getString(INTERNAL_ID) }
+        .filter { Instant.ofEpochMilli(UniqueID.toMillis(it)).isBefore(timestamp) }
 
     val submissionIDs = submissionIDs1 + submissionIDs2
 
     // delete 1000 submissions at once
     for (chunk in submissionIDs.chunked(1000)) {
       // delete process chains first
-      collProcessChains.deleteManyAwait(json {
-        obj(
-            SUBMISSION_ID to obj(
-                "\$in" to chunk
-            )
-        )
-      })
+      collProcessChains.deleteManyAwait(jsonObjectOf(
+          SUBMISSION_ID to jsonObjectOf(
+              "\$in" to chunk
+          )
+      ))
 
       // then delete submissions
-      collSubmissions.deleteManyAwait(json {
-        obj(
-            INTERNAL_ID to obj(
-                "\$in" to chunk
-            )
-        )
-      })
+      collSubmissions.deleteManyAwait(jsonObjectOf(
+          INTERNAL_ID to jsonObjectOf(
+              "\$in" to chunk
+          )
+      ))
     }
 
     return submissionIDs
@@ -507,11 +471,9 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,
       submissionId: String, status: ProcessChainStatus) {
-    val submissionCount = collSubmissions.countDocumentsAwait(json {
-      obj(
-          INTERNAL_ID to submissionId
-      )
-    })
+    val submissionCount = collSubmissions.countDocumentsAwait(jsonObjectOf(
+        INTERNAL_ID to submissionId
+    ))
     if (submissionCount == 0L) {
       throw NoSuchElementException("There is no submission with ID `$submissionId'")
     }
@@ -520,16 +482,14 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     val requests = processChains.mapIndexed { i, pc ->
       // write process chain without priority
       writeGridFSDocument(bucketProcessChains, pc.id, JsonUtils.toJson(pc.copy(priority = 0)))
-      val doc = json {
-        obj(
-            INTERNAL_ID to pc.id,
-            SEQUENCE to sequence + i,
-            PRIORITY to -pc.priority, // negate priority so we can use compound index
-            SUBMISSION_ID to submissionId,
-            STATUS to status.toString(),
-            REQUIRED_CAPABILITIES to JsonUtils.writeValueAsString(pc.requiredCapabilities)
-        )
-      }
+      val doc = jsonObjectOf(
+          INTERNAL_ID to pc.id,
+          SEQUENCE to sequence + i,
+          PRIORITY to -pc.priority, // negate priority so we can use compound index
+          SUBMISSION_ID to submissionId,
+          STATUS to status.toString(),
+          REQUIRED_CAPABILITIES to JsonUtils.writeValueAsString(pc.requiredCapabilities)
+      )
       InsertOneModel(doc)
     }
 
@@ -563,11 +523,9 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         if (status != null) {
           it.put(STATUS, status.toString())
         }
-      }, size, offset, json {
-        obj(
-            SEQUENCE to order
-        )
-      }, PROCESS_CHAIN_EXCLUDES_BUT_SUBMISSION_ID).map {
+      }, size, offset, jsonObjectOf(
+          SEQUENCE to order
+      ), PROCESS_CHAIN_EXCLUDES_BUT_SUBMISSION_ID).map {
         readProcessChain(it, excludeExecutables) }
 
   override suspend fun findProcessChainIdsByStatus(status: ProcessChainStatus) =
@@ -579,32 +537,22 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   override suspend fun findProcessChainIdsBySubmissionIdAndStatus(
       submissionId: String, status: ProcessChainStatus) =
-      collProcessChains.findAwait(json {
-        obj(
-            SUBMISSION_ID to submissionId,
-            STATUS to status.toString()
-        )
-      }, projection = json {
-        obj(
-            INTERNAL_ID to 1
-        )
-      }).map { it.getString(INTERNAL_ID) }
+      collProcessChains.findAwait(jsonObjectOf(
+          SUBMISSION_ID to submissionId,
+          STATUS to status.toString()
+      ), projection = jsonObjectOf(
+          INTERNAL_ID to 1
+      )).map { it.getString(INTERNAL_ID) }
 
   override suspend fun findProcessChainStatusesBySubmissionId(submissionId: String) =
-      collProcessChains.findAwait(json {
-        obj(
-            SUBMISSION_ID to submissionId
-        )
-      }, sort = json {
-        obj(
-            SEQUENCE to 1
-        )
-      }, projection = json {
-        obj(
-            INTERNAL_ID to 1,
-            STATUS to 1
-        )
-      }).associateBy({ it.getString(INTERNAL_ID) }, {
+      collProcessChains.findAwait(jsonObjectOf(
+          SUBMISSION_ID to submissionId
+      ), sort = jsonObjectOf(
+          SEQUENCE to 1
+      ), projection = jsonObjectOf(
+          INTERNAL_ID to 1,
+          STATUS to 1
+      )).associateBy({ it.getString(INTERNAL_ID) }, {
         ProcessChainStatus.valueOf(it.getString(STATUS)) })
 
   override suspend fun findProcessChainRequiredCapabilities(
@@ -634,11 +582,9 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   }
 
   override suspend fun findProcessChainById(processChainId: String): ProcessChain? {
-    val doc = collProcessChains.findOneAwait(json {
-      obj(
-          INTERNAL_ID to processChainId
-      )
-    }, PROCESS_CHAIN_EXCLUDES)
+    val doc = collProcessChains.findOneAwait(jsonObjectOf(
+        INTERNAL_ID to processChainId
+    ), PROCESS_CHAIN_EXCLUDES)
     return doc?.let { readProcessChain(it).first }
   }
 
@@ -666,20 +612,16 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     // db.processChains.aggregate([{$match:{submissionId:"aytd7wsvepytjxpdbisa"}},{$sortByCount:"$status"}])
     val pipeline = mutableListOf<JsonObject>()
     if (submissionId != null) {
-      pipeline.add(json {
-        obj(
-            "\$match" to obj(
-                SUBMISSION_ID to submissionId
-            )
-        )
-      })
+      pipeline.add(jsonObjectOf(
+          "\$match" to jsonObjectOf(
+              SUBMISSION_ID to submissionId
+          )
+      ))
     }
 
-    pipeline.add(json {
-      obj(
-          "\$sortByCount" to "\$$STATUS"
-      )
-    })
+    pipeline.add(jsonObjectOf(
+        "\$sortByCount" to "\$$STATUS"
+    ))
 
     return collProcessChains.aggregateAwait(pipeline).associateBy({
       ProcessChainStatus.valueOf(it.getString(INTERNAL_ID)) },  { it.getLong("count") })
@@ -725,18 +667,17 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   override suspend fun existsProcessChain(currentStatus: ProcessChainStatus,
       requiredCapabilities: Collection<String>?): Boolean {
-    return collProcessChains.countDocumentsAwait(json {
-      if (requiredCapabilities == null) {
-        obj(
-            STATUS to currentStatus.toString()
-        )
-      } else {
-        obj(
-            STATUS to currentStatus.toString(),
-            REQUIRED_CAPABILITIES to JsonUtils.writeValueAsString(requiredCapabilities)
-        )
-      }
-    }, 1) == 1L
+    return collProcessChains.countDocumentsAwait(
+        if (requiredCapabilities == null) {
+          jsonObjectOf(
+              STATUS to currentStatus.toString()
+          )
+        } else {
+          jsonObjectOf(
+              STATUS to currentStatus.toString(),
+              REQUIRED_CAPABILITIES to JsonUtils.writeValueAsString(requiredCapabilities)
+          )
+        }, 1) == 1L
   }
 
   private fun deserializeProcessChainRun(obj: JsonObject): Run {
@@ -936,18 +877,14 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   override suspend fun setAllProcessChainsStatus(submissionId: String,
       currentStatus: ProcessChainStatus, newStatus: ProcessChainStatus) {
-    collProcessChains.updateManyAwait(json {
-      obj(
-          SUBMISSION_ID to submissionId,
-          STATUS to currentStatus.toString()
-      )
-    }, json {
-      obj(
-          "\$set" to obj(
-              STATUS to newStatus.toString()
-          )
-      )
-    })
+    collProcessChains.updateManyAwait(jsonObjectOf(
+        SUBMISSION_ID to submissionId,
+        STATUS to currentStatus.toString()
+    ), jsonObjectOf(
+        "\$set" to jsonObjectOf(
+            STATUS to newStatus.toString()
+        )
+    ))
   }
 
   override suspend fun getProcessChainStatus(processChainId: String) =
@@ -1012,11 +949,9 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   }
 
   override suspend fun getProcessChainResults(processChainId: String): Map<String, List<Any>>? {
-    val processChainCount = collProcessChains.countDocumentsAwait(json {
-      obj(
-          INTERNAL_ID to processChainId
-      )
-    })
+    val processChainCount = collProcessChains.countDocumentsAwait(jsonObjectOf(
+        INTERNAL_ID to processChainId
+    ))
     if (processChainCount == 0L) {
       throw NoSuchElementException("There is no process chain with ID `$processChainId'")
     }
@@ -1025,35 +960,31 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
   override suspend fun getProcessChainStatusAndResultsIfFinished(processChainIds: Collection<String>):
       Map<String, Pair<ProcessChainStatus, Map<String, List<Any>>?>> {
-    val finished = collProcessChains.findAwait(json {
-      obj(
-          "\$and" to array(
-              obj(
-                  STATUS to obj(
-                      "\$ne" to ProcessChainStatus.REGISTERED.toString()
-                  ),
-              ),
-              obj(
-                  STATUS to obj(
-                      "\$ne" to ProcessChainStatus.RUNNING.toString()
-                  )
-              ),
-              obj(
-                  STATUS to obj(
-                      "\$ne" to ProcessChainStatus.PAUSED.toString()
-                  )
-              )
-          ),
-          INTERNAL_ID to obj(
-              "\$in" to processChainIds.toList()
-          )
-      )
-    }, projection = json {
-      obj(
-          INTERNAL_ID to 1,
-          STATUS to 1
-      )
-    }).associateBy({ it.getString(INTERNAL_ID) }, {
+    val finished = collProcessChains.findAwait(jsonObjectOf(
+        "\$and" to jsonArrayOf(
+            jsonObjectOf(
+                STATUS to jsonObjectOf(
+                    "\$ne" to ProcessChainStatus.REGISTERED.toString()
+                ),
+            ),
+            jsonObjectOf(
+                STATUS to jsonObjectOf(
+                    "\$ne" to ProcessChainStatus.RUNNING.toString()
+                )
+            ),
+            jsonObjectOf(
+                STATUS to jsonObjectOf(
+                    "\$ne" to ProcessChainStatus.PAUSED.toString()
+                )
+            )
+        ),
+        INTERNAL_ID to jsonObjectOf(
+            "\$in" to processChainIds.toList()
+        )
+    ), projection = jsonObjectOf(
+        INTERNAL_ID to 1,
+        STATUS to 1
+    )).associateBy({ it.getString(INTERNAL_ID) }, {
       ProcessChainStatus.valueOf(it.getString(STATUS)) })
 
     // shortcut: only successful process chains can have a result

@@ -6,9 +6,8 @@ import helper.JsonUtils
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.core.json.array
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.core.json.jsonArrayOf
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -700,11 +699,9 @@ abstract class SubmissionRegistryTest {
       ctx.coVerify {
         assertThat(submissionRegistry.getSubmissionExecutionState(s.id)).isNull()
 
-        val state = json {
-          obj(
-              "actions" to array()
-          )
-        }
+        val state = jsonObjectOf(
+            "actions" to jsonArrayOf()
+        )
 
         submissionRegistry.setSubmissionExecutionState(s.id, state)
         assertThat(submissionRegistry.getSubmissionExecutionState(s.id)).isEqualTo(state)

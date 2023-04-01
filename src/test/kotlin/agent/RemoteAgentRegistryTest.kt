@@ -17,8 +17,7 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -80,19 +79,17 @@ class RemoteAgentRegistryTest {
           val includeCapabilities = json.getBoolean("includeCapabilities", false)
           val best = bestSelector(allRcs, capabilities, allCounts)
           val available = best >= 0
-          val reply = json {
-            if (sequenceProvider != null) {
-              obj(
-                  "available" to available,
-                  "bestRequiredCapabilities" to best,
-                  "lastSequence" to sequenceProvider()
-              )
-            } else {
-              obj(
-                  "available" to available,
-                  "bestRequiredCapabilities" to best
-              )
-            }
+          val reply = if (sequenceProvider != null) {
+            jsonObjectOf(
+                "available" to available,
+                "bestRequiredCapabilities" to best,
+                "lastSequence" to sequenceProvider()
+            )
+          } else {
+            jsonObjectOf(
+                "available" to available,
+                "bestRequiredCapabilities" to best
+            )
           }
           if (includeCapabilities) {
             val capsArr = JsonArray()
@@ -639,18 +636,16 @@ class RemoteAgentRegistryTest {
       when (val action = json.getString("action")) {
         "inquire" -> {
           inquiryCount1++
-          msg.reply(json {
-            if (allocateCount1 > 0) {
-              obj(
-                  "available" to false
-              )
-            } else {
-              obj(
-                  "available" to true,
-                  "bestRequiredCapabilities" to 0,
-                  "lastSequence" to 0L
-              )
-            }
+          msg.reply(if (allocateCount1 > 0) {
+            jsonObjectOf(
+                "available" to false
+            )
+          } else {
+            jsonObjectOf(
+                "available" to true,
+                "bestRequiredCapabilities" to 0,
+                "lastSequence" to 0L
+            )
           })
         }
         "allocate" -> {
@@ -669,13 +664,11 @@ class RemoteAgentRegistryTest {
       when (val action = json.getString("action")) {
         "inquire" -> {
           inquiryCount2++
-          msg.reply(json {
-            obj(
-                "available" to true,
-                "bestRequiredCapabilities" to 0,
-                "lastSequence" to 1L
-            )
-          })
+          msg.reply(jsonObjectOf(
+              "available" to true,
+              "bestRequiredCapabilities" to 0,
+              "lastSequence" to 1L
+          ))
         }
         "allocate" -> {
           allocateCount2++

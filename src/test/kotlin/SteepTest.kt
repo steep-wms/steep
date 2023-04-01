@@ -24,9 +24,8 @@ import io.vertx.ext.web.handler.HttpException
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.deploymentOptionsOf
-import io.vertx.kotlin.core.json.array
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.core.json.jsonArrayOf
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.dispatcher
 import io.vertx.kotlin.coroutines.toReceiveChannel
 import kotlinx.coroutines.CoroutineScope
@@ -76,15 +75,13 @@ class SteepTest {
     processChainLogPath = processChainLogPathFile.absolutePath
 
     // deploy verticle under test
-    val config = json {
-      obj(
-          ConfigConstants.AGENT_CAPABILTIIES to array("docker", "gpu"),
-          ConfigConstants.AGENT_BUSY_TIMEOUT to "1s",
-          ConfigConstants.AGENT_ID to agentId,
-          ConfigConstants.LOGS_PROCESSCHAINS_ENABLED to true,
-          ConfigConstants.LOGS_PROCESSCHAINS_PATH to processChainLogPath
-      )
-    }
+    val config = jsonObjectOf(
+        ConfigConstants.AGENT_CAPABILTIIES to jsonArrayOf("docker", "gpu"),
+        ConfigConstants.AGENT_BUSY_TIMEOUT to "1s",
+        ConfigConstants.AGENT_ID to agentId,
+        ConfigConstants.LOGS_PROCESSCHAINS_ENABLED to true,
+        ConfigConstants.LOGS_PROCESSCHAINS_PATH to processChainLogPath
+    )
     val options = deploymentOptionsOf(config = config)
     vertx.deployVerticle(Steep::class.qualifiedName, options, ctx.succeedingThenComplete())
   }
@@ -577,14 +574,12 @@ class SteepTest {
         val consumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
         val channel = consumer.toReceiveChannel(vertx)
 
-        val msg = json {
-          obj(
-              "action" to "fetch",
-              "id" to id,
-              "runNumber" to 1,
-              "replyAddress" to replyAddress
-          )
-        }
+        val msg = jsonObjectOf(
+            "action" to "fetch",
+            "id" to id,
+            "runNumber" to 1,
+            "replyAddress" to replyAddress
+        )
         vertx.eventBus().send(address, msg)
 
         val (receivedContents, header) = receiveProcessChainLogFile(channel)
@@ -617,14 +612,12 @@ class SteepTest {
         val consumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
         val channel = consumer.toReceiveChannel(vertx)
 
-        val msg = json {
-          obj(
-              "action" to "exists",
-              "id" to id,
-              "runNumber" to 1,
-              "replyAddress" to replyAddress
-          )
-        }
+        val msg = jsonObjectOf(
+            "action" to "exists",
+            "id" to id,
+            "runNumber" to 1,
+            "replyAddress" to replyAddress
+        )
         vertx.eventBus().send(address, msg)
 
         val obj = channel.receive().body()
@@ -651,14 +644,12 @@ class SteepTest {
         val consumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
         val channel = consumer.toReceiveChannel(vertx)
 
-        val msg = json {
-          obj(
-              "action" to "fetch",
-              "id" to id,
-              "runNumber" to 1,
-              "replyAddress" to replyAddress
-          )
-        }
+        val msg = jsonObjectOf(
+            "action" to "fetch",
+            "id" to id,
+            "runNumber" to 1,
+            "replyAddress" to replyAddress
+        )
         vertx.eventBus().send(address, msg)
 
         val obj = channel.receive().body()
@@ -689,294 +680,246 @@ class SteepTest {
         val channel = consumer.toReceiveChannel(vertx)
 
         // request the first byte
-        val msg1 = json {
-          obj(
-              "action" to "fetch",
-              "id" to id,
-              "runNumber" to 1,
-              "replyAddress" to replyAddress,
-              "start" to 0,
-              "end" to 0
-          )
-        }
+        val msg1 = jsonObjectOf(
+            "action" to "fetch",
+            "id" to id,
+            "runNumber" to 1,
+            "replyAddress" to replyAddress,
+            "start" to 0,
+            "end" to 0
+        )
         vertx.eventBus().send(address, msg1)
 
         val (receivedContents1, header1) = receiveProcessChainLogFile(channel)
-        assertThat(header1).isEqualTo(json {
-          obj(
-              "size" to 11L,
-              "start" to 0L,
-              "end" to 0L,
-              "length" to 1L
-          )
-        })
+        assertThat(header1).isEqualTo(jsonObjectOf(
+            "size" to 11L,
+            "start" to 0L,
+            "end" to 0L,
+            "length" to 1L
+        ))
         assertThat(receivedContents1).isEqualTo(contents.substring(0, 1))
 
         // request the first 5 bytes
-        val msg2 = json {
-          obj(
-              "action" to "fetch",
-              "id" to id,
-              "runNumber" to 1,
-              "replyAddress" to replyAddress,
-              "start" to 0,
-              "end" to 4
-          )
-        }
+        val msg2 = jsonObjectOf(
+            "action" to "fetch",
+            "id" to id,
+            "runNumber" to 1,
+            "replyAddress" to replyAddress,
+            "start" to 0,
+            "end" to 4
+        )
         vertx.eventBus().send(address, msg2)
 
         val (receivedContents2, header2) = receiveProcessChainLogFile(channel)
-        assertThat(header2).isEqualTo(json {
-          obj(
-              "size" to 11L,
-              "start" to 0L,
-              "end" to 4L,
-              "length" to 5L
-          )
-        })
+        assertThat(header2).isEqualTo(jsonObjectOf(
+            "size" to 11L,
+            "start" to 0L,
+            "end" to 4L,
+            "length" to 5L
+        ))
         assertThat(receivedContents2).isEqualTo(contents.substring(0, 5))
 
         // request 5 bytes in the middle
-        val msg3 = json {
-          obj(
-              "action" to "fetch",
-              "id" to id,
-              "runNumber" to 1,
-              "replyAddress" to replyAddress,
-              "start" to 2,
-              "end" to 6
-          )
-        }
+        val msg3 = jsonObjectOf(
+            "action" to "fetch",
+            "id" to id,
+            "runNumber" to 1,
+            "replyAddress" to replyAddress,
+            "start" to 2,
+            "end" to 6
+        )
         vertx.eventBus().send(address, msg3)
 
         val (receivedContents3, header3) = receiveProcessChainLogFile(channel)
-        assertThat(header3).isEqualTo(json {
-          obj(
-              "size" to 11L,
-              "start" to 2L,
-              "end" to 6L,
-              "length" to 5L
-          )
-        })
+        assertThat(header3).isEqualTo(jsonObjectOf(
+            "size" to 11L,
+            "start" to 2L,
+            "end" to 6L,
+            "length" to 5L
+        ))
         assertThat(receivedContents3).isEqualTo(contents.substring(2, 7))
 
         // request the last 5 bytes
-        val msg4 = json {
-          obj(
-              "action" to "fetch",
-              "id" to id,
-              "runNumber" to 1,
-              "replyAddress" to replyAddress,
-              "start" to 6,
-              "end" to 10
-          )
-        }
+        val msg4 = jsonObjectOf(
+            "action" to "fetch",
+            "id" to id,
+            "runNumber" to 1,
+            "replyAddress" to replyAddress,
+            "start" to 6,
+            "end" to 10
+        )
         vertx.eventBus().send(address, msg4)
 
         val (receivedContents4, header4) = receiveProcessChainLogFile(channel)
-        assertThat(header4).isEqualTo(json {
-          obj(
-              "size" to 11L,
-              "start" to 6L,
-              "end" to 10L,
-              "length" to 5L
-          )
-        })
+        assertThat(header4).isEqualTo(jsonObjectOf(
+            "size" to 11L,
+            "start" to 6L,
+            "end" to 10L,
+            "length" to 5L
+        ))
         assertThat(receivedContents4).isEqualTo(contents.substring(6))
 
         // request the last 5 bytes (end position 1 too high)
-        val msg5 = json {
-          obj(
-              "action" to "fetch",
-              "id" to id,
-              "runNumber" to 1,
-              "replyAddress" to replyAddress,
-              "start" to 6,
-              "end" to 11
-          )
-        }
+        val msg5 = jsonObjectOf(
+            "action" to "fetch",
+            "id" to id,
+            "runNumber" to 1,
+            "replyAddress" to replyAddress,
+            "start" to 6,
+            "end" to 11
+        )
         vertx.eventBus().send(address, msg5)
 
         val (receivedContents5, header5) = receiveProcessChainLogFile(channel)
-        assertThat(header5).isEqualTo(json {
-          obj(
-              "size" to 11L,
-              "start" to 6L,
-              "end" to 10L,
-              "length" to 5L
-          )
-        })
+        assertThat(header5).isEqualTo(jsonObjectOf(
+            "size" to 11L,
+            "start" to 6L,
+            "end" to 10L,
+            "length" to 5L
+        ))
         assertThat(receivedContents5).isEqualTo(contents.substring(6))
 
         // request the last 5 bytes (end position much too high)
-        val msg6 = json {
-          obj(
-              "action" to "fetch",
-              "id" to id,
-              "runNumber" to 1,
-              "replyAddress" to replyAddress,
-              "start" to 6,
-              "end" to 100
-          )
-        }
+        val msg6 = jsonObjectOf(
+            "action" to "fetch",
+            "id" to id,
+            "runNumber" to 1,
+            "replyAddress" to replyAddress,
+            "start" to 6,
+            "end" to 100
+        )
         vertx.eventBus().send(address, msg6)
 
         val (receivedContents6, header6) = receiveProcessChainLogFile(channel)
-        assertThat(header6).isEqualTo(json {
-          obj(
-              "size" to 11L,
-              "start" to 6L,
-              "end" to 10L,
-              "length" to 5L
-          )
-        })
+        assertThat(header6).isEqualTo(jsonObjectOf(
+            "size" to 11L,
+            "start" to 6L,
+            "end" to 10L,
+            "length" to 5L
+        ))
         assertThat(receivedContents6).isEqualTo(contents.substring(6))
 
         // request the last 5 bytes (no end position)
-        val msg7 = json {
-          obj(
-              "action" to "fetch",
-              "id" to id,
-              "runNumber" to 1,
-              "replyAddress" to replyAddress,
-              "start" to 6
-          )
-        }
+        val msg7 = jsonObjectOf(
+            "action" to "fetch",
+            "id" to id,
+            "runNumber" to 1,
+            "replyAddress" to replyAddress,
+            "start" to 6
+        )
         vertx.eventBus().send(address, msg7)
 
         val (receivedContents7, header7) = receiveProcessChainLogFile(channel)
-        assertThat(header7).isEqualTo(json {
-          obj(
-              "size" to 11L,
-              "start" to 6L,
-              "end" to 10L,
-              "length" to 5L
-          )
-        })
+        assertThat(header7).isEqualTo(jsonObjectOf(
+            "size" to 11L,
+            "start" to 6L,
+            "end" to 10L,
+            "length" to 5L
+        ))
         assertThat(receivedContents7).isEqualTo(contents.substring(6))
 
         // send invalid request (end position less than start position)
-        val msg8 = json {
-          obj(
-              "action" to "fetch",
-              "id" to id,
-              "runNumber" to 1,
-              "replyAddress" to replyAddress,
-              "start" to 6,
-              "end" to 2
-          )
-        }
+        val msg8 = jsonObjectOf(
+            "action" to "fetch",
+            "id" to id,
+            "runNumber" to 1,
+            "replyAddress" to replyAddress,
+            "start" to 6,
+            "end" to 2
+        )
         vertx.eventBus().send(address, msg8)
 
         assertThatThrownBy { receiveProcessChainLogFile(channel) }
             .matches { it is HttpException && it.statusCode == 416}
 
         // send invalid request (start position out of bounds)
-        val msg9 = json {
-          obj(
-              "action" to "fetch",
-              "id" to id,
-              "runNumber" to 1,
-              "replyAddress" to replyAddress,
-              "start" to 11
-          )
-        }
+        val msg9 = jsonObjectOf(
+            "action" to "fetch",
+            "id" to id,
+            "runNumber" to 1,
+            "replyAddress" to replyAddress,
+            "start" to 11
+        )
         vertx.eventBus().send(address, msg9)
 
         assertThatThrownBy { receiveProcessChainLogFile(channel) }
             .matches { it is HttpException && it.statusCode == 416}
 
         // request the last byte
-        val msg10 = json {
-          obj(
-              "action" to "fetch",
-              "id" to id,
-              "runNumber" to 1,
-              "replyAddress" to replyAddress,
-              "start" to 10,
-              "end" to 10
-          )
-        }
+        val msg10 = jsonObjectOf(
+            "action" to "fetch",
+            "id" to id,
+            "runNumber" to 1,
+            "replyAddress" to replyAddress,
+            "start" to 10,
+            "end" to 10
+        )
         vertx.eventBus().send(address, msg10)
 
         val (receivedContents10, header10) = receiveProcessChainLogFile(channel)
-        assertThat(header10).isEqualTo(json {
-          obj(
-              "size" to 11L,
-              "start" to 10L,
-              "end" to 10L,
-              "length" to 1L
-          )
-        })
+        assertThat(header10).isEqualTo(jsonObjectOf(
+            "size" to 11L,
+            "start" to 10L,
+            "end" to 10L,
+            "length" to 1L
+        ))
         assertThat(receivedContents10).isEqualTo(contents.substring(contents.length - 1))
 
         // request the last byte (suffix request)
-        val msg11 = json {
-          obj(
-              "action" to "fetch",
-              "id" to id,
-              "runNumber" to 1,
-              "replyAddress" to replyAddress,
-              "start" to -1
-          )
-        }
+        val msg11 = jsonObjectOf(
+            "action" to "fetch",
+            "id" to id,
+            "runNumber" to 1,
+            "replyAddress" to replyAddress,
+            "start" to -1
+        )
         vertx.eventBus().send(address, msg11)
 
         val (receivedContents11, header11) = receiveProcessChainLogFile(channel)
-        assertThat(header11).isEqualTo(json {
-          obj(
-              "size" to 11L,
-              "start" to 10L,
-              "end" to 10L,
-              "length" to 1L
-          )
-        })
+        assertThat(header11).isEqualTo(jsonObjectOf(
+            "size" to 11L,
+            "start" to 10L,
+            "end" to 10L,
+            "length" to 1L
+        ))
         assertThat(receivedContents11).isEqualTo(contents.substring(contents.length - 1))
 
         // request the last 5 bytes (suffix request)
-        val msg12 = json {
-          obj(
-              "action" to "fetch",
-              "id" to id,
-              "runNumber" to 1,
-              "replyAddress" to replyAddress,
-              "start" to -5
-          )
-        }
+        val msg12 = jsonObjectOf(
+            "action" to "fetch",
+            "id" to id,
+            "runNumber" to 1,
+            "replyAddress" to replyAddress,
+            "start" to -5
+        )
         vertx.eventBus().send(address, msg12)
 
         val (receivedContents12, header12) = receiveProcessChainLogFile(channel)
-        assertThat(header12).isEqualTo(json {
-          obj(
-              "size" to 11L,
-              "start" to 6L,
-              "end" to 10L,
-              "length" to 5L
-          )
-        })
+        assertThat(header12).isEqualTo(jsonObjectOf(
+            "size" to 11L,
+            "start" to 6L,
+            "end" to 10L,
+            "length" to 5L
+        ))
         assertThat(receivedContents12).isEqualTo(contents.substring(contents.length - 5))
 
         // request too much (suffix request)
-        val msg13 = json {
-          obj(
-              "action" to "fetch",
-              "id" to id,
-              "runNumber" to 1,
-              "replyAddress" to replyAddress,
-              "start" to -20
-          )
-        }
+        val msg13 = jsonObjectOf(
+            "action" to "fetch",
+            "id" to id,
+            "runNumber" to 1,
+            "replyAddress" to replyAddress,
+            "start" to -20
+        )
         vertx.eventBus().send(address, msg13)
 
         val (receivedContents13, header13) = receiveProcessChainLogFile(channel)
-        assertThat(header13).isEqualTo(json {
-          obj(
-              "size" to 11L,
-              "start" to 0L,
-              "end" to 10L,
-              "length" to 11L
-          )
-        })
+        assertThat(header13).isEqualTo(jsonObjectOf(
+            "size" to 11L,
+            "start" to 0L,
+            "end" to 10L,
+            "length" to 11L
+        ))
         assertThat(receivedContents13).isEqualTo(contents)
 
         ctx.completeNow()
@@ -1000,13 +943,11 @@ class SteepTest {
       val channel = consumer.toReceiveChannel(vertx)
 
       ctx.coVerify {
-        val msgMissingRunNumber = json {
-          obj(
-              "action" to "fetch",
-              "id" to id,
-              "replyAddress" to replyAddress
-          )
-        }
+        val msgMissingRunNumber = jsonObjectOf(
+            "action" to "fetch",
+            "id" to id,
+            "replyAddress" to replyAddress
+        )
         vertx.eventBus().send(address, msgMissingRunNumber)
 
         val obj = channel.receive().body()
@@ -1014,14 +955,12 @@ class SteepTest {
       }
 
       ctx.coVerify {
-        val msgInvalidRunNumber = json {
-          obj(
-              "action" to "fetch",
-              "id" to id,
-              "runNumber" to 0,
-              "replyAddress" to replyAddress
-          )
-        }
+        val msgInvalidRunNumber = jsonObjectOf(
+            "action" to "fetch",
+            "id" to id,
+            "runNumber" to 0,
+            "replyAddress" to replyAddress
+        )
         vertx.eventBus().send(address, msgInvalidRunNumber)
 
         val obj = channel.receive().body()
@@ -1056,14 +995,12 @@ class SteepTest {
 
       for ((i, c) in contents.withIndex()) {
         ctx.coVerify {
-          val msg = json {
-            obj(
-                "action" to "fetch",
-                "id" to id,
-                "runNumber" to i + 1,
-                "replyAddress" to replyAddress
-            )
-          }
+          val msg = jsonObjectOf(
+              "action" to "fetch",
+              "id" to id,
+              "runNumber" to i + 1,
+              "replyAddress" to replyAddress
+          )
           vertx.eventBus().send(address, msg)
 
           val (receivedContents, header) = receiveProcessChainLogFile(channel)

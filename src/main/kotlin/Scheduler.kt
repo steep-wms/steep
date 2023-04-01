@@ -29,9 +29,7 @@ import io.vertx.core.Promise
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.AsyncMap
-import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import kotlinx.coroutines.Job
@@ -362,12 +360,10 @@ class Scheduler : CoroutineVerticle() {
         } else {
           // publish a message that says we need an agent with the given
           // capabilities
-          val msg = json {
-            obj(
-                "n" to rcs.count,
-                "requiredCapabilities" to JsonArray(rcs.requiredCapabilities.toList())
-            )
-          }
+          val msg = jsonObjectOf(
+              "n" to rcs.count,
+              "requiredCapabilities" to JsonArray(rcs.requiredCapabilities.toList())
+          )
           vertx.eventBus().publish(REMOTE_AGENT_MISSING, msg)
         }
       }
@@ -655,11 +651,9 @@ class Scheduler : CoroutineVerticle() {
 
       // ask all agents which process chains they are currently executing
       val agentIds = agentRegistry.getAgentIds()
-      val msg = json {
-        obj(
-            "action" to "info"
-        )
-      }
+      val msg = jsonObjectOf(
+          "action" to "info"
+      )
       val agentInfos = agentIds.map { vertx.eventBus().request<JsonObject>(
           REMOTE_AGENT_ADDRESS_PREFIX + it, msg).await() }.map { it.body() }
       val processChainsToAgents = agentInfos.mapNotNull { info ->

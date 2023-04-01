@@ -15,9 +15,8 @@ import helper.findOneAwait
 import helper.insertOneAwait
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.core.json.array
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.core.json.jsonArrayOf
+import io.vertx.kotlin.core.json.jsonObjectOf
 import model.cloud.VM
 import org.slf4j.LoggerFactory
 import java.time.Instant
@@ -50,31 +49,27 @@ class MongoDBVMRegistry(private val vertx: Vertx,
     private const val REASON = "reason"
     private const val SEQUENCE = "sequence"
 
-    private val NON_TERMINATED_QUERY = json {
-      "\$and" to array(
-          obj(
-              STATUS to obj(
-                  "\$ne" to VM.Status.DESTROYED.toString()
-              )
-          ),
-          obj(
-              STATUS to obj(
-                  "\$ne" to VM.Status.ERROR.toString()
-              )
-          )
-      )
-    }
+    private val NON_TERMINATED_QUERY = "\$and" to jsonArrayOf(
+        jsonObjectOf(
+            STATUS to jsonObjectOf(
+                "\$ne" to VM.Status.DESTROYED.toString()
+            )
+        ),
+        jsonObjectOf(
+            STATUS to jsonObjectOf(
+                "\$ne" to VM.Status.ERROR.toString()
+            )
+        )
+    )
 
-    private val STARTING_QUERY = json {
-      "\$or" to array(
-          obj(
-              STATUS to VM.Status.CREATING.toString()
-          ),
-          obj(
-              STATUS to VM.Status.PROVISIONING.toString()
-          )
-      )
-    }
+    private val STARTING_QUERY = "\$or" to jsonArrayOf(
+        jsonObjectOf(
+            STATUS to VM.Status.CREATING.toString()
+        ),
+        jsonObjectOf(
+            STATUS to VM.Status.PROVISIONING.toString()
+        )
+    )
   }
 
   private val collVMs: MongoCollection<JsonObject> =
@@ -120,38 +115,30 @@ class MongoDBVMRegistry(private val vertx: Vertx,
       if (status != null) {
         it.put(STATUS, status.toString())
       }
-    }, size, offset, json {
-      obj(
-          SEQUENCE to order
-      )
-    })
+    }, size, offset, jsonObjectOf(
+        SEQUENCE to order
+    ))
     return docs.map { deserializeVM(it) }
   }
 
   override suspend fun findVMById(id: String): VM? {
-    val doc = collVMs.findOneAwait(json {
-      obj(
-          INTERNAL_ID to id
-      )
-    })
+    val doc = collVMs.findOneAwait(jsonObjectOf(
+        INTERNAL_ID to id
+    ))
     return doc?.let { deserializeVM(it) }
   }
 
   override suspend fun findVMByExternalId(externalId: String): VM? {
-    val doc = collVMs.findOneAwait(json {
-      obj(
-          EXTERNAL_ID to externalId
-      )
-    })
+    val doc = collVMs.findOneAwait(jsonObjectOf(
+        EXTERNAL_ID to externalId
+    ))
     return doc?.let { deserializeVM(it) }
   }
 
   override suspend fun findNonTerminatedVMs(): Collection<VM> {
-    val docs = collVMs.findAwait(json {
-      obj(
-          NON_TERMINATED_QUERY
-      )
-    })
+    val docs = collVMs.findAwait(jsonObjectOf(
+        NON_TERMINATED_QUERY
+    ))
     return docs.map { deserializeVM(it) }
   }
 
@@ -163,33 +150,25 @@ class MongoDBVMRegistry(private val vertx: Vertx,
       })
 
   override suspend fun countNonTerminatedVMsBySetup(setupId: String): Long {
-    return collVMs.countDocumentsAwait(json {
-      obj(
-          NON_TERMINATED_QUERY,
-          "$SETUP.$ID" to setupId
-      )
-    })
+    return collVMs.countDocumentsAwait(jsonObjectOf(
+        NON_TERMINATED_QUERY,
+        "$SETUP.$ID" to setupId
+    ))
   }
 
   override suspend fun countStartingVMsBySetup(setupId: String): Long {
-    return collVMs.countDocumentsAwait(json {
-      obj(
-          STARTING_QUERY,
-          "$SETUP.$ID" to setupId
-      )
-    })
+    return collVMs.countDocumentsAwait(jsonObjectOf(
+        STARTING_QUERY,
+        "$SETUP.$ID" to setupId
+    ))
   }
 
   private suspend inline fun <reified T> getField(id: String, field: String): T {
-    val doc = collVMs.findOneAwait(json {
-      obj(
-          INTERNAL_ID to id
-      )
-    }, json {
-      obj(
-          field to 1
-      )
-    }) ?: throw NoSuchElementException("There is no VM with ID `$id'")
+    val doc = collVMs.findOneAwait(jsonObjectOf(
+        INTERNAL_ID to id
+    ), jsonObjectOf(
+        field to 1
+    )) ?: throw NoSuchElementException("There is no VM with ID `$id'")
     return doc.getValue(field) as T
   }
 
@@ -232,59 +211,49 @@ class MongoDBVMRegistry(private val vertx: Vertx,
 
   override suspend fun deleteVMsDestroyedBefore(timestamp: Instant): Collection<String> {
     // find IDs of VMs whose destruction time is before the given timestamp
-    val ids1 = collVMs.aggregateAwait(listOf(json {
-      obj(
-          "\$project" to obj(
-              DESTRUCTION_TIME to obj(
-                  "\$toLong" to obj(
-                      "\$toDate" to "\$$DESTRUCTION_TIME"
-                  )
-              )
-          )
-      )
-    }, json {
-      obj(
-          "\$match" to obj(
-              DESTRUCTION_TIME to obj(
-                  "\$lt" to timestamp.toEpochMilli()
-              )
-          )
-      )
-    })).map { it.getString(INTERNAL_ID) }
+    val ids1 = collVMs.aggregateAwait(listOf(jsonObjectOf(
+        "\$project" to jsonObjectOf(
+            DESTRUCTION_TIME to jsonObjectOf(
+                "\$toLong" to jsonObjectOf(
+                    "\$toDate" to "\$$DESTRUCTION_TIME"
+                )
+            )
+        )
+    ), jsonObjectOf(
+        "\$match" to jsonObjectOf(
+            DESTRUCTION_TIME to jsonObjectOf(
+                "\$lt" to timestamp.toEpochMilli()
+            )
+        )
+    ))).map { it.getString(INTERNAL_ID) }
 
     // find IDs of terminated VMs that do not have a destructionTime but
     // whose ID was created before the given timestamp (this will also
     // include VMs without a creationTime)
-    val ids2 = collVMs.findAwait(json {
-      obj(
-        "\$or" to array(
-          obj(
-            STATUS to VM.Status.DESTROYED.toString()
-          ),
-          obj(
-            STATUS to VM.Status.ERROR.toString()
-          )
+    val ids2 = collVMs.findAwait(jsonObjectOf(
+        "\$or" to jsonArrayOf(
+            jsonObjectOf(
+                STATUS to VM.Status.DESTROYED.toString()
+            ),
+            jsonObjectOf(
+                STATUS to VM.Status.ERROR.toString()
+            )
         ),
         DESTRUCTION_TIME to null
-      )
-    }, projection = json {
-      obj(
+    ), projection = jsonObjectOf(
         INTERNAL_ID to 1
-      )
-    }).map { it.getString(INTERNAL_ID) }
-      .filter { Instant.ofEpochMilli(UniqueID.toMillis(it)).isBefore(timestamp) }
+    )).map { it.getString(INTERNAL_ID) }
+        .filter { Instant.ofEpochMilli(UniqueID.toMillis(it)).isBefore(timestamp) }
 
     val ids = ids1 + ids2
 
     // delete 1000 VMs at once
     for (chunk in ids.chunked(1000)) {
-      collVMs.deleteManyAwait(json {
-        obj(
-            INTERNAL_ID to obj(
-                "\$in" to chunk
-            )
-        )
-      })
+      collVMs.deleteManyAwait(jsonObjectOf(
+          INTERNAL_ID to jsonObjectOf(
+              "\$in" to chunk
+          )
+      ))
     }
 
     return ids

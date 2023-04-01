@@ -25,8 +25,7 @@ import io.vertx.core.Vertx
 import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -106,11 +105,9 @@ class LocalAgentTest : AgentTest() {
     val agent = LocalAgent(vertx, localAgentDispatcher)
 
     vertx.setTimer(200) {
-      vertx.eventBus().send(LOCAL_AGENT_ADDRESS_PREFIX + processChain.id, json {
-        obj(
-            "action" to "cancel"
-        )
-      })
+      vertx.eventBus().send(LOCAL_AGENT_ADDRESS_PREFIX + processChain.id, jsonObjectOf(
+          "action" to "cancel"
+      ))
     }
 
     CoroutineScope(vertx.dispatcher()).launch {
@@ -147,11 +144,9 @@ class LocalAgentTest : AgentTest() {
 
     // cancel process chain after 200ms (while [agent.execute] waits for the next attempt)
     vertx.setTimer(200) {
-      vertx.eventBus().send(LOCAL_AGENT_ADDRESS_PREFIX + processChain.id, json {
-        obj(
-            "action" to "cancel"
-        )
-      })
+      vertx.eventBus().send(LOCAL_AGENT_ADDRESS_PREFIX + processChain.id, jsonObjectOf(
+          "action" to "cancel"
+      ))
     }
 
     CoroutineScope(vertx.dispatcher()).launch {
@@ -196,11 +191,9 @@ class LocalAgentTest : AgentTest() {
       val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
       CoroutineScope(vertx.dispatcher()).launch {
         ctx.coVerify {
-          val msg = vertx.eventBus().request<Double?>(address, json {
-            obj(
-                "action" to "getProgress"
-            )
-          }).await<Message<Double?>>()
+          val msg = vertx.eventBus().request<Double?>(address, jsonObjectOf(
+              "action" to "getProgress"
+          )).await<Message<Double?>>()
           assertThat(msg.body()).isNull()
         }
       }
@@ -210,11 +203,9 @@ class LocalAgentTest : AgentTest() {
       val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
       CoroutineScope(vertx.dispatcher()).launch {
         ctx.coVerify {
-          val msg = vertx.eventBus().request<Double?>(address, json {
-            obj(
-                "action" to "getProgress"
-            )
-          }).await<Message<Double?>>()
+          val msg = vertx.eventBus().request<Double?>(address, jsonObjectOf(
+              "action" to "getProgress"
+          )).await<Message<Double?>>()
           assertThat(msg.body()).isGreaterThan(0.0)
         }
       }
@@ -267,11 +258,9 @@ class LocalAgentTest : AgentTest() {
         // validate progress
         runBlocking(vertx.dispatcher()) {
           val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
-          val msg = vertx.eventBus().request<Double?>(address, json {
-            obj(
-                "action" to "getProgress"
-            )
-          }).await()
+          val msg = vertx.eventBus().request<Double?>(address, jsonObjectOf(
+              "action" to "getProgress"
+          )).await()
           assertThat(msg.body()).isEqualTo(i / 5.0)
         }
       }
@@ -335,11 +324,9 @@ class LocalAgentTest : AgentTest() {
         // validate progress
         runBlocking(vertx.dispatcher()) {
           val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
-          val msg = vertx.eventBus().request<Double?>(address, json {
-            obj(
-                "action" to "getProgress"
-            )
-          }).await()
+          val msg = vertx.eventBus().request<Double?>(address, jsonObjectOf(
+              "action" to "getProgress"
+          )).await()
           assertThat(msg.body()).isEqualTo(i / 5.0)
         }
 
@@ -388,11 +375,9 @@ class LocalAgentTest : AgentTest() {
       CoroutineScope(vertx.dispatcher()).launch {
         ctx.coVerify {
           assertThatThrownBy {
-            vertx.eventBus().request<Double?>(address, json {
-              obj(
-                  "action" to "INVALID_ACTION"
-              )
-            }).await()
+            vertx.eventBus().request<Double?>(address, jsonObjectOf(
+                "action" to "INVALID_ACTION"
+            )).await()
           }.hasMessage("Invalid action")
           messageSent = true
         }
@@ -413,11 +398,9 @@ class LocalAgentTest : AgentTest() {
    */
   @Test
   fun docker(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
-    val config = json {
-      obj(
-          ConfigConstants.TMP_PATH to tempDir.toString()
-      )
-    }
+    val config = jsonObjectOf(
+        ConfigConstants.TMP_PATH to tempDir.toString()
+    )
 
     val processChain = ProcessChain(executables = listOf(
         Executable(path = "alpine", serviceId = "sleep", arguments = listOf(
@@ -445,11 +428,9 @@ class LocalAgentTest : AgentTest() {
    */
   @Test
   fun dockerFail(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
-    val config = json {
-      obj(
-          ConfigConstants.TMP_PATH to tempDir.toString()
-      )
-    }
+    val config = jsonObjectOf(
+        ConfigConstants.TMP_PATH to tempDir.toString()
+    )
 
     val processChain = ProcessChain(executables = listOf(
         Executable(path = "alpine", serviceId = "false", arguments = listOf(
@@ -474,11 +455,9 @@ class LocalAgentTest : AgentTest() {
    */
   @Test
   fun dockerCancel(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
-    val config = json {
-      obj(
-          ConfigConstants.TMP_PATH to tempDir.toString()
-      )
-    }
+    val config = jsonObjectOf(
+        ConfigConstants.TMP_PATH to tempDir.toString()
+    )
 
     val processChain = ProcessChain(executables = listOf(
         Executable(path = "alpine", serviceId = "sleep", arguments = listOf(

@@ -4,8 +4,7 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import helper.JsonUtils
 import helper.UniqueID
 import io.vertx.core.Vertx
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.Tuple
 import model.cloud.VM
@@ -126,29 +125,23 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun setVMCreationTime(id: String, creationTime: Instant) {
-    val newObj = json {
-      obj(
-          CREATION_TIME to creationTime
-      )
-    }
+    val newObj = jsonObjectOf(
+        CREATION_TIME to creationTime
+    )
     updateProperties(VMS, id, newObj)
   }
 
   override suspend fun setVMAgentJoinTime(id: String, agentJoinTime: Instant) {
-    val newObj = json {
-      obj(
-          AGENT_JOIN_TIME to agentJoinTime
-      )
-    }
+    val newObj = jsonObjectOf(
+        AGENT_JOIN_TIME to agentJoinTime
+    )
     updateProperties(VMS, id, newObj)
   }
 
   override suspend fun setVMDestructionTime(id: String, destructionTime: Instant) {
-    val newObj = json {
-      obj(
-          DESTRUCTION_TIME to destructionTime
-      )
-    }
+    val newObj = jsonObjectOf(
+        DESTRUCTION_TIME to destructionTime
+    )
     updateProperties(VMS, id, newObj)
   }
 
@@ -156,21 +149,17 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
       newStatus: VM.Status) {
     val updateStatement = "UPDATE $VMS SET $DATA=$DATA || $1 WHERE $ID=$2 " +
         "AND $DATA->'$STATUS'=$3"
-    val newObj = json {
-      obj(
-          STATUS to newStatus.toString()
-      )
-    }
+    val newObj = jsonObjectOf(
+        STATUS to newStatus.toString()
+    )
     val updateParams = Tuple.of(newObj, id, currentStatus.toString())
     client.preparedQuery(updateStatement).execute(updateParams).await()
   }
 
   override suspend fun forceSetVMStatus(id: String, newStatus: VM.Status) {
-    val newObj = json {
-      obj(
-          STATUS to newStatus.toString()
-      )
-    }
+    val newObj = jsonObjectOf(
+        STATUS to newStatus.toString()
+    )
     updateProperties(VMS, id, newObj)
   }
 
@@ -183,29 +172,23 @@ class PostgreSQLVMRegistry(private val vertx: Vertx, url: String,
   }
 
   override suspend fun setVMExternalID(id: String, externalId: String) {
-    val newObj = json {
-      obj(
-          EXTERNAL_ID to externalId
-      )
-    }
+    val newObj = jsonObjectOf(
+        EXTERNAL_ID to externalId
+    )
     updateProperties(VMS, id, newObj)
   }
 
   override suspend fun setVMIPAddress(id: String, ipAddress: String) {
-    val newObj = json {
-      obj(
-          IP_ADDRESS to ipAddress
-      )
-    }
+    val newObj = jsonObjectOf(
+        IP_ADDRESS to ipAddress
+    )
     updateProperties(VMS, id, newObj)
   }
 
   override suspend fun setVMReason(id: String, reason: String?) {
-    val newObj = json {
-      obj(
-          REASON to reason
-      )
-    }
+    val newObj = jsonObjectOf(
+        REASON to reason
+    )
     updateProperties(VMS, id, newObj)
   }
 

@@ -10,8 +10,7 @@ import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -46,11 +45,9 @@ class PluginRegistryTest {
       // initialize the PluginRegistryFactory with an empty list of plugins
       // after each test, so we don't spill into other tests (from this class
       // as well as from other test classes!)
-      val config = json {
-        obj(
-            ConfigConstants.PLUGINS to JsonArray()
-        )
-      }
+      val config = jsonObjectOf(
+          ConfigConstants.PLUGINS to JsonArray()
+      )
       PluginRegistryFactory.initialize(vertx, config)
 
       ctx.completeNow()
@@ -63,11 +60,9 @@ class PluginRegistryTest {
   @Test
   fun compileDummyInitializer(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
-      val config = json {
-        obj(
-            ConfigConstants.PLUGINS to "src/**/db/dummyInitializer.yaml"
-        )
-      }
+      val config = jsonObjectOf(
+          ConfigConstants.PLUGINS to "src/**/db/dummyInitializer.yaml"
+      )
       PluginRegistryFactory.initialize(vertx, config)
 
       val pr = PluginRegistryFactory.create()
@@ -117,11 +112,9 @@ class PluginRegistryTest {
 
   private fun doCompileDummyOutputAdapter(vertx: Vertx, ctx: VertxTestContext, name: String) {
     CoroutineScope(vertx.dispatcher()).launch {
-      val config = json {
-        obj(
-            ConfigConstants.PLUGINS to "src/**/db/$name.yaml"
-        )
-      }
+      val config = jsonObjectOf(
+          ConfigConstants.PLUGINS to "src/**/db/$name.yaml"
+      )
       PluginRegistryFactory.initialize(vertx, config)
 
       val pr = PluginRegistryFactory.create()
@@ -173,11 +166,9 @@ class PluginRegistryTest {
   private fun doCompileDummyProcessChainAdapter(vertx: Vertx,
       ctx: VertxTestContext, name: String) {
     CoroutineScope(vertx.dispatcher()).launch {
-      val config = json {
-        obj(
-            ConfigConstants.PLUGINS to "src/**/db/$name.yaml"
-        )
-      }
+      val config = jsonObjectOf(
+          ConfigConstants.PLUGINS to "src/**/db/$name.yaml"
+      )
       PluginRegistryFactory.initialize(vertx, config)
 
       val expectedId = UniqueID.next()
@@ -248,11 +239,9 @@ class PluginRegistryTest {
   @Test
   fun compileDummyProcessChainConsistencyChecker(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
-      val config = json {
-        obj(
-            ConfigConstants.PLUGINS to "src/**/db/dummyProcessChainConsistencyChecker.yaml"
-        )
-      }
+      val config = jsonObjectOf(
+          ConfigConstants.PLUGINS to "src/**/db/dummyProcessChainConsistencyChecker.yaml"
+      )
       PluginRegistryFactory.initialize(vertx, config)
 
       val pr = PluginRegistryFactory.create()
@@ -280,11 +269,9 @@ class PluginRegistryTest {
   @Test
   fun compileDummyProgressEstimator(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
-      val config = json {
-        obj(
-            ConfigConstants.PLUGINS to "src/**/db/dummyProgressEstimator.yaml"
-        )
-      }
+      val config = jsonObjectOf(
+          ConfigConstants.PLUGINS to "src/**/db/dummyProgressEstimator.yaml"
+      )
       PluginRegistryFactory.initialize(vertx, config)
 
       val pr = PluginRegistryFactory.create()
@@ -333,11 +320,9 @@ class PluginRegistryTest {
   @Test
   fun compileDummyRuntime(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
-      val config = json {
-        obj(
-            ConfigConstants.PLUGINS to "src/**/db/dummyRuntime.yaml"
-        )
-      }
+      val config = jsonObjectOf(
+          ConfigConstants.PLUGINS to "src/**/db/dummyRuntime.yaml"
+      )
       PluginRegistryFactory.initialize(vertx, config)
 
       val pr = PluginRegistryFactory.create()
@@ -376,11 +361,9 @@ class PluginRegistryTest {
   @Test
   fun invalidPluginDescriptor(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
-      val config = json {
-        obj(
-            ConfigConstants.PLUGINS to "src/**/db/invalidPluginDescriptor.yaml"
-        )
-      }
+      val config = jsonObjectOf(
+          ConfigConstants.PLUGINS to "src/**/db/invalidPluginDescriptor.yaml"
+      )
       ctx.coVerify {
         assertThatThrownBy {
           PluginRegistryFactory.initialize(vertx, config)
@@ -396,11 +379,9 @@ class PluginRegistryTest {
   @Test
   fun invalidPluginSignature(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
-      val config = json {
-        obj(
-            ConfigConstants.PLUGINS to "src/**/db/invalidPluginSignature.yaml"
-        )
-      }
+      val config = jsonObjectOf(
+          ConfigConstants.PLUGINS to "src/**/db/invalidPluginSignature.yaml"
+      )
       ctx.coVerify {
         assertThatThrownBy {
           PluginRegistryFactory.initialize(vertx, config)
@@ -417,11 +398,9 @@ class PluginRegistryTest {
   @Test
   fun invalidPluginVersion(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
-      val config = json {
-        obj(
-            ConfigConstants.PLUGINS to "src/**/db/invalidPluginVersion.yaml"
-        )
-      }
+      val config = jsonObjectOf(
+          ConfigConstants.PLUGINS to "src/**/db/invalidPluginVersion.yaml"
+      )
       ctx.coVerify {
         assertThatThrownBy {
           PluginRegistryFactory.initialize(vertx, config)
@@ -440,11 +419,9 @@ class PluginRegistryTest {
   @Test
   fun emptyPluginVersion(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
-      val config = json {
-        obj(
-            ConfigConstants.PLUGINS to "src/**/db/emptyPluginVersion.yaml"
-        )
-      }
+      val config = jsonObjectOf(
+          ConfigConstants.PLUGINS to "src/**/db/emptyPluginVersion.yaml"
+      )
       ctx.coVerify {
         assertThatThrownBy {
           PluginRegistryFactory.initialize(vertx, config)
@@ -461,11 +438,9 @@ class PluginRegistryTest {
   @Test
   fun missingScriptFile(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
-      val config = json {
-        obj(
-            ConfigConstants.PLUGINS to "src/**/db/missingScriptFile.yaml"
-        )
-      }
+      val config = jsonObjectOf(
+          ConfigConstants.PLUGINS to "src/**/db/missingScriptFile.yaml"
+      )
       ctx.coVerify {
         assertThatThrownBy {
           PluginRegistryFactory.initialize(vertx, config)
@@ -482,11 +457,9 @@ class PluginRegistryTest {
   @Test
   fun compileError(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
-      val config = json {
-        obj(
-            ConfigConstants.PLUGINS to "src/**/db/compileError.yaml"
-        )
-      }
+      val config = jsonObjectOf(
+          ConfigConstants.PLUGINS to "src/**/db/compileError.yaml"
+      )
       ctx.coVerify {
         assertThatThrownBy {
           PluginRegistryFactory.initialize(vertx, config)
@@ -504,13 +477,11 @@ class PluginRegistryTest {
   fun noCache(@TempDir tempDir: File, vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
       val cacheDir = File(tempDir, "cache")
-      val config = json {
-        obj(
+      val config = jsonObjectOf(
           ConfigConstants.PLUGINS to "src/**/db/dummyInitializer.yaml",
           ConfigConstants.CACHE_PLUGINS_ENABLED to false,
           ConfigConstants.CACHE_PLUGINS_PATH to cacheDir.absolutePath,
-        )
-      }
+      )
       PluginRegistryFactory.initialize(vertx, config)
 
       assertThat(cacheDir).doesNotExist()
@@ -526,13 +497,11 @@ class PluginRegistryTest {
   fun useCache(@TempDir tempDir: File, vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
       val cacheDir = File(tempDir, "cache")
-      val config = json {
-        obj(
+      val config = jsonObjectOf(
           ConfigConstants.PLUGINS to "src/**/db/dummyInitializer.yaml",
           ConfigConstants.CACHE_PLUGINS_ENABLED to true,
           ConfigConstants.CACHE_PLUGINS_PATH to cacheDir.absolutePath,
-        )
-      }
+      )
       PluginRegistryFactory.initialize(vertx, config)
 
       assertThat(cacheDir).exists()
@@ -569,13 +538,11 @@ class PluginRegistryTest {
       """.trimIndent())
 
       val cacheDir = File(tempDir, "cache")
-      val config = json {
-        obj(
+      val config = jsonObjectOf(
           ConfigConstants.PLUGINS to yamlFile.absolutePath,
           ConfigConstants.CACHE_PLUGINS_ENABLED to true,
           ConfigConstants.CACHE_PLUGINS_PATH to cacheDir.absolutePath,
-        )
-      }
+      )
       PluginRegistryFactory.initialize(vertx, config)
 
       assertThat(cacheDir).exists()
@@ -608,13 +575,11 @@ class PluginRegistryTest {
     CoroutineScope(vertx.dispatcher()).launch {
       // compile normally
       val cacheDir = File(tempDir, "cache")
-      val config = json {
-        obj(
+      val config = jsonObjectOf(
           ConfigConstants.PLUGINS to "src/**/db/dummyInitializer.yaml",
           ConfigConstants.CACHE_PLUGINS_ENABLED to true,
           ConfigConstants.CACHE_PLUGINS_PATH to cacheDir.absolutePath,
-        )
-      }
+      )
       PluginRegistryFactory.initialize(vertx, config)
 
       assertThat(cacheDir).exists()
@@ -642,13 +607,11 @@ class PluginRegistryTest {
   fun compileErrorNoCache(@TempDir tempDir: File, vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
       val cacheDir = File(tempDir, "cache")
-      val config = json {
-        obj(
-          ConfigConstants.PLUGINS to "src/**/db/compileError.yaml",
-          ConfigConstants.CACHE_PLUGINS_ENABLED to true,
-          ConfigConstants.CACHE_PLUGINS_PATH to cacheDir.absolutePath,
-        )
-      }
+      val config = jsonObjectOf(
+        ConfigConstants.PLUGINS to "src/**/db/compileError.yaml",
+        ConfigConstants.CACHE_PLUGINS_ENABLED to true,
+        ConfigConstants.CACHE_PLUGINS_PATH to cacheDir.absolutePath,
+      )
 
       ctx.coVerify {
         assertThatThrownBy {
@@ -672,11 +635,9 @@ class PluginRegistryTest {
   @Test
   fun emptyPluginConfig(vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
-      val config = json {
-        obj(
-            ConfigConstants.PLUGINS to "src/**/db/emptyPluginConfig.yaml"
-        )
-      }
+      val config = jsonObjectOf(
+          ConfigConstants.PLUGINS to "src/**/db/emptyPluginConfig.yaml"
+      )
 
       // should not fail!
       PluginRegistryFactory.initialize(vertx, config)
