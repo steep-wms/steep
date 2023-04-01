@@ -5,7 +5,9 @@ import AddressConstants.LOGS_PROCESSCHAINS_PREFIX
 import AddressConstants.PROCESSCHAINS_ADDED
 import AddressConstants.PROCESSCHAINS_ADDED_SIZE
 import AddressConstants.PROCESSCHAIN_ALL_PRIORITY_CHANGED
+import AddressConstants.PROCESSCHAIN_ALL_RUNS_DELETED
 import AddressConstants.PROCESSCHAIN_ALL_STATUS_CHANGED
+import AddressConstants.PROCESSCHAIN_LAST_RUN_DELETED
 import AddressConstants.PROCESSCHAIN_PRIORITY_CHANGED
 import AddressConstants.PROCESSCHAIN_PROGRESS_CHANGED
 import AddressConstants.PROCESSCHAIN_RUN_ADDED
@@ -338,6 +340,10 @@ class HttpEndpoint : CoroutineVerticle() {
             .setAddress(PROCESSCHAIN_RUN_ADDED))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(PROCESSCHAIN_RUN_FINISHED))
+        .addOutboundPermitted(PermittedOptions()
+            .setAddress(PROCESSCHAIN_LAST_RUN_DELETED))
+        .addOutboundPermitted(PermittedOptions()
+            .setAddress(PROCESSCHAIN_ALL_RUNS_DELETED))
         .addOutboundPermitted(PermittedOptions()
             .setAddress(PROCESSCHAIN_STATUS_CHANGED))
         .addOutboundPermitted(PermittedOptions()
