@@ -680,6 +680,32 @@ class HttpEndpoint : CoroutineVerticle() {
         return@launch
       }
 
+      val totalRuns = submissionRegistry.countProcessChainRuns(id)
+      val runNumber = try {
+        val rn = ctx.queryParam("runNumber")?.firstOrNull()?.toLong()
+        if (rn != null) {
+          if (rn < 1) {
+            renderError(ctx, 400, "Run number must be greater than 0")
+            return@launch
+          }
+          if (rn > totalRuns) {
+            val m = when (totalRuns) {
+              0L -> "This process chain does not have any run yet"
+              1L -> "There is only one run for this process chain"
+              else -> "There are only $totalRuns runs for this process chain"
+            }
+            renderError(ctx, 404, "Run number out of range. $m.")
+            return@launch
+          }
+          rn
+        } else {
+          totalRuns
+        }
+      } catch (e: NumberFormatException) {
+        renderError(ctx, 400, "Invalid run number")
+        return@launch
+      }
+
       var receivedAny = false
       var foundSize: Long? = null
       var clientException = false
@@ -725,6 +751,7 @@ class HttpEndpoint : CoroutineVerticle() {
               obj(
                   "action" to if (headersOnly) "exists" else "fetch",
                   "id" to id,
+                  "runNumber" to runNumber,
                   "replyAddress" to replyAddress
               )
             }

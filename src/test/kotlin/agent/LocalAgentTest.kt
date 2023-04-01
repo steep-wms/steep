@@ -81,7 +81,7 @@ class LocalAgentTest : AgentTest() {
 
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        assertThatThrownBy { agent.execute(processChain) }
+        assertThatThrownBy { agent.execute(processChain, 1) }
             .isInstanceOf(CancellationException::class.java)
       }
 
@@ -115,7 +115,7 @@ class LocalAgentTest : AgentTest() {
 
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        assertThatThrownBy { agent.execute(processChain) }
+        assertThatThrownBy { agent.execute(processChain, 1) }
             .isInstanceOf(CancellationException::class.java)
       }
 
@@ -157,7 +157,7 @@ class LocalAgentTest : AgentTest() {
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         // execute process chain
-        assertThatThrownBy { agent.execute(processChain) }
+        assertThatThrownBy { agent.execute(processChain, 1) }
             .isInstanceOf(CancellationException::class.java)
 
         // execution should have been tried exactly once
@@ -221,7 +221,7 @@ class LocalAgentTest : AgentTest() {
     }
 
     CoroutineScope(vertx.dispatcher()).launch {
-      agent.execute(processChain)
+      agent.execute(processChain, 1)
       ctx.completeNow()
     }
   }
@@ -281,7 +281,7 @@ class LocalAgentTest : AgentTest() {
 
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        agent.execute(processChain)
+        agent.execute(processChain, 1)
         verify(exactly = 5) {
           customProgressEstimator.execute(exec, any(), vertx)
         }
@@ -356,7 +356,7 @@ class LocalAgentTest : AgentTest() {
 
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        agent.execute(processChain)
+        agent.execute(processChain, 1)
         verify(exactly = 9) {
           customProgressEstimator.execute(exec, any(), vertx)
         }
@@ -401,7 +401,7 @@ class LocalAgentTest : AgentTest() {
 
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        agent.execute(processChain)
+        agent.execute(processChain, 1)
         assertThat(messageSent).isTrue
       }
       ctx.completeNow()
@@ -433,7 +433,7 @@ class LocalAgentTest : AgentTest() {
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val start = System.currentTimeMillis()
-        agent.execute(processChain)
+        agent.execute(processChain, 1)
         assertThat(System.currentTimeMillis() - start).isGreaterThanOrEqualTo(1000)
       }
       ctx.completeNow()
@@ -462,7 +462,7 @@ class LocalAgentTest : AgentTest() {
 
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        assertThatThrownBy { agent.execute(processChain) }
+        assertThatThrownBy { agent.execute(processChain, 1) }
             .isInstanceOf(Shell.ExecutionException::class.java)
       }
       ctx.completeNow()
@@ -498,7 +498,7 @@ class LocalAgentTest : AgentTest() {
 
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        assertThatThrownBy { agent.execute(processChain) }
+        assertThatThrownBy { agent.execute(processChain, 1) }
             .isInstanceOf(CancellationException::class.java)
       }
 
@@ -534,7 +534,7 @@ class LocalAgentTest : AgentTest() {
 
     val config = JsonObject()
     CoroutineScope(vertx.dispatcher()).launch {
-      LocalAgent(vertx, localAgentDispatcher, config).execute(processChain)
+      LocalAgent(vertx, localAgentDispatcher, config).execute(processChain, 1)
       // only the directory (argument 2) should have been traversed but not
       // the file (argument 1)
       coVerify(exactly = 0) {
@@ -553,7 +553,7 @@ class LocalAgentTest : AgentTest() {
    * timeouts that do not apply
    */
   @Test
-  private fun noTimeoutApplies(vertx: Vertx, ctx: VertxTestContext) {
+  fun noTimeoutApplies(vertx: Vertx, ctx: VertxTestContext) {
     val exec = Executable(path = "dummy", arguments = emptyList(),
       serviceId = "dummy", maxRuntime = TimeoutPolicy(2000),
       deadline = TimeoutPolicy(2000)
@@ -569,7 +569,7 @@ class LocalAgentTest : AgentTest() {
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         // should succeed
-        agent.execute(processChain)
+        agent.execute(processChain, 1)
 
         // the executable should have been executed once
         verify(exactly = 1) {
@@ -599,7 +599,7 @@ class LocalAgentTest : AgentTest() {
 
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        assertThatThrownBy { agent.execute(processChain) }
+        assertThatThrownBy { agent.execute(processChain, 1) }
           .isInstanceOf(expectedExceptionClass)
           .hasMessage("Execution of service `dummy' timed out after 200 ms ($expectedType)")
 
@@ -617,7 +617,7 @@ class LocalAgentTest : AgentTest() {
    * caught from the service execution
    */
   @Test
-  private fun maxRuntimeFailure(vertx: Vertx, ctx: VertxTestContext) {
+  fun maxRuntimeFailure(vertx: Vertx, ctx: VertxTestContext) {
     val exec = Executable(path = "dummy", arguments = emptyList(),
       serviceId = "dummy", maxRuntime = TimeoutPolicy(2000),
       deadline = TimeoutPolicy(2000)
@@ -633,7 +633,7 @@ class LocalAgentTest : AgentTest() {
 
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        assertThatThrownBy { agent.execute(processChain) }.isSameAs(e)
+        assertThatThrownBy { agent.execute(processChain, 1) }.rootCause().isSameAs(e)
       }
 
       ctx.completeNow()
@@ -773,7 +773,7 @@ class LocalAgentTest : AgentTest() {
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         // should succeed
-        agent.execute(processChain)
+        agent.execute(processChain, 1)
 
         verify(exactly = 1) {
           anyConstructed<OtherRuntime>().execute(exec, any() as OutputCollector)
@@ -807,7 +807,7 @@ class LocalAgentTest : AgentTest() {
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         // should succeed
-        assertThatThrownBy { agent.execute(processChain) }
+        assertThatThrownBy { agent.execute(processChain, 1) }
           .isInstanceOf(LocalAgent.TimeoutCancellationException::class.java)
           .hasMessage("Execution of service `dummy' timed out after 200 ms (maximum inactivity)")
 

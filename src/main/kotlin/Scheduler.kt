@@ -453,7 +453,7 @@ class Scheduler : CoroutineVerticle() {
             run = submissionRegistry.addProcessChainRun(processChain.id, Instant.now())
           }
 
-          val results = agent.execute(processChain)
+          val results = agent.execute(processChain, run)
 
           submissionRegistry.setProcessChainResults(processChain.id, results)
           submissionRegistry.finishProcessChainRun(processChain.id, run,

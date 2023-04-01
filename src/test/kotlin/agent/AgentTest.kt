@@ -82,7 +82,7 @@ abstract class AgentTest {
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         // execute process chain
-        val results = agent.execute(processChain)
+        val results = agent.execute(processChain, 1)
 
         // check results
         val outputFile = File(tempDir2, inputFile.name)
@@ -146,7 +146,7 @@ abstract class AgentTest {
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         // execute process chain
-        val results = agent.execute(processChain)
+        val results = agent.execute(processChain, 1)
 
         // check results
         val outputFile = File(tempDir2, inputFile.name)
@@ -203,7 +203,7 @@ abstract class AgentTest {
 
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        agent.execute(processChain)
+        agent.execute(processChain, 1)
         verify(exactly = 1) {
           customRuntime.execute(exec, any(), any())
         }
@@ -244,7 +244,7 @@ abstract class AgentTest {
 
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        assertThatThrownBy { agent.execute(processChain) }.matches { t -> assert(ex, t) }
+        assertThatThrownBy { agent.execute(processChain, 1) }.matches { t -> assert(ex, t) }
       }
       ctx.completeNow()
     }
@@ -282,7 +282,7 @@ abstract class AgentTest {
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         // execute process chain
-        agent.execute(processChain)
+        agent.execute(processChain, 1)
 
         verify(exactly = 3) {
           anyConstructed<OtherRuntime>().execute(any(), any() as OutputCollector)

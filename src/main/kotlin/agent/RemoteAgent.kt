@@ -55,7 +55,8 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
     counter = counterPromise.future()
   }
 
-  override suspend fun execute(processChain: ProcessChain): Map<String, List<Any>> {
+  override suspend fun execute(processChain: ProcessChain,
+      runNumber: Long): Map<String, List<Any>> {
     // create reply handler
     val replyAddress = id + "." + UniqueID.next()
     val adapter = vertx.receiveChannelHandler<Message<JsonObject>>()
@@ -84,6 +85,7 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
           obj(
             "action" to "process",
             "processChain" to JsonUtils.toJson(processChain),
+            "runNumber" to runNumber,
             "replyAddress" to replyAddress,
             "sequence" to counter.await().andIncrement.await()
           )

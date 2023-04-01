@@ -52,7 +52,7 @@ class RemoteAgentTest : AgentTest() {
       RemoteAgent(ADDRESS, vertx)
 
   private fun registerConsumer(vertx: Vertx) {
-    vertx.eventBus().consumer<JsonObject>(ADDRESS) consumer@ { msg ->
+    vertx.eventBus().consumer(ADDRESS) consumer@ { msg ->
       val jsonObj: JsonObject = msg.body()
       val action: String = jsonObj["action"]
       if (action != "process") {
@@ -62,6 +62,11 @@ class RemoteAgentTest : AgentTest() {
 
       val replyAddress: String = jsonObj["replyAddress"]
       val processChain = JsonUtils.fromJson<ProcessChain>(jsonObj["processChain"])
+      val runNumber: Long = jsonObj["runNumber"]
+      if (runNumber != 1L) {
+        msg.fail(400, "Wrong run number: $runNumber")
+        return@consumer
+      }
       val sequence: Long = jsonObj["sequence"]
       if (sequence != 0L) {
         msg.fail(400, "Wrong sequence number: $sequence")
@@ -71,7 +76,7 @@ class RemoteAgentTest : AgentTest() {
       CoroutineScope(vertx.dispatcher()).launch {
         val la = LocalAgent(vertx, localAgentDispatcher)
         try {
-          val results = la.execute(processChain)
+          val results = la.execute(processChain, 1)
           vertx.eventBus().send(replyAddress, json {
             obj(
                 "results" to JsonUtils.toJson(results),
@@ -136,7 +141,7 @@ class RemoteAgentTest : AgentTest() {
     val agent = createAgent(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        assertThatThrownBy { agent.execute(ProcessChain()) }
+        assertThatThrownBy { agent.execute(ProcessChain(), 1) }
             .isInstanceOf(ReplyException::class.java)
       }
       ctx.completeNow()
@@ -162,7 +167,7 @@ class RemoteAgentTest : AgentTest() {
     val agent = createAgent(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        assertThatThrownBy { agent.execute(ProcessChain()) }
+        assertThatThrownBy { agent.execute(ProcessChain(), 1) }
             .isInstanceOf(IllegalStateException::class.java)
             .hasMessage("Agent left the cluster before process chain " +
                 "execution could be finished")
@@ -196,7 +201,7 @@ class RemoteAgentTest : AgentTest() {
     val agent = createAgent(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        assertThatThrownBy { agent.execute(ProcessChain()) }
+        assertThatThrownBy { agent.execute(ProcessChain(), 1) }
             .isInstanceOf(RemoteException::class.java)
             .hasMessage(errorMessage)
       }
@@ -226,7 +231,7 @@ class RemoteAgentTest : AgentTest() {
     val agent = createAgent(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        assertThatThrownBy { agent.execute(ProcessChain()) }
+        assertThatThrownBy { agent.execute(ProcessChain(), 1) }
             .isInstanceOf(CancellationException::class.java)
       }
       ctx.completeNow()
@@ -262,9 +267,9 @@ class RemoteAgentTest : AgentTest() {
     val agent = createAgent(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        agent.execute(ProcessChain())
-        agent.execute(ProcessChain())
-        agent.execute(ProcessChain())
+        agent.execute(ProcessChain(), 1)
+        agent.execute(ProcessChain(), 1)
+        agent.execute(ProcessChain(), 1)
         assertThat(q).isEmpty()
       }
       ctx.completeNow()

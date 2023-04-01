@@ -261,6 +261,27 @@ class Steep : CoroutineVerticle() {
       return
     }
 
+    // get run number
+    val runNumber = jsonObj.getLong("runNumber")
+    if (runNumber == null) {
+      vertx.eventBus().send(replyAddress, json {
+        obj(
+            "error" to 400,
+            "message" to "Missing run number"
+        )
+      })
+      return
+    }
+    if (runNumber < 1) {
+      vertx.eventBus().send(replyAddress, json {
+        obj(
+            "error" to 400,
+            "message" to "Run number must be greater than 0"
+        )
+      })
+      return
+    }
+
     // create log file path
     val path = config.getString(ConfigConstants.LOGS_PROCESSCHAINS_PATH)
     if (path == null) {
@@ -275,7 +296,7 @@ class Steep : CoroutineVerticle() {
 
     val groupByPrefix = config.getInteger(ConfigConstants.LOGS_PROCESSCHAINS_GROUPBYPREFIX, 0)
 
-    val filename = "$id.log"
+    val filename = if (runNumber > 1) "$id.$runNumber.log" else "$id.log"
     val filepath = if (groupByPrefix > 0) {
       val prefix = id.substring(0, groupByPrefix)
       Paths.get(path, prefix, filename).toString()
@@ -585,6 +606,7 @@ class Steep : CoroutineVerticle() {
     try {
       // parse message
       val jsonObj: JsonObject = msg.body()
+      val runNumber: Long = jsonObj.getLong("runNumber", 1L)
       val replyAddress: String = jsonObj["replyAddress"]
       val processChain = JsonUtils.fromJson<ProcessChain>(jsonObj["processChain"])
       lastProcessChainSequence = jsonObj.getLong("sequence", -1L)
@@ -621,7 +643,7 @@ class Steep : CoroutineVerticle() {
         isExecuting.set(true)
         try {
           log.info("Executing process chain ${processChain.id} ...")
-          val answer = executeProcessChain(processChain)
+          val answer = executeProcessChain(processChain, runNumber)
 
           // don't accept idempotent allocations anymore
           val replyAddresses = busy?.replyAddresses ?: listOf(replyAddress)
@@ -663,11 +685,13 @@ class Steep : CoroutineVerticle() {
    * Execute the given process chain with a [LocalAgent] and return an object
    * that can be sent back to the remote peer
    * @param processChain the process chain to execute
+   * @param runNumber the number of the process chain [model.processchain.Run]
    * @return the reply message (containing either results or an error message)
    */
-  private suspend fun executeProcessChain(processChain: ProcessChain) = try {
+  private suspend fun executeProcessChain(processChain: ProcessChain,
+      runNumber: Long) = try {
     val la = LocalAgent(vertx, localAgentDispatcher)
-    val results = la.execute(processChain)
+    val results = la.execute(processChain, runNumber)
     json {
       obj(
           "results" to JsonUtils.toJson(results),

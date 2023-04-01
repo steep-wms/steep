@@ -40,8 +40,14 @@ class ProcessChainLogFileAppender<E> : FileAppender<E>() {
       return
     }
 
-    val id = ln.substring(LocalAgent.PROCESSCHAIN_LOG_PREFIX.length)
-    val filename = "$id.log"
+    val idAndRunNumber = ln.substring(LocalAgent.PROCESSCHAIN_LOG_PREFIX.length)
+    val (id, runNumber) = idAndRunNumber.lastIndexOf('.').let { i ->
+      idAndRunNumber.substring(0, i) to idAndRunNumber.substring(i + 1).toLong() }
+    val filename = if (runNumber > 1) {
+      "$idAndRunNumber.log"
+    } else {
+      "$id.log"
+    }
 
     file = if (groupByPrefix > 0) {
       Paths.get(p, id.substring(0, groupByPrefix), filename).toString()

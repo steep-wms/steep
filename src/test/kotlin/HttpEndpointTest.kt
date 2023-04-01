@@ -2264,6 +2264,7 @@ class HttpEndpointTest {
 
     coEvery { submissionRegistry.getProcessChainStatus(id) } returns
         ProcessChainStatus.REGISTERED
+    coEvery { submissionRegistry.countProcessChainRuns(id) } returns 0
 
     coEvery { agentRegistry.getPrimaryAgentIds() } returns emptySet()
 
@@ -2283,11 +2284,21 @@ class HttpEndpointTest {
       id: String, contents: String, start: Int = 0, end: Int = contents.length,
       agent1Asked: AtomicInteger, agent2Asked: AtomicInteger,
       checkOnly: Boolean = false, errorMessage: String? = null) {
+    prepareGetProcessChainLogById(vertx, ctx, id, listOf(contents),
+        listOf(start to end), agent1Asked, agent2Asked, checkOnly, errorMessage)
+  }
+
+  private fun prepareGetProcessChainLogById(vertx: Vertx, ctx: VertxTestContext,
+      id: String, contents: List<String>, startEnd: List<Pair<Int, Int>>,
+      agent1Asked: AtomicInteger, agent2Asked: AtomicInteger,
+      checkOnly: Boolean = false, errorMessage: String? = null) {
     val agentId1 = "agent1"
     val agentId2 = "agent2"
 
     coEvery { submissionRegistry.getProcessChainStatus(id) } returns
         ProcessChainStatus.REGISTERED
+    coEvery { submissionRegistry.countProcessChainRuns(id) } returns
+        contents.size.toLong()
 
     coEvery { agentRegistry.getPrimaryAgentIds() } returns setOf(agentId1, agentId2)
 
@@ -2300,6 +2311,9 @@ class HttpEndpointTest {
       ctx.verify {
         assertThat(obj.getString("id")).isEqualTo(id)
         val replyAddress = obj.getString("replyAddress")
+        val runNumber = obj.getLong("runNumber").toInt()
+        val start = startEnd[runNumber - 1].first
+        val end = startEnd[runNumber - 1].second
         assertThat(replyAddress).matches(Pattern.quote("$address1.reply.") + ".+")
         if (end < start) {
           vertx.eventBus().send(replyAddress, json {
@@ -2323,12 +2337,16 @@ class HttpEndpointTest {
     vertx.eventBus().consumer<JsonObject>(address2) { msg ->
       agent2Asked.getAndIncrement()
       val obj = msg.body()
+      val runNumber = obj.getLong("runNumber").toInt()
+      val start = startEnd[runNumber - 1].first
+      val end = startEnd[runNumber - 1].second
+      val cts = contents[runNumber - 1]
       CoroutineScope(vertx.dispatcher()).launch {
         ctx.coVerify {
           if (start != 0) {
             assertThat(obj.getLong("start")).isEqualTo(start.toLong())
           }
-          if (end != contents.length) {
+          if (end != cts.length) {
             assertThat(obj.getLong("end")).isEqualTo(end.toLong() - 1L)
           }
           assertThat(obj.getString("id")).isEqualTo(id)
@@ -2345,7 +2363,7 @@ class HttpEndpointTest {
           } else {
             vertx.eventBus().request<Unit>(replyAddress, json {
               obj(
-                  "size" to contents.length.toLong(),
+                  "size" to cts.length.toLong(),
                   "start" to start.toLong(),
                   "end" to end.toLong() - 1L,
                   "length" to (end - start).toLong()
@@ -2355,7 +2373,7 @@ class HttpEndpointTest {
             if (!checkOnly) {
               val chunk = json {
                 obj(
-                    "data" to contents.substring(start, end)
+                    "data" to cts.substring(start, end)
                 )
               }
               vertx.eventBus().request<Unit>(replyAddress, chunk).await()
@@ -2564,6 +2582,96 @@ class HttpEndpointTest {
 
         assertThat(agent1Asked.get()).isEqualTo(1)
         assertThat(agent2Asked.get()).isEqualTo(0)
+      }
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if we can handle incorrect run numbers
+   */
+  @Test
+  fun getProcessChainLogByIdIncorrectRunNumber(vertx: Vertx, ctx: VertxTestContext) {
+    val id = "abcdef123456"
+    val client = WebClient.create(vertx)
+
+    coEvery { submissionRegistry.getProcessChainStatus(id) } returns
+        ProcessChainStatus.SUCCESS
+    coEvery { submissionRegistry.countProcessChainRuns(id) } returns 1
+
+    // coEvery { agentRegistry.getPrimaryAgentIds() } returns emptySet()
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        val body = client.get(port, "localhost", "/logs/processchains/$id?runNumber=foobar")
+            .`as`(BodyCodec.string())
+            .expect(ResponsePredicate.SC_BAD_REQUEST)
+            .send()
+            .await()
+            .body()
+        assertThat(body).isEqualTo("Invalid run number")
+      }
+
+      ctx.coVerify {
+        val body = client.get(port, "localhost", "/logs/processchains/$id?runNumber=2")
+            .`as`(BodyCodec.string())
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .send()
+            .await()
+            .body()
+        assertThat(body).contains("Run number out of range")
+      }
+
+      ctx.coVerify {
+        val body = client.get(port, "localhost", "/logs/processchains/$id?runNumber=0")
+            .`as`(BodyCodec.string())
+            .expect(ResponsePredicate.SC_BAD_REQUEST)
+            .send()
+            .await()
+            .body()
+        assertThat(body).contains("Run number must be greater than 0")
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if we can get the contents of process chain log files for different
+   * run numbers
+   */
+  @Test
+  fun getProcessChainLogByIdRunNumber(vertx: Vertx, ctx: VertxTestContext) {
+    val id = "abcdef123456"
+    val contents1 = "Hello world 1"
+    val contents2 = "Hello world 2"
+
+    val agent1Asked = AtomicInteger(0)
+    val agent2Asked = AtomicInteger(0)
+    prepareGetProcessChainLogById(vertx, ctx, id, listOf(contents1, contents2),
+        listOf(0 to contents1.length, 0 to contents2.length),
+        agent1Asked = agent1Asked, agent2Asked = agent2Asked)
+
+    val client = WebClient.create(vertx)
+    CoroutineScope(vertx.dispatcher()).launch {
+      for ((i, p) in listOf(null to contents2, 1 to contents1, 2 to contents2).withIndex()) {
+        ctx.coVerify {
+          val param = when (p.first) {
+            null -> ""
+            else -> "?runNumber=${p.first}"
+          }
+          val response = client.get(port, "localhost", "/logs/processchains/$id$param")
+              .`as`(BodyCodec.string())
+              .expect(ResponsePredicate.SC_OK)
+              .expect(contentType("text/plain"))
+              .send()
+              .await()
+
+          assertThat(agent1Asked.get()).isEqualTo(1 + i)
+          assertThat(agent2Asked.get()).isEqualTo(1 + i)
+
+          assertThat(response.body()).isEqualTo(p.second)
+        }
       }
       ctx.completeNow()
     }

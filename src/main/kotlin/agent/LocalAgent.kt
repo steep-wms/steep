@@ -114,7 +114,8 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
   private val otherRuntime by lazy { OtherRuntime() }
   private val dockerRuntime by lazy { DockerRuntime(config) }
 
-  override suspend fun execute(processChain: ProcessChain): Map<String, List<Any>> {
+  override suspend fun execute(processChain: ProcessChain,
+      runNumber: Long): Map<String, List<Any>> {
     val outputs = processChain.executables
         .flatMap { it.arguments }
         .filter { it.type == Argument.Type.OUTPUT }
@@ -151,7 +152,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
     }
 
     // create object that holds the current Vert.x context so runtimes which
-    // are executed in another coroutine cotext can access it
+    // are executed in another coroutine context can access it
     val contextWrapper = VertxContextWrapper(vertx)
 
     // execute the process chain
@@ -159,7 +160,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
     try {
       // create all required output directories
       for (exec in mkdirs) {
-        execute(exec, processChain.id, executor, contextWrapper)
+        execute(exec, processChain.id, runNumber, executor, contextWrapper)
       }
 
       // run executables and track progress
@@ -173,7 +174,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
                   gaugeRetries.labels(exec.serviceId).inc()
                 }
                 withTimeout(exec.maxRuntime, "maximum runtime", exec.serviceId) {
-                  execute(exec, processChain.id, executor, contextWrapper) { p ->
+                  execute(exec, processChain.id, runNumber, executor, contextWrapper) { p ->
                     val step = 1.0 / processChain.executables.size
                     setProgress(step * index + step * p)
                   }
@@ -222,7 +223,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
   }
 
   private suspend fun execute(exec: Executable, processChainId: String,
-      executor: ExecutorService, vertx: VertxContextWrapper,
+      runNumber: Long, executor: ExecutorService, vertx: VertxContextWrapper,
       progressUpdater: ((Double) -> Unit)? = null) {
     withTimeout(exec.maxInactivity, "maximum inactivity", exec.serviceId) {
       val collector = if (progressUpdater != null) {
@@ -231,7 +232,8 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
         DefaultOutputCollector(outputLinesToCollect)
       }.let {
         if (processChainLogsEnabled) {
-          val logger = LoggerFactory.getLogger("${PROCESSCHAIN_LOG_PREFIX}${processChainId}")
+          val logger = LoggerFactory.getLogger(
+              "${PROCESSCHAIN_LOG_PREFIX}${processChainId}.$runNumber")
           LoggingOutputCollector(it, logger)
         } else {
           it

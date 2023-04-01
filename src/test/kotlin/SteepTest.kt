@@ -111,7 +111,7 @@ class SteepTest {
             processChain.id)
         assertThat(agent).isNotNull
 
-        val results = agent!!.execute(processChain)
+        val results = agent!!.execute(processChain, 1)
         assertThat(results).isEmpty()
       }
       ctx.completeNow()
@@ -121,14 +121,13 @@ class SteepTest {
   /**
    * Execute a simple process chain
    */
-  @Test
-  fun executeProcessChain(vertx: Vertx, ctx: VertxTestContext) {
+  private fun doExecuteProcessChain(vertx: Vertx, ctx: VertxTestContext, runNumber: Long) {
     val processChain = ProcessChain()
     val remoteAgentRegistry = RemoteAgentRegistry(vertx)
     val expectedResults = mapOf("output_files" to listOf("test1", "test2"))
 
     mockkConstructor(LocalAgent::class)
-    coEvery { anyConstructed<LocalAgent>().execute(processChain) } returns expectedResults
+    coEvery { anyConstructed<LocalAgent>().execute(processChain, runNumber) } returns expectedResults
 
     CoroutineScope(vertx.dispatcher()).launch {
       val candidates = remoteAgentRegistry.selectCandidates(listOf(
@@ -139,11 +138,27 @@ class SteepTest {
             processChain.id)
         assertThat(agent).isNotNull
 
-        val results = agent!!.execute(processChain)
+        val results = agent!!.execute(processChain, runNumber)
         assertThat(results).isEqualTo(expectedResults)
       }
       ctx.completeNow()
     }
+  }
+
+  /**
+   * Execute a simple process chain
+   */
+  @Test
+  fun executeProcessChain(vertx: Vertx, ctx: VertxTestContext) {
+    doExecuteProcessChain(vertx, ctx, 1)
+  }
+
+  /**
+   * Execute a simple process chain with a different run number
+   */
+  @Test
+  fun executeProcessChainRunNumber(vertx: Vertx, ctx: VertxTestContext) {
+    doExecuteProcessChain(vertx, ctx, 5)
   }
 
   /**
@@ -156,7 +171,7 @@ class SteepTest {
     val errorMessage = "File not found"
 
     mockkConstructor(LocalAgent::class)
-    coEvery { anyConstructed<LocalAgent>().execute(processChain) } throws
+    coEvery { anyConstructed<LocalAgent>().execute(processChain, 1) } throws
         IOException(errorMessage)
 
     CoroutineScope(vertx.dispatcher()).launch {
@@ -166,7 +181,7 @@ class SteepTest {
       ctx.coVerify {
         val agent = remoteAgentRegistry.tryAllocate(candidates[0].second,
             processChain.id)
-        assertThatThrownBy { agent!!.execute(processChain) }
+        assertThatThrownBy { agent!!.execute(processChain, 1) }
             .isInstanceOf(RemoteException::class.java)
             .hasMessage(errorMessage)
       }
@@ -186,7 +201,7 @@ class SteepTest {
     val exitCode = 132
 
     mockkConstructor(LocalAgent::class)
-    coEvery { anyConstructed<LocalAgent>().execute(processChain) } throws
+    coEvery { anyConstructed<LocalAgent>().execute(processChain, 1) } throws
         Shell.ExecutionException(errorMessage, lastOutput, exitCode)
 
     CoroutineScope(vertx.dispatcher()).launch {
@@ -197,7 +212,7 @@ class SteepTest {
         val agent = remoteAgentRegistry.tryAllocate(candidates[0].second,
             processChain.id)
         assertThat(agent).isNotNull
-        assertThatThrownBy { agent!!.execute(processChain) }
+        assertThatThrownBy { agent!!.execute(processChain, 1) }
             .isInstanceOf(RemoteException::class.java)
             .hasMessage("$errorMessage\n\nExit code: $exitCode\n\n$lastOutput")
       }
@@ -217,7 +232,7 @@ class SteepTest {
     val expectedResults = mapOf("output_files" to listOf("test1", "test2"))
 
     mockkConstructor(LocalAgent::class)
-    coEvery { anyConstructed<LocalAgent>().execute(processChain) } coAnswers {
+    coEvery { anyConstructed<LocalAgent>().execute(processChain, 1) } coAnswers {
       // pretend it takes 1s to execute the process chain
       delay(1000)
       expectedResults
@@ -233,10 +248,10 @@ class SteepTest {
         assertThat(agent).isNotNull
 
         val d1 = async {
-          agent!!.execute(processChain)
+          agent!!.execute(processChain, 1)
         }
         val d2 = async {
-          agent!!.execute(processChain)
+          agent!!.execute(processChain, 1)
         }
 
         val results1 = d1.await()
@@ -247,7 +262,7 @@ class SteepTest {
 
         // make sure `execute` was only called once
         coVerify(exactly = 1) {
-          anyConstructed<LocalAgent>().execute(processChain)
+          anyConstructed<LocalAgent>().execute(processChain, 1)
         }
       }
 
@@ -267,7 +282,7 @@ class SteepTest {
     val expectedResults = mapOf("output_files" to listOf("test1", "test2"))
 
     mockkConstructor(LocalAgent::class)
-    coEvery { anyConstructed<LocalAgent>().execute(processChain) } coAnswers {
+    coEvery { anyConstructed<LocalAgent>().execute(processChain, 1) } coAnswers {
       // pretend it takes 1s to execute the process chain
       delay(1000)
       expectedResults
@@ -283,7 +298,7 @@ class SteepTest {
         assertThat(agent1).isNotNull
 
         val d1 = async {
-          agent1!!.execute(processChain)
+          agent1!!.execute(processChain, 1)
         }
 
         delay(500)
@@ -292,7 +307,7 @@ class SteepTest {
             processChain.id)
         assertThat(agent2).isNotNull
         val d2 = async {
-          agent2!!.execute(processChain)
+          agent2!!.execute(processChain, 1)
         }
 
         val results1 = d1.await()
@@ -303,7 +318,7 @@ class SteepTest {
 
         // make sure `execute` was only called once
         coVerify(exactly = 1) {
-          anyConstructed<LocalAgent>().execute(processChain)
+          anyConstructed<LocalAgent>().execute(processChain, 1)
         }
       }
 
@@ -497,7 +512,7 @@ class SteepTest {
     val remoteAgentRegistry = RemoteAgentRegistry(vertx)
 
     mockkConstructor(LocalAgent::class)
-    coEvery { anyConstructed<LocalAgent>().execute(processChain) } returns emptyMap()
+    coEvery { anyConstructed<LocalAgent>().execute(processChain, 1) } returns emptyMap()
 
     CoroutineScope(vertx.dispatcher()).launch {
       val candidates = remoteAgentRegistry.selectCandidates(listOf(
@@ -507,7 +522,7 @@ class SteepTest {
         val agent = remoteAgentRegistry.tryAllocate(candidates[0].second,
             processChain.id)
         assertThat(agent).isNotNull
-        agent!!.execute(processChain)
+        agent!!.execute(processChain, 1)
 
         delay(1001)
 
@@ -566,6 +581,7 @@ class SteepTest {
           obj(
               "action" to "fetch",
               "id" to id,
+              "runNumber" to 1,
               "replyAddress" to replyAddress
           )
         }
@@ -605,6 +621,7 @@ class SteepTest {
           obj(
               "action" to "exists",
               "id" to id,
+              "runNumber" to 1,
               "replyAddress" to replyAddress
           )
         }
@@ -619,7 +636,7 @@ class SteepTest {
   }
 
   /**
-   * Test if we fetching a process chain log file fails if it does not exist
+   * Test if fetching a process chain log file fails if it does not exist
    */
   @Test
   fun fetchNonExistingProcessChainLogFile(vertx: Vertx, ctx: VertxTestContext) {
@@ -638,6 +655,7 @@ class SteepTest {
           obj(
               "action" to "fetch",
               "id" to id,
+              "runNumber" to 1,
               "replyAddress" to replyAddress
           )
         }
@@ -675,6 +693,7 @@ class SteepTest {
           obj(
               "action" to "fetch",
               "id" to id,
+              "runNumber" to 1,
               "replyAddress" to replyAddress,
               "start" to 0,
               "end" to 0
@@ -698,6 +717,7 @@ class SteepTest {
           obj(
               "action" to "fetch",
               "id" to id,
+              "runNumber" to 1,
               "replyAddress" to replyAddress,
               "start" to 0,
               "end" to 4
@@ -721,6 +741,7 @@ class SteepTest {
           obj(
               "action" to "fetch",
               "id" to id,
+              "runNumber" to 1,
               "replyAddress" to replyAddress,
               "start" to 2,
               "end" to 6
@@ -744,6 +765,7 @@ class SteepTest {
           obj(
               "action" to "fetch",
               "id" to id,
+              "runNumber" to 1,
               "replyAddress" to replyAddress,
               "start" to 6,
               "end" to 10
@@ -767,6 +789,7 @@ class SteepTest {
           obj(
               "action" to "fetch",
               "id" to id,
+              "runNumber" to 1,
               "replyAddress" to replyAddress,
               "start" to 6,
               "end" to 11
@@ -790,6 +813,7 @@ class SteepTest {
           obj(
               "action" to "fetch",
               "id" to id,
+              "runNumber" to 1,
               "replyAddress" to replyAddress,
               "start" to 6,
               "end" to 100
@@ -813,6 +837,7 @@ class SteepTest {
           obj(
               "action" to "fetch",
               "id" to id,
+              "runNumber" to 1,
               "replyAddress" to replyAddress,
               "start" to 6
           )
@@ -835,6 +860,7 @@ class SteepTest {
           obj(
               "action" to "fetch",
               "id" to id,
+              "runNumber" to 1,
               "replyAddress" to replyAddress,
               "start" to 6,
               "end" to 2
@@ -850,6 +876,7 @@ class SteepTest {
           obj(
               "action" to "fetch",
               "id" to id,
+              "runNumber" to 1,
               "replyAddress" to replyAddress,
               "start" to 11
           )
@@ -864,6 +891,7 @@ class SteepTest {
           obj(
               "action" to "fetch",
               "id" to id,
+              "runNumber" to 1,
               "replyAddress" to replyAddress,
               "start" to 10,
               "end" to 10
@@ -887,6 +915,7 @@ class SteepTest {
           obj(
               "action" to "fetch",
               "id" to id,
+              "runNumber" to 1,
               "replyAddress" to replyAddress,
               "start" to -1
           )
@@ -909,6 +938,7 @@ class SteepTest {
           obj(
               "action" to "fetch",
               "id" to id,
+              "runNumber" to 1,
               "replyAddress" to replyAddress,
               "start" to -5
           )
@@ -931,6 +961,7 @@ class SteepTest {
           obj(
               "action" to "fetch",
               "id" to id,
+              "runNumber" to 1,
               "replyAddress" to replyAddress,
               "start" to -20
           )
@@ -950,6 +981,100 @@ class SteepTest {
 
         ctx.completeNow()
       }
+    }
+  }
+
+  /**
+   * Test if fetching a process chain log file fails if the run number is invalid
+   */
+  @Test
+  fun fetchProcessChainLogFileByInvalidRunNumber(vertx: Vertx, ctx: VertxTestContext) {
+    val id = "FOOBAR"
+
+    val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId +
+        REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
+    val replyAddress = "$address.reply.${UniqueID.next()}"
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      val consumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
+      val channel = consumer.toReceiveChannel(vertx)
+
+      ctx.coVerify {
+        val msgMissingRunNumber = json {
+          obj(
+              "action" to "fetch",
+              "id" to id,
+              "replyAddress" to replyAddress
+          )
+        }
+        vertx.eventBus().send(address, msgMissingRunNumber)
+
+        val obj = channel.receive().body()
+        assertThat(obj.getInteger("error")).isEqualTo(400)
+      }
+
+      ctx.coVerify {
+        val msgInvalidRunNumber = json {
+          obj(
+              "action" to "fetch",
+              "id" to id,
+              "runNumber" to 0,
+              "replyAddress" to replyAddress
+          )
+        }
+        vertx.eventBus().send(address, msgInvalidRunNumber)
+
+        val obj = channel.receive().body()
+        assertThat(obj.getInteger("error")).isEqualTo(400)
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if we can fetch a process chain log file by run number
+   */
+  @Test
+  fun fetchProcessChainLogFileByRunNumber(vertx: Vertx, ctx: VertxTestContext) {
+    val id = "abcdefg123456"
+    val contents1 = "Hello world 1"
+    val contents2 = "Hello world 2"
+    val logFile1 = File(processChainLogPath, "$id.log")
+    logFile1.writeText(contents1)
+    val logFile2 = File(processChainLogPath, "$id.2.log")
+    logFile2.writeText(contents2)
+    val contents = listOf(contents1, contents2)
+
+    val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId +
+        REMOTE_AGENT_PROCESSCHAINLOGS_SUFFIX
+    val replyAddress = "$address.reply.${UniqueID.next()}"
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      val consumer = vertx.eventBus().consumer<JsonObject>(replyAddress)
+      val channel = consumer.toReceiveChannel(vertx)
+
+      for ((i, c) in contents.withIndex()) {
+        ctx.coVerify {
+          val msg = json {
+            obj(
+                "action" to "fetch",
+                "id" to id,
+                "runNumber" to i + 1,
+                "replyAddress" to replyAddress
+            )
+          }
+          vertx.eventBus().send(address, msg)
+
+          val (receivedContents, header) = receiveProcessChainLogFile(channel)
+
+          val size = header?.getLong("size")
+          assertThat(size).isEqualTo(c.length.toLong())
+          assertThat(receivedContents).isEqualTo(c)
+        }
+      }
+
+      ctx.completeNow()
     }
   }
 }

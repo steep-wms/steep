@@ -143,10 +143,12 @@ class SchedulerTest {
     val assignedAgents = mutableMapOf<String, String>()
     for (agent in allAgents) {
       val pcSlot = slot<ProcessChain>()
-      coEvery { agent.execute(capture(pcSlot)) } coAnswers {
-        onExecute?.invoke(pcSlot.captured.id, executedPcIds)
-        delay(1000) // pretend it takes 1 second to execute the process chain
-        mapOf("ARG1" to listOf("output-${pcSlot.captured.id}"))
+      for (r in 1..expectedRuns) {
+        coEvery { agent.execute(capture(pcSlot), r) } coAnswers {
+          onExecute?.invoke(pcSlot.captured.id, executedPcIds)
+          delay(1000) // pretend it takes 1 second to execute the process chain
+          mapOf("ARG1" to listOf("output-${pcSlot.captured.id}"))
+        }
       }
     }
 
@@ -392,7 +394,7 @@ class SchedulerTest {
     val agentId = "Mock agent"
     val pc = ProcessChain()
     every { agent.id } returns agentId
-    coEvery { agent.execute(any()) } throws Exception(message)
+    coEvery { agent.execute(any(), 1) } throws Exception(message)
     coEvery { agentRegistry.tryAllocate("${AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX}$agentId",
         pc.id) } returns agent andThen null
     coEvery { agentRegistry.selectCandidates(any()) } returns listOf(Pair(emptySet(),
@@ -503,7 +505,7 @@ class SchedulerTest {
       val mockAgent = mockk<RemoteAgent>()
       coEvery { agentRegistry.tryAllocate(agentAddress, pc2.id) } returns mockAgent
       every { mockAgent.id } returns agentId
-      coEvery { mockAgent.execute(pc2) } returns pc2Results
+      coEvery { mockAgent.execute(pc2, 1) } returns pc2Results
       coEvery { agentRegistry.deallocate(mockAgent) } just Runs
 
       // finalize (agentRegistry.selectCandidates should be called at then end
@@ -532,7 +534,7 @@ class SchedulerTest {
             // check that pc2 was successfully executed
             agentRegistry.getAgentIds()
             agentRegistry.tryAllocate(agentAddress, pc2.id)
-            mockAgent.execute(pc2)
+            mockAgent.execute(pc2, 1)
             agentRegistry.deallocate(mockAgent)
           }
         }
