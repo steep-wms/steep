@@ -90,17 +90,50 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
         console.log(err)
         setError(<Alert error>Could not load process chain runs</Alert>)
       })
+  }, [id, updateProcessChains, updateProcessChainRuns])
+
+  useEffect(() => {
+    if (!id || processChain?.status === undefined) {
+      return
+    }
+
+    if (logAvailable && processChain.status !== "PAUSED") {
+      // The log was available before. There is no need to check again
+      // because it cannot disappear. Only if the process chain is now PAUSED,
+      // we should check again!
+      return
+    }
+
+    if (processChain.status === "PAUSED") {
+      // Shortcut: paused process chains cannot have logs
+      if (logAvailable) {
+        setLogAvailable(false)
+        setLogCollapsed(false)
+      }
+      return
+    }
 
     // check if a log file is available
-    fetcher(`${process.env.baseUrl}/logs/processchains/${id}`, false, {
-      method: "HEAD"
-    })
+    let runNumberParam =
+      runNumber !== undefined ? `?runNumber=${runNumber}` : ""
+    fetcher(
+      `${process.env.baseUrl}/logs/processchains/${id}${runNumberParam}`,
+      false,
+      {
+        method: "HEAD"
+      }
+    )
       .then(() => setLogAvailable(true))
       .catch(() => {
         setLogAvailable(false)
+        setLogCollapsed(false)
         setWaitForLog(true)
       })
-  }, [id, updateProcessChains, updateProcessChainRuns, runNumber])
+  }, [id, runNumber, logAvailable, processChain?.status])
+
+  useEffect(() => {
+    setLogCollapsed(false)
+  }, [runNumber])
 
   useEffect(() => {
     let processChainLogConsumerAddress = LOGS_PROCESSCHAINS_PREFIX + id
@@ -113,9 +146,16 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
       }
     }
 
-    function onNewLogLine() {
-      setLogAvailable(true)
-      unregisterLogConsumer()
+    function onNewLogLine(_, msg) {
+      if (runNumber === undefined || msg.headers.runNumber === runNumber) {
+        setLogAvailable(true)
+
+        // unregister consumer on next event loop tick
+        setTimeout(() => {
+          unregisterLogConsumer()
+          setWaitForLog(false)
+        }, 0)
+      }
     }
 
     function unregisterLogConsumer() {
@@ -131,7 +171,7 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
     return () => {
       unregisterLogConsumer()
     }
-  }, [id, eventBus, waitForLog])
+  }, [id, eventBus, waitForLog, runNumber])
 
   function onCancel() {
     setCancelModalOpen(true)
@@ -195,9 +235,11 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
 
     let menuItems = []
     if (logAvailable) {
+      let runNumberParam =
+        runNumber !== undefined ? `&runNumber=${runNumber}` : ""
       menuItems.push(
         <a
-          href={`${process.env.baseUrl}/logs/processchains/${id}?forceDownload=true`}
+          href={`${process.env.baseUrl}/logs/processchains/${id}?forceDownload=true${runNumberParam}`}
           key="download-log"
         >
           <li>Download log</li>
@@ -333,7 +375,11 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
                   error: logError !== undefined
                 })}
               >
-                <ProcessChainLog id={id} onError={setLogError} />
+                <ProcessChainLog
+                  id={id}
+                  onError={setLogError}
+                  runNumber={runNumber}
+                />
               </div>
             )}
           </>

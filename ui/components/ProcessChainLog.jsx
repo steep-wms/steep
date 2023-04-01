@@ -9,7 +9,7 @@ import parseRangeHeader from "parse-content-range-header"
 import classNames from "classnames"
 import styles from "./ProcessChainLog.scss"
 
-const ProcessChainLog = ({ id, onError }) => {
+const ProcessChainLog = ({ id, onError, runNumber = undefined }) => {
   const nextEntryKey = useRef(0)
   const [lines, setLines] = useState([])
   const [error, doSetError] = useState()
@@ -85,8 +85,10 @@ const ProcessChainLog = ({ id, onError }) => {
 
       setLoadingVisible(true)
 
+      let runNumberParam =
+        runNumber !== undefined ? `?runNumber=${runNumber}` : ""
       fetcher(
-        `${process.env.baseUrl}/logs/processchains/${id}`,
+        `${process.env.baseUrl}/logs/processchains/${id}${runNumberParam}`,
         false,
         options,
         handleResponse
@@ -130,7 +132,7 @@ const ProcessChainLog = ({ id, onError }) => {
           }
         })
     },
-    [id, lineToEntry, setError]
+    [id, lineToEntry, setError, runNumber]
   )
 
   useEffect(() => {
@@ -146,9 +148,11 @@ const ProcessChainLog = ({ id, onError }) => {
       return
     }
 
-    function onNewLogLine(err, msg) {
-      setLines(old => [...(old || []), lineToEntry(msg.body)])
-      setError(undefined)
+    function onNewLogLine(_, msg) {
+      if (runNumber === undefined || msg.headers.runNumber === runNumber) {
+        setLines(old => [...(old || []), lineToEntry(msg.body)])
+        setError(undefined)
+      }
     }
 
     let address = LOGS_PROCESSCHAINS_PREFIX + id
@@ -161,7 +165,7 @@ const ProcessChainLog = ({ id, onError }) => {
         eventBus.unregisterHandler(address, onNewLogLine)
       }
     }
-  }, [id, eventBus, lineToEntry, setError])
+  }, [id, eventBus, lineToEntry, setError, runNumber])
 
   let codeVisible = lines !== undefined
 
