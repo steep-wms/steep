@@ -678,11 +678,20 @@ class HttpEndpoint : CoroutineVerticle() {
       val id = ctx.pathParam("id")
 
       // check if there is a process chain with this ID
-      try {
+      val status = try {
         submissionRegistry.getProcessChainStatus(id)
       } catch (e: NoSuchElementException) {
         renderError(ctx, 404, if (headersOnly) null else "There is no process " +
             "chain with ID `$id'")
+        return@launch
+      }
+
+      if (ctx.queryParam("runNumber").isEmpty() &&
+          (status == SubmissionRegistry.ProcessChainStatus.REGISTERED ||
+          status == SubmissionRegistry.ProcessChainStatus.PAUSED)) {
+        // registered or paused process chains cannot have a current log file
+        renderError(ctx, 404, "Process chain `$id' is $status and does not " +
+            "have a log file")
         return@launch
       }
 

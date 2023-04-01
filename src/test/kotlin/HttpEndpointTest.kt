@@ -2296,7 +2296,7 @@ class HttpEndpointTest {
     val agentId2 = "agent2"
 
     coEvery { submissionRegistry.getProcessChainStatus(id) } returns
-        ProcessChainStatus.REGISTERED
+        ProcessChainStatus.SUCCESS
     coEvery { submissionRegistry.countProcessChainRuns(id) } returns
         contents.size.toLong()
 
@@ -2599,8 +2599,6 @@ class HttpEndpointTest {
         ProcessChainStatus.SUCCESS
     coEvery { submissionRegistry.countProcessChainRuns(id) } returns 1
 
-    // coEvery { agentRegistry.getPrimaryAgentIds() } returns emptySet()
-
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val body = client.get(port, "localhost", "/logs/processchains/$id?runNumber=foobar")
@@ -2637,6 +2635,33 @@ class HttpEndpointTest {
   }
 
   /**
+   * Test if the endpoint does not return a log file if the process chain
+   * is currently REGISTERED or PAUSED
+   */
+  @Test
+  fun getProcessChainLogByIdNotStarted(vertx: Vertx, ctx: VertxTestContext) {
+    val id = "abcdef123456"
+    val client = WebClient.create(vertx)
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      for (s in listOf(ProcessChainStatus.REGISTERED, ProcessChainStatus.PAUSED)) {
+        ctx.coVerify {
+          coEvery { submissionRegistry.getProcessChainStatus(id) } returns s
+          val body = client.get(port, "localhost", "/logs/processchains/$id")
+              .`as`(BodyCodec.string())
+              .expect(ResponsePredicate.SC_NOT_FOUND)
+              .send()
+              .await()
+              .body()
+          assertThat(body).contains("$s and does not have a log file")
+        }
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
    * Test if we can get the contents of process chain log files for different
    * run numbers
    */
@@ -2654,23 +2679,51 @@ class HttpEndpointTest {
 
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
-      for ((i, p) in listOf(null to contents2, 1 to contents1, 2 to contents2).withIndex()) {
-        ctx.coVerify {
-          val param = when (p.first) {
-            null -> ""
-            else -> "?runNumber=${p.first}"
+      val tests = listOf(
+          // check that we can get the latest log file and previous log files
+          // from a process chain that has succeeded
+          ProcessChainStatus.SUCCESS to listOf(
+              Triple(null, contents2, ResponsePredicate.SC_OK),
+              Triple(1, contents1, ResponsePredicate.SC_OK),
+              Triple(2, contents2, ResponsePredicate.SC_OK)
+          ),
+          // check that we can still get log files from previous runs even if
+          // the process chain is currently paused
+          ProcessChainStatus.PAUSED to listOf(
+              Triple(
+                  null,
+                  "Process chain `$id' is PAUSED and does not have a log file",
+                  ResponsePredicate.SC_NOT_FOUND
+              ),
+              Triple(1, contents1, ResponsePredicate.SC_OK),
+              Triple(2, contents2, ResponsePredicate.SC_OK)
+          ),
+      )
+
+      var i = -1
+      for (t in tests) {
+        coEvery { submissionRegistry.getProcessChainStatus(id) } returns t.first
+        for (p in t.second) {
+          if (p.third == ResponsePredicate.SC_OK) {
+            ++i
           }
-          val response = client.get(port, "localhost", "/logs/processchains/$id$param")
-              .`as`(BodyCodec.string())
-              .expect(ResponsePredicate.SC_OK)
-              .expect(contentType("text/plain"))
-              .send()
-              .await()
+          ctx.coVerify {
+            val param = when (p.first) {
+              null -> ""
+              else -> "?runNumber=${p.first}"
+            }
+            val response = client.get(port, "localhost", "/logs/processchains/$id$param")
+                .`as`(BodyCodec.string())
+                .expect(p.third)
+                .expect(contentType("text/plain"))
+                .send()
+                .await()
 
-          assertThat(agent1Asked.get()).isEqualTo(1 + i)
-          assertThat(agent2Asked.get()).isEqualTo(1 + i)
+            assertThat(agent1Asked.get()).isEqualTo(1 + i)
+            assertThat(agent2Asked.get()).isEqualTo(1 + i)
 
-          assertThat(response.body()).isEqualTo(p.second)
+            assertThat(response.body()).isEqualTo(p.second)
+          }
         }
       }
       ctx.completeNow()
