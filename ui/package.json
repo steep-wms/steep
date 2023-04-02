@@ -33,7 +33,7 @@
     "js-yaml": "^4.1.0",
     "json2yaml": "^1.1.0",
     "lodash": "^4.17.21",
-    "lucide-react": "^0.128.0",
+    "lucide-react": "^0.129.0",
     "mini-svg-data-uri": "^1.4.4",
     "next": "^13.2.4",
     "normalize.css": "^8.0.1",
@@ -53,17 +53,17 @@
     "spinkit": "^2.0.1",
     "svgo-loader": "^4.0.0",
     "swr": "^2.1.1",
-    "webpack": "^5.76.3"
+    "webpack": "^5.77.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.32.1",
-    "cypress": "^12.8.1",
-    "eslint": "^8.36.0",
+    "cypress": "^12.9.0",
+    "eslint": "^8.37.0",
     "eslint-config-next": "^13.2.4",
     "eslint-config-prettier": "^8.8.0",
-    "eslint-plugin-cypress": "^2.12.1",
+    "eslint-plugin-cypress": "^2.13.2",
     "eslint-webpack-plugin": "^4.0.0",
-    "npm-check-updates": "^16.8.0",
+    "npm-check-updates": "^16.10.0",
     "prettier": "^2.8.7",
     "start-server-and-test": "^2.0.0"
   }
