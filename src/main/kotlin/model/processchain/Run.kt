@@ -9,6 +9,11 @@ import java.time.Instant
  */
 data class Run(
     /**
+     * The ID of the [agent.Agent] this process chain run is allocated to
+     */
+    val agentId: String?,
+
+    /**
      * The point in time when the process chain run was started
      */
     val startTime: Instant,

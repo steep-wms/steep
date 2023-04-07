@@ -536,12 +536,13 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       r.getJsonArray(0)?.let { JsonUtils.mapper.convertValue(it) } ?: emptyList() }
   }
 
-  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Long {
+  override suspend fun addProcessChainRun(processChainId: String,
+      agentId: String, startTime: Instant): Long {
     val updateStatement = "UPDATE $PROCESS_CHAINS SET " +
         "$RUNS=COALESCE($RUNS, '[]'::jsonb) || $1 WHERE $ID=$2 " +
         "RETURNING jsonb_array_length($RUNS)"
     val updateParams = Tuple.of(
-        jsonArrayOf(JsonUtils.toJson(Run(startTime))),
+        jsonArrayOf(JsonUtils.toJson(Run(agentId, startTime))),
         processChainId
     )
     val r = client.preparedQuery(updateStatement).execute(updateParams).await()

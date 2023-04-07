@@ -138,6 +138,7 @@ class SchedulerTest {
 
     val availableAgents = allAgents.toMutableList()
     val assignedAgents = mutableMapOf<String, String>()
+    val assignedProcessChains = mutableMapOf<String, String>()
     for (agent in allAgents) {
       val pcSlot = slot<ProcessChain>()
       for (r in 1..expectedRuns) {
@@ -174,6 +175,7 @@ class SchedulerTest {
       if (agent != null) {
         availableAgents.remove(agent)
         assignedAgents[agent.id] = slotAllocatedProcessChainId.captured
+        assignedProcessChains[slotAllocatedProcessChainId.captured] = agent.id
         agent
       } else if (assignedAgents[capturedAgentId] == slotAllocatedProcessChainId.captured) {
         allAgents.find { it.id == capturedAgentId }
@@ -200,7 +202,12 @@ class SchedulerTest {
 
       // register mock for new run
       val runs = AtomicLong()
-      coEvery { submissionRegistry.addProcessChainRun(pc.id, any()) } answers {
+      val slotAgentId = slot<String>()
+      coEvery { submissionRegistry.addProcessChainRun(pc.id,
+          capture(slotAgentId), any()) } answers {
+        ctx.verify {
+          assertThat(assignedProcessChains[pc.id]).isEqualTo(slotAgentId.captured)
+        }
         onAddProcessChainRun?.invoke(pc.id)
         runs.incrementAndGet()
       }
@@ -248,7 +255,8 @@ class SchedulerTest {
           }
           coVerify(exactly = expectedRuns.toInt()) {
             for (pc in allPcs) {
-              submissionRegistry.addProcessChainRun(pc.id, any())
+              submissionRegistry.addProcessChainRun(
+                  pc.id, assignedProcessChains[pc.id]!!, any())
             }
           }
           verify?.invoke(executedPcIds)
@@ -400,7 +408,9 @@ class SchedulerTest {
     // mock submission registry
     coEvery { submissionRegistry.setProcessChainStatus(pc.id, ERROR) } just Runs
     val runs = AtomicLong()
-    coEvery { submissionRegistry.addProcessChainRun(pc.id, any()) } answers { runs.incrementAndGet() }
+    coEvery { submissionRegistry.addProcessChainRun(pc.id, agentId, any()) } answers {
+      runs.incrementAndGet()
+    }
     coEvery { submissionRegistry.finishProcessChainRun(pc.id, 1, any(), any(), any()) } just Runs
     coEvery { submissionRegistry.findProcessChainRequiredCapabilities(REGISTERED) } returns
         listOf(emptySet<String>() to 0..0)
@@ -461,13 +471,13 @@ class SchedulerTest {
       coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING) } returns
           listOf(pc1.id, pc2.id, pc3.id, pc4.id) andThen listOf(pc1.id, pc2.id, pc3.id)
       coEvery { submissionRegistry.setProcessChainStatus(pc1.id, REGISTERED) } just Runs
-      val pc1run = Run(Instant.now())
+      val pc1run = Run(agentId, Instant.now())
       coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns pc1run
       coEvery { submissionRegistry.deleteLastProcessChainRun(pc1.id) } just Runs
 
       coEvery { submissionRegistry.findProcessChainById(pc2.id) } returns pc2
-      val pc2run = Run(Instant.now().minusSeconds(60)) // pc2 is running since 60s
-      coEvery { submissionRegistry.addProcessChainRun(pc2.id, any()) } answers {
+      val pc2run = Run(agentId, Instant.now().minusSeconds(60)) // pc2 is running since 60s
+      coEvery { submissionRegistry.addProcessChainRun(pc2.id, agentId, any()) } answers {
         ctx.failNow("Scheduler must not add another run for a process chain " +
             "that was already running!")
         1
@@ -675,7 +685,7 @@ class SchedulerTest {
           submissionRegistry.setProcessChainStatus(pc.id, SUCCESS)
         }
         coVerify(exactly = 3) {
-          submissionRegistry.addProcessChainRun(pc.id, any())
+          submissionRegistry.addProcessChainRun(pc.id, any(), any())
         }
       }
     )

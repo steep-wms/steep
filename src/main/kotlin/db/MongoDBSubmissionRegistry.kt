@@ -93,6 +93,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     private const val WORKFLOW = "workflow"
     private const val NAME = "name"
     private const val SOURCE = "source"
+    private const val AGENT_ID = "agentId"
 
     /**
      * Fields to exclude when querying the `submissions` collection
@@ -710,7 +711,8 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     return result
   }
 
-  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Long {
+  override suspend fun addProcessChainRun(processChainId: String,
+      agentId: String, startTime: Instant): Long {
     val r = collProcessChains.findOneAndUpdateAwait(jsonObjectOf(
         INTERNAL_ID to processChainId
     ), jsonObjectOf(
@@ -718,6 +720,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
             RUNS to jsonObjectOf(
                 "\$each" to jsonArrayOf(
                     jsonObjectOf(
+                        AGENT_ID to agentId,
                         START_TIME to instantToTimestamp(startTime)
                     )
                 )

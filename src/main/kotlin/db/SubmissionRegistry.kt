@@ -350,10 +350,11 @@ interface SubmissionRegistry : Registry {
 
   /**
    * Create a new run with the given [startTime] for the process chain with
-   * the given [processChainId] and return the new run number. Run numbers start
-   * at 1.
+   * the given [processChainId] and allocated to an agent with the given
+   * [agentId] and return the new run number. Run numbers start at 1.
    */
-  suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Long
+  suspend fun addProcessChainRun(processChainId: String, agentId: String,
+      startTime: Instant): Long
 
   /**
    * Delete the last run of the process chain with the given [processChainId].

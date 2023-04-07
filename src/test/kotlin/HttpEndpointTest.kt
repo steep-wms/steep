@@ -1135,16 +1135,21 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainStatus(pc4.id) } returns ProcessChainStatus.ERROR
     coEvery { submissionRegistry.getProcessChainStatus(pc5.id) } returns ProcessChainStatus.PAUSED
 
+    val agentId = UniqueID.next()
     val startTime = Instant.now()
     val endTime = Instant.now().plusMillis(1234)
     coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns
-        Run(startTime, endTime, ProcessChainStatus.SUCCESS, "This error SHOULD NOT BE returned")
-    coEvery { submissionRegistry.getLastProcessChainRun(pc2.id) } returns Run(startTime)
+        Run(agentId, startTime, endTime, ProcessChainStatus.SUCCESS,
+            "This error SHOULD NOT BE returned")
+    coEvery { submissionRegistry.getLastProcessChainRun(pc2.id) } returns
+        Run(agentId, startTime)
     coEvery { submissionRegistry.getLastProcessChainRun(pc3.id) } returns null
     coEvery { submissionRegistry.getLastProcessChainRun(pc4.id) } returns
-        Run(startTime, endTime, ProcessChainStatus.ERROR, "THIS is an ERROR")
+        Run(agentId, startTime, endTime, ProcessChainStatus.ERROR,
+            "THIS is an ERROR")
     coEvery { submissionRegistry.getLastProcessChainRun(pc5.id) } returns
-        Run(startTime, endTime, ProcessChainStatus.ERROR, "Waiting for retry")
+        Run(agentId, startTime, endTime, ProcessChainStatus.ERROR,
+            "Waiting for retry")
 
     coEvery { submissionRegistry.getProcessChainResults(pc1.id) } returns mapOf(
         "output_file1" to listOf("output.txt"))
@@ -1174,6 +1179,7 @@ class HttpEndpointTest {
                 "requiredCapabilities" to jsonArrayOf(),
                 "submissionId" to s1.id,
                 "status" to "SUCCESS",
+                "agentId" to agentId,
                 "startTime" to startTime,
                 "endTime" to endTime
             ),
@@ -1182,6 +1188,7 @@ class HttpEndpointTest {
                 "requiredCapabilities" to jsonArrayOf(),
                 "submissionId" to s1.id,
                 "status" to "RUNNING",
+                "agentId" to agentId,
                 "startTime" to startTime
             ),
             jsonObjectOf(
@@ -1195,6 +1202,7 @@ class HttpEndpointTest {
                 "requiredCapabilities" to jsonArrayOf(),
                 "submissionId" to s2.id,
                 "status" to "ERROR",
+                "agentId" to agentId,
                 "startTime" to startTime,
                 "endTime" to endTime,
                 "errorMessage" to "THIS is an ERROR"
@@ -1234,10 +1242,13 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns ProcessChainStatus.SUCCESS
     coEvery { submissionRegistry.getProcessChainStatus(pc2.id) } returns ProcessChainStatus.RUNNING
 
+    val agentId = UniqueID.next()
     val startTime = Instant.now()
     val endTime = Instant.now().plusMillis(1234)
-    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns Run(startTime, endTime)
-    coEvery { submissionRegistry.getLastProcessChainRun(pc2.id) } returns Run(startTime)
+    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns
+        Run(agentId, startTime, endTime)
+    coEvery { submissionRegistry.getLastProcessChainRun(pc2.id) } returns
+        Run(agentId, startTime)
 
     coEvery { submissionRegistry.getProcessChainResults(pc1.id) } returns mapOf(
         "output_file1" to listOf("output.txt"))
@@ -1263,6 +1274,7 @@ class HttpEndpointTest {
                 "requiredCapabilities" to jsonArrayOf(),
                 "submissionId" to s1.id,
                 "status" to "SUCCESS",
+                "agentId" to agentId,
                 "startTime" to startTime,
                 "endTime" to endTime
             ),
@@ -1271,6 +1283,7 @@ class HttpEndpointTest {
                 "requiredCapabilities" to jsonArrayOf(),
                 "submissionId" to s1.id,
                 "status" to "RUNNING",
+                "agentId" to agentId,
                 "startTime" to startTime
             )
         ))
@@ -1300,9 +1313,11 @@ class HttpEndpointTest {
 
     coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns ProcessChainStatus.SUCCESS
 
+    val agentId = UniqueID.next()
     val startTime = Instant.now()
     val endTime = Instant.now().plusMillis(1234)
-    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns Run(startTime, endTime)
+    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns
+        Run(agentId, startTime, endTime)
 
     coEvery { submissionRegistry.getProcessChainResults(pc1.id) } returns mapOf(
         "output_file1" to listOf("output.txt"))
@@ -1328,6 +1343,7 @@ class HttpEndpointTest {
                 "requiredCapabilities" to jsonArrayOf(),
                 "submissionId" to s1.id,
                 "status" to "SUCCESS",
+                "agentId" to agentId,
                 "startTime" to startTime,
                 "endTime" to endTime
             )
@@ -1353,9 +1369,11 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns
         ProcessChainStatus.SUCCESS
     coEvery { submissionRegistry.countProcessChainRuns(pc1.id) } returns 3
+    val agentId = UniqueID.next()
     val startTime = Instant.now()
     val endTime = Instant.now().plusMillis(4321)
-    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns Run(startTime, endTime)
+    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns
+        Run(agentId, startTime, endTime)
     coEvery { submissionRegistry.getProcessChainResults(pc1.id) } returns mapOf(
         "output_file1" to listOf("output.txt"))
 
@@ -1390,6 +1408,7 @@ class HttpEndpointTest {
             "requiredCapabilities" to jsonArrayOf(),
             "submissionId" to sid,
             "status" to ProcessChainStatus.SUCCESS.toString(),
+            "agentId" to agentId,
             "startTime" to startTime,
             "endTime" to endTime,
             "totalRuns" to 3,
@@ -1422,8 +1441,10 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns
         ProcessChainStatus.RUNNING
     coEvery { submissionRegistry.countProcessChainRuns(pc1.id) } returns 1
+    val agentId = UniqueID.next()
     val startTime = Instant.now()
-    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns Run(startTime)
+    coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns
+        Run(agentId, startTime)
 
     val address = LOCAL_AGENT_ADDRESS_PREFIX + pc1.id
     vertx.eventBus().consumer<JsonObject>(address).handler { msg ->
@@ -1457,6 +1478,7 @@ class HttpEndpointTest {
             "requiredCapabilities" to jsonArrayOf(),
             "submissionId" to sid,
             "status" to ProcessChainStatus.RUNNING.toString(),
+            "agentId" to agentId,
             "startTime" to startTime,
             "totalRuns" to 1,
             "runNumber" to 1,
@@ -1474,17 +1496,19 @@ class HttpEndpointTest {
     val pc1 = ProcessChain(executables = listOf(Executable(id = eid,
         path = "path", serviceId = "foobar", arguments = emptyList())))
 
+    val agentId1 = UniqueID.next()
+    val agentId2 = UniqueID.next()
     val startTime1 = Instant.now().minusMillis(6000)
     val endTime1 = Instant.now().minusMillis(5000)
     val startTime2 = Instant.now().minusMillis(4000)
     val endTime2 = Instant.now().minusMillis(3000)
     val error1 = "run1"
-    val run1 = Run(startTime1, endTime1, ProcessChainStatus.ERROR, error1,
-        autoResumeAfter = startTime2)
+    val run1 = Run(agentId1, startTime1, endTime1, ProcessChainStatus.ERROR,
+        error1, autoResumeAfter = startTime2)
     val run2 = if (running) {
-      Run(startTime2)
+      Run(agentId2, startTime2)
     } else {
-      Run(startTime2, endTime2, ProcessChainStatus.SUCCESS)
+      Run(agentId2, startTime2, endTime2, ProcessChainStatus.SUCCESS)
     }
 
     coEvery { submissionRegistry.findProcessChainById(pc1.id) } returns pc1
@@ -1558,6 +1582,7 @@ class HttpEndpointTest {
           "submissionId" to sid,
           "status" to if (running) ProcessChainStatus.RUNNING.toString() else
             ProcessChainStatus.SUCCESS.toString(),
+          "agentId" to agentId2,
           "startTime" to startTime2,
           "totalRuns" to 2,
           "runNumber" to 2
@@ -1604,6 +1629,7 @@ class HttpEndpointTest {
             "submissionId" to sid,
             "status" to ProcessChainStatus.ERROR.toString(),
             "errorMessage" to error1,
+            "agentId" to agentId1,
             "startTime" to startTime1,
             "endTime" to endTime1,
             "totalRuns" to 2,
@@ -1719,7 +1745,7 @@ class HttpEndpointTest {
   @Test
   fun getProcessChainRunRegisteredAfterRun(vertx: Vertx, ctx: VertxTestContext) {
     doGetProcessChainRunNoRunWithStatus(vertx, ctx, ProcessChainStatus.REGISTERED,
-        listOf(Run(Instant.now().minusMillis(1000), Instant.now(),
+        listOf(Run(UniqueID.next(), Instant.now().minusMillis(1000), Instant.now(),
             ProcessChainStatus.SUCCESS)))
   }
 
@@ -1740,6 +1766,7 @@ class HttpEndpointTest {
   fun getProcessChainRunPausedAfterRun(vertx: Vertx, ctx: VertxTestContext) {
     doGetProcessChainRunNoRunWithStatus(vertx, ctx, ProcessChainStatus.PAUSED,
         listOf(Run(
+            agentId = UniqueID.next(),
             startTime = Instant.now().minusMillis(1000),
             endTime = Instant.now(),
             status = ProcessChainStatus.SUCCESS,
@@ -1751,18 +1778,21 @@ class HttpEndpointTest {
   fun onGetProcessChainRuns(vertx: Vertx, ctx: VertxTestContext) {
     val pc1id = UniqueID.next()
 
+    val agentId = UniqueID.next()
     val startTime1 = Instant.now().minusMillis(6000)
     val endTime1 = Instant.now().minusMillis(5000)
     val startTime2 = Instant.now().minusMillis(4000)
     val endTime2 = Instant.now().minusMillis(3000)
     val error1 = "error1"
     val run1 = Run(
+        agentId = agentId,
         startTime = startTime1,
         endTime = endTime1,
         status = ProcessChainStatus.ERROR,
         errorMessage = error1,
         autoResumeAfter = startTime2)
     val run2 = Run(
+        agentId = agentId,
         startTime = startTime2,
         endTime = endTime2,
         status = ProcessChainStatus.SUCCESS
@@ -1794,6 +1824,7 @@ class HttpEndpointTest {
             .body()
         assertThat(runs).isEqualTo(jsonArrayOf(
             jsonObjectOf(
+                "agentId" to agentId,
                 "startTime" to startTime1,
                 "endTime" to endTime1,
                 "status" to "ERROR",
@@ -1801,6 +1832,7 @@ class HttpEndpointTest {
                 "autoResumeAfter" to startTime2
             ),
             jsonObjectOf(
+                "agentId" to agentId,
                 "startTime" to startTime2,
                 "endTime" to endTime2,
                 "status" to "SUCCESS"
@@ -1840,17 +1872,19 @@ class HttpEndpointTest {
     coEvery { submissionRegistry.getProcessChainSubmissionId(pc5.id) } returns sid
     coEvery { submissionRegistry.getProcessChainSubmissionId(pc6.id) } returns sid
 
+    val agentId = UniqueID.next()
     val startTime = Instant.now()
     val endTime = Instant.now().plusMillis(120)
     coEvery { submissionRegistry.getLastProcessChainRun(pc1.id) } returns
-        Run(startTime, endTime, ProcessChainStatus.SUCCESS)
-    coEvery { submissionRegistry.getLastProcessChainRun(pc2.id) } returns Run(startTime)
+        Run(agentId, startTime, endTime, ProcessChainStatus.SUCCESS)
+    coEvery { submissionRegistry.getLastProcessChainRun(pc2.id) } returns
+        Run(agentId, startTime)
     coEvery { submissionRegistry.getLastProcessChainRun(pc3.id) } returns null
     coEvery { submissionRegistry.getLastProcessChainRun(pc4.id) } returns null
     coEvery { submissionRegistry.getLastProcessChainRun(pc5.id) } returns
-        Run(startTime, endTime, ProcessChainStatus.ERROR)
+        Run(agentId, startTime, endTime, ProcessChainStatus.ERROR)
     coEvery { submissionRegistry.getLastProcessChainRun(pc6.id) } returns
-        Run(startTime, endTime, ProcessChainStatus.CANCELLED)
+        Run(agentId, startTime, endTime, ProcessChainStatus.CANCELLED)
 
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
@@ -1944,6 +1978,7 @@ class HttpEndpointTest {
             "requiredCapabilities" to jsonArrayOf(),
             "submissionId" to sid,
             "status" to ProcessChainStatus.SUCCESS.toString(),
+            "agentId" to agentId,
             "startTime" to startTime,
             "endTime" to endTime
         ))
@@ -1961,6 +1996,7 @@ class HttpEndpointTest {
             "requiredCapabilities" to jsonArrayOf(),
             "submissionId" to sid,
             "status" to ProcessChainStatus.RUNNING.toString(),
+            "agentId" to agentId,
             "startTime" to startTime
         ))
 
@@ -2016,6 +2052,7 @@ class HttpEndpointTest {
             "requiredCapabilities" to jsonArrayOf(),
             "submissionId" to sid,
             "status" to ProcessChainStatus.CANCELLED.toString(),
+            "agentId" to agentId,
             "startTime" to startTime,
             "endTime" to endTime
         ))

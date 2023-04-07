@@ -519,10 +519,11 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
     return getProcessChainEntryById(processChainId).runs
   }
 
-  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Long {
+  override suspend fun addProcessChainRun(processChainId: String,
+      agentId: String, startTime: Instant): Long {
     val n = AtomicLong()
     updateProcessChain(processChainId) {
-      val r = it.copy(runs = it.runs + Run(startTime))
+      val r = it.copy(runs = it.runs + Run(agentId, startTime))
       n.set(r.runs.size.toLong())
       r
     }

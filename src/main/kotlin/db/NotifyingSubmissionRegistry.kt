@@ -135,10 +135,12 @@ class NotifyingSubmissionRegistry(private val delegate: SubmissionRegistry, priv
     return pc
   }
 
-  override suspend fun addProcessChainRun(processChainId: String, startTime: Instant): Long {
-    val n = delegate.addProcessChainRun(processChainId, startTime)
+  override suspend fun addProcessChainRun(processChainId: String,
+      agentId: String, startTime: Instant): Long {
+    val n = delegate.addProcessChainRun(processChainId, agentId, startTime)
     vertx.eventBus().publish(AddressConstants.PROCESSCHAIN_RUN_ADDED, jsonObjectOf(
         "processChainId" to processChainId,
+        "agentId" to agentId,
         "runNumber" to n,
         "startTime" to startTime
     ))

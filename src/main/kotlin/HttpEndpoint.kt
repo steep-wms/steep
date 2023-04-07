@@ -1520,6 +1520,9 @@ class HttpEndpoint : CoroutineVerticle() {
     val status = run?.status ?: processChainStatus
     processChain.put("status", status.toString())
 
+    if (run?.agentId != null) {
+      processChain.put("agentId", run.agentId)
+    }
     if (run?.startTime != null) {
       processChain.put("startTime", run.startTime)
     }
