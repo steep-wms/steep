@@ -1,3 +1,4 @@
+import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import agent.Agent
 import agent.AgentRegistry
 import agent.AgentRegistry.SelectCandidatesParam
@@ -132,7 +133,7 @@ class SchedulerTest {
     // mock agents
     val allAgents = (1..nAgents).map { n ->
       val a = mockk<Agent>()
-      every { a.id } returns "Mock agent $n"
+      every { a.id } returns "${REMOTE_AGENT_ADDRESS_PREFIX}Mock agent $n"
       a
     }
 
@@ -159,8 +160,7 @@ class SchedulerTest {
           compareBy<SelectCandidatesParam> { it.maxPriority }
               .thenBy { it.count })
       if (best != null && availableAgents.isNotEmpty()) {
-        listOf(best.requiredCapabilities to
-            "${AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX}${availableAgents.first().id}")
+        listOf(best.requiredCapabilities to availableAgents.first().id)
       } else {
         emptyList()
       }
@@ -170,15 +170,14 @@ class SchedulerTest {
     val slotAllocatedProcessChainId = slot<String>()
     coEvery { agentRegistry.tryAllocate(capture(slotAgentAddress),
         capture(slotAllocatedProcessChainId)) } answers {
-      val capturedAgentId = slotAgentAddress.captured.removePrefix(AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX)
-      val agent = availableAgents.find { it.id == capturedAgentId }
+      val agent = availableAgents.find { it.id == slotAgentAddress.captured }
       if (agent != null) {
         availableAgents.remove(agent)
         assignedAgents[agent.id] = slotAllocatedProcessChainId.captured
         assignedProcessChains[slotAllocatedProcessChainId.captured] = agent.id
         agent
-      } else if (assignedAgents[capturedAgentId] == slotAllocatedProcessChainId.captured) {
-        allAgents.find { it.id == capturedAgentId }
+      } else if (assignedAgents[slotAgentAddress.captured] == slotAllocatedProcessChainId.captured) {
+        allAgents.find { it.id == slotAgentAddress.captured }
       } else {
         null
       }
@@ -206,7 +205,8 @@ class SchedulerTest {
       coEvery { submissionRegistry.addProcessChainRun(pc.id,
           capture(slotAgentId), any()) } answers {
         ctx.verify {
-          assertThat(assignedProcessChains[pc.id]).isEqualTo(slotAgentId.captured)
+          assertThat(assignedProcessChains[pc.id]).isEqualTo(
+              REMOTE_AGENT_ADDRESS_PREFIX + slotAgentId.captured)
         }
         onAddProcessChainRun?.invoke(pc.id)
         runs.incrementAndGet()
@@ -256,7 +256,12 @@ class SchedulerTest {
           coVerify(exactly = expectedRuns.toInt()) {
             for (pc in allPcs) {
               submissionRegistry.addProcessChainRun(
-                  pc.id, assignedProcessChains[pc.id]!!, any())
+                  pc.id,
+                  assignedProcessChains[pc.id]!!.substring(
+                      REMOTE_AGENT_ADDRESS_PREFIX.length
+                  ),
+                  any()
+              )
             }
           }
           verify?.invoke(executedPcIds)
@@ -397,13 +402,14 @@ class SchedulerTest {
     // mock agent
     val agent = mockk<Agent>()
     val agentId = "Mock agent"
+    val address = REMOTE_AGENT_ADDRESS_PREFIX + agentId
     val pc = ProcessChain()
-    every { agent.id } returns agentId
+    every { agent.id } returns address
     coEvery { agent.execute(any(), 1) } throws Exception(message)
-    coEvery { agentRegistry.tryAllocate("${AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX}$agentId",
-        pc.id) } returns agent andThen null
-    coEvery { agentRegistry.selectCandidates(any()) } returns listOf(Pair(emptySet(),
-        "${AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX}$agentId")) andThen emptyList()
+    coEvery { agentRegistry.tryAllocate(address, pc.id) } returns agent andThen null
+    coEvery { agentRegistry.selectCandidates(any()) } returns listOf(
+        Pair(emptySet(), address)
+    ) andThen emptyList()
 
     // mock submission registry
     coEvery { submissionRegistry.setProcessChainStatus(pc.id, ERROR) } just Runs
@@ -495,7 +501,7 @@ class SchedulerTest {
 
       // mock agent registry
       coEvery { agentRegistry.getAgentIds() } returns setOf(agentId)
-      val agentAddress = "${AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX}$agentId"
+      val agentAddress = "$REMOTE_AGENT_ADDRESS_PREFIX$agentId"
       vertx.eventBus().consumer<JsonObject>(agentAddress) { msg ->
         ctx.verify {
           assertThat(msg.body().getString("action")).isEqualTo("info")
@@ -560,7 +566,7 @@ class SchedulerTest {
     val pc = ProcessChain()
 
     val mockAgentId = "Mock agent 1"
-    val agentAddress = "${AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX}$mockAgentId"
+    val agentAddress = "$REMOTE_AGENT_ADDRESS_PREFIX$mockAgentId"
 
     testSimple(listOf(pc), 1, vertx, ctx, onAfterFetchNextProcessChain = {
       // pretend that the process chain is now running

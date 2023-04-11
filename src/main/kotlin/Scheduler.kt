@@ -446,8 +446,11 @@ class Scheduler : CoroutineVerticle() {
           }
           if (run == null || run == 0L) {
             // add a new run
-            run = submissionRegistry.addProcessChainRun(processChain.id,
-                agent.id, Instant.now())
+            run = submissionRegistry.addProcessChainRun(
+                processChain.id,
+                agent.id.substring(REMOTE_AGENT_ADDRESS_PREFIX.length),
+                Instant.now()
+            )
           }
 
           val results = agent.execute(processChain, run)
