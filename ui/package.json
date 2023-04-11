@@ -62,7 +62,7 @@
     "eslint-config-next": "^13.2.4",
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-cypress": "^2.13.2",
-    "eslint-webpack-plugin": "^4.0.0",
+    "eslint-webpack-plugin": "^4.0.1",
     "npm-check-updates": "^16.10.0",
     "prettier": "^2.8.7",
     "start-server-and-test": "^2.0.0"
