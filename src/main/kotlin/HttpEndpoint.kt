@@ -45,6 +45,8 @@ import db.MetadataRegistry
 import db.MetadataRegistryFactory
 import db.PluginRegistry
 import db.PluginRegistryFactory
+import db.SetupRegistry
+import db.SetupRegistryFactory
 import db.SubmissionRegistry
 import db.SubmissionRegistryFactory
 import db.VMRegistry
@@ -127,6 +129,7 @@ class HttpEndpoint : CoroutineVerticle() {
   private lateinit var agentRegistry: AgentRegistry
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var vmRegistry: VMRegistry
+  private var setupRegistry: SetupRegistry? = null
   private lateinit var basePath: String
   private lateinit var server: HttpServer
 
@@ -136,6 +139,12 @@ class HttpEndpoint : CoroutineVerticle() {
     agentRegistry = AgentRegistryFactory.create(vertx)
     submissionRegistry = SubmissionRegistryFactory.create(vertx)
     vmRegistry = VMRegistryFactory.create(vertx)
+
+    setupRegistry = if (config.getBoolean(ConfigConstants.CLOUD_ENABLED, false)) {
+      SetupRegistryFactory.create(vertx)
+    } else {
+      null
+    }
 
     val host = config.getString(ConfigConstants.HTTP_HOST, "localhost")
     val port = config.getInteger(ConfigConstants.HTTP_PORT, 8080)
@@ -218,6 +227,14 @@ class HttpEndpoint : CoroutineVerticle() {
         .produces("application/json")
         .produces("text/html")
         .handler(this::onGetServiceById)
+
+    router.get("/setups")
+        .produces("application/json")
+        .handler(this::onGetSetups)
+
+    router.get("/setups/:id/?")
+        .produces("application/json")
+        .handler(this::onGetSetupById)
 
     router.get("/plugins")
         .produces("application/json")
@@ -1087,6 +1104,61 @@ class HttpEndpoint : CoroutineVerticle() {
         }
       }
     }
+  }
+
+  /**
+   * Get a list of all setups
+   * @param ctx the routing context
+   */
+  private fun onGetSetups(ctx: RoutingContext) {
+    // if (prefersHtml(ctx)) {
+    //   renderAsset("ui/setups/index.html", ctx.response())
+    // } else {
+      launch {
+        val sr = setupRegistry
+        if (sr == null) {
+          renderError(ctx, 404, "Setups are unavailable because cloud " +
+              "configuration is disabled")
+        } else {
+          val setups = sr.findSetups()
+          val result = JsonUtils.mapper.writeValueAsString(setups)
+          ctx.response()
+              .putHeader("content-type", "application/json")
+              .end(result)
+        }
+      }
+    // }
+  }
+
+  /**
+   * Get a single setup by ID
+   * @param ctx the routing context
+   */
+  private fun onGetSetupById(ctx: RoutingContext) {
+    // if (prefersHtml(ctx)) {
+    //   renderAsset("ui/setups/[id].html/index.html", ctx.response())
+    // } else {
+      launch {
+        val id = ctx.pathParam("id")
+        val sr = setupRegistry
+        if (sr == null) {
+          renderError(ctx, 404, "Setups are unavailable because cloud " +
+              "configuration is disabled")
+        } else {
+          val setups = sr.findSetups()
+          val setup = setups.find { it.id == id }
+
+          if (setup == null) {
+            renderError(ctx, 404, "There is no setup with ID `$id'")
+          } else {
+            val result = JsonUtils.mapper.writeValueAsString(setup)
+            ctx.response()
+                .putHeader("content-type", "application/json")
+                .end(result)
+          }
+        }
+      }
+    // }
   }
 
   /**

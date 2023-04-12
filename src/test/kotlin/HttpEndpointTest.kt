@@ -8,6 +8,8 @@ import db.MetadataRegistry
 import db.MetadataRegistryFactory
 import db.PluginRegistry
 import db.PluginRegistryFactory
+import db.SetupRegistry
+import db.SetupRegistryFactory
 import db.SubmissionRegistry
 import db.SubmissionRegistry.ProcessChainStatus
 import db.SubmissionRegistryFactory
@@ -67,7 +69,9 @@ import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInfo
 import org.junit.jupiter.api.extension.ExtendWith
 import search.QueryCompiler
 import search.SearchResult
@@ -88,6 +92,10 @@ import java.util.regex.Pattern
  */
 @ExtendWith(VertxExtension::class)
 class HttpEndpointTest {
+  companion object {
+    private const val ENABLE_SETUPS = "enable-setups"
+  }
+
   private val maxPostSize = 1024
   private var port: Int = 0
   private lateinit var agentRegistry: AgentRegistry
@@ -95,13 +103,14 @@ class HttpEndpointTest {
   private lateinit var metadataRegistry: MetadataRegistry
   private lateinit var pluginRegistry: PluginRegistry
   private lateinit var vmRegistry: VMRegistry
+  private var setupRegistry: SetupRegistry? = null
 
   private val setup = Setup(id = "test-setup", flavor = "myflavor",
       imageName = "myimage", availabilityZone = "my-az", blockDeviceSizeGb = 20,
       maxVMs = 10)
 
   @BeforeEach
-  fun setUp(vertx: Vertx, ctx: VertxTestContext) {
+  fun setUp(vertx: Vertx, ctx: VertxTestContext, info: TestInfo) {
     port = ServerSocket(0).use { it.localPort }
 
     // mock agent registry
@@ -130,12 +139,24 @@ class HttpEndpointTest {
     mockkObject(VMRegistryFactory)
     every { VMRegistryFactory.create(any()) } returns vmRegistry
 
+    if (info.tags.contains(ENABLE_SETUPS)) {
+      // mock setup registry
+      setupRegistry = mockk()
+      mockkObject(SetupRegistryFactory)
+      every { SetupRegistryFactory.create(any(), any()) } returns setupRegistry!!
+    }
+
     // deploy verticle under test
     val config = jsonObjectOf(
         ConfigConstants.HTTP_HOST to "localhost",
         ConfigConstants.HTTP_PORT to port,
         ConfigConstants.HTTP_POST_MAX_SIZE to maxPostSize
     )
+
+    if (info.tags.contains(ENABLE_SETUPS)) {
+      config.put(ConfigConstants.CLOUD_ENABLED, true)
+    }
+
     val options = deploymentOptionsOf(config = config)
     vertx.deployVerticle(HttpEndpoint::class.qualifiedName, options,
       ctx.succeedingThenComplete())
@@ -356,6 +377,194 @@ class HttpEndpointTest {
 
         assertThat(JsonUtils.fromJson<Service>(response.body()))
             .isEqualTo(serviceMetadata[0])
+
+        ctx.completeNow()
+      }
+    }
+  }
+
+  /**
+   * Test what happens if we request setups but cloud configuration is not
+   * enabled
+   */
+  @Test
+  fun getSetupsNoCloud(vertx: Vertx, ctx: VertxTestContext) {
+    val client = WebClient.create(vertx)
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        val b1 = client.get(port, "localhost", "/setups")
+            .`as`(BodyCodec.string())
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .send()
+            .await()
+            .body()
+        assertThat(b1).contains("cloud configuration is disabled")
+        val b2 = client.get(port, "localhost", "/setups/foobar")
+            .`as`(BodyCodec.string())
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .send()
+            .await()
+            .body()
+        assertThat(b2).contains("cloud configuration is disabled")
+        ctx.completeNow()
+      }
+    }
+  }
+
+  /**
+   * Test what happens if we request setups but cloud configuration is not
+   * enabled
+   */
+  @Test
+  @Tag(ENABLE_SETUPS)
+  fun getSetupsEmpty(vertx: Vertx, ctx: VertxTestContext) {
+    coEvery { setupRegistry!!.findSetups() } returns emptyList()
+
+    val client = WebClient.create(vertx)
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        val result = client.get(port, "localhost", "/setups")
+            .`as`(BodyCodec.jsonArray())
+            .expect(ResponsePredicate.SC_OK)
+            .send()
+            .await()
+            .body()
+        assertThat(result).isEmpty()
+
+        client.get(port, "localhost", "/setups/foobar")
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .send()
+            .await()
+
+        ctx.completeNow()
+      }
+    }
+  }
+
+  /**
+   * Test that we can fetch a list of setups
+   */
+  @Test
+  @Tag(ENABLE_SETUPS)
+  fun getSetups(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Setup(
+        id = "setup1",
+        flavor = "mini",
+        imageName = "ubuntu",
+        availabilityZone = "az01",
+        blockDeviceSizeGb = 50,
+        maxVMs = 10
+    )
+    val s2 = Setup(
+        id = "setup2",
+        flavor = "large",
+        imageName = "ubuntu",
+        availabilityZone = "az02",
+        blockDeviceSizeGb = 100,
+        maxVMs = 100
+    )
+    val setups = listOf(s1, s2)
+
+    coEvery { setupRegistry!!.findSetups() } returns setups
+
+    val client = WebClient.create(vertx)
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        val result = client.get(port, "localhost", "/setups")
+            .`as`(BodyCodec.jsonArray())
+            .expect(ResponsePredicate.SC_OK)
+            .send()
+            .await()
+            .body()
+        assertThat(result).isEqualTo(jsonArrayOf(
+            jsonObjectOf(
+                "id" to s1.id,
+                "flavor" to s1.flavor,
+                "imageName" to s1.imageName,
+                "availabilityZone" to s1.availabilityZone,
+                "blockDeviceSizeGb" to s1.blockDeviceSizeGb,
+                "minVMs" to s1.minVMs,
+                "maxVMs" to s1.maxVMs,
+                "maxCreateConcurrent" to s1.maxCreateConcurrent,
+                "provisioningScripts" to jsonArrayOf(),
+                "providedCapabilities" to jsonArrayOf(),
+                "additionalVolumes" to jsonArrayOf(),
+                "parameters" to jsonObjectOf()
+            ),
+            jsonObjectOf(
+                "id" to s2.id,
+                "flavor" to s2.flavor,
+                "imageName" to s2.imageName,
+                "availabilityZone" to s2.availabilityZone,
+                "blockDeviceSizeGb" to s2.blockDeviceSizeGb,
+                "minVMs" to s2.minVMs,
+                "maxVMs" to s2.maxVMs,
+                "maxCreateConcurrent" to s2.maxCreateConcurrent,
+                "provisioningScripts" to jsonArrayOf(),
+                "providedCapabilities" to jsonArrayOf(),
+                "additionalVolumes" to jsonArrayOf(),
+                "parameters" to jsonObjectOf()
+            )
+        ))
+        ctx.completeNow()
+      }
+    }
+  }
+
+  /**
+   * Test that we can fetch a single setup by ID
+   */
+  @Test
+  @Tag(ENABLE_SETUPS)
+  fun getSetupById(vertx: Vertx, ctx: VertxTestContext) {
+    val s1 = Setup(
+        id = "setup1",
+        flavor = "mini",
+        imageName = "ubuntu",
+        availabilityZone = "az01",
+        blockDeviceSizeGb = 50,
+        maxVMs = 10
+    )
+    val s2 = Setup(
+        id = "setup2",
+        flavor = "large",
+        imageName = "ubuntu",
+        availabilityZone = "az02",
+        blockDeviceSizeGb = 100,
+        maxVMs = 100
+    )
+    val setups = listOf(s1, s2)
+
+    coEvery { setupRegistry!!.findSetups() } returns setups
+
+    val client = WebClient.create(vertx)
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        val result = client.get(port, "localhost", "/setups/${s1.id}")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .send()
+            .await()
+            .body()
+        assertThat(result).isEqualTo(jsonObjectOf(
+            "id" to s1.id,
+            "flavor" to s1.flavor,
+            "imageName" to s1.imageName,
+            "availabilityZone" to s1.availabilityZone,
+            "blockDeviceSizeGb" to s1.blockDeviceSizeGb,
+            "minVMs" to s1.minVMs,
+            "maxVMs" to s1.maxVMs,
+            "maxCreateConcurrent" to s1.maxCreateConcurrent,
+            "provisioningScripts" to jsonArrayOf(),
+            "providedCapabilities" to jsonArrayOf(),
+            "additionalVolumes" to jsonArrayOf(),
+            "parameters" to jsonObjectOf()
+        ))
+
+        client.get(port, "localhost", "/setups/foobar")
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .send()
+            .await()
 
         ctx.completeNow()
       }
