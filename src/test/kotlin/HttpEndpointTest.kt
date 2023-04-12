@@ -52,7 +52,6 @@ import model.metadata.Service
 import model.metadata.ServiceParameter
 import model.plugins.InitializerPlugin
 import model.plugins.OutputAdapterPlugin
-import model.plugins.Plugin
 import model.plugins.ProcessChainAdapterPlugin
 import model.plugins.ProcessChainConsistencyCheckerPlugin
 import model.plugins.ProgressEstimatorPlugin
@@ -594,17 +593,58 @@ class HttpEndpointTest {
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        val response = client.get(port, "localhost", "/plugins")
-          .`as`(BodyCodec.jsonArray())
-          .expect(ResponsePredicate.SC_OK)
-          .expect(ResponsePredicate.JSON)
-          .send()
-          .await()
+        val result = client.get(port, "localhost", "/plugins")
+            .`as`(BodyCodec.jsonArray())
+            .expect(ResponsePredicate.SC_OK)
+            .expect(ResponsePredicate.JSON)
+            .send()
+            .await()
+            .body()
 
-        val returnedList = JsonUtils.mapper.convertValue<List<Plugin>>(response.body().list)
-        assertThat(returnedList)
-          .usingRecursiveFieldByFieldElementComparatorIgnoringFields("compiledFunction")
-          .isEqualTo(plugins)
+        assertThat(result).isEqualTo(jsonArrayOf(
+            jsonObjectOf(
+                "type" to "initializer",
+                "name" to "InitializerPluginName",
+                "scriptFile" to "/path",
+                "version" to "1.0.0",
+                "dependsOn" to jsonArrayOf("fred", "foo", "bar")
+            ),
+            jsonObjectOf(
+                "type" to "outputAdapter",
+                "name" to "OutputAdapterPluginName",
+                "scriptFile" to "/path",
+                "version" to "1.0.0",
+                "supportedDataType" to "dataType"
+            ),
+            jsonObjectOf(
+                "type" to "processChainAdapter",
+                "name" to "Name",
+                "scriptFile" to "/path",
+                "version" to "1.0.0",
+                "dependsOn" to jsonArrayOf("fred", "foo", "bar")
+            ),
+            jsonObjectOf(
+                "type" to "processChainConsistencyChecker",
+                "name" to "ProcessChainAdapterPluginName",
+                "scriptFile" to "/path",
+                "version" to "1.0.0",
+                "dependsOn" to jsonArrayOf("fred", "foo", "bar")
+            ),
+            jsonObjectOf(
+                "type" to "progressEstimator",
+                "name" to "ProgressEstimatorPluginName",
+                "scriptFile" to "/path",
+                "version" to "1.0.0",
+                "supportedServiceIds" to jsonArrayOf("myService")
+            ),
+            jsonObjectOf(
+                "type" to "runtime",
+                "name" to "RuntimePluginName",
+                "scriptFile" to "/path",
+                "version" to "1.0.0",
+                "supportedRuntime" to "myRuntime"
+            )
+        ))
 
         ctx.completeNow()
       }
@@ -627,21 +667,25 @@ class HttpEndpointTest {
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         client.get(port, "localhost", "/plugins/UNKNOWN_NAME")
-          .expect(ResponsePredicate.SC_NOT_FOUND)
-          .send()
-          .await()
+            .expect(ResponsePredicate.SC_NOT_FOUND)
+            .send()
+            .await()
 
-        val response = client.get(port, "localhost", "/plugins/InitializerPluginName")
-          .`as`(BodyCodec.jsonObject())
-          .expect(ResponsePredicate.SC_OK)
-          .expect(ResponsePredicate.JSON)
-          .send()
-          .await()
+        val result = client.get(port, "localhost", "/plugins/InitializerPluginName")
+            .`as`(BodyCodec.jsonObject())
+            .expect(ResponsePredicate.SC_OK)
+            .expect(ResponsePredicate.JSON)
+            .send()
+            .await()
+            .body()
 
-        assertThat(JsonUtils.fromJson<Plugin>(response.body()))
-          .usingRecursiveComparison()
-          .ignoringFieldsMatchingRegexes("compiledFunction")
-          .isEqualTo(plugins[0])
+        assertThat(result).isEqualTo(jsonObjectOf(
+            "type" to "initializer",
+            "name" to "InitializerPluginName",
+            "scriptFile" to "/path",
+            "version" to "1.0.0",
+            "dependsOn" to jsonArrayOf("fred", "foo", "bar")
+        ))
 
         ctx.completeNow()
       }
