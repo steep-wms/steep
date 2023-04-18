@@ -45,7 +45,7 @@
     "react-modal": "^3.16.1",
     "react-timeago": "^7.1.0",
     "react-virtualized-auto-sizer": "^1.0.14",
-    "react-window": "^1.8.8",
+    "react-window": "^1.8.9",
     "sass": "^1.62.0",
     "sass-loader": "^13.2.2",
     "serve": "^14.2.0",
