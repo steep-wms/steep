@@ -29,7 +29,7 @@
     "favicons": "^7.1.2",
     "hast-to-hyperscript": "^10.0.3",
     "highlight.js": "^11.7.0",
-    "immer": "^9.0.21",
+    "immer": "^10.0.1",
     "js-yaml": "^4.1.0",
     "json2yaml": "^1.1.0",
     "lodash": "^4.17.21",
