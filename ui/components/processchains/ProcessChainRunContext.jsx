@@ -1,5 +1,5 @@
 import makeListContext from "../lib/ListContext"
-import produce from "immer"
+import { produce } from "immer"
 
 import {
   PROCESS_CHAIN_RUN_ADDED,

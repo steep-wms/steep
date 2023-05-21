@@ -1,6 +1,6 @@
 import { deleteRunInformation } from "./processChainUtil"
 import makeListContext from "../lib/ListContext"
-import produce from "immer"
+import { produce } from "immer"
 
 import {
   PROCESS_CHAINS_ADDED,
