@@ -6,7 +6,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     application
     jacoco
-    kotlin("jvm") version "1.8.20"
+    kotlin("jvm") version "1.8.21"
     id("com.github.ben-manes.versions") version "0.46.0"
     id("se.patrikerdes.use-latest-versions") version "0.2.18"
 }
@@ -54,22 +54,22 @@ dependencies {
     implementation("io.vertx:vertx-web-client:$vertxVersion")
 
     implementation("commons-codec:commons-codec:1.15")
-    implementation("commons-io:commons-io:2.11.0")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.14.2")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.14.2")
-    implementation("com.github.luben:zstd-jni:1.5.5-1")
+    implementation("commons-io:commons-io:2.12.0")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.1")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.1")
+    implementation("com.github.luben:zstd-jni:1.5.5-3")
     implementation("com.github.zafarkhaja:java-semver:0.9.0")
     implementation("com.google.guava:guava:31.1-jre")
     implementation("com.zaxxer:HikariCP:5.0.1")
     implementation("io.airlift:aircompressor:0.24")
-    implementation("io.pebbletemplates:pebble:3.2.0")
-    implementation("io.projectreactor:reactor-core:3.5.5") // necessary for reactive MongoDB driver
+    implementation("io.pebbletemplates:pebble:3.2.1")
+    implementation("io.projectreactor:reactor-core:3.5.6") // necessary for reactive MongoDB driver
     implementation("io.prometheus:simpleclient:$prometheusClientVersion")
-    implementation("io.micrometer:micrometer-registry-prometheus:1.10.6")
+    implementation("io.micrometer:micrometer-registry-prometheus:1.11.0")
     implementation("org.apache.ant:ant:1.10.13")
     implementation("org.apache.commons:commons-lang3:3.12.0")
     implementation("org.apache.commons:commons-text:1.10.0")
-    implementation("org.flywaydb:flyway-core:9.16.3")
+    implementation("org.flywaydb:flyway-core:9.18.0")
     implementation("org.mongodb:mongodb-driver-reactivestreams:4.9.1")
     implementation("com.github.openstack4j.core:openstack4j:3.11")
     implementation("org.parboiled:parboiled-java:1.4.1")
@@ -86,7 +86,7 @@ dependencies {
     implementation(kotlin("stdlib"))
     implementation(kotlin("script-runtime"))
 
-    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:4.6.2")
+    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:4.6.3")
     testImplementation("io.mockk:mockk:1.13.5")
     testImplementation("io.vertx:vertx-junit5:$vertxVersion")
     testImplementation("org.assertj:assertj-core:3.24.2")
@@ -119,7 +119,7 @@ jacoco {
 
 tasks {
     fun isNonStable(version: String): Boolean {
-        val stableKeyword = listOf("RELEASE", "FINAL", "GA").any { version.toUpperCase().contains(it) }
+        val stableKeyword = listOf("RELEASE", "FINAL", "GA").any { version.uppercase().contains(it) }
         val regex = "^[0-9,.v-]+(-r)?$".toRegex()
         val isStable = stableKeyword || regex.matches(version)
         return !isStable
