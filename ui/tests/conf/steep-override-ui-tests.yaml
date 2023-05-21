@@ -1,3 +1,8 @@
 steep:
   agent:
     instances: 10
+
+  http:
+    cors:
+      enable: true
+      allowOrigin: https?://(localhost|127\.0\.0\.1):[0-9]+
