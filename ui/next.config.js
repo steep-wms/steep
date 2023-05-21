@@ -73,7 +73,10 @@ const config = {
         if (i.definitions["process.env.__NEXT_ROUTER_BASEPATH"]) {
           let f
           if (isProd) {
-            f = '(function () { return "/$$MYBASEPATH$$" })()'
+            // function must have some kind of side effect so it won't get
+            // optimized away
+            f =
+              '(function () { if (typeof window !== "undefined") window.__steepBasePath = "/$$MYBASEPATH$$"; return "/$$MYBASEPATH$$" })()'
           } else {
             f = '(function () { return "" })()'
           }
