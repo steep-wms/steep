@@ -59,7 +59,7 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.1")
     implementation("com.github.luben:zstd-jni:1.5.5-3")
     implementation("com.github.zafarkhaja:java-semver:0.9.0")
-    implementation("com.google.guava:guava:31.1-jre")
+    implementation("com.google.guava:guava:32.0.1-jre")
     implementation("com.zaxxer:HikariCP:5.0.1")
     implementation("io.airlift:aircompressor:0.24")
     implementation("io.pebbletemplates:pebble:3.2.1")
