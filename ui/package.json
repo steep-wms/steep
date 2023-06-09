@@ -56,7 +56,7 @@
     "webpack": "^5.83.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.34.0",
+    "@playwright/test": "^1.35.0",
     "cypress": "^12.12.0",
     "eslint": "^8.41.0",
     "eslint-config-next": "^13.4.3",
