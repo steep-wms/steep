@@ -33,7 +33,7 @@
     "js-yaml": "^4.1.0",
     "json2yaml": "^1.1.0",
     "lodash": "^4.17.21",
-    "lucide-react": "^0.220.0",
+    "lucide-react": "^0.242.0",
     "mini-svg-data-uri": "^1.4.4",
     "next": "^13.4.3",
     "normalize.css": "^8.0.1",
