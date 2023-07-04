@@ -1,0 +1,26 @@
+- id: sleep
+  name: Sleep
+  description: Sleep for the given number of seconds
+  parameters:
+    - id: seconds
+      name: seconds to wait
+      description: The number of seconds to wait
+      type: input
+      cardinality: 1..1
+      dataType: integer
+  actions:
+    - type: execute
+      service: sleep
+      inputs:
+        - id: seconds
+          var: seconds
+
+- id: sleep
+  name: Sleep 5
+  description: Sleep for the 5 seconds (duplicate)
+  actions:
+    - type: execute
+      service: sleep
+      inputs:
+        - id: seconds
+          value: 5

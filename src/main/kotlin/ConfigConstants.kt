@@ -18,6 +18,13 @@ object ConfigConstants {
   const val PLUGINS = "steep.plugins"
 
   /**
+   * The path to the files containing macros. Either a string pointing to a
+   * single file or a glob (e.g. &#42;&#42;&#47;&#42;.yaml) or an array of
+   * files or globs.
+   */
+  const val MACROS = "steep.macros"
+
+  /**
    * A file that keeps additional configuration (overrides the main
    * configuration). Note that configuration items in this file can still be
    * overridden with environment variables.

@@ -30,7 +30,7 @@
 
 - id: sleep
   name: sleep
-  description: sleeps for the given amount of seconds
+  description: sleeps for the given number of seconds
   path: sleep
   runtime: other
 

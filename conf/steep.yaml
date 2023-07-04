@@ -2,6 +2,7 @@ steep:
   # overrideConfigFile: conf/steep-override.yaml
   services: conf/services/*.yaml
   plugins: conf/plugins/*.yaml
+  macros: conf/macros/*.yaml
   tmpPath: /tmp
   outPath: /tmp/steep/out
 

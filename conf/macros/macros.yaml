@@ -1,0 +1,20 @@
+- id: delayed_docker_hello_world
+  name: Delayed Docker hello world
+  description: Waits for the given number of seconds and then runs the hello-world Docker image
+  parameters:
+    - id: seconds
+      name: seconds to wait
+      description: The number of seconds to wait
+      type: input
+      cardinality: 1..1
+      dataType: integer
+  actions:
+    - id: sleep
+      type: execute
+      service: sleep
+      inputs:
+        - id: seconds
+          var: seconds
+    - type: execute
+      dependsOn: sleep
+      service: docker_hello_world

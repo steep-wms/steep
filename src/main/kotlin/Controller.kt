@@ -8,6 +8,8 @@ import ConfigConstants.CONTROLLER_LOOKUP_ORPHANS_INTERVAL
 import ConfigConstants.OUT_PATH
 import ConfigConstants.TMP_PATH
 import com.fasterxml.jackson.databind.SerializationFeature
+import db.MacroRegistry
+import db.MacroRegistryFactory
 import db.MetadataRegistry
 import db.MetadataRegistryFactory
 import db.PluginRegistry
@@ -80,6 +82,7 @@ class Controller : CoroutineVerticle() {
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var metadataRegistry: MetadataRegistry
   private val pluginRegistry: PluginRegistry = PluginRegistryFactory.create()
+  private lateinit var macroRegistry: MacroRegistry
 
   private var lookupInterval: Long = DEFAULT_LOOKUP_INTERVAL
   private var lookupMaxErrors: Long = DEFAULT_LOOKUP_MAX_ERRORS
@@ -94,6 +97,7 @@ class Controller : CoroutineVerticle() {
     // create registries
     submissionRegistry = SubmissionRegistryFactory.create(vertx)
     metadataRegistry = MetadataRegistryFactory.create(vertx)
+    macroRegistry = MacroRegistryFactory.create(vertx)
 
     // read configuration
     tmpPath = config.getString(TMP_PATH) ?: throw IllegalStateException(
