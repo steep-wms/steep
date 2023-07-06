@@ -8,7 +8,7 @@ import model.macro.Macro
  */
 interface MacroRegistry {
   /**
-   * Get a list of all macros
+   * Get a map of all macro IDs and macros
    */
-  suspend fun findMacros(): List<Macro>
+  suspend fun findMacros(): HashMap<String, Macro>
 }

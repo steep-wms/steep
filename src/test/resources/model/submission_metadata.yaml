@@ -1,0 +1,29 @@
+- id: dummy
+  name: dummy
+  description: A dummy service
+  requiredCapabilities:
+    - rc1
+    - rc2
+  path: dummy
+  runtime: other
+  parameters: []
+
+- id: dummy2
+  name: dummy2
+  description: A second dummy service
+  requiredCapabilities:
+    - rc1
+    - rc3
+  path: dummy
+  runtime: other
+  parameters: []
+
+- id: dummy3
+  name: dummy3
+  description: A third dummy service
+  requiredCapabilities:
+    - rc4
+    - rc5
+  path: dummy
+  runtime: other
+  parameters: []

@@ -11,22 +11,22 @@ import model.macro.Macro
  */
 class FileMacroRegistry(private val paths: List<String>, private val vertx: Vertx) :
     MacroRegistry, AbstractFileRegistry() {
-  private var macros: List<Macro>? = null
+  private var macros: HashMap<String, Macro>? = null
 
-  override suspend fun findMacros(): List<Macro> {
+  override suspend fun findMacros(): HashMap<String, Macro> {
     if (macros == null) {
       val m: List<Macro> = find(paths, vertx)
 
-      // check macros for duplicate IDs
-      val macroIds = mutableSetOf<String>()
+      val r = LinkedHashMap<String, Macro>()
       for (macro in m) {
-        if (macroIds.contains(macro.id)) {
+        // check macros for duplicate IDs
+        if (r.containsKey(macro.id)) {
           throw IllegalArgumentException("Found duplicate macro ID: `${macro.id}'")
         }
-        macroIds.add(macro.id)
+        r[macro.id] = macro
       }
 
-      macros = m
+      macros = r
     }
     return macros!!
   }

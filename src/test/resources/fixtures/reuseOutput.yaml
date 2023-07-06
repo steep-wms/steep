@@ -24,3 +24,8 @@ actions:
     input: for_input
     output: output_file2
     enumerator: i
+  - type: include
+    macro: mymacro
+    outputs:
+      - id: my_output
+        var: output_file2

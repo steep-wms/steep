@@ -63,3 +63,8 @@ actions:
         outputs:
           - id: output_file
             var: output_file7
+      - type: include
+        macro: my_macro
+        inputs:
+          - id: input_file
+            var: k

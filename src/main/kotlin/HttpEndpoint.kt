@@ -41,6 +41,8 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.convertValue
 import com.github.zafarkhaja.semver.expr.CompositeExpression.Helper.gte
 import com.github.zafarkhaja.semver.expr.CompositeExpression.Helper.lte
+import db.MacroRegistry
+import db.MacroRegistryFactory
 import db.MetadataRegistry
 import db.MetadataRegistryFactory
 import db.PluginRegistry
@@ -130,6 +132,7 @@ class HttpEndpoint : CoroutineVerticle() {
   private lateinit var submissionRegistry: SubmissionRegistry
   private lateinit var vmRegistry: VMRegistry
   private var setupRegistry: SetupRegistry? = null
+  private lateinit var macroRegistry: MacroRegistry
   private lateinit var basePath: String
   private lateinit var server: HttpServer
 
@@ -139,6 +142,7 @@ class HttpEndpoint : CoroutineVerticle() {
     agentRegistry = AgentRegistryFactory.create(vertx)
     submissionRegistry = SubmissionRegistryFactory.create(vertx)
     vmRegistry = VMRegistryFactory.create(vertx)
+    macroRegistry = MacroRegistryFactory.create(vertx)
 
     setupRegistry = if (config.getBoolean(ConfigConstants.CLOUD_ENABLED, false)) {
       SetupRegistryFactory.create(vertx)
@@ -1485,7 +1489,7 @@ class HttpEndpoint : CoroutineVerticle() {
     // store submission in registry
     launch {
       val reqCaps = Submission.collectRequiredCapabilities(workflow,
-          metadataRegistry.findServices())
+          metadataRegistry.findServices(), macroRegistry.findMacros())
       val submission = Submission(workflow = workflow,
           requiredCapabilities = reqCaps, source = source)
 

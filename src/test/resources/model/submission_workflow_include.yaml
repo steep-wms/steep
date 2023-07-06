@@ -1,0 +1,10 @@
+actions:
+  - type: execute
+    service: dummy
+
+  - type: for
+    enumerator: i
+    input: j
+    actions:
+      - type: include
+        macro: macro_dummy3

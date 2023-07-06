@@ -14,3 +14,8 @@ actions:
     outputs:
       - id: output_file
         var: output_file2
+  - id: cp4
+    type: include
+    macro: mymacro
+    dependsOn:
+      - cp3

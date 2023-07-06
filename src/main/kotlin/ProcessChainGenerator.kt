@@ -17,6 +17,7 @@ import model.workflow.AnonymousParameter
 import model.workflow.ExecuteAction
 import model.workflow.ForEachAction
 import model.workflow.GenericParameter
+import model.workflow.IncludeAction
 import model.workflow.OutputParameter
 import model.workflow.Variable
 import model.workflow.Workflow
@@ -369,6 +370,12 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
             dependsOn = action.dependsOn.map { substitutions[it]?.id ?: it }
           )
         }
+      }
+
+      is IncludeAction -> {
+        throw RuntimeException("Include actions should have already been " +
+            "processed by the MacroPreprocessor. If you see this error, " +
+            "you've found a bug. Please contact the developers.")
       }
     }
   }

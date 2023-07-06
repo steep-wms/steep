@@ -1,0 +1,6 @@
+- id: macro_dummy3
+  name: A macro with dummy3
+  description: A macro with dummy3
+  actions:
+    - type: execute
+      service: dummy3

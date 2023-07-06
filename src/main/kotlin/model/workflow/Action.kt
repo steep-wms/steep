@@ -14,7 +14,8 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
     property = "type")
 @JsonSubTypes(
     Type(value = ExecuteAction::class, name = "execute"),
-    Type(value = ForEachAction::class, name = "for")
+    Type(value = ForEachAction::class, name = "for"),
+    Type(value = IncludeAction::class, name = "include")
 )
 sealed interface Action {
     /**

@@ -46,6 +46,17 @@ class WorkflowValidatorTest {
   }
 
   /**
+   * Validate a simple workflow with an include action that has an output
+   * variable with a value
+   */
+  @Test
+  fun outputsWithValuesInclude() {
+    val result = WorkflowValidator.validate(readWorkflow("outputsWithValuesInclude"))
+    assertThat(result).hasSize(1)
+    assertThat(result[0].message).contains(listOf("Output variable", "output_file1"))
+  }
+
+  /**
    * Validate a simple workflow with an output variable that has a value. The
    * output variable is also used multiple times.
    */
@@ -68,7 +79,18 @@ class WorkflowValidatorTest {
   }
 
   /**
-   * Validate a nested for-each actions where one of them as well as an
+   * Validate a workflow with a for-each action that has an include action with
+   * an output variable that has a value
+   */
+  @Test
+  fun outputsWithValuesForEachInclude() {
+    val result = WorkflowValidator.validate(readWorkflow("outputsWithValuesForEach"))
+    assertThat(result).hasSize(1)
+    assertThat(result[0].message).contains(listOf("Output variable", "output_file3"))
+  }
+
+  /**
+   * Validate nested for-each actions where one of them as well as an
    * embedded execute action has output variables with values
    */
   @Test
@@ -85,11 +107,18 @@ class WorkflowValidatorTest {
   @Test
   fun duplicateId() {
     val result = WorkflowValidator.validate(readWorkflow("duplicateIds"))
-    assertThat(result).hasSize(4)
+    assertThat(result).hasSize(5)
     assertThat(result[0].message).contains(listOf("Duplicate identifier", "input_file1"))
+    assertThat(result[0].path).containsExactly("workflow", "actions[0](execute cp)")
     assertThat(result[1].message).contains(listOf("Duplicate identifier", "cp1"))
+    assertThat(result[1].path).containsExactly("workflow", "actions[2](execute cp)")
     assertThat(result[2].message).contains(listOf("Duplicate identifier", "cp2"))
+    assertThat(result[2].path).containsExactly("workflow", "actions[4](for-each)")
     assertThat(result[3].message).contains(listOf("Duplicate identifier", "cp2"))
+    assertThat(result[3].path).containsExactly("workflow", "actions[4](for-each)",
+        "actions[0](execute cp)")
+    assertThat(result[4].message).contains(listOf("Duplicate identifier", "cp3"))
+    assertThat(result[4].path).containsExactly("workflow", "actions[6](include mymacro)")
   }
 
   /**
@@ -99,9 +128,11 @@ class WorkflowValidatorTest {
   @Test
   fun missingDependsOnTarget() {
     val result = WorkflowValidator.validate(readWorkflow("missingDependsOnTarget"))
-    assertThat(result).hasSize(1)
+    assertThat(result).hasSize(2)
     assertThat(result[0].message).containsSubsequence(listOf(
       "Unable to resolve action dependency", "cp2", "cp1"))
+    assertThat(result[1].message).containsSubsequence(listOf(
+        "Unable to resolve action dependency", "cp4", "cp3"))
   }
 
   /**
@@ -110,11 +141,13 @@ class WorkflowValidatorTest {
   @Test
   fun missingInputValue() {
     val result = WorkflowValidator.validate(readWorkflow("missingInputValue"))
-    assertThat(result).hasSize(2)
+    assertThat(result).hasSize(3)
     assertThat(result[0].message).containsSubsequence(listOf(
         "Input variable", "input_file1", "has no value"))
     assertThat(result[1].message).containsSubsequence(listOf(
         "Input variable", "input_file3", "has no value"))
+    assertThat(result[2].message).containsSubsequence(listOf(
+        "Input variable", "input_file4", "has no value"))
   }
 
   /**
@@ -123,10 +156,12 @@ class WorkflowValidatorTest {
   @Test
   fun reuseOutput() {
     val result = WorkflowValidator.validate(readWorkflow("reuseOutput"))
-    assertThat(result).hasSize(2)
+    assertThat(result).hasSize(3)
     assertThat(result[0].message).containsSubsequence(listOf(
         "Output variable", "output_file2", "used more than once"))
     assertThat(result[1].message).containsSubsequence(listOf(
+        "Output variable", "output_file2", "used more than once"))
+    assertThat(result[2].message).containsSubsequence(listOf(
         "Output variable", "output_file2", "used more than once"))
   }
 
@@ -158,14 +193,27 @@ class WorkflowValidatorTest {
   @Test
   fun scoping() {
     val result = WorkflowValidator.validate(readWorkflow("scoping"))
-    assertThat(result).hasSize(4)
+    assertThat(result).hasSize(5)
     assertThat(result[0].message).containsSubsequence(listOf(
         "Variable", "output_file2", "not visible"))
+    assertThat(result[0].path).containsExactly(
+        "workflow", "actions[1](execute cp)")
     assertThat(result[1].message).containsSubsequence(listOf(
         "Variable", "i", "not visible"))
+    assertThat(result[1].path).containsExactly(
+        "workflow", "actions[2](execute cp)")
     assertThat(result[2].message).containsSubsequence(listOf(
         "Variable", "i", "not visible"))
+    assertThat(result[2].path).containsExactly(
+        "workflow", "actions[3](for-each)",
+        "actions[0](for-each)", "actions[0](execute cp)")
     assertThat(result[3].message).containsSubsequence(listOf(
         "Variable", "k", "not visible"))
+    assertThat(result[3].path).containsExactly(
+        "workflow", "actions[3](for-each)", "actions[1](execute cp)")
+    assertThat(result[4].message).containsSubsequence(listOf(
+        "Variable", "k", "not visible"))
+    assertThat(result[4].path).containsExactly(
+        "workflow", "actions[3](for-each)", "actions[2](include my_macro)")
   }
 }

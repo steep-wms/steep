@@ -1,0 +1,17 @@
+actions:
+  - type: execute
+    service: dummy
+
+  - type: for
+    enumerator: i
+    input: j
+    actions:
+      - type: execute
+        service: dummy2
+
+      - type: for
+        enumerator: k
+        input: l
+        actions:
+          - type: execute
+            service: dummy3

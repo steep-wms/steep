@@ -2,10 +2,12 @@ package model
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import helper.UniqueID
+import model.macro.Macro
 import model.metadata.Service
 import model.workflow.Action
 import model.workflow.ExecuteAction
 import model.workflow.ForEachAction
+import model.workflow.IncludeAction
 import model.workflow.Workflow
 import java.time.Instant
 
@@ -50,8 +52,11 @@ data class Submission(
   }
 
   companion object {
-    private fun collectRequiredCapabilities(actions: List<Action>,
-        serviceMetadata: Map<String, Service>): Set<String> {
+    private fun collectRequiredCapabilities(
+        actions: List<Action>,
+        serviceMetadata: Map<String, Service>,
+        macros: Map<String, Macro>
+    ): Set<String> {
       val result = mutableSetOf<String>()
       for (a in actions) {
         when (a) {
@@ -62,8 +67,17 @@ data class Submission(
             }
           }
 
-          is ForEachAction -> result.addAll(collectRequiredCapabilities(
-              a.actions, serviceMetadata))
+          is ForEachAction -> result.addAll(
+              collectRequiredCapabilities(a.actions, serviceMetadata, macros)
+          )
+
+          is IncludeAction -> {
+            val m = macros[a.macro] ?: throw IllegalArgumentException(
+                "Unable to find included macro `${a.macro}'")
+            result.addAll(
+                collectRequiredCapabilities(m.actions, serviceMetadata, macros)
+            )
+          }
         }
       }
       return result
@@ -73,9 +87,14 @@ data class Submission(
      * Use the metadata of the given [services] to calculate a set of
      * capabilities required to execute the given [workflow]
      */
-    fun collectRequiredCapabilities(workflow: Workflow, services: List<Service>): Set<String> {
+    fun collectRequiredCapabilities(workflow: Workflow,
+        services: List<Service>, macros: Map<String, Macro>): Set<String> {
       val serviceMetadata = services.associateBy { it.id }
-      return collectRequiredCapabilities(workflow.actions, serviceMetadata)
+      return collectRequiredCapabilities(
+          workflow.actions,
+          serviceMetadata,
+          macros
+      )
     }
   }
 }

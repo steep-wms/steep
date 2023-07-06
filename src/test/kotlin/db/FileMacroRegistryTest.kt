@@ -28,8 +28,8 @@ class FileMacroRegistryTest {
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val macros = registry.findMacros()
-        assertThat(macros).hasSize(1)
-        val m1 = macros[0]
+        assertThat(macros).hasSize(1).containsKey("delayed_docker_hello_world")
+        val m1 = macros["delayed_docker_hello_world"]!!
         assertThat(m1.id).isEqualTo("delayed_docker_hello_world")
         assertThat(m1.parameters).hasSize(1)
         assertThat(m1.actions).hasSize(2)

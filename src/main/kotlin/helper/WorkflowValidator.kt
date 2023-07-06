@@ -3,6 +3,9 @@ package helper
 import model.workflow.Action
 import model.workflow.ExecuteAction
 import model.workflow.ForEachAction
+import model.workflow.IncludeAction
+import model.workflow.InputParameter
+import model.workflow.OutputParameter
 import model.workflow.Variable
 import model.workflow.Workflow
 
@@ -37,12 +40,14 @@ object WorkflowValidator {
 
   /**
    * Recursively visit a list of [actions]. Call the given [executeActionVisitor]
-   * for all execute actions found, and the [forEachActionVisitor] for all
-   * for-each actions. Add all errors into the given list of [results].
+   * for all execute actions found, the [forEachActionVisitor] for all for-each
+   * actions, and the [includeActionVisitor] for all include actions. Add all
+   * errors into the given list of [results].
    */
   private fun visit(actions: List<Action>, results: MutableList<ValidationError>,
       executeActionVisitor: (ExecuteAction, List<String>) -> Unit = { _, _ -> },
       forEachActionVisitor: (ForEachAction, List<String>) -> Unit = { _, _ -> },
+      includeActionVisitor: (IncludeAction, List<String>) -> Unit = { _, _ -> },
       path: List<String> = listOf("workflow")) {
     for ((i, action) in actions.withIndex()) {
       when (action) {
@@ -54,7 +59,13 @@ object WorkflowValidator {
         is ForEachAction -> {
           val newPath = path + listOf("actions[$i](for-each)")
           forEachActionVisitor(action, newPath)
-          visit(action.actions, results, executeActionVisitor, forEachActionVisitor, newPath)
+          visit(action.actions, results, executeActionVisitor,
+              forEachActionVisitor, includeActionVisitor, newPath)
+        }
+
+        is IncludeAction -> {
+          val newPath = path + listOf("actions[$i](include ${action.macro})")
+          includeActionVisitor(action, newPath)
         }
       }
     }
@@ -68,19 +79,31 @@ object WorkflowValidator {
       results: MutableList<ValidationError>) {
     val failedVariables = mutableSetOf<String>()
 
-    visit(workflow.actions, results, executeActionVisitor = { action, path ->
-      for ((i, output) in action.outputs.withIndex()) {
+    fun visitOutputs(outputs : List<OutputParameter>, path: List<String>) {
+      for ((i, output) in outputs.withIndex()) {
         if (output.variable.value != null && !failedVariables.contains(output.variable.id)) {
           failedVariables.add(output.variable.id)
           results.add(makeOutputWithValueError(output.variable, path + listOf("outputs[$i]")))
         }
       }
-    }, forEachActionVisitor = { action, path ->
-      if (action.output?.value != null && !failedVariables.contains(action.output.id)) {
-        failedVariables.add(action.output.id)
-        results.add(makeOutputWithValueError(action.output, path + listOf("output")))
-      }
-    })
+    }
+
+    visit(
+        workflow.actions,
+        results,
+        executeActionVisitor = { action, path ->
+          visitOutputs(action.outputs, path)
+        },
+        forEachActionVisitor = { action, path ->
+          if (action.output?.value != null && !failedVariables.contains(action.output.id)) {
+            failedVariables.add(action.output.id)
+            results.add(makeOutputWithValueError(action.output, path + listOf("output")))
+          }
+        },
+        includeActionVisitor = { action, path ->
+          visitOutputs(action.outputs, path)
+        }
+    )
   }
 
   private fun duplicateIds(workflow: Workflow, results: MutableList<ValidationError>) {
@@ -98,47 +121,58 @@ object WorkflowValidator {
       addId(v.id, listOf("workflow", "vars[$i]"))
     }
 
-    visit(workflow.actions, results, executeActionVisitor = { action, path ->
+    val visitor = { action: Action, path: List<String> ->
       addId(action.id, path)
-    }, forEachActionVisitor = { action, path ->
-      addId(action.id, path)
-    })
+    }
+
+    visit(workflow.actions, results, executeActionVisitor = visitor,
+        forEachActionVisitor = visitor, includeActionVisitor = visitor)
   }
 
   private fun missingDependsOnTargets(workflow: Workflow,
       results: MutableList<ValidationError>) {
     // collect all action IDs
     val ids = mutableSetOf<String>()
-    visit(workflow.actions, results, executeActionVisitor = { action, _ ->
+    val visitor = { action: Action, _: List<String> ->
       ids.add(action.id)
-    }, forEachActionVisitor = { action, _ ->
-      ids.add(action.id)
-    })
+      Unit
+    }
+    visit(workflow.actions, results, executeActionVisitor = visitor,
+        forEachActionVisitor = visitor, includeActionVisitor = visitor)
 
-    fun checkDependencies(actionId: String, deps: List<String>, path: List<String>) {
-      for (d in deps) {
+    val checkDependencies = { action: Action, path: List<String> ->
+      for (d in action.dependsOn) {
         if (!ids.contains(d)) {
-          results.add(makeMissingDependsOnTargetError(actionId, d, path))
+          results.add(makeMissingDependsOnTargetError(action.id, d, path))
         }
       }
     }
 
     // check dependencies
-    visit(workflow.actions, results, executeActionVisitor = { action, path ->
-      checkDependencies(action.id, action.dependsOn, path)
-    }, forEachActionVisitor = { action, path ->
-      checkDependencies(action.id, action.dependsOn, path)
-    })
+    visit(workflow.actions, results, executeActionVisitor = checkDependencies,
+        forEachActionVisitor = checkDependencies,
+        includeActionVisitor = checkDependencies)
   }
 
   private fun collectAllOutputs(workflow: Workflow): Set<String> {
     val outputIds = mutableSetOf<String>()
-    visit(workflow.actions, mutableListOf(), executeActionVisitor = { action, _ ->
-      outputIds.addAll(action.outputs.map { it.variable.id })
-    }, forEachActionVisitor = { action, _ ->
-      action.output?.let { outputIds.add(it.id) }
-      outputIds.add(action.enumerator.id)
-    })
+    val visitOutputs = { outputs: List<OutputParameter> ->
+      outputIds.addAll(outputs.map { it.variable.id })
+    }
+    visit(
+        workflow.actions,
+        mutableListOf(),
+        executeActionVisitor = { action, _ ->
+          visitOutputs(action.outputs)
+        },
+        forEachActionVisitor = { action, _ ->
+          action.output?.let { outputIds.add(it.id) }
+          outputIds.add(action.enumerator.id)
+        },
+        includeActionVisitor = { action, _ ->
+          visitOutputs(action.outputs)
+        }
+    )
     return outputIds
   }
 
@@ -147,67 +181,110 @@ object WorkflowValidator {
     val outputIds = collectAllOutputs(workflow)
 
     // check if all inputs have values or if they refer to a known output
-    visit(workflow.actions, results, executeActionVisitor = { action, path ->
-      for ((i, input) in action.inputs.withIndex()) {
+    val visitInputs = { inputs: List<InputParameter>, path: List<String> ->
+      for ((i, input) in inputs.withIndex()) {
         if (input.variable.value == null && !outputIds.contains(input.variable.id)) {
           results.add(makeMissingInputValueError(input.variable, path + listOf("inputs[$i]")))
         }
       }
-    }, forEachActionVisitor = { action, path ->
-      if (action.input.value == null && !outputIds.contains(action.input.id)) {
-        results.add(makeMissingInputValueError(action.input, path + listOf("input")))
-      }
-    })
+    }
+    visit(
+        workflow.actions,
+        results,
+        executeActionVisitor = { action, path ->
+          visitInputs(action.inputs, path)
+        },
+        forEachActionVisitor = { action, path ->
+          if (action.input.value == null && !outputIds.contains(action.input.id)) {
+            results.add(makeMissingInputValueError(action.input, path + listOf("input")))
+          }
+        },
+        includeActionVisitor = { action, path ->
+          visitInputs(action.inputs, path)
+        }
+    )
   }
 
   private fun reuseOutput(workflow: Workflow, results: MutableList<ValidationError>) {
     val outputIds = mutableSetOf<String>()
-    visit(workflow.actions, results, executeActionVisitor = { action, path ->
-      for ((i, o) in action.outputs.withIndex()) {
+
+    val visitOutputs = { outputs: List<OutputParameter>, path: List<String> ->
+      for ((i, o) in outputs.withIndex()) {
         if (outputIds.contains(o.variable.id)) {
           results.add(makeReuseOutputError(o.variable, path + listOf("outputs[$i]")))
         } else {
           outputIds.add(o.variable.id)
         }
       }
-      outputIds.addAll(action.outputs.map { it.variable.id })
-    }, forEachActionVisitor = { action, path ->
-      if (action.output != null) {
-        if (outputIds.contains(action.output.id)) {
-          results.add(makeReuseOutputError(action.output, path + listOf("output")))
-        } else {
-          outputIds.add(action.output.id)
+      outputIds.addAll(outputs.map { it.variable.id })
+    }
+
+    visit(
+        workflow.actions,
+        results,
+        executeActionVisitor = { action, path ->
+          visitOutputs(action.outputs, path)
+        },
+        forEachActionVisitor = { action, path ->
+          if (action.output != null) {
+            if (outputIds.contains(action.output.id)) {
+              results.add(makeReuseOutputError(action.output, path + listOf("output")))
+            } else {
+              outputIds.add(action.output.id)
+            }
+          }
+        },
+        includeActionVisitor = { action, path ->
+          visitOutputs(action.outputs, path)
         }
-      }
-    })
+    )
   }
 
   private fun reuseEnumerator(workflow: Workflow, results: MutableList<ValidationError>) {
     val enumIds = mutableSetOf<String>()
-    visit(workflow.actions, results, forEachActionVisitor = { action, path ->
-      if (enumIds.contains(action.enumerator.id)) {
-        results.add(makeReuseEnumeratorError(action.enumerator, path + listOf("enumerator")))
-      } else {
-        enumIds.add(action.enumerator.id)
-      }
-    })
+    visit(
+        workflow.actions,
+        results,
+        forEachActionVisitor = { action, path ->
+          if (enumIds.contains(action.enumerator.id)) {
+            results.add(makeReuseEnumeratorError(action.enumerator, path + listOf("enumerator")))
+          } else {
+            enumIds.add(action.enumerator.id)
+          }
+        }
+    )
   }
 
   private fun enumeratorAsInput(workflow: Workflow, results: MutableList<ValidationError>) {
     // collect all outputs (except for enumerators)
     val outputIds = mutableSetOf<String>()
-    visit(workflow.actions, results, executeActionVisitor = { action, _ ->
-      outputIds.addAll(action.outputs.map { it.variable.id })
-    }, forEachActionVisitor = { action, _ ->
-      action.output?.let { outputIds.add(it.id) }
-    })
+    val visitOutputs = { outputs: List<OutputParameter> ->
+      outputIds.addAll(outputs.map { it.variable.id })
+    }
+    visit(
+        workflow.actions,
+        results,
+        executeActionVisitor = { action, _ ->
+          visitOutputs(action.outputs)
+        },
+        forEachActionVisitor = { action, _ ->
+          action.output?.let { outputIds.add(it.id) }
+        },
+        includeActionVisitor = { action, _ ->
+          visitOutputs(action.outputs)
+        }
+    )
 
     // check all enumerators
-    visit(workflow.actions, results, forEachActionVisitor = { action, path ->
-      if (outputIds.contains(action.enumerator.id)) {
-        results.add(makeEnumeratorAsOutputError(action.enumerator, path + listOf("enumerator")))
-      }
-    })
+    visit(
+        workflow.actions,
+        results,
+        forEachActionVisitor = { action, path ->
+          if (outputIds.contains(action.enumerator.id)) {
+            results.add(makeEnumeratorAsOutputError(action.enumerator, path + listOf("enumerator")))
+          }
+        }
+    )
   }
 
   private fun scoping(workflow: Workflow, results: MutableList<ValidationError>) {
@@ -226,22 +303,26 @@ object WorkflowValidator {
         when (a) {
           is ExecuteAction -> a.outputs.forEach { frame.add(it.variable.id) }
           is ForEachAction -> a.output?.let { frame.add(it.id) }
+          is IncludeAction -> a.outputs.forEach { frame.add(it.variable.id) }
         }
       }
       stack.add(frame)
 
       // check if all inputs are visible
+      val visitInputs = { inputs: List<InputParameter>, newPath: List<String> ->
+        for (input in inputs) {
+          if (input.variable.value == null &&
+              outputIds.contains(input.variable.id) &&
+              !isVisible(input.variable)) {
+            results.add(makeScopingError(input.variable, newPath))
+          }
+        }
+      }
       for ((i, action) in actions.withIndex()) {
         when (action) {
           is ExecuteAction -> {
             val newPath = path + listOf("actions[$i](execute ${action.service})")
-            for (input in action.inputs) {
-              if (input.variable.value == null &&
-                  outputIds.contains(input.variable.id) &&
-                  !isVisible(input.variable)) {
-                results.add(makeScopingError(input.variable, newPath))
-              }
-            }
+            visitInputs(action.inputs, newPath)
           }
 
           is ForEachAction -> {
@@ -259,6 +340,11 @@ object WorkflowValidator {
             visitScope(action.actions, newPath)
 
             stack.removeLast()
+          }
+
+          is IncludeAction -> {
+            val newPath = path + listOf("actions[$i](include ${action.macro})")
+            visitInputs(action.inputs, newPath)
           }
         }
       }
