@@ -1441,9 +1441,9 @@ class HttpEndpoint : CoroutineVerticle() {
       renderError(ctx, 400, "Invalid workflow API version: " + e.message)
       return
     }
-    if (!api.satisfies(gte("4.0.0").and(lte("4.6.0")))) {
+    if (!api.satisfies(gte("4.0.0").and(lte("4.7.0")))) {
       renderError(ctx, 400, "Invalid workflow API version: $api. " +
-          "Supported version range is [4.0.0, 4.6.0].")
+          "Supported version range is [4.0.0, 4.7.0].")
       return
     }
 

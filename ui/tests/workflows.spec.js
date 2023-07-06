@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test"
 test.describe.configure({ mode: "parallel" })
 
 test("submit workflow", async ({ page, request }) => {
-  let workflow = `api: 4.6.0
+  let workflow = `api: 4.7.0
 actions:
   - type: execute
     service: sleep
@@ -36,7 +36,7 @@ actions:
 
 test("submit named workflow", async ({ page, request }) => {
   let name = "fred"
-  let workflow = `api: 4.6.0
+  let workflow = `api: 4.7.0
 name: ${name}
 actions:
   - type: execute
@@ -70,7 +70,7 @@ actions:
 })
 
 test("submit workflow with empty name", async ({ page, request }) => {
-  let workflow = `api: 4.6.0
+  let workflow = `api: 4.7.0
 name: ""
 actions:
   - type: execute
@@ -104,7 +104,7 @@ test("submit workflow and check details", async ({ page, request }) => {
   // wait until the workflow list has been loaded
   await page.goto("/workflows", { waitUntil: "networkidle" })
 
-  let workflow = `api: 4.6.0
+  let workflow = `api: 4.7.0
 actions:
   - type: execute
     service: sleep
@@ -140,7 +140,7 @@ test("submit and cancel a workflow", async ({ page, request }) => {
   // wait until the workflow list has been loaded
   await page.goto("/workflows", { waitUntil: "networkidle" })
 
-  let workflow = `api: 4.6.0
+  let workflow = `api: 4.7.0
 actions:
   - type: execute
     service: sleep
@@ -186,7 +186,7 @@ test("submit and don't cancel a workflow", async ({ page, request }) => {
   // wait until the workflow list has been loaded
   await page.goto("/workflows", { waitUntil: "networkidle" })
 
-  let workflow = `api: 4.6.0
+  let workflow = `api: 4.7.0
 actions:
   - type: execute
     service: sleep
@@ -232,7 +232,7 @@ test("check tooltips and labels", async ({ page, request }) => {
   // wait until the workflow list has been loaded
   await page.goto("/workflows", { waitUntil: "networkidle" })
 
-  let workflow = `api: 4.6.0
+  let workflow = `api: 4.7.0
 actions:
   - type: execute
     service: sleep
@@ -328,7 +328,7 @@ actions:
 test("change workflow priority", async ({ page, request }) => {
   await page.goto("/workflows", { waitUntil: "networkidle" })
 
-  let workflow = `api: 4.6.0
+  let workflow = `api: 4.7.0
 actions:
   - type: execute
     service: sleep

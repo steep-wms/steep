@@ -1,4 +1,4 @@
-api: 4.6.0
+api: 4.7.0
 actions:
   - type: execute
     service: sleep
