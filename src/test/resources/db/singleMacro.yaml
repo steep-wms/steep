@@ -6,8 +6,6 @@
       name: seconds to wait
       description: The number of seconds to wait
       type: input
-      cardinality: 1..1
-      dataType: integer
   actions:
     - id: sleep
       type: execute
