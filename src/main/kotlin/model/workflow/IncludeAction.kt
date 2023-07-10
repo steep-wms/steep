@@ -17,7 +17,7 @@ data class IncludeAction(
     @JsonInclude(JsonInclude.Include.NON_DEFAULT)
     val inputs: List<InputParameter> = emptyList(),
     @JsonInclude(JsonInclude.Include.NON_DEFAULT)
-    val outputs: List<OutputParameter> = emptyList(),
+    val outputs: List<IncludeOutputParameter> = emptyList(),
     @JsonInclude(JsonInclude.Include.NON_DEFAULT)
     @JsonFormat(with = [JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY])
     override val dependsOn: List<String> = emptyList()

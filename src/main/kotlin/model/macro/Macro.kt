@@ -1,6 +1,5 @@
 package model.macro
 
-import model.metadata.ServiceParameter
 import model.workflow.Action
 import model.workflow.Variable
 
@@ -22,7 +21,7 @@ data class Macro(
     val id: String,
     val name: String,
     val description: String,
-    val parameters: List<ServiceParameter> = emptyList(),
+    val parameters: List<MacroParameter> = emptyList(),
     val vars: List<Variable> = emptyList(),
     val actions: List<Action>
 )

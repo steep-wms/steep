@@ -1,0 +1,141 @@
+---
+# macros
+- id: my_macro
+  name: My macro
+  description: A nice custom macro
+  parameters:
+    - id: i
+      name: Input files
+      description: The input files
+      type: input
+    - id: o
+      name: Output files
+      description: The output files
+      type: output
+  actions:
+    - id: foreach1
+      type: for
+      enumerator: j
+      input: i
+      yieldToOutput: inner_o
+      output: o
+      actions:
+        - type: include
+          macro: another_macro
+          inputs:
+            - id: i
+              var: j
+          outputs:
+            - id: o
+              var: inner_o
+
+- id: another_macro
+  name: Another macro
+  description: Another nice custom macro
+  parameters:
+    - id: i
+      name: Input file
+      description: The input file
+      type: input
+    - id: o
+      name: Output file
+      description: The output file
+      type: output
+  actions:
+    - id: cp3
+      type: execute
+      service: cp
+      inputs:
+        - id: input_file
+          var: i
+      outputs:
+        - id: output_file
+          var: inner_o
+    - id: cp4
+      type: execute
+      service: cp
+      inputs:
+        - id: input_file
+          var: inner_o
+      outputs:
+        - id: output_file
+          var: o
+---
+# workflow
+actions:
+  - id: cp1
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: input_files1
+    outputs:
+      - id: output_file
+        var: output_files1
+  
+  - type: include
+    macro: my_macro
+    inputs:
+      - id: i
+        var: output_files1
+    outputs:
+      - id: o
+        var: output_files2
+
+  - id: cp3
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: output_files2
+    outputs:
+      - id: output_file
+        var: output_files3
+---
+# expected result
+actions:
+  - id: cp1
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: input_files1
+    outputs:
+      - id: output_file
+        var: output_files1
+
+  - id: $my_macro$0$foreach1
+    type: for
+    enumerator: $my_macro$0$j
+    input: output_files1
+    yieldToOutput: $my_macro$0$inner_o
+    output: output_files2
+    actions:
+      - id: $another_macro$0$cp3
+        type: execute
+        service: cp
+        inputs:
+          - id: input_file
+            var: $my_macro$0$j
+        outputs:
+          - id: output_file
+            var: $another_macro$0$inner_o
+      - id: $another_macro$0$cp4
+        type: execute
+        service: cp
+        inputs:
+          - id: input_file
+            var: $another_macro$0$inner_o
+        outputs:
+          - id: output_file
+            var: $my_macro$0$inner_o
+
+  - id: cp3
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: output_files2
+    outputs:
+      - id: output_file
+        var: output_files3

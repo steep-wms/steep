@@ -5,7 +5,7 @@ import model.workflow.ExecuteAction
 import model.workflow.ForEachAction
 import model.workflow.IncludeAction
 import model.workflow.InputParameter
-import model.workflow.OutputParameter
+import model.workflow.Parameter
 import model.workflow.Variable
 import model.workflow.Workflow
 
@@ -79,7 +79,7 @@ object WorkflowValidator {
       results: MutableList<ValidationError>) {
     val failedVariables = mutableSetOf<String>()
 
-    fun visitOutputs(outputs : List<OutputParameter>, path: List<String>) {
+    fun visitOutputs(outputs : List<Parameter>, path: List<String>) {
       for ((i, output) in outputs.withIndex()) {
         if (output.variable.value != null && !failedVariables.contains(output.variable.id)) {
           failedVariables.add(output.variable.id)
@@ -156,7 +156,7 @@ object WorkflowValidator {
 
   private fun collectAllOutputs(workflow: Workflow): Set<String> {
     val outputIds = mutableSetOf<String>()
-    val visitOutputs = { outputs: List<OutputParameter> ->
+    val visitOutputs = { outputs: List<Parameter> ->
       outputIds.addAll(outputs.map { it.variable.id })
     }
     visit(
@@ -208,7 +208,7 @@ object WorkflowValidator {
   private fun reuseOutput(workflow: Workflow, results: MutableList<ValidationError>) {
     val outputIds = mutableSetOf<String>()
 
-    val visitOutputs = { outputs: List<OutputParameter>, path: List<String> ->
+    val visitOutputs = { outputs: List<Parameter>, path: List<String> ->
       for ((i, o) in outputs.withIndex()) {
         if (outputIds.contains(o.variable.id)) {
           results.add(makeReuseOutputError(o.variable, path + listOf("outputs[$i]")))
@@ -258,7 +258,7 @@ object WorkflowValidator {
   private fun enumeratorAsInput(workflow: Workflow, results: MutableList<ValidationError>) {
     // collect all outputs (except for enumerators)
     val outputIds = mutableSetOf<String>()
-    val visitOutputs = { outputs: List<OutputParameter> ->
+    val visitOutputs = { outputs: List<Parameter> ->
       outputIds.addAll(outputs.map { it.variable.id })
     }
     visit(
