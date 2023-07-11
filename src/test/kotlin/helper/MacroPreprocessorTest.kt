@@ -5,6 +5,8 @@ import helper.MacroPreprocessor.preprocess
 import model.macro.Macro
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
@@ -21,6 +23,14 @@ class MacroPreprocessorTest {
         // Test if a workflow can contain a simple include action with a
         // simple macro
         "includeSimple",
+
+        // Test if an include action can specify a default value for a
+        // macro's input parameter
+        "includeDefaultInput",
+
+        // Test if the default value of a macro's input parameter can be
+        // overridden
+        "includeDefaultInputOverride",
 
         // Test if the macro preprocessor is able to rename macro-internal
         // variables
@@ -84,5 +94,43 @@ class MacroPreprocessorTest {
     val (macros, workflow, expected) = loadFixture(fixtureName)
     assertThat(YamlUtils.mapper.writeValueAsString(preprocess(workflow, macros)))
         .isEqualTo(YamlUtils.mapper.writeValueAsString(expected))
+  }
+
+  /**
+   * Test that the preprocessor throws an exception if a macro does not exist
+   */
+  @Test
+  fun includeMissingMacro() {
+    val (_, workflow, _) = loadFixture("includeMissingMacro")
+    assertThatThrownBy {
+      preprocess(workflow, emptyMap())
+    }.isInstanceOf(IllegalArgumentException::class.java)
+        .hasMessageContaining("Unable to find macro")
+  }
+
+  /**
+   * Test that the preprocessor throws an exception if an input parameter
+   * is missing in the include action
+   */
+  @Test
+  fun includeMissingInput() {
+    val (macros, workflow, _) = loadFixture("includeMissingInput")
+    assertThatThrownBy {
+      preprocess(workflow, macros)
+    }.isInstanceOf(IllegalArgumentException::class.java)
+        .hasMessageContaining("Missing macro input parameter")
+  }
+
+  /**
+   * Test that the preprocessor throws an exception if an output parameter
+   * is missing in the include action
+   */
+  @Test
+  fun includeMissingOutput() {
+    val (macros, workflow, _) = loadFixture("includeMissingOutput")
+    assertThatThrownBy {
+      preprocess(workflow, macros)
+    }.isInstanceOf(IllegalArgumentException::class.java)
+        .hasMessageContaining("Missing macro output parameter")
   }
 }
