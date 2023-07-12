@@ -50,7 +50,7 @@ class FileMacroRegistryTest {
         assertThatThrownBy {
           registry.findMacros()
         }.isInstanceOf(IllegalArgumentException::class.java)
-            .hasMessageContaining("duplicate macro ID")
+            .hasMessageContaining("Invalid macro configuration. See log for details.")
       }
       ctx.completeNow()
     }
