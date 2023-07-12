@@ -1,0 +1,39 @@
+id: my_macro
+name: My macro
+description: A not so nice custom macro
+parameters:
+  - id: macro_input
+    name: Input file
+    description: The input file
+    type: input
+vars:
+  - id: for_input
+    value: ["test.txt"]
+actions:
+  - id: cp1
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: macro_input
+    outputs:
+      - id: output_file
+        var: output_file2
+  - id: cp2
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        value: "test2.txt"
+    outputs:
+      - id: output_file
+        var: output_file2
+  - type: for
+    input: for_input
+    output: output_file2
+    enumerator: i
+  - type: include
+    macro: mymacro
+    outputs:
+      - id: my_output
+        var: output_file2

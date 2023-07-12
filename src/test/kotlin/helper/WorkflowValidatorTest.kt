@@ -1,5 +1,6 @@
 package helper
 
+import model.macro.Macro
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -13,6 +14,14 @@ class WorkflowValidatorTest {
    * Read a workflow from a test fixture
    */
   private fun readWorkflow(name: String): Workflow {
+    val text = javaClass.getResource("/fixtures/$name.yaml")!!.readText()
+    return YamlUtils.readValue(text)
+  }
+
+  /**
+   * Read a macro from a test fixture
+   */
+  private fun readMacro(name: String): Macro {
     val text = javaClass.getResource("/fixtures/$name.yaml")!!.readText()
     return YamlUtils.readValue(text)
   }
@@ -33,6 +42,10 @@ class WorkflowValidatorTest {
     assertThat(WorkflowValidator.validate(w2)).isEmpty()
     assertThat(WorkflowValidator.validate(w3)).isEmpty()
     assertThat(WorkflowValidator.validate(w4)).isEmpty()
+
+    val m1 = readMacro("validMacro")
+
+    assertThat(WorkflowValidator.validate(m1)).isEmpty()
   }
 
   /**
@@ -166,6 +179,21 @@ class WorkflowValidatorTest {
   }
 
   /**
+   * Make sure a variable cannot be used more than once as an output in a macro
+   */
+  @Test
+  fun macroReuseOutput() {
+    val result = WorkflowValidator.validate(readMacro("macroReuseOutput"))
+    assertThat(result).hasSize(3)
+    assertThat(result[0].message).containsSubsequence(listOf(
+        "Output variable", "output_file2", "used more than once"))
+    assertThat(result[1].message).containsSubsequence(listOf(
+        "Output variable", "output_file2", "used more than once"))
+    assertThat(result[2].message).containsSubsequence(listOf(
+        "Output variable", "output_file2", "used more than once"))
+  }
+
+  /**
    * Make sure an enumerator cannot be used more than once
    */
   @Test
@@ -215,5 +243,80 @@ class WorkflowValidatorTest {
         "Variable", "k", "not visible"))
     assertThat(result[4].path).containsExactly(
         "workflow", "actions[3](for-each)", "actions[2](include my_macro)")
+  }
+
+  /**
+   * Make sure parameter IDs are only used once in a macro
+   */
+  @Test
+  fun duplicateParameters() {
+    val result = WorkflowValidator.validate(readMacro("duplicateParameters"))
+    assertThat(result).hasSize(3)
+    assertThat(result[0].message).contains("Duplicate parameter identifier `i'")
+    assertThat(result[1].message).contains("Duplicate parameter identifier `i'")
+    assertThat(result[2].message).contains("Output parameter `i' used as an input.")
+  }
+
+  /**
+   * Make sure parameters are not declared again in the macro's 'vars'
+   */
+  @Test
+  fun redeclaredParameters() {
+    val result = WorkflowValidator.validate(readMacro("redeclaredParameters"))
+    assertThat(result).hasSize(2)
+    assertThat(result[0].message).contains(
+        "Variable `i' already declared as macro parameter.")
+    assertThat(result[1].message).contains(
+        "Variable `o' already declared as macro parameter.")
+  }
+
+  /**
+   * Make sure input parameters do not have a value in the macro's actions
+   */
+  @Test
+  fun inputParameterWithValue() {
+    val result = WorkflowValidator.validate(readMacro("inputParameterWithValue"))
+    assertThat(result).hasSize(2)
+    assertThat(result[0].message).contains("Variable `i' has a value.")
+    assertThat(result[1].message).contains("Variable `j' has a value.")
+  }
+
+  /**
+   * Input parameters must not be used as outputs
+   */
+  @Test
+  fun inputAsOutput() {
+    val result = WorkflowValidator.validate(readMacro("inputAsOutput"))
+    assertThat(result).hasSize(2)
+    assertThat(result[0].message).contains(
+        "Input parameter `i' used as an output.")
+    assertThat(result[1].message).contains(
+        "Input parameter `another_i' used as an output.")
+  }
+
+  /**
+   * Output parameters must not be used as inputs
+   */
+  @Test
+  fun outputAsInput() {
+    val result = WorkflowValidator.validate(readMacro("outputAsInput"))
+    assertThat(result).hasSize(4)
+    assertThat(result[0].message).contains("Output parameter `o' used as an input.")
+    assertThat(result[1].message).contains("Output parameter `o' used as an input.")
+    assertThat(result[2].message).contains("Input variable `o' has no value.")
+    assertThat(result[3].message).contains("Input variable `o' has no value.")
+  }
+
+  /**
+   * Macro parameters must not be used as enumerators
+   */
+  @Test
+  fun parameterAsEnumerator() {
+    val result = WorkflowValidator.validate(readMacro("parameterAsEnumerator"))
+    assertThat(result).hasSize(2)
+    assertThat(result[0].message).contains(
+        "Macro parameter `i' used as an enumerator.")
+    assertThat(result[1].message).contains(
+        "Macro parameter `o' used as an enumerator.")
   }
 }

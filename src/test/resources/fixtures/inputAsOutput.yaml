@@ -1,0 +1,31 @@
+id: my_macro
+name: My macro
+description: A nice custom macro
+parameters:
+  - id: i
+    name: Input file
+    description: The input file
+    type: input
+  - id: another_i
+    name: Another input file
+    description: Another input file
+    type: input
+  - id: o
+    name: Output file
+    description: The output file
+    type: output
+vars:
+  - id: foreach_input
+    value: [1, 2, 3]
+actions:
+  - id: cp2
+    type: execute
+    service: cp
+    outputs:
+      - id: output_file
+        var: i
+  - type: for
+    input: foreach_input
+    output: another_i
+    enumerator: j
+    actions: []

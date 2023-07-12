@@ -99,6 +99,10 @@ class Controller : CoroutineVerticle() {
     metadataRegistry = MetadataRegistryFactory.create(vertx)
     macroRegistry = MacroRegistryFactory.create(vertx)
 
+    // load and validate macros (should happen at startup so validation errors
+    // are detected early)
+    macroRegistry.findMacros()
+
     // read configuration
     tmpPath = config.getString(TMP_PATH) ?: throw IllegalStateException(
         "Missing configuration item `$TMP_PATH'")
