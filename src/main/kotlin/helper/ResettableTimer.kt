@@ -8,6 +8,7 @@ import kotlin.concurrent.withLock
 /**
  * A one-shot timer that fires after [timeoutMilliseconds] and calls the
  * given [callback]. The timer can be [reset] before it has fired.
+ * @author Michel Kraemer
  */
 class ResettableTimer(
     private val vertx: Vertx,
