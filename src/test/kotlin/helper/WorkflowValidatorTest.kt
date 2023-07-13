@@ -283,6 +283,17 @@ class WorkflowValidatorTest {
   }
 
   /**
+   * Make sure parameters are not declared again in the macro's 'vars'
+   */
+  @Test
+  fun outputWithDefault() {
+    val result = validate(readMacro("outputWithDefault"), emptyMap())
+    assertThat(result).hasSize(1)
+    assertThat(result[0].message).contains(
+        "Output parameter `o' has a default value.")
+  }
+
+  /**
    * Make sure input parameters do not have a value in the macro's actions
    */
   @Test

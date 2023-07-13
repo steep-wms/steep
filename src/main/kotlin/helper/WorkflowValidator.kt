@@ -53,6 +53,7 @@ class WorkflowValidator private constructor(private val type: Type,
       val results = mutableListOf<ValidationError>()
       v.duplicateParameterIds(macro.parameters, results)
       v.redeclaredParameter(macro.vars, macro.parameters, results)
+      v.outputWithDefault(macro.parameters, results)
 
       val inputs = macro.parameters
           .filter { it.type == Argument.Type.INPUT }
@@ -559,6 +560,19 @@ class WorkflowValidator private constructor(private val type: Type,
   }
 
   /**
+   * Output parameters must not have default values
+   */
+  private fun outputWithDefault(parameters: List<MacroParameter>,
+      results: MutableList<ValidationError>) {
+    for ((i, p) in parameters.withIndex()) {
+      if (p.type == Argument.Type.OUTPUT && p.default != null) {
+        results.add(makeOutputWithDefaultError(p.id,
+            listOf(type.rootPath, "parameters[$i]")))
+      }
+    }
+  }
+
+  /**
    * An input parameter of a macro must not have a value
    */
   private fun inputParameterWithValue(actions: List<Action>,
@@ -770,6 +784,11 @@ class WorkflowValidator private constructor(private val type: Type,
       "Variable `${v.id}' already declared as macro parameter.",
       "Macro parameters are implicit variables. You must not define them " +
       "again in the macro's list of variables.", path)
+
+  private fun makeOutputWithDefaultError(id: String, path: List<String>) = ValidationError(
+      "Output parameter `$id' has a default value.", "An output " +
+      "parameter must not have a value. Its value will be assigned during " +
+      "workflow execution.", path)
 
   private fun makeInputParameterWithValueError(v: Variable, path: List<String>) = ValidationError(
       "Variable `${v.id}' has a value.", "The variable refers to a macro " +

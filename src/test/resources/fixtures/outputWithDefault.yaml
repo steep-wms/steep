@@ -1,0 +1,23 @@
+id: my_macro
+name: My macro
+description: A nice custom macro
+parameters:
+  - id: i
+    name: Input file
+    description: The input file
+    type: input
+  - id: o
+    name: Output file
+    description: The output file
+    type: output
+    default: 5
+actions:
+  - id: cp2
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: i
+    outputs:
+      - id: output_file
+        var: o
