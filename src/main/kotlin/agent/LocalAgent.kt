@@ -9,6 +9,7 @@ import helper.DefaultOutputCollector
 import helper.FileSystemUtils.readRecursive
 import helper.LoggingOutputCollector
 import helper.OutputCollector
+import helper.ResettableTimer
 import helper.UniqueID
 import helper.withRetry
 import io.prometheus.client.Gauge
@@ -21,6 +22,7 @@ import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
@@ -402,19 +404,22 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
     }
 
     return coroutineScope {
-      val timeout = DefaultTimeoutTimer(policy)
+      var job: Deferred<T>? = null
       var ex: TimeoutCancellationException? = null
+      val timeout = DefaultTimeoutTimer(policy) {
+        ex = TimeoutCancellationException(policy, type, serviceId)
+        log.warn(ex!!.message)
+        job?.cancel(ex)
+      }
       try {
-        val job = async {
-          block(timeout)
+        job = async {
+          if (ex == null) {
+            block(timeout)
+          } else {
+            // timeout was reached before the job was started
+            throw ex!!
+          }
         }
-
-        timeout.startTimeout {
-          ex = TimeoutCancellationException(policy, type, serviceId)
-          log.warn(ex!!.message)
-          job.cancel(ex)
-        }
-
         job.await()
       } catch (t: TimeoutCancellationException) {
         if (t === ex) {
@@ -474,38 +479,21 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
   }
 
   /**
-   * An implementation of [TimeoutTimer] that follows a given timeout [policy]
+   * An implementation of [TimeoutTimer] that follows a given timeout policy
    * and runs a given block on timeout.
    */
-  private inner class DefaultTimeoutTimer(private val policy: TimeoutPolicy) : TimeoutTimer {
-    private var timerId: Long? = null
-    private var block: ((Long) -> Unit)? = null
+  private inner class DefaultTimeoutTimer(policy: TimeoutPolicy, block: () -> Unit) : TimeoutTimer {
+    private var timer = ResettableTimer(vertx, policy.timeout, block)
 
     override fun resetTimeout() {
-      cancelTimeout()
-      startTimeout()
-    }
-
-    private fun startTimeout() {
-      if (block != null) {
-        timerId = vertx.setTimer(policy.timeout, block)
-      }
-    }
-
-    /**
-     * Start timer and call the given [block] on timeout
-     */
-    fun startTimeout(block: (Long) -> Unit) {
-      this.block = block
-      startTimeout()
+      timer.reset()
     }
 
     /**
      * Cancel the timer
      */
     fun cancelTimeout() {
-      timerId?.let { vertx.cancelTimer(it) }
-      timerId = null
+      timer.cancel()
     }
   }
 
