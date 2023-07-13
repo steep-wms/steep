@@ -56,9 +56,16 @@ object MacroPreprocessor {
       return workflow
     }
 
+    // collect all action IDs
+    val allActionIds = mutableSetOf<String>()
+    collectActionIds(newActions, allActionIds)
+
+    // update dependencies if necessary
+    val updatedActions = updateDependencies(newActions, allActionIds)
+
     return workflow.copy(
         vars = workflow.vars + newVariables,
-        actions = newActions
+        actions = updatedActions
     )
   }
 
@@ -185,6 +192,9 @@ object MacroPreprocessor {
   private fun expandActions(actions: List<Action>, macro: Macro,
       inputs: Map<String, InputParameter>, outputs: Map<String, IncludeOutputParameter>,
       renames: VariableRenames, includeActionId: String): MutableList<Action> {
+    fun renameDependsOn(a: Action) =
+        a.dependsOn.map { makeNewId(includeActionId, macro, it) }
+
     val result = mutableListOf<Action>()
     for (a in actions) {
       val newId = makeNewId(includeActionId, macro, a.id)
@@ -203,7 +213,8 @@ object MacroPreprocessor {
               a.copy(
                   id = newId,
                   inputs = actionInputs,
-                  outputs = actionOutputs
+                  outputs = actionOutputs,
+                  dependsOn = renameDependsOn(a)
               )
           )
         }
@@ -221,7 +232,8 @@ object MacroPreprocessor {
                   yieldToInput = a.yieldToInput?.let { renames.rename(it) },
                   yieldToOutput = a.yieldToOutput?.let { renames.rename(it) },
                   actions = expandActions(a.actions, macro, inputs, outputs,
-                      renames, includeActionId)
+                      renames, includeActionId),
+                  dependsOn = renameDependsOn(a)
               )
           )
         }
@@ -240,7 +252,8 @@ object MacroPreprocessor {
               a.copy(
                   id = newId,
                   inputs = actionInputs,
-                  outputs = actionOutputs
+                  outputs = actionOutputs,
+                  dependsOn = renameDependsOn(a)
               )
           )
         }
@@ -268,6 +281,97 @@ object MacroPreprocessor {
             variable = renames.rename(actionInputParameter.variable)
         )
       }
+    }
+  }
+
+  /**
+   * Recursively collect the IDs of all given [actions] in a [result] set
+   */
+  private fun collectActionIds(actions: List<Action>, result: MutableSet<String>) {
+    for (a in actions) {
+      when (a) {
+        is ExecuteAction -> result.add(a.id)
+        is ForEachAction -> {
+          result.add(a.id)
+          collectActionIds(a.actions, result)
+        }
+        is IncludeAction -> result.add(a.id)
+      }
+    }
+  }
+
+  /**
+   * Recursively iterate through all given [actions] and update their
+   * dependencies based on [allActionIds]. A dependency is replaced by all
+   * action IDs whose prefixes match it. If the actions do not have
+   * dependencies or if nothing needs to be replaced, this function returns
+   * the original list of actions.
+   */
+  private fun updateDependencies(actions: List<Action>,
+      allActionIds: Set<String>): List<Action> {
+    val newActions = mutableListOf<Action>()
+    var changed = false
+
+    fun update(deps: List<String>): List<String> {
+      val newDeps = mutableListOf<String>()
+      var depsChanged = false
+      for (d in deps) {
+        if (allActionIds.contains(d)) {
+          newDeps.add(d)
+        } else {
+          val newActionIds = allActionIds.filter { it.startsWith("$${d.trimStart('$')}$") }
+          if (newActionIds.isEmpty()) {
+            // This might be a user-error. Forward the dependency and let
+            // the ProcessChainGenerator handle the error later.
+            newDeps.add(d)
+          } else {
+            newDeps.addAll(newActionIds)
+            depsChanged = true
+          }
+        }
+      }
+      return if (depsChanged) newDeps else deps
+    }
+
+    for (a in actions) {
+      when (a) {
+        is ExecuteAction -> {
+          val newDeps = update(a.dependsOn)
+          newActions.add(
+              if (newDeps !== a.dependsOn) {
+                changed = true
+                a.copy(dependsOn = newDeps)
+              } else {
+                a
+              }
+          )
+        }
+
+        is ForEachAction -> {
+          val newDeps = update(a.dependsOn)
+          val newSubactions = updateDependencies(a.actions, allActionIds)
+          newActions.add(
+              if (newDeps !== a.dependsOn || newSubactions !== a.actions) {
+                changed = true
+                a.copy(dependsOn = newDeps, actions = newSubactions)
+              } else {
+                a
+              }
+          )
+        }
+
+        is IncludeAction -> {
+          // there cannot be an IncludeAction any more at this point!
+          throw RuntimeException("Still found an IncludeAction although " +
+              "workflow was already preprocessed")
+        }
+      }
+    }
+
+    return if (changed) {
+      newActions
+    } else {
+      actions
     }
   }
 }

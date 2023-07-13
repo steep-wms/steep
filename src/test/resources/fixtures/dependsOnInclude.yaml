@@ -1,0 +1,165 @@
+---
+# macros
+- id: my_macro
+  name: My macro
+  description: A nice custom macro
+  parameters:
+    - id: i
+      name: Input file
+      description: The input file
+      type: input
+    - id: o
+      name: Output file
+      description: The output file
+      type: output
+  actions:
+    - id: cp2
+      type: execute
+      service: cp
+      inputs:
+        - id: input_file
+          var: i
+      outputs:
+        - id: output_file
+          var: inner_o
+    - id: cp3
+      type: execute
+      service: cp
+      inputs:
+        - id: input_file
+          var: inner_o
+      outputs:
+        - id: output_file
+          var: o
+---
+# workflow
+actions:
+  - id: cp1
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: input_file1
+    outputs:
+      - id: output_file
+        var: output_file1
+
+  - id: copy_include
+    type: include
+    macro: my_macro
+    inputs:
+      - id: i
+        var: output_file1
+    outputs:
+      - id: o
+        var: output_file2
+
+  - id: another_copy_include
+    type: include
+    macro: my_macro
+    inputs:
+      - id: i
+        var: output_file1
+    outputs:
+      - id: o
+        var: output_file3
+
+  - id: cp3
+    type: execute
+    service: cp
+    dependsOn: copy_include
+    inputs:
+      - id: input_file
+        var: input_file1
+    outputs:
+      - id: output_file
+        var: output_file4
+
+  - id: cp4
+    type: execute
+    service: cp
+    dependsOn: another_copy_include
+    inputs:
+      - id: input_file
+        var: input_file1
+    outputs:
+      - id: output_file
+        var: output_file5
+---
+# expected result
+actions:
+  - id: cp1
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: input_file1
+    outputs:
+      - id: output_file
+        var: output_file1
+
+  - id: $copy_include$my_macro$cp2
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: output_file1
+    outputs:
+      - id: output_file
+        var: $copy_include$my_macro$inner_o
+
+  - id: $copy_include$my_macro$cp3
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: $copy_include$my_macro$inner_o
+    outputs:
+      - id: output_file
+        var: output_file2
+
+  - id: $another_copy_include$my_macro$cp2
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: output_file1
+    outputs:
+      - id: output_file
+        var: $another_copy_include$my_macro$inner_o
+
+  - id: $another_copy_include$my_macro$cp3
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: $another_copy_include$my_macro$inner_o
+    outputs:
+      - id: output_file
+        var: output_file3
+
+  - id: cp3
+    type: execute
+    service: cp
+    dependsOn:
+      - $copy_include$my_macro$cp2
+      - $copy_include$my_macro$cp3
+    inputs:
+      - id: input_file
+        var: input_file1
+    outputs:
+      - id: output_file
+        var: output_file4
+
+  - id: cp4
+    type: execute
+    service: cp
+    dependsOn:
+      - $another_copy_include$my_macro$cp2
+      - $another_copy_include$my_macro$cp3
+    inputs:
+      - id: input_file
+        var: input_file1
+    outputs:
+      - id: output_file
+        var: output_file5

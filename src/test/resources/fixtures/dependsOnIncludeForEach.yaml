@@ -1,0 +1,156 @@
+---
+# macros
+- id: my_macro
+  name: My macro
+  description: A nice custom macro
+  parameters:
+    - id: i
+      name: Input file
+      description: The input file
+      type: input
+    - id: o
+      name: Output file
+      description: The output file
+      type: output
+  actions:
+    - id: cp2
+      type: execute
+      service: cp
+      inputs:
+        - id: input_file
+          var: i
+      outputs:
+        - id: output_file
+          var: inner_o
+    - id: cp3
+      type: execute
+      service: cp
+      inputs:
+        - id: input_file
+          var: inner_o
+      outputs:
+        - id: output_file
+          var: o
+
+- id: another_macro
+  name: Another macro
+  description: Another nice custom macro
+  parameters:
+    - id: i
+      name: Input file
+      description: The input file
+      type: input
+    - id: j
+      name: Another input file
+      description: Another input file
+      type: input
+    - id: o
+      name: Output file
+      description: The output file
+      type: output
+  actions:
+    - id: for1
+      type: for
+      input: i
+      enumerator: j
+      actions:
+        - id: inc1
+          type: include
+          macro: my_macro
+          inputs:
+            - id: i
+              var: i
+          outputs:
+            - id: o
+              var: o
+
+        - id: cp1
+          type: execute
+          service: cp
+          dependsOn: inc1
+          inputs:
+            - id: i
+              var: j
+          outputs:
+            - id: o
+              var: inner_o
+---
+# workflow
+actions:
+  - id: copy_include
+    type: include
+    macro: another_macro
+    inputs:
+      - id: i
+        var: output_file1
+      - id: j
+        value: 5
+    outputs:
+      - id: o
+        var: output_file2
+
+  - id: cp3
+    type: execute
+    service: cp
+    dependsOn: copy_include
+    inputs:
+      - id: input_file
+        var: input_file1
+    outputs:
+      - id: output_file
+        var: output_file4
+---
+# expected result
+actions:
+  - type: for
+    id: $copy_include$another_macro$for1
+    input: output_file1
+    enumerator: $copy_include$another_macro$j
+    actions:
+      - id: $copy_include$another_macro$inc1$my_macro$cp2
+        type: execute
+        service: cp
+        inputs:
+          - id: input_file
+            var: output_file1
+        outputs:
+          - id: output_file
+            var: $copy_include$another_macro$inc1$my_macro$inner_o
+
+      - id: $copy_include$another_macro$inc1$my_macro$cp3
+        type: execute
+        service: cp
+        inputs:
+          - id: input_file
+            var: $copy_include$another_macro$inc1$my_macro$inner_o
+        outputs:
+          - id: output_file
+            var: output_file2
+
+      - id: $copy_include$another_macro$cp1
+        type: execute
+        service: cp
+        dependsOn:
+          - $copy_include$another_macro$inc1$my_macro$cp2
+          - $copy_include$another_macro$inc1$my_macro$cp3
+        inputs:
+          - id: i
+            value: 5
+        outputs:
+          - id: o
+            var: $copy_include$another_macro$inner_o
+
+  - id: cp3
+    type: execute
+    service: cp
+    dependsOn:
+      - $copy_include$another_macro$for1
+      - $copy_include$another_macro$inc1$my_macro$cp2
+      - $copy_include$another_macro$inc1$my_macro$cp3
+      - $copy_include$another_macro$cp1
+    inputs:
+      - id: input_file
+        var: input_file1
+    outputs:
+      - id: output_file
+        var: output_file4
