@@ -16,6 +16,12 @@ actions:
         var: output_file2
   - id: cp4
     type: include
-    macro: mymacro
+    macro: my_macro
+    inputs:
+      - id: i
+        value: 5
+    outputs:
+      - id: o
+        var: macro_output
     dependsOn:
       - cp3

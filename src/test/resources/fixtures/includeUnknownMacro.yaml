@@ -1,0 +1,9 @@
+actions:
+  - type: include
+    macro: unknown_macro
+    inputs:
+      - id: i
+        value: 5
+    outputs:
+      - id: o
+        var: output_file2

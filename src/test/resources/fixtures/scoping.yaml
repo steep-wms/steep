@@ -66,5 +66,8 @@ actions:
       - type: include
         macro: my_macro
         inputs:
-          - id: input_file
+          - id: i
             var: k
+        outputs:
+          - id: o
+            var: macro_output

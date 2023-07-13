@@ -1,0 +1,13 @@
+actions:
+  - type: include
+    macro: my_macro
+    inputs:
+      - id: i
+        value: 1
+      - id: i
+        value: 2
+    outputs:
+      - id: o
+        var: output_file2
+      - id: o
+        var: output_file3

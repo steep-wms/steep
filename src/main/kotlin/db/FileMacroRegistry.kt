@@ -33,7 +33,7 @@ class FileMacroRegistry(private val paths: List<String>, private val vertx: Vert
       }
 
       for (macro in r.values) {
-        val validationResults = WorkflowValidator.validate(macro)
+        val validationResults = WorkflowValidator.validate(macro, r)
         if (validationResults.isNotEmpty()) {
           log.error("Invalid macro `${macro.id}':\n\n" +
               validationResults.joinToString("\n\n") {

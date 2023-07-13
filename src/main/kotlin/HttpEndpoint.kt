@@ -1463,31 +1463,32 @@ class HttpEndpoint : CoroutineVerticle() {
       return
     }
 
-    // check workflow for common mistakes
-    val validationResults = WorkflowValidator.validate(workflow)
-    if (validationResults.isNotEmpty()) {
-      renderError(ctx, 400, "Invalid workflow:\n\n" + validationResults.joinToString("\n\n") {
-            "- ${WordUtils.wrap(it.message, 80, "\n  ", true)}\n\n  " +
-                "${WordUtils.wrap(it.details, 80, "\n  ", true)}\n\n  " +
-                it.path.joinToString("->")
-          })
-      return
-    }
-
-    // log first 100 lines of workflow
-    val serializedWorkflow = JsonUtils.mapper.copy()
-        .enable(SerializationFeature.INDENT_OUTPUT)
-        .writeValueAsString(workflow)
-    val lines = serializedWorkflow.lineSequence().take(101).toList()
-    if (lines.size <= 100) {
-      log.info("Received workflow:\n" + lines.joinToString("\n"))
-    } else {
-      log.info("Received workflow (first 100 lines):\n" +
-          lines.take(100).joinToString("\n") + "\n...")
-    }
-
-    // store submission in registry
     launch {
+      // check workflow for common mistakes
+      val validationResults = WorkflowValidator.validate(workflow,
+          macroRegistry.findMacros())
+      if (validationResults.isNotEmpty()) {
+        renderError(ctx, 400, "Invalid workflow:\n\n" + validationResults.joinToString("\n\n") {
+              "- ${WordUtils.wrap(it.message, 80, "\n  ", true)}\n\n  " +
+                  "${WordUtils.wrap(it.details, 80, "\n  ", true)}\n\n  " +
+                  it.path.joinToString("->")
+            })
+        return@launch
+      }
+
+      // log first 100 lines of workflow
+      val serializedWorkflow = JsonUtils.mapper.copy()
+          .enable(SerializationFeature.INDENT_OUTPUT)
+          .writeValueAsString(workflow)
+      val lines = serializedWorkflow.lineSequence().take(101).toList()
+      if (lines.size <= 100) {
+        log.info("Received workflow:\n" + lines.joinToString("\n"))
+      } else {
+        log.info("Received workflow (first 100 lines):\n" +
+            lines.take(100).joinToString("\n") + "\n...")
+      }
+
+      // store submission in registry
       val reqCaps = Submission.collectRequiredCapabilities(workflow,
           metadataRegistry.findServices(), macroRegistry.findMacros())
       val submission = Submission(workflow = workflow,

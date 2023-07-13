@@ -25,7 +25,10 @@ actions:
     input: input_file3
     enumerator: i
   - type: include
-    macro: mymacro
+    macro: my_macro
     inputs:
-      - id: my_input
+      - id: i
         var: input_file4
+    outputs:
+      - id: o
+        var: macro_output

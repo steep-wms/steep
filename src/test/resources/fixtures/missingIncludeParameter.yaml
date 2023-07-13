@@ -1,0 +1,5 @@
+actions:
+  - type: include
+    macro: my_macro
+    inputs: []
+    outputs: []

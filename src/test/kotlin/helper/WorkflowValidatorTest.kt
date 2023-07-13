@@ -1,5 +1,6 @@
 package helper
 
+import helper.WorkflowValidator.Companion.validate
 import model.macro.Macro
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
@@ -38,14 +39,14 @@ class WorkflowValidatorTest {
     val w3 = readWorkflow("forEachNestedComplex")
     val w4 = readWorkflow("forEachYieldToInputSameInputDeferredPredefined")
 
-    assertThat(WorkflowValidator.validate(w1)).isEmpty()
-    assertThat(WorkflowValidator.validate(w2)).isEmpty()
-    assertThat(WorkflowValidator.validate(w3)).isEmpty()
-    assertThat(WorkflowValidator.validate(w4)).isEmpty()
+    assertThat(validate(w1, emptyMap())).isEmpty()
+    assertThat(validate(w2, emptyMap())).isEmpty()
+    assertThat(validate(w3, emptyMap())).isEmpty()
+    assertThat(validate(w4, emptyMap())).isEmpty()
 
     val m1 = readMacro("validMacro")
 
-    assertThat(WorkflowValidator.validate(m1)).isEmpty()
+    assertThat(validate(m1, emptyMap())).isEmpty()
   }
 
   /**
@@ -53,7 +54,7 @@ class WorkflowValidatorTest {
    */
   @Test
   fun outputsWithValues() {
-    val result = WorkflowValidator.validate(readWorkflow("outputsWithValues"))
+    val result = validate(readWorkflow("outputsWithValues"), emptyMap())
     assertThat(result).hasSize(1)
     assertThat(result[0].message).contains(listOf("Output variable", "output_file1"))
   }
@@ -64,7 +65,9 @@ class WorkflowValidatorTest {
    */
   @Test
   fun outputsWithValuesInclude() {
-    val result = WorkflowValidator.validate(readWorkflow("outputsWithValuesInclude"))
+    val macro = readMacro("validMacro")
+    val result = validate(readWorkflow("outputsWithValuesInclude"),
+        mapOf(macro.id to macro))
     assertThat(result).hasSize(1)
     assertThat(result[0].message).contains(listOf("Output variable", "output_file1"))
   }
@@ -75,7 +78,7 @@ class WorkflowValidatorTest {
    */
   @Test
   fun outputsWithValuesMultiple() {
-    val result = WorkflowValidator.validate(readWorkflow("outputsWithValuesMultiple"))
+    val result = validate(readWorkflow("outputsWithValuesMultiple"), emptyMap())
     assertThat(result).hasSize(1)
     assertThat(result[0].message).contains(listOf("Output variable", "output_file1"))
   }
@@ -86,7 +89,7 @@ class WorkflowValidatorTest {
    */
   @Test
   fun outputsWithValuesForEach() {
-    val result = WorkflowValidator.validate(readWorkflow("outputsWithValuesForEach"))
+    val result = validate(readWorkflow("outputsWithValuesForEach"), emptyMap())
     assertThat(result).hasSize(1)
     assertThat(result[0].message).contains(listOf("Output variable", "output_file3"))
   }
@@ -97,7 +100,7 @@ class WorkflowValidatorTest {
    */
   @Test
   fun outputsWithValuesForEachInclude() {
-    val result = WorkflowValidator.validate(readWorkflow("outputsWithValuesForEach"))
+    val result = validate(readWorkflow("outputsWithValuesForEach"), emptyMap())
     assertThat(result).hasSize(1)
     assertThat(result[0].message).contains(listOf("Output variable", "output_file3"))
   }
@@ -108,7 +111,7 @@ class WorkflowValidatorTest {
    */
   @Test
   fun outputsWithValuesForEachNested() {
-    val result = WorkflowValidator.validate(readWorkflow("outputsWithValuesForEachNested"))
+    val result = validate(readWorkflow("outputsWithValuesForEachNested"), emptyMap())
     assertThat(result).hasSize(2)
     assertThat(result[0].message).contains(listOf("Output variable", "for_output"))
     assertThat(result[1].message).contains(listOf("Output variable", "output_file"))
@@ -119,7 +122,8 @@ class WorkflowValidatorTest {
    */
   @Test
   fun duplicateId() {
-    val result = WorkflowValidator.validate(readWorkflow("duplicateIds"))
+    val macro = readMacro("validMacro")
+    val result = validate(readWorkflow("duplicateIds"), mapOf(macro.id to macro))
     assertThat(result).hasSize(5)
     assertThat(result[0].message).contains(listOf("Duplicate identifier", "input_file1"))
     assertThat(result[0].path).containsExactly("workflow", "actions[0](execute cp)")
@@ -131,7 +135,7 @@ class WorkflowValidatorTest {
     assertThat(result[3].path).containsExactly("workflow", "actions[4](for-each)",
         "actions[0](execute cp)")
     assertThat(result[4].message).contains(listOf("Duplicate identifier", "cp3"))
-    assertThat(result[4].path).containsExactly("workflow", "actions[6](include mymacro)")
+    assertThat(result[4].path).containsExactly("workflow", "actions[6](include my_macro)")
   }
 
   /**
@@ -140,7 +144,9 @@ class WorkflowValidatorTest {
    */
   @Test
   fun missingDependsOnTarget() {
-    val result = WorkflowValidator.validate(readWorkflow("missingDependsOnTarget"))
+    val macro = readMacro("validMacro")
+    val result = validate(readWorkflow("missingDependsOnTarget"),
+        mapOf(macro.id to macro))
     assertThat(result).hasSize(2)
     assertThat(result[0].message).containsSubsequence(listOf(
       "Unable to resolve action dependency", "cp2", "cp1"))
@@ -153,7 +159,9 @@ class WorkflowValidatorTest {
    */
   @Test
   fun missingInputValue() {
-    val result = WorkflowValidator.validate(readWorkflow("missingInputValue"))
+    val macro = readMacro("validMacro")
+    val result = validate(readWorkflow("missingInputValue"),
+        mapOf(macro.id to macro))
     assertThat(result).hasSize(3)
     assertThat(result[0].message).containsSubsequence(listOf(
         "Input variable", "input_file1", "has no value"))
@@ -168,7 +176,8 @@ class WorkflowValidatorTest {
    */
   @Test
   fun reuseOutput() {
-    val result = WorkflowValidator.validate(readWorkflow("reuseOutput"))
+    val macro = readMacro("validMacro")
+    val result = validate(readWorkflow("reuseOutput"), mapOf(macro.id to macro))
     assertThat(result).hasSize(3)
     assertThat(result[0].message).containsSubsequence(listOf(
         "Output variable", "output_file2", "used more than once"))
@@ -183,7 +192,9 @@ class WorkflowValidatorTest {
    */
   @Test
   fun macroReuseOutput() {
-    val result = WorkflowValidator.validate(readMacro("macroReuseOutput"))
+    val macro = readMacro("validMacro")
+    val result = validate(readMacro("macroReuseOutput"),
+        mapOf(macro.id to macro))
     assertThat(result).hasSize(3)
     assertThat(result[0].message).containsSubsequence(listOf(
         "Output variable", "output_file2", "used more than once"))
@@ -198,7 +209,7 @@ class WorkflowValidatorTest {
    */
   @Test
   fun reuseEnumerator() {
-    val result = WorkflowValidator.validate(readWorkflow("reuseEnumerator"))
+    val result = validate(readWorkflow("reuseEnumerator"), emptyMap())
     assertThat(result).hasSize(1)
     assertThat(result[0].message).containsSubsequence(listOf(
         "Enumerator", "i", "used more than once"))
@@ -209,7 +220,7 @@ class WorkflowValidatorTest {
    */
   @Test
   fun enumeratorAsOutput() {
-    val result = WorkflowValidator.validate(readWorkflow("enumeratorAsOutput"))
+    val result = validate(readWorkflow("enumeratorAsOutput"), emptyMap())
     assertThat(result).hasSize(1)
     assertThat(result[0].message).containsSubsequence(listOf(
         "Enumerator", "i", "used as an output"))
@@ -220,7 +231,8 @@ class WorkflowValidatorTest {
    */
   @Test
   fun scoping() {
-    val result = WorkflowValidator.validate(readWorkflow("scoping"))
+    val macro = readMacro("validMacro")
+    val result = validate(readWorkflow("scoping"), mapOf(macro.id to macro))
     assertThat(result).hasSize(5)
     assertThat(result[0].message).containsSubsequence(listOf(
         "Variable", "output_file2", "not visible"))
@@ -250,7 +262,7 @@ class WorkflowValidatorTest {
    */
   @Test
   fun duplicateParameters() {
-    val result = WorkflowValidator.validate(readMacro("duplicateParameters"))
+    val result = validate(readMacro("duplicateParameters"), emptyMap())
     assertThat(result).hasSize(3)
     assertThat(result[0].message).contains("Duplicate parameter identifier `i'")
     assertThat(result[1].message).contains("Duplicate parameter identifier `i'")
@@ -262,7 +274,7 @@ class WorkflowValidatorTest {
    */
   @Test
   fun redeclaredParameters() {
-    val result = WorkflowValidator.validate(readMacro("redeclaredParameters"))
+    val result = validate(readMacro("redeclaredParameters"), emptyMap())
     assertThat(result).hasSize(2)
     assertThat(result[0].message).contains(
         "Variable `i' already declared as macro parameter.")
@@ -275,7 +287,7 @@ class WorkflowValidatorTest {
    */
   @Test
   fun inputParameterWithValue() {
-    val result = WorkflowValidator.validate(readMacro("inputParameterWithValue"))
+    val result = validate(readMacro("inputParameterWithValue"), emptyMap())
     assertThat(result).hasSize(2)
     assertThat(result[0].message).contains("Variable `i' has a value.")
     assertThat(result[1].message).contains("Variable `j' has a value.")
@@ -286,7 +298,7 @@ class WorkflowValidatorTest {
    */
   @Test
   fun inputAsOutput() {
-    val result = WorkflowValidator.validate(readMacro("inputAsOutput"))
+    val result = validate(readMacro("inputAsOutput"), emptyMap())
     assertThat(result).hasSize(2)
     assertThat(result[0].message).contains(
         "Input parameter `i' used as an output.")
@@ -299,7 +311,7 @@ class WorkflowValidatorTest {
    */
   @Test
   fun outputAsInput() {
-    val result = WorkflowValidator.validate(readMacro("outputAsInput"))
+    val result = validate(readMacro("outputAsInput"), emptyMap())
     assertThat(result).hasSize(4)
     assertThat(result[0].message).contains("Output parameter `o' used as an input.")
     assertThat(result[1].message).contains("Output parameter `o' used as an input.")
@@ -312,11 +324,67 @@ class WorkflowValidatorTest {
    */
   @Test
   fun parameterAsEnumerator() {
-    val result = WorkflowValidator.validate(readMacro("parameterAsEnumerator"))
+    val result = validate(readMacro("parameterAsEnumerator"), emptyMap())
     assertThat(result).hasSize(2)
     assertThat(result[0].message).contains(
         "Macro parameter `i' used as an enumerator.")
     assertThat(result[1].message).contains(
         "Macro parameter `o' used as an enumerator.")
+  }
+
+  /**
+   * Macro parameters must not be passed multiple times
+   */
+  @Test
+  fun unknownMacro() {
+    val macro = readMacro("validMacro")
+    val result = validate(readWorkflow("includeUnknownMacro"),
+        mapOf(macro.id to macro))
+    assertThat(result).hasSize(1)
+    assertThat(result[0].message).contains("Macro `unknown_macro' not found.")
+  }
+
+  /**
+   * Macro parameters must not be passed multiple times
+   */
+  @Test
+  fun includeDuplicateParameter() {
+    val macro = readMacro("validMacro")
+    val result = validate(readWorkflow("includeDuplicateParameter"),
+        mapOf(macro.id to macro))
+    assertThat(result).hasSize(2)
+    assertThat(result[0].message).contains(
+        "Macro parameter `i' specified more than once.")
+    assertThat(result[1].message).contains(
+        "Macro parameter `o' specified more than once.")
+  }
+
+  /**
+   * Macro parameters must not be passed multiple times
+   */
+  @Test
+  fun missingIncludeParameter() {
+    val macro = readMacro("validMacro")
+    val result = validate(readWorkflow("missingIncludeParameter"),
+        mapOf(macro.id to macro))
+    assertThat(result).hasSize(2)
+    assertThat(result[0].message).contains("Missing input parameter `i'.")
+    assertThat(result[1].message).contains("Missing output parameter `o'.")
+  }
+
+  /**
+   * Provided macro parameters must exist in the macro definition
+   */
+  @Test
+  fun unknownIncludeParameter() {
+    val macro = readMacro("validMacro")
+    val result = validate(readWorkflow("unknownIncludeParameter"),
+        mapOf(macro.id to macro))
+    assertThat(result).hasSize(4)
+    assertThat(result[0].message).contains(
+        "Macro parameter `o' specified more than once.")
+    assertThat(result[1].message).contains("Unknown input parameter `j'.")
+    assertThat(result[2].message).contains("Unknown input parameter `o'.")
+    assertThat(result[3].message).contains("Unknown output parameter `u'.")
   }
 }

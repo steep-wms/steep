@@ -74,4 +74,10 @@ actions:
 
   - id: cp3 # !!! same ID as other action
     type: include
-    macro: mymacro
+    macro: my_macro
+    inputs:
+      - id: i
+        value: 1
+    outputs:
+      - id: o
+        var: macro_output

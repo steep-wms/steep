@@ -1,14 +1,15 @@
-vars:
-  - id: input_file1
-    value: input_file.txt
-  - id: output_file1
-    value: output_file.txt
 actions:
   - type: include
     macro: my_macro
     inputs:
       - id: i
-        var: input_file1
+        value: 1
+      - id: j
+        value: 2
+      - id: o
+        value: 3
     outputs:
       - id: o
         var: output_file1
+      - id: u
+        var: output_file2

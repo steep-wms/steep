@@ -351,7 +351,7 @@ class ProcessChainGeneratorTest {
     val expectedChains = readProcessChains(resultsName)
 
     // validate workflow - just to be on the safe side
-    assertThat(WorkflowValidator.validate(workflow)).isEmpty()
+    assertThat(WorkflowValidator.validate(workflow, emptyMap())).isEmpty()
 
     var json = JsonObject()
     val idgen = ConsecutiveID()

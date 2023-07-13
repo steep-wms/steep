@@ -33,7 +33,10 @@ actions:
     output: output_file2
     enumerator: i
   - type: include
-    macro: mymacro
+    macro: my_macro
+    inputs:
+      - id: i
+        value: 1
     outputs:
-      - id: my_output
+      - id: o
         var: output_file2

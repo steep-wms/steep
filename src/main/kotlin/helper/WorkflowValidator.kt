@@ -19,7 +19,8 @@ import model.workflow.Workflow
  * inconsistencies.
  * @author Michel Kraemer
  */
-class WorkflowValidator private constructor(private val type: Type) {
+class WorkflowValidator private constructor(private val type: Type,
+    private val macros: Map<String, Macro>) {
   /**
    * The result of a failed validation. It has a human-readable [message] and
    * optional a string with [details] about the error and how it can be fixed.
@@ -37,8 +38,8 @@ class WorkflowValidator private constructor(private val type: Type) {
      * Validate a [workflow]. Return a list of errors. This list will be
      * empty if the workflow is OK and no errors were found.
      */
-    fun validate(workflow: Workflow): List<ValidationError> {
-      return WorkflowValidator(Type.WORKFLOW)
+    fun validate(workflow: Workflow, macros: Map<String, Macro>): List<ValidationError> {
+      return WorkflowValidator(Type.WORKFLOW, macros)
           .validate(workflow.vars, workflow.actions)
     }
 
@@ -46,8 +47,8 @@ class WorkflowValidator private constructor(private val type: Type) {
      * Validate a [macro]. Return a list of errors. This list will be
      * empty if the macro is OK and no errors were found.
      */
-    fun validate(macro: Macro): List<ValidationError> {
-      val v = WorkflowValidator(Type.MACRO)
+    fun validate(macro: Macro, macros: Map<String, Macro>): List<ValidationError> {
+      val v = WorkflowValidator(Type.MACRO, macros)
 
       val results = mutableListOf<ValidationError>()
       v.duplicateParameterIds(macro.parameters, results)
@@ -85,6 +86,10 @@ class WorkflowValidator private constructor(private val type: Type) {
     reuseOutput(actions, results)
     reuseEnumerator(actions, results)
     enumeratorAsInput(actions, results)
+    unknownMacro(actions, results)
+    duplicateIncludeParameter(actions, results)
+    missingIncludeParameter(actions, results)
+    unknownIncludeParameter(actions, results)
     scoping(vars, actions, results)
     return results
   }
@@ -366,6 +371,107 @@ class WorkflowValidator private constructor(private val type: Type) {
     )
   }
 
+  /**
+   * Only existing macros may be included
+   */
+  private fun unknownMacro(actions: List<Action>, results: MutableList<ValidationError>) {
+    visit(
+        actions,
+        results,
+        includeActionVisitor = { action, path ->
+          if (!macros.contains(action.macro)) {
+            results.add(makeUnknownMacroError(action.macro, path))
+          }
+        }
+    )
+  }
+
+  /**
+   * Parameters in include actions may only be specified once
+   */
+  private fun duplicateIncludeParameter(actions: List<Action>,
+      results: MutableList<ValidationError>) {
+    visit(
+        actions,
+        results,
+        includeActionVisitor = { action, path ->
+          val ids = mutableSetOf<String>()
+          for ((i, p) in action.inputs.withIndex()) {
+            if (ids.contains(p.id)) {
+              results.add(makeDuplicateIncludeParameterError(p.id, path + "inputs[$i]"))
+            } else {
+              ids.add(p.id)
+            }
+          }
+          for ((i, p) in action.outputs.withIndex()) {
+            if (ids.contains(p.id)) {
+              results.add(makeDuplicateIncludeParameterError(p.id, path + "outputs[$i]"))
+            } else {
+              ids.add(p.id)
+            }
+          }
+        }
+    )
+  }
+
+  /**
+   * All macro parameters without a default value must be given
+   */
+  private fun missingIncludeParameter(actions: List<Action>,
+      results: MutableList<ValidationError>) {
+    visit(
+        actions,
+        results,
+        includeActionVisitor = visitor@{ action, path ->
+          val macro = macros[action.macro] ?: return@visitor
+          for (p in macro.parameters) {
+            when (p.type) {
+              Argument.Type.INPUT -> {
+                if (p.default == null && action.inputs.none { it.id == p.id }) {
+                  results.add(makeMissingIncludeParameterError(
+                      p.id, Argument.Type.INPUT, path + "inputs"))
+                }
+              }
+              Argument.Type.OUTPUT -> {
+                if (action.outputs.none { it.id == p.id }) {
+                  results.add(makeMissingIncludeParameterError(
+                      p.id, Argument.Type.OUTPUT, path + "outputs"))
+                }
+              }
+            }
+          }
+        }
+    )
+  }
+
+  /**
+   * Provided macro parameters must exist in the macro definition
+   */
+  private fun unknownIncludeParameter(actions: List<Action>,
+      results: MutableList<ValidationError>) {
+    visit(
+        actions,
+        results,
+        includeActionVisitor = visitor@{ action, path ->
+          val macro = macros[action.macro] ?: return@visitor
+
+          for ((i, p) in action.inputs.withIndex()) {
+            if (macro.parameters.none { it.type == Argument.Type.INPUT && it.id == p.id }) {
+              results.add(makeUnknownIncludeParameterError(
+                  p.id, Argument.Type.INPUT, path + "inputs[$i]"))
+            }
+          }
+
+          for ((i, p) in action.outputs.withIndex()) {
+            if (macro.parameters.none { it.type == Argument.Type.OUTPUT && it.id == p.id }) {
+              results.add(makeUnknownIncludeParameterError(
+                  p.id, Argument.Type.OUTPUT, path + "outputs[$i]"))
+            }
+          }
+        }
+    )
+  }
+
   private fun scoping(vars: List<Variable>, actions: List<Action>,
       results: MutableList<ValidationError>) {
     // collect all possible outputs
@@ -621,6 +727,38 @@ class WorkflowValidator private constructor(private val type: Type) {
   private fun makeEnumeratorAsOutputError(v: Variable, path: List<String>) = ValidationError(
       "Enumerator `${v.id}' used as an output.", "An enumerator may only be " +
       "used as an input.", path)
+
+  private fun makeUnknownMacroError(id: String, path: List<String>) = ValidationError(
+      "Macro `$id' not found.", "A macro with this ID does not exist.", path)
+
+  private fun makeDuplicateIncludeParameterError(id: String, path: List<String>) = ValidationError(
+      "Macro parameter `$id' specified more than once.", "Macro parameters " +
+      "must be not be specified more than once.", path)
+
+  private fun makeMissingIncludeParameterError(
+      id: String,
+      type: Argument.Type,
+      path: List<String>
+  ) = ValidationError(
+      "Missing ${type.type} parameter `$id'.",
+      when (type) {
+        Argument.Type.INPUT -> "The input parameter is required and does " +
+            "not have a default value in the macro definition."
+        Argument.Type.OUTPUT -> "The output parameter is required."
+      },
+      path
+  )
+
+  private fun makeUnknownIncludeParameterError(
+      id: String,
+      type: Argument.Type,
+      path: List<String>
+  ) = ValidationError(
+      "Unknown ${type.type} parameter `$id'.",
+      "An ${type.type} parameter with this ID does not exist in the " +
+          "macro definition.",
+      path
+  )
 
   private fun makeScopingError(v: Variable, path: List<String>) = ValidationError(
       "Variable `${v.id}' not visible.", "The value of variable `${v.id}' is " +
