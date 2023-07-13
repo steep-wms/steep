@@ -26,7 +26,8 @@
       yieldToOutput: inner_o
       output: o
       actions:
-        - type: include
+        - id: another_inc
+          type: include
           macro: another_macro
           inputs:
             - id: i
@@ -105,7 +106,8 @@ actions:
     yieldToInput: more_inputs
     output: output_files2
     actions:
-      - type: include
+      - id: inc1
+        type: include
         macro: my_macro
         inputs:
           - id: i
@@ -128,7 +130,7 @@ actions:
 ---
 # expected result
 vars:
-  - id: $my_macro$0$inner_cp_o
+  - id: $inc1$my_macro$inner_cp_o
 actions:
   - id: cp1
     type: execute
@@ -148,32 +150,32 @@ actions:
     yieldToInput: more_inputs
     output: output_files2
     actions:
-      - id: $my_macro$0$foreach1
+      - id: $inc1$my_macro$foreach1
         type: for
-        enumerator: $my_macro$0$j
+        enumerator: $inc1$my_macro$j
         input: j
-        yieldToOutput: $my_macro$0$inner_o
+        yieldToOutput: $inc1$my_macro$inner_o
         output: inner_output_files2
         actions:
-          - id: $another_macro$0$cp3
+          - id: $inc1$my_macro$another_inc$another_macro$cp3
             type: execute
             service: cp
             inputs:
               - id: input_file
-                var: $my_macro$0$j
+                var: $inc1$my_macro$j
             outputs:
               - id: output_file
-                var: $another_macro$0$inner_o
-          - id: $another_macro$0$cp4
+                var: $inc1$my_macro$another_inc$another_macro$inner_o
+          - id: $inc1$my_macro$another_inc$another_macro$cp4
             type: execute
             service: cp
             inputs:
               - id: input_file
-                var: $another_macro$0$inner_o
+                var: $inc1$my_macro$another_inc$another_macro$inner_o
             outputs:
               - id: output_file
-                var: $my_macro$0$inner_o
-      - id: $my_macro$0$cp1
+                var: $inc1$my_macro$inner_o
+      - id: $inc1$my_macro$cp1
         type: execute
         service: cp
         inputs:
@@ -181,13 +183,13 @@ actions:
             var: j
         outputs:
           - id: output_file
-            var: $my_macro$0$inner_cp_o
-      - id: $my_macro$0$cp2
+            var: $inc1$my_macro$inner_cp_o
+      - id: $inc1$my_macro$cp2
         type: execute
         service: cp
         inputs:
           - id: input_file
-            var: $my_macro$0$inner_cp_o
+            var: $inc1$my_macro$inner_cp_o
         outputs:
           - id: output_file
             var: more_inputs

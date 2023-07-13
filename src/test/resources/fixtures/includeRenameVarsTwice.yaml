@@ -44,7 +44,8 @@ actions:
       - id: output_file
         var: output_file1
   
-  - type: include
+  - id: inc1
+    type: include
     macro: my_macro
     inputs:
       - id: i
@@ -53,7 +54,8 @@ actions:
       - id: o
         var: output_file2
 
-  - type: include
+  - id: inc2
+    type: include
     macro: my_macro
     inputs:
       - id: i
@@ -84,7 +86,7 @@ actions:
       - id: output_file
         var: output_file1
   
-  - id: $my_macro$0$cp2
+  - id: $inc1$my_macro$cp2
     type: execute
     service: cp
     inputs:
@@ -92,19 +94,19 @@ actions:
         var: output_file1
     outputs:
       - id: output_file
-        var: $my_macro$0$internal_output_file
+        var: $inc1$my_macro$internal_output_file
 
-  - id: $my_macro$0$cp3
+  - id: $inc1$my_macro$cp3
     type: execute
     service: cp
     inputs:
       - id: input_file
-        var: $my_macro$0$internal_output_file
+        var: $inc1$my_macro$internal_output_file
     outputs:
       - id: output_file
         var: output_file2
 
-  - id: $my_macro$1$cp2
+  - id: $inc2$my_macro$cp2
     type: execute
     service: cp
     inputs:
@@ -112,14 +114,14 @@ actions:
         var: output_file2
     outputs:
       - id: output_file
-        var: $my_macro$1$internal_output_file
+        var: $inc2$my_macro$internal_output_file
 
-  - id: $my_macro$1$cp3
+  - id: $inc2$my_macro$cp3
     type: execute
     service: cp
     inputs:
       - id: input_file
-        var: $my_macro$1$internal_output_file
+        var: $inc2$my_macro$internal_output_file
     outputs:
       - id: output_file
         var: output_file3

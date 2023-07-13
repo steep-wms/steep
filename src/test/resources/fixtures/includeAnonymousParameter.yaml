@@ -26,7 +26,8 @@
 ---
 # workflow
 actions:
-  - type: include
+  - id: inc1
+    type: include
     macro: my_macro
     outputs:
       - id: o
@@ -44,15 +45,15 @@ actions:
 ---
 # expected result
 vars:
-  - id: $my_macro$0$internal_input
+  - id: $inc1$my_macro$internal_input
     value: test1.txt
 actions:
-  - id: $my_macro$0$cp2
+  - id: $inc1$my_macro$cp2
     type: execute
     service: cp
     inputs:
       - id: input_file
-        var: $my_macro$0$internal_input
+        var: $inc1$my_macro$internal_input
       - id: throttle_mb_per_sec
         value: 5
     outputs:

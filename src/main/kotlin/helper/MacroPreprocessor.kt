@@ -19,23 +19,11 @@ import model.workflow.Workflow
  */
 object MacroPreprocessor {
   /**
-   * Generates sequence numbers for macro IDs
-   */
-  private class Sequences {
-    private val sequences = mutableMapOf<String, Int>()
-
-    /**
-     * Get the next sequence for the given [macroId]
-     */
-    fun next(macroId: String) =
-        sequences.merge(macroId, 0) { i, _ -> i + 1 } ?: 0
-  }
-
-  /**
    * Maps macro-internal variables to renamed variables whose names are
-   * based on the given [macro]'s ID and the given [sequence].
+   * based on the given [macro]'s ID and the given [includeActionId].
    */
-  private class VariableRenames(private val macro: Macro, private val sequence: Int) {
+  private class VariableRenames(private val macro: Macro,
+      private val includeActionId: String) {
     private val renames = mutableMapOf<String, Variable>()
 
     /**
@@ -47,11 +35,14 @@ object MacroPreprocessor {
      */
     fun rename(v: Variable): Variable {
       return renames.computeIfAbsent(v.id) {
-        val newId = "$${macro.id}$${sequence}$${v.id}"
+        val newId = makeNewId(includeActionId, macro, v.id)
         v.copy(id = newId)
       }
     }
   }
+
+  private fun makeNewId(includeActionId: String, macro: Macro, id: String) =
+    "$${includeActionId.trimStart('$')}$${macro.id}$$id"
 
   /**
    * Preprocess a workflow using the given list of [macros]. Process all
@@ -60,7 +51,7 @@ object MacroPreprocessor {
    * and action IDs.
    */
   fun preprocess(workflow: Workflow, macros: Map<String, Macro>): Workflow {
-    val (newActions, newVariables) = preprocess(workflow.actions, macros, Sequences())
+    val (newActions, newVariables) = preprocess(workflow.actions, macros)
     if (newActions === workflow.actions) {
       return workflow
     }
@@ -72,11 +63,10 @@ object MacroPreprocessor {
   }
 
   /**
-   * Preprocess a list of [actions] using the given list of [macros] and
-   * [sequences]
+   * Preprocess a list of [actions] using the given list of [macros]
    */
-  private fun preprocess(actions: List<Action>, macros: Map<String, Macro>,
-      sequences: Sequences): Pair<List<Action>, List<Variable>> {
+  private fun preprocess(actions: List<Action>,
+      macros: Map<String, Macro>): Pair<List<Action>, List<Variable>> {
     val queue = ArrayDeque(actions)
     val newActions = mutableListOf<Action>()
     val newVars = mutableListOf<Variable>()
@@ -87,7 +77,7 @@ object MacroPreprocessor {
         is ExecuteAction -> newActions.add(a)
 
         is ForEachAction -> {
-          val (newSubActions, newSubVars) = preprocess(a.actions, macros, sequences)
+          val (newSubActions, newSubVars) = preprocess(a.actions, macros)
           if (newSubActions === a.actions && newSubVars.isEmpty()) {
             newActions.add(a)
           } else {
@@ -100,7 +90,7 @@ object MacroPreprocessor {
         is IncludeAction -> {
           val m = macros[a.macro] ?: throw IllegalArgumentException(
               "Unable to find macro `${a.macro}'")
-          val (newSubActions, newSubVars) = expandMacro(a, m, sequences)
+          val (newSubActions, newSubVars) = expandMacro(a, m)
           newSubActions.asReversed().forEach { queue.addFirst(it) }
           newVars.addAll(newSubVars)
           changed = true
@@ -117,33 +107,30 @@ object MacroPreprocessor {
 
   /**
    * Expand the given [includeAction] within the context of the given [macro]
-   * and [sequences].
    */
-  private fun expandMacro(includeAction: IncludeAction, macro: Macro,
-      sequences: Sequences): Pair<List<Action>, List<Variable>> {
-    val s = sequences.next(macro.id)
-
+  private fun expandMacro(includeAction: IncludeAction,
+      macro: Macro): Pair<List<Action>, List<Variable>> {
     // collect inputs and outputs
-    val (inputs, outputs) = collectIncludeParameters(includeAction, macro, s)
+    val (inputs, outputs) = collectIncludeParameters(includeAction, macro)
 
-    val renames = VariableRenames(macro, s)
+    val renames = VariableRenames(macro, includeAction.id)
 
     // rename variables
     val renamedVars = macro.vars.map { renames.rename(it) }
 
     // rename IDs and variables in actions
-    val actions = expandActions(macro.actions, macro, inputs, outputs, renames, s)
+    val actions = expandActions(macro.actions, macro, inputs, outputs,
+        renames, includeAction.id)
 
     return actions to renamedVars
   }
 
   /**
    * Collect all inputs and outputs of an [includeAction] for a given [macro]
-   * and generate default inputs if necessary. Use the given [sequence] to
-   * generate IDs for these inputs.
+   * and generate default inputs if necessary
    */
-  private fun collectIncludeParameters(includeAction: IncludeAction, macro: Macro,
-      sequence: Int): Pair<Map<String, InputParameter>, Map<String, IncludeOutputParameter>> {
+  private fun collectIncludeParameters(includeAction: IncludeAction,
+      macro: Macro): Pair<Map<String, InputParameter>, Map<String, IncludeOutputParameter>> {
     val inputs = mutableMapOf<String, InputParameter>()
     val outputs = mutableMapOf<String, IncludeOutputParameter>()
     for (macroParam in macro.parameters) {
@@ -154,7 +141,7 @@ object MacroPreprocessor {
           // if there are no inputs but macroParam has a default value, add a
           // new generic input parameter
           if (inputParam == null && macroParam.default != null) {
-            val newId = "$${macro.id}$${sequence}$${macroParam.id}"
+            val newId = makeNewId(includeAction.id, macro, macroParam.id)
             inputParam = GenericParameter(
                 id = newId,
                 variable = Variable(
@@ -197,10 +184,10 @@ object MacroPreprocessor {
    */
   private fun expandActions(actions: List<Action>, macro: Macro,
       inputs: Map<String, InputParameter>, outputs: Map<String, IncludeOutputParameter>,
-      renames: VariableRenames, sequence: Int): MutableList<Action> {
+      renames: VariableRenames, includeActionId: String): MutableList<Action> {
     val result = mutableListOf<Action>()
     for (a in actions) {
-      val newId = "$${macro.id}$${sequence}$${a.id}"
+      val newId = makeNewId(includeActionId, macro, a.id)
       when (a) {
         is ExecuteAction -> {
           val actionInputs =
@@ -233,7 +220,8 @@ object MacroPreprocessor {
                   },
                   yieldToInput = a.yieldToInput?.let { renames.rename(it) },
                   yieldToOutput = a.yieldToOutput?.let { renames.rename(it) },
-                  actions = expandActions(a.actions, macro, inputs, outputs, renames, sequence)
+                  actions = expandActions(a.actions, macro, inputs, outputs,
+                      renames, includeActionId)
               )
           )
         }
