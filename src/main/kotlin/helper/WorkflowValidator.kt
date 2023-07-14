@@ -80,6 +80,7 @@ class WorkflowValidator private constructor(private val type: Type,
   private fun validate(vars: List<Variable>, actions: List<Action>,
       macroInputs: Map<String, MacroParameter> = emptyMap()): List<ValidationError> {
     val results = mutableListOf<ValidationError>()
+    reservedVar(vars, actions, results)
     outputsWithValues(actions, results)
     duplicateIds(vars, actions, results)
     missingDependsOnTargets(actions, results)
@@ -126,6 +127,47 @@ class WorkflowValidator private constructor(private val type: Type,
         }
       }
     }
+  }
+
+  /**
+   * Reserved variables (with a $ character at the beginning) are not allowed
+   */
+  private fun reservedVar(vars: List<Variable>, actions: List<Action>,
+      results: MutableList<ValidationError>) {
+    fun isReserved(v: Variable) = v.id.startsWith('$')
+
+    for ((i, v) in vars.withIndex()) {
+      if (isReserved(v)) {
+        results.add(makeReservedVarError(v, listOf(type.rootPath, "vars[$i]")))
+      }
+    }
+
+    visit(
+        actions,
+        results,
+        executeActionVisitor = { action, path ->
+          for ((i, o) in action.outputs.withIndex()) {
+            if (isReserved(o.variable)) {
+              results.add(makeReservedVarError(o.variable, path + "outputs[$i]"))
+            }
+          }
+        },
+        forEachActionVisitor = { action, path ->
+          if (action.output != null && isReserved(action.output)) {
+            results.add(makeReservedVarError(action.output, path + "output"))
+          }
+          if (isReserved(action.enumerator)) {
+            results.add(makeReservedVarError(action.enumerator, path + "enumerator"))
+          }
+        },
+        includeActionVisitor = { action, path ->
+          for ((i, o) in action.outputs.withIndex()) {
+            if (isReserved(o.variable)) {
+              results.add(makeReservedVarError(o.variable, path + "outputs[$i]"))
+            }
+          }
+        }
+    )
   }
 
   /**
@@ -702,6 +744,10 @@ class WorkflowValidator private constructor(private val type: Type,
         }
     )
   }
+
+  private fun makeReservedVarError(v: Variable, path: List<String>) = ValidationError(
+      "Illegal variable ID `${v.id}'.", "Variables ID starting with a " +
+      "dollar character `$' are reserved for internal purposes.", path)
 
   private fun makeOutputWithValueError(v: Variable, path: List<String>) = ValidationError(
       "Output variable `${v.id}' has a value.", "Output variables should " +

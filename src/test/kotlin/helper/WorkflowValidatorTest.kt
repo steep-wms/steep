@@ -50,6 +50,18 @@ class WorkflowValidatorTest {
   }
 
   /**
+   * Validate a workflow using reserved variables (with a $ character at the
+   * beginning)
+   */
+  @Test
+  fun reservedVar() {
+    val result = validate(readWorkflow("reservedVar"), emptyMap())
+    assertThat(result).hasSize(2)
+    assertThat(result[0].message).contains("Illegal variable ID `\$input_file1'.")
+    assertThat(result[1].message).contains("Illegal variable ID `\$output_file1'.")
+  }
+
+  /**
    * Validate a simple workflow with an output variable that has a value
    */
   @Test
