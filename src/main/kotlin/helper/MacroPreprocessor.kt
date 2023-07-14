@@ -127,7 +127,7 @@ object MacroPreprocessor {
 
     // rename IDs and variables in actions
     val actions = expandActions(macro.actions, macro, inputs, outputs,
-        renames, includeAction.id)
+        renames, includeAction.id, includeAction.dependsOn)
 
     return actions to renamedVars
   }
@@ -186,12 +186,14 @@ object MacroPreprocessor {
 
   /**
    * Expand the given list of [actions] within the context of the given [macro],
-   * variable [renames], and [sequence]. Recursively map variables to the given
-   * [inputs] and [outputs].
+   * variable [renames], and [includeActionId]. Recursively map variables to
+   * the given [inputs] and [outputs]. Add the given [dependencies] to all
+   * expanded actions.
    */
   private fun expandActions(actions: List<Action>, macro: Macro,
       inputs: Map<String, InputParameter>, outputs: Map<String, IncludeOutputParameter>,
-      renames: VariableRenames, includeActionId: String): MutableList<Action> {
+      renames: VariableRenames, includeActionId: String,
+      dependencies: List<String>): MutableList<Action> {
     fun renameDependsOn(a: Action) =
         a.dependsOn.map { makeNewId(includeActionId, macro, it) }
 
@@ -214,7 +216,7 @@ object MacroPreprocessor {
                   id = newId,
                   inputs = actionInputs,
                   outputs = actionOutputs,
-                  dependsOn = renameDependsOn(a)
+                  dependsOn = renameDependsOn(a) + dependencies
               )
           )
         }
@@ -232,8 +234,8 @@ object MacroPreprocessor {
                   yieldToInput = a.yieldToInput?.let { renames.rename(it) },
                   yieldToOutput = a.yieldToOutput?.let { renames.rename(it) },
                   actions = expandActions(a.actions, macro, inputs, outputs,
-                      renames, includeActionId),
-                  dependsOn = renameDependsOn(a)
+                      renames, includeActionId, dependencies),
+                  dependsOn = renameDependsOn(a) + dependencies
               )
           )
         }
@@ -253,7 +255,7 @@ object MacroPreprocessor {
                   id = newId,
                   inputs = actionInputs,
                   outputs = actionOutputs,
-                  dependsOn = renameDependsOn(a)
+                  dependsOn = renameDependsOn(a) + dependencies
               )
           )
         }

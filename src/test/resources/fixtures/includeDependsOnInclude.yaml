@@ -1,0 +1,151 @@
+---
+# macros
+- id: my_macro
+  name: My macro
+  description: A nice custom macro
+  parameters:
+    - id: i
+      name: Input file
+      description: The input file
+      type: input
+    - id: o
+      name: Output file
+      description: The output file
+      type: output
+  actions:
+    - id: cp2
+      type: execute
+      service: cp
+      inputs:
+        - id: input_file
+          var: i
+      outputs:
+        - id: output_file
+          var: internal_output_file
+    - id: cp3
+      type: execute
+      service: cp
+      inputs:
+        - id: input_file
+          var: internal_output_file
+      outputs:
+        - id: output_file
+          var: o
+---
+# workflow
+actions:
+  - id: cp1
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: input_file1
+    outputs:
+      - id: output_file
+        var: output_file1
+
+  - id: inc1
+    type: include
+    macro: my_macro
+    dependsOn: cp1
+    inputs:
+      - id: i
+        value: 5
+    outputs:
+      - id: o
+        var: output_file2
+
+  - id: inc2
+    type: include
+    macro: my_macro
+    dependsOn: inc1
+    inputs:
+      - id: i
+        value: 10
+    outputs:
+      - id: o
+        var: output_file3
+
+  - id: cp4
+    type: execute
+    service: cp
+    dependsOn: inc2
+    inputs:
+      - id: input_file
+        var: output_file2
+    outputs:
+      - id: output_file
+        var: output_file3
+---
+# expected result
+actions:
+  - id: cp1
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: input_file1
+    outputs:
+      - id: output_file
+        var: output_file1
+
+  - id: $inc1$my_macro$cp2
+    type: execute
+    service: cp
+    dependsOn: cp1
+    inputs:
+      - id: input_file
+        value: 5
+    outputs:
+      - id: output_file
+        var: $inc1$my_macro$internal_output_file
+
+  - id: $inc1$my_macro$cp3
+    type: execute
+    service: cp
+    dependsOn: cp1
+    inputs:
+      - id: input_file
+        var: $inc1$my_macro$internal_output_file
+    outputs:
+      - id: output_file
+        var: output_file2
+
+  - id: $inc2$my_macro$cp2
+    type: execute
+    service: cp
+    dependsOn:
+      - $inc1$my_macro$cp2
+      - $inc1$my_macro$cp3
+    inputs:
+      - id: input_file
+        value: 10
+    outputs:
+      - id: output_file
+        var: $inc2$my_macro$internal_output_file
+
+  - id: $inc2$my_macro$cp3
+    type: execute
+    service: cp
+    dependsOn:
+      - $inc1$my_macro$cp2
+      - $inc1$my_macro$cp3
+    inputs:
+      - id: input_file
+        var: $inc2$my_macro$internal_output_file
+    outputs:
+      - id: output_file
+        var: output_file3
+
+  - id: cp4
+    type: execute
+    service: cp
+    dependsOn:
+      - $inc2$my_macro$cp2
+      - $inc2$my_macro$cp3
+    inputs:
+      - id: input_file
+        var: output_file2
+    outputs:
+      - id: output_file
+        var: output_file3

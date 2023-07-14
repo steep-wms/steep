@@ -77,6 +77,15 @@ class MacroPreprocessorTest {
         // Test if an execute action can depend on an include action whose
         // macro contains a for-each action containing another include action
         "dependsOnIncludeForEach",
+
+        // Test if an include action can depend on another action
+        "includeDependsOn",
+
+        // Test if an include action can depend on another include action
+        "includeDependsOnInclude",
+
+        // Test if an include action inside a macro can depend on another action
+        "includeDependsOnNested",
     )
 
     /**
