@@ -1,5 +1,7 @@
 package helper
 
+import helper.DependencyResolver.DependencyCycleException
+import helper.DependencyResolver.MissingDependencyException
 import model.macro.Macro
 import model.macro.MacroParameter
 import model.processchain.Argument
@@ -84,6 +86,7 @@ class WorkflowValidator private constructor(private val type: Type,
     outputsWithValues(actions, results)
     duplicateIds(vars, actions, results)
     missingDependsOnTargets(actions, results)
+    dependsOnCycle(actions, results)
     missingInputValues(actions, macroInputs, results)
     reuseOutput(actions, results)
     reuseEnumerator(actions, results)
@@ -268,6 +271,46 @@ class WorkflowValidator private constructor(private val type: Type,
     visit(actions, results, executeActionVisitor = checkDependencies,
         forEachActionVisitor = checkDependencies,
         includeActionVisitor = checkDependencies)
+  }
+
+  private fun dependsOnCycle(actions: List<Action>,
+      results: MutableList<ValidationError>) {
+    data class A(
+        val a: Action,
+        override val id: String = a.id,
+        override val dependsOn: List<String> = a.dependsOn
+    ) : DependencyResolver.Node
+
+    // convert actions to nodes
+    val nodes = mutableMapOf<String, A>()
+    visit(
+        actions,
+        results,
+        executeActionVisitor = { a, _ ->
+          nodes[a.id] = A(a)
+        },
+        forEachActionVisitor = { a, _ ->
+          // a for-each action implicitly depends on all its children
+          nodes[a.id] = A(a, dependsOn = a.dependsOn + a.actions.map { it.id })
+        },
+        includeActionVisitor = { a, _ ->
+          nodes[a.id] = A(a)
+        }
+    )
+
+    // Filter out missing dependencies so the resolver does not throw because
+    // of them. They should have already been found by `missingDependsOnTargets`.
+    val filteredNodes = nodes.filter { (_, a) ->
+      a.dependsOn.all { nodes.contains(it) }
+    }
+
+    try {
+      DependencyResolver.resolve(filteredNodes.map { it.value })
+    } catch (e: MissingDependencyException) {
+      // can never happen
+    } catch (e: DependencyCycleException) {
+      results.add(makeDependsOnCycleError(e.nodes.map { it.id }, listOf(type.rootPath)))
+    }
   }
 
   private fun collectAllOutputs(actions: List<Action>): Set<String> {
@@ -768,6 +811,14 @@ class WorkflowValidator private constructor(private val type: Type,
       "Unable to resolve action dependency `$actionId'->`$target'.", "Action " +
       "`$actionId' depends on an action with ID `$target' but this action does " +
       "not exist the workflow.", path)
+
+  private fun makeDependsOnCycleError(actions: List<String>, path: List<String>) = ValidationError(
+      "Detected circular dependency between actions ${actions.joinToString(
+          separator = "', `", prefix = "`", postfix = "'")}.",
+      "A dependency cycle leads to a deadlock during workflow execution. " +
+          "Check the `dependsOn' properties of the actions mentioned.",
+      path
+  )
 
   private fun makeMissingInputValueError(v: Variable, path: List<String>) = ValidationError(
       "Input variable `${v.id}' has no value.", "The input variable has no " +

@@ -1,5 +1,6 @@
 package db
 
+import helper.DependencyResolver
 import model.plugins.DependentPlugin
 
 /**
@@ -14,63 +15,24 @@ object PluginDependencyResolver {
    * plugin A comes after A.
    */
   fun <T : DependentPlugin> resolve(plugins: List<T>): List<T> {
-    data class N(val p: T, val dependsOn: MutableSet<String>)
-
-    // check if all dependencies are valid
-    for (a in plugins) {
-      for (d in a.dependsOn) {
-        if (!plugins.any { it.name == d }) {
-          throw IllegalArgumentException("Plugin `${a.name}' depends on " +
-              "plugin `${d}', which either does not exist or is not of " +
-              "the same type.")
-        }
-      }
+    data class PN(val p: T) : DependencyResolver.Node {
+      override val id: String = p.name
+      override val dependsOn: List<String> = p.dependsOn
     }
 
-    val result = mutableListOf<T>()
-
-    val nodesWithoutIncomingEdges = ArrayDeque<T>()
-    val nodesToBeSorted = ArrayDeque<N>()
-
-    // find all plugins that have no dependencies
-    for (p in plugins) {
-      if (p.dependsOn.isEmpty()) {
-        nodesWithoutIncomingEdges.add(p)
-      } else {
-        nodesToBeSorted.add(N(p, p.dependsOn.toMutableSet()))
-      }
-    }
-
-    // for each plugin P that has no dependencies, ...
-    while (nodesWithoutIncomingEdges.isNotEmpty()) {
-      val n = nodesWithoutIncomingEdges.removeFirst()
-      result.add(n)
-
-      // ... look for plugins that depend on P, ...
-      val i = nodesToBeSorted.iterator()
-      while (i.hasNext()) {
-        val o = i.next()
-        if (o.dependsOn.contains(n.name)) {
-          // ... remove the dependency, ...
-          o.dependsOn.remove(n.name)
-          if (o.dependsOn.isEmpty()) {
-            // ... and add the plugin to the queue if is has no dependencies anymore
-            nodesWithoutIncomingEdges.add(o.p)
-            i.remove()
-          }
-        }
-      }
-    }
-
-    // if there are plugins that still have dependencies, there must be a
-    // cycle in the dependency graph!
-    if (nodesToBeSorted.isNotEmpty()) {
+    val result = try {
+      DependencyResolver.resolve(plugins.map { PN(it) })
+    } catch (e: DependencyResolver.MissingDependencyException) {
+      throw IllegalArgumentException("Plugin `${e.node}' depends on " +
+          "plugin `${e.dependsOn}', which either does not exist or is not of " +
+          "the same type.", e)
+    } catch (e: DependencyResolver.DependencyCycleException) {
       throw IllegalArgumentException("Detected circular dependency between " +
-          "plugins ${nodesToBeSorted.joinToString(separator = "', `",
-              prefix = "`", postfix = "'") { it.p.name }}")
+          "plugins ${e.nodes.joinToString(separator = "', `",
+              prefix = "`", postfix = "'") { it.id }}")
     }
 
-    return result
+    return result.map { it.p }
   }
 }
 

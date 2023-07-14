@@ -2,8 +2,6 @@ actions:
   - id: cp1
     type: execute
     service: cp
-    dependsOn:
-      - cp1
     inputs:
       - id: input_file
         value: "test.txt"

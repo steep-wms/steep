@@ -410,4 +410,26 @@ class WorkflowValidatorTest {
     assertThat(result[2].message).contains("Unknown input parameter `o'.")
     assertThat(result[3].message).contains("Unknown output parameter `u'.")
   }
+
+  /**
+   * Dependency cycles are not allowed
+   */
+  @Test
+  fun dependsOnCycle() {
+    val result = validate(readWorkflow("dependsOnCycle"), emptyMap())
+    assertThat(result).hasSize(1)
+    assertThat(result[0].message).contains(
+        "Detected circular dependency between actions `cp1', `cp2', `cp3'.")
+  }
+
+  /**
+   * Dependency cycles are not allowed
+   */
+  @Test
+  fun dependsOnCycleForEach() {
+    val result = validate(readWorkflow("dependsOnCycleForEach"), emptyMap())
+    assertThat(result).hasSize(1)
+    assertThat(result[0].message).contains(
+        "Detected circular dependency between actions `cp1', `for1', `cp2', `cp3'.")
+  }
 }
