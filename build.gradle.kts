@@ -7,7 +7,7 @@ plugins {
     application
     jacoco
     kotlin("jvm") version "1.8.21"
-    id("com.github.ben-manes.versions") version "0.46.0"
+    id("com.github.ben-manes.versions") version "0.47.0"
     id("se.patrikerdes.use-latest-versions") version "0.2.18"
 }
 
@@ -20,12 +20,12 @@ buildscript {
 group = "de.fhg.igd"
 version = "6.6.0"
 
-val vertxVersion by extra("4.3.4")
+val vertxVersion by extra("4.4.4")
 val prometheusClientVersion by extra("0.16.0")
-val slf4jVersion by extra("2.0.3")
-val logbackVersion by extra("1.4.4")
-val junitVersion by extra("5.9.1")
-val testcontainersVersion by extra("1.17.5")
+val slf4jVersion by extra("2.0.7")
+val logbackVersion by extra("1.4.8")
+val junitVersion by extra("5.9.3")
+val testcontainersVersion by extra("1.18.3")
 
 repositories {
     mavenCentral()
@@ -40,7 +40,7 @@ dependencies {
     implementation("ch.qos.logback:logback-core:$logbackVersion")
     implementation("ch.qos.logback.contrib:logback-jackson:0.1.5")
     implementation("ch.qos.logback.contrib:logback-json-classic:0.1.5")
-    implementation("org.codehaus.janino:janino:3.1.9") // for conditionals in logback.xml
+    implementation("org.codehaus.janino:janino:3.1.10") // for conditionals in logback.xml
 
     implementation("io.vertx:vertx-core:$vertxVersion")
     implementation("io.vertx:vertx-hazelcast:$vertxVersion")
@@ -53,25 +53,25 @@ dependencies {
     implementation("io.vertx:vertx-web:$vertxVersion")
     implementation("io.vertx:vertx-web-client:$vertxVersion")
 
-    implementation("commons-codec:commons-codec:1.15")
-    implementation("commons-io:commons-io:2.12.0")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.1")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.1")
-    implementation("com.github.luben:zstd-jni:1.5.5-3")
+    implementation("commons-codec:commons-codec:1.16.0")
+    implementation("commons-io:commons-io:2.13.0")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.2")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
+    implementation("com.github.luben:zstd-jni:1.5.5-5")
     implementation("com.github.zafarkhaja:java-semver:0.9.0")
-    implementation("com.google.guava:guava:31.1-jre")
-    implementation("com.ongres.scram:client:2.1") // Support SCRAM-SHA-256 authentication for Postgres
+    implementation("com.google.guava:guava:32.1.1-jre")
+    implementation("com.ongres.scram:client:2.1") // support PostgreSQL SCRAM-SHA-256 authentication
     implementation("com.zaxxer:HikariCP:5.0.1")
-    implementation("io.airlift:aircompressor:0.24")
+    implementation("io.airlift:aircompressor:0.25")
     implementation("io.pebbletemplates:pebble:3.2.1")
-    implementation("io.projectreactor:reactor-core:3.5.6") // necessary for reactive MongoDB driver
+    implementation("io.projectreactor:reactor-core:3.5.8") // necessary for reactive MongoDB driver
     implementation("io.prometheus:simpleclient:$prometheusClientVersion")
-    implementation("io.micrometer:micrometer-registry-prometheus:1.11.0")
+    implementation("io.micrometer:micrometer-registry-prometheus:1.11.2")
     implementation("org.apache.ant:ant:1.10.13")
     implementation("org.apache.commons:commons-lang3:3.12.0")
     implementation("org.apache.commons:commons-text:1.10.0")
-    implementation("org.flywaydb:flyway-core:9.18.0")
-    implementation("org.mongodb:mongodb-driver-reactivestreams:4.9.1")
+    implementation("org.flywaydb:flyway-core:9.20.1")
+    implementation("org.mongodb:mongodb-driver-reactivestreams:4.10.2")
     implementation("com.github.openstack4j.core:openstack4j:3.11")
     implementation("org.parboiled:parboiled-java:1.4.1")
     implementation("org.postgresql:postgresql:42.6.0")
@@ -87,7 +87,7 @@ dependencies {
     implementation(kotlin("stdlib"))
     implementation(kotlin("script-runtime"))
 
-    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:4.6.3")
+    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:4.7.1")
     testImplementation("io.mockk:mockk:1.13.5")
     testImplementation("io.vertx:vertx-junit5:$vertxVersion")
     testImplementation("org.assertj:assertj-core:3.24.2")
