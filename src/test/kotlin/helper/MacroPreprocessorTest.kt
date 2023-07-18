@@ -158,4 +158,17 @@ class MacroPreprocessorTest {
     }.isInstanceOf(IllegalArgumentException::class.java)
         .hasMessageContaining("Missing macro output parameter")
   }
+
+  /**
+   * Test that the preprocessor throws an exception if it detects an include
+   * cycle (e.g. macro A includes B which includes A again)
+   */
+  @Test
+  fun includeCycle() {
+    val (macros, workflow, _) = loadFixture("includeCycle")
+    assertThatThrownBy {
+      preprocess(workflow, macros)
+    }.isInstanceOf(IllegalArgumentException::class.java)
+        .hasMessageContaining("Detected include cycle")
+  }
 }

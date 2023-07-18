@@ -423,6 +423,19 @@ class WorkflowValidatorTest {
   }
 
   /**
+   * Check that dependency cycles are detected even if a dependency is missing
+   */
+  @Test
+  fun dependsOnCycleMissing() {
+    val result = validate(readWorkflow("dependsOnCycleMissing"), emptyMap())
+    assertThat(result).hasSize(2)
+    assertThat(result[0].message).contains(
+        "Unable to resolve action dependency")
+    assertThat(result[1].message).contains(
+        "Detected circular dependency between actions `cp1', `cp2', `cp3'.")
+  }
+
+  /**
    * Dependency cycles are not allowed
    */
   @Test
@@ -431,5 +444,47 @@ class WorkflowValidatorTest {
     assertThat(result).hasSize(1)
     assertThat(result[0].message).contains(
         "Detected circular dependency between actions `cp1', `for1', `cp2', `cp3'.")
+  }
+
+  /**
+   * Include cycles are not allowed
+   */
+  @Test
+  fun includeCycle() {
+    val macro1 = readMacro("includeCycleMacro1")
+    val macro2 = readMacro("includeCycleMacro2")
+    val macros = mapOf(macro1.id to macro1, macro2.id to macro2)
+
+    for (m in macros.values) {
+      val result = validate(m, macros)
+      assertThat(result).hasSize(1)
+      assertThat(result[0].message).contains(
+          "Detected include cycle between macros `my_macro', `another_macro'.")
+    }
+  }
+
+  /**
+   * Check that include cycles are detected even if a macro is missing
+   */
+  @Test
+  fun includeCycleMissing() {
+    val macro1 = readMacro("includeCycleMacro1")
+    val macro2 = readMacro("includeCycleMacro2")
+    val macro3 = readMacro("includeCycleMacro3")
+    val macros = mapOf(macro1.id to macro1, macro2.id to macro2, macro3.id to macro3)
+
+    for (m in macros.values.take(2)) {
+      val result = validate(m, macros)
+      assertThat(result).hasSize(1)
+      assertThat(result[0].message).contains(
+          "Detected include cycle between macros `my_macro', `another_macro'.")
+    }
+
+    val result3 = validate(macro3, macros)
+    assertThat(result3).hasSize(2)
+    assertThat(result3[0].message).contains(
+        "Detected include cycle between macros `my_macro', `another_macro'.")
+    assertThat(result3[1].message).contains(
+        "Macro `missing_macro' not found.")
   }
 }

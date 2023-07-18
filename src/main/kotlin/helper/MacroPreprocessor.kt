@@ -74,9 +74,12 @@ object MacroPreprocessor {
    */
   private fun preprocess(actions: List<Action>,
       macros: Map<String, Macro>): Pair<List<Action>, List<Variable>> {
+    val popInclude = IncludeAction(macro = "")
+
     val queue = ArrayDeque(actions)
     val newActions = mutableListOf<Action>()
     val newVars = mutableListOf<Variable>()
+    val includedMacros = ArrayDeque<String>()
     var changed = false
 
     while (queue.isNotEmpty()) {
@@ -95,12 +98,28 @@ object MacroPreprocessor {
         }
 
         is IncludeAction -> {
-          val m = macros[a.macro] ?: throw IllegalArgumentException(
-              "Unable to find macro `${a.macro}'")
-          val (newSubActions, newSubVars) = expandMacro(a, m)
-          newSubActions.asReversed().forEach { queue.addFirst(it) }
-          newVars.addAll(newSubVars)
-          changed = true
+          if (a === popInclude) {
+            includedMacros.removeLast()
+          } else {
+            if (includedMacros.contains(a.macro)) {
+              throw IllegalArgumentException("Detected include cycle: " +
+                  "${includedMacros.joinToString("->")}->${a.macro}")
+            }
+
+            val m = macros[a.macro] ?: throw IllegalArgumentException(
+                "Unable to find macro `${a.macro}'")
+            val (newSubActions, newSubVars) = expandMacro(a, m)
+
+            // store included macro ID on stack and add an artificial action
+            // that will later allow us to remove the ID from the stack again
+            includedMacros.addLast(a.macro)
+            queue.addFirst(popInclude)
+
+            // add all expanded actions to the front of the queue
+            newSubActions.asReversed().forEach { queue.addFirst(it) }
+            newVars.addAll(newSubVars)
+            changed = true
+          }
         }
       }
     }

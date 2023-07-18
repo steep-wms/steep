@@ -1,0 +1,7 @@
+id: third_macro
+name: A third macro
+description: Another nice custom macro
+actions:
+  - id: inc
+    type: include
+    macro: missing_macro

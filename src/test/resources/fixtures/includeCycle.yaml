@@ -1,0 +1,81 @@
+---
+# macros
+- id: my_macro
+  name: My macro
+  description: A nice custom macro
+  parameters:
+    - id: i
+      name: Input file
+      description: The input file
+      type: input
+    - id: o
+      name: Output file
+      description: The output file
+      type: output
+  actions:
+    - id: cp2
+      type: execute
+      service: cp
+      inputs:
+        - id: input_file
+          var: i
+      outputs:
+        - id: output_file
+          var: o
+
+    - id: inc
+      type: include
+      macro: another_macro
+      inputs:
+        - id: i
+          var: i
+      outputs:
+        - id: o
+          var: o
+
+- id: another_macro
+  name: Another macro
+  description: Another nice custom macro
+  parameters:
+    - id: i
+      name: Input file
+      description: The input file
+      type: input
+    - id: o
+      name: Output file
+      description: The output file
+      type: output
+  actions:
+    - id: cp2
+      type: execute
+      service: cp
+      inputs:
+        - id: input_file
+          var: i
+      outputs:
+        - id: output_file
+          var: o
+
+    - id: inc
+      type: include
+      macro: my_macro
+      inputs:
+        - id: i
+          var: i
+      outputs:
+        - id: o
+          var: o2
+---
+# workflow
+actions:
+  - type: include
+    macro: my_macro
+    inputs:
+      - id: i
+        value: 5
+    outputs:
+      - id: o
+        var: o2
+---
+# expected result
+{}

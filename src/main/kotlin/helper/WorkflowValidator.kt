@@ -53,6 +53,7 @@ class WorkflowValidator private constructor(private val type: Type,
       val v = WorkflowValidator(Type.MACRO, macros)
 
       val results = mutableListOf<ValidationError>()
+      v.includeCycle(results)
       v.duplicateParameterIds(macro.parameters, results)
       v.redeclaredParameter(macro.vars, macro.parameters, results)
       v.outputWithDefault(macro.parameters, results)
@@ -310,6 +311,39 @@ class WorkflowValidator private constructor(private val type: Type,
       // can never happen
     } catch (e: DependencyCycleException) {
       results.add(makeDependsOnCycleError(e.nodes.map { it.id }, listOf(type.rootPath)))
+    }
+  }
+
+  private fun includeCycle(results: MutableList<ValidationError>) {
+    data class M(
+        val m: Macro,
+        override val id: String = m.id,
+        override val dependsOn: List<String>,
+    ) : DependencyResolver.Node
+
+    // convert macros to nodes
+    val nodes = macros.mapValues { (_, m) ->
+      val deps = mutableSetOf<String>()
+      visit(
+          m.actions,
+          results,
+          includeActionVisitor = { action, _ -> deps.add(action.macro) }
+      )
+      M(m, dependsOn = deps.toList())
+    }
+
+    // Filter out missing dependencies so the resolver does not throw because
+    // of them. They will later be found by `unknownMacro`.
+    val filteredNodes = nodes.filter { (_, a) ->
+      a.dependsOn.all { nodes.contains(it) }
+    }
+
+    try {
+      DependencyResolver.resolve(filteredNodes.map { it.value })
+    } catch (e: MissingDependencyException) {
+      // can never happen
+    } catch (e: DependencyCycleException) {
+      results.add(makeIncludeCycleError(e.nodes.map { it.id }, listOf(type.rootPath)))
     }
   }
 
@@ -817,6 +851,14 @@ class WorkflowValidator private constructor(private val type: Type,
           separator = "', `", prefix = "`", postfix = "'")}.",
       "A dependency cycle leads to a deadlock during workflow execution. " +
           "Check the `dependsOn' properties of the actions mentioned.",
+      path
+  )
+
+  private fun makeIncludeCycleError(macros: List<String>, path: List<String>) = ValidationError(
+      "Detected include cycle between macros ${macros.joinToString(
+          separator = "', `", prefix = "`", postfix = "'")}.",
+      "An include cycle leads to an infinite loop during process chain " +
+          "generation. Check the include actions in the mentioned macros.",
       path
   )
 
