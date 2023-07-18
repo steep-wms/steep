@@ -60,6 +60,7 @@ dependencies {
     implementation("com.github.luben:zstd-jni:1.5.5-3")
     implementation("com.github.zafarkhaja:java-semver:0.9.0")
     implementation("com.google.guava:guava:31.1-jre")
+    implementation("com.ongres.scram:client:2.1") // Support SCRAM-SHA-256 authentication for Postgres
     implementation("com.zaxxer:HikariCP:5.0.1")
     implementation("io.airlift:aircompressor:0.24")
     implementation("io.pebbletemplates:pebble:3.2.1")
