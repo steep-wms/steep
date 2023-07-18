@@ -57,7 +57,7 @@ dependencies {
     implementation("commons-io:commons-io:2.12.0")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.1")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.1")
-    implementation("com.github.luben:zstd-jni:1.5.5-3")
+    implementation("com.github.luben:zstd-jni:1.5.5-5")
     implementation("com.github.zafarkhaja:java-semver:0.9.0")
     implementation("com.google.guava:guava:31.1-jre")
     implementation("com.ongres.scram:client:2.1") // Support SCRAM-SHA-256 authentication for Postgres
