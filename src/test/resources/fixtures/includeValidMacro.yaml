@@ -1,0 +1,33 @@
+vars:
+  - id: input_file
+    value: input_file.txt
+actions:
+  - id: cp1
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: input_file
+    outputs:
+      - id: output_file
+        var: output_file1
+  
+  - id: inc1
+    type: include
+    macro: my_macro
+    inputs:
+      - id: i
+        var: output_file1
+    outputs:
+      - id: o
+        var: output_file2
+
+  - id: cp3
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: output_file2
+    outputs:
+      - id: output_file
+        var: output_file3

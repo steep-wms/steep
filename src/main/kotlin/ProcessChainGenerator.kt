@@ -1,8 +1,10 @@
 import db.PluginRegistryFactory
 import helper.IDGenerator
 import helper.JsonUtils
+import helper.MacroPreprocessor
 import helper.UniqueID
 import io.vertx.core.json.JsonObject
+import model.macro.Macro
 import model.metadata.RuntimeArgument
 import model.metadata.Service
 import model.metadata.ServiceParameter
@@ -12,6 +14,7 @@ import model.processchain.Argument.Type.OUTPUT
 import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import model.processchain.ProcessChain
+import model.retry.RetryPolicy
 import model.workflow.Action
 import model.workflow.AnonymousParameter
 import model.workflow.ExecuteAction
@@ -32,13 +35,16 @@ import java.util.IdentityHashMap
  * @param workflow the workflow to convert to process chains
  * @param tmpPath a directory where temporary workflow results should be stored
  * @param outPath a directory where final workflow results should be stored
+ * @param services service metadata
+ * @param macros a map of macros that can be included with [IncludeAction]s
+ * in the workflow
  * @param consistencyChecker a function that decides whether an action is
  * allowed to be added to a given list of executables/process chain or if a new
  * list/process chain should be created
- * @param services service metadata
  */
 class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
     private val outPath: String, private val services: List<Service>,
+    macros: Map<String, Macro>,
     private val consistencyChecker: suspend (List<Executable>, ExecuteAction) -> Boolean = { _, _ -> true },
     private val idGenerator: IDGenerator = UniqueID) {
   companion object {
@@ -46,8 +52,8 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
     private const val TMP_OUTPUT_SUFFIX = "$$"
   }
 
-  private val vars = workflow.vars.toMutableList()
-  private val actions = workflow.actions.toMutableSet()
+  private val vars: MutableList<Variable>
+  private val actions: MutableSet<Action>
   private val variableValues = mutableMapOf<String, Any>()
   private val executedActionIds = mutableSetOf<String>()
   private val forEachOutputsToBeCollected = mutableMapOf<String, List<Variable>>()
@@ -64,12 +70,20 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
   /**
    * The priority to assign to generated process chains
    */
-  var defaultPriority = workflow.priority
+  var defaultPriority: Int
 
   /**
    * The default retry policy for generated process chains
    */
-  private val defaultRetryPolicy = workflow.retries?.processChains
+  private val defaultRetryPolicy: RetryPolicy?
+
+  init {
+    val processedWorkflow = MacroPreprocessor.preprocess(workflow, macros)
+    vars = processedWorkflow.vars.toMutableList()
+    actions = processedWorkflow.actions.toMutableSet()
+    defaultPriority = processedWorkflow.priority
+    defaultRetryPolicy = processedWorkflow.retries?.processChains
+  }
 
   /**
    * Create the next set of process chains. Call this method until it returns

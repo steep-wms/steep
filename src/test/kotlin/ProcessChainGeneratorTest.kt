@@ -15,12 +15,14 @@ import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import model.macro.Macro
 import model.plugins.OutputAdapterPlugin
 import model.processchain.Executable
 import model.processchain.ProcessChain
 import model.workflow.ExecuteAction
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
@@ -36,6 +38,8 @@ import java.util.stream.Stream
 class ProcessChainGeneratorTest {
   companion object {
     private data class T(val workflowName: String, val resultsName: String = workflowName)
+
+    private lateinit var macros: Map<String, Macro>
 
     private val tests = listOf(
         // Test if a simple workflow with a single service can be converted
@@ -299,6 +303,9 @@ class ProcessChainGeneratorTest {
         // Test if a nested for-each action can depend on an execute action
         T("dependsOnByForEachNested"),
 
+        // Test if a valid macro can be included
+        T("includeValidMacro"),
+
 
         //  TODO test complex graph
 
@@ -325,6 +332,19 @@ class ProcessChainGeneratorTest {
           Arguments.arguments(it.workflowName, it.resultsName, false, true)
       )
     }.stream()
+
+    private fun readMacro(name: String): Macro {
+      val fixture = Companion::class.java.getResource("fixtures/$name.yaml")!!.readText()
+      return YamlUtils.readValue(fixture)
+    }
+
+    @JvmStatic
+    @BeforeAll
+    fun setUpAll() {
+      val m1 = readMacro("validMacro")
+      val m2 = readMacro("validMacro2")
+      macros = mapOf(m1.id to m1, m2.id to m2)
+    }
   }
 
   data class Expected(
@@ -351,12 +371,12 @@ class ProcessChainGeneratorTest {
     val expectedChains = readProcessChains(resultsName)
 
     // validate workflow - just to be on the safe side
-    assertThat(WorkflowValidator.validate(workflow, emptyMap())).isEmpty()
+    assertThat(WorkflowValidator.validate(workflow, macros)).isEmpty()
 
     var json = JsonObject()
     val idgen = ConsecutiveID()
     var generator = ProcessChainGenerator(workflow, "/tmp/", "/out/", services,
-        consistencyChecker, idgen)
+        macros, consistencyChecker, idgen)
     assertThat(generator.isFinished()).isFalse
 
     if (persistState) {
@@ -368,7 +388,7 @@ class ProcessChainGeneratorTest {
     for (expected in expectedChains) {
       if (persistState) {
         generator = ProcessChainGenerator(workflow, "/tmp/", "/out/", services,
-            consistencyChecker, idgen)
+            macros, consistencyChecker, idgen)
         generator.loadState(json)
       }
 
@@ -400,7 +420,7 @@ class ProcessChainGeneratorTest {
 
     if (persistState) {
       generator = ProcessChainGenerator(workflow, "/tmp/", "/out/", services,
-          consistencyChecker, idgen)
+          macros, consistencyChecker, idgen)
       generator.loadState(json)
     }
 

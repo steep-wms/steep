@@ -237,7 +237,7 @@ class Controller : CoroutineVerticle() {
   /**
    * Applies all process chain adapter plugins to the given list of
    * [processChains] and returns the modified list. If there are no plugins or
-   * if they did no make any modifications, the method returns the original list.
+   * if they did not make any modifications, the method returns the original list.
    */
   private suspend fun applyPlugins(processChains: List<ProcessChain>, workflow: Workflow): List<ProcessChain> {
     val adapters = pluginRegistry.getProcessChainAdapters()
@@ -275,10 +275,14 @@ class Controller : CoroutineVerticle() {
         consistencyCheckerPlugins.all { it.call(processChain, a, submission.workflow, vertx) }
       }
 
-      val generator = ProcessChainGenerator(submission.workflow,
+      val generator = ProcessChainGenerator(
+          submission.workflow,
           FilenameUtils.normalize("$tmpPath/${submission.id}"),
           FilenameUtils.normalize("$outPath/${submission.id}"),
-          metadataRegistry.findServices(), consistencyChecker)
+          metadataRegistry.findServices(),
+          macroRegistry.findMacros(),
+          consistencyChecker
+      )
 
       // update default priority for new process chains if the submission's
       // priority has changed
