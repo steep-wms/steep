@@ -35,7 +35,7 @@
     "lodash": "^4.17.21",
     "lucide-react": "^0.261.0",
     "mini-svg-data-uri": "^1.4.4",
-    "next": "^13.4.10",
+    "next": "^13.4.11",
     "normalize.css": "^8.0.1",
     "nprogress": "^0.2.0",
     "parse-content-range-header": "^0.2.4",
