@@ -1,0 +1,5 @@
+# A throwing runtime
+- name: throwingRuntime
+  type: runtime
+  scriptFile: db/throwingRuntime.kts
+  supportedRuntime: throwing
