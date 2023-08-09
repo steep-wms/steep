@@ -3,6 +3,7 @@ package model.plugins
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.databind.type.TypeFactory
+import java.lang.reflect.InvocationTargetException
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
 import kotlin.reflect.jvm.javaType
@@ -107,6 +108,14 @@ private class WrappedKFunction<out T>(private val func: KFunction<T>,
     for ((s, t) in mapping) {
       mappedArgs[t] = args[s]
     }
-    return func.call(*mappedArgs)
+    try {
+      return func.call(*mappedArgs)
+    } catch (t: InvocationTargetException) {
+      val cause = t.cause
+      if (cause != null) {
+        throw cause
+      }
+      throw t
+    }
   }
 }

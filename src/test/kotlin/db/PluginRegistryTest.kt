@@ -343,6 +343,36 @@ class PluginRegistryTest {
   }
 
   /**
+   * Test if a runtime can throw an exception
+   */
+  @Test
+  fun throwingRuntime(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val config = jsonObjectOf(
+          ConfigConstants.PLUGINS to "src/**/db/throwingRuntime.yaml"
+      )
+      PluginRegistryFactory.initialize(vertx, config)
+
+      val pr = PluginRegistryFactory.create()
+      val runtime = pr.findRuntime("throwing")
+      val outputCollector = DefaultOutputCollector()
+      ctx.coVerify {
+        assertThat(runtime).isNotNull
+        assertThatThrownBy {
+          runtime!!.compiledFunction.call(Executable(
+              path = "path",
+              serviceId = "foobar",
+              arguments = emptyList()
+          ), outputCollector, vertx)
+        }.isInstanceOf(IllegalStateException::class.java)
+            .hasMessage("This runtime throws")
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
    * Test if [PluginRegistry.findRuntime] works correctly
    */
   @Test
