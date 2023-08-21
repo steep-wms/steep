@@ -67,7 +67,7 @@ dependencies {
     implementation("io.projectreactor:reactor-core:3.5.8") // necessary for reactive MongoDB driver
     implementation("io.prometheus:simpleclient:$prometheusClientVersion")
     implementation("io.micrometer:micrometer-registry-prometheus:1.11.2")
-    implementation("org.apache.ant:ant:1.10.13")
+    implementation("org.apache.ant:ant:1.10.14")
     implementation("org.apache.commons:commons-lang3:3.12.0")
     implementation("org.apache.commons:commons-text:1.10.0")
     implementation("org.flywaydb:flyway-core:9.20.1")
