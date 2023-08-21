@@ -46,7 +46,7 @@
     "react-timeago": "^7.1.0",
     "react-virtualized-auto-sizer": "^1.0.20",
     "react-window": "^1.8.9",
-    "sass": "^1.63.6",
+    "sass": "^1.66.1",
     "sass-loader": "^13.3.2",
     "serve": "^14.2.0",
     "sockjs-client": "^1.6.1",
