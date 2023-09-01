@@ -26,6 +26,13 @@ steep:
       # restoreMembersOnStartup:
       #   enabled: true
       #   defaultPort: 5701
+      # placementGroupName: development
+      # liteMember: false
+      # splitBrainProtection:
+      #   enabled: false
+      #   minClusterSize: 2
+      #   gracefulStartup: true
+      #   exitProcessAfter: 5s
 
   http:
     enabled: true

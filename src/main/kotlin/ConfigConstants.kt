@@ -171,6 +171,58 @@ object ConfigConstants {
   const val CLUSTER_HAZELCAST_LITE_MEMBER = "steep.cluster.hazelcast.liteMember"
 
   /**
+   * `true` if split-brain protection should be enabled. This mechanism
+   * makes sure the cluster is only able to operate if there are at least
+   * n members, where n is defined by [CLUSTER_HAZELCAST_SPLITBRAINPROTECTION_MINCLUSTERSIZE].
+   * If there are less than n members, Steep instances in the cluster will
+   * not be able to access cluster-wide data structures and stop to operate
+   * until the issue has been resolved.
+   *
+   * This mechanism protects against so-called split-brain situations where one
+   * part of the cluster loses connection to another part and is therefore
+   * split into two (or multiple) parts. If one part becomes too small, it
+   * should stop to operate to avoid doing any harm.
+   *
+   * See [the Hazelcast documentation](https://docs.hazelcast.com/imdg/4.2/network-partitioning/split-brain-protection)
+   * for more information.
+   */
+  const val CLUSTER_HAZELCAST_SPLITBRAINPROTECTION_ENABLED =
+      "steep.cluster.hazelcast.splitBrainProtection.enabled"
+
+  /**
+   * The minimum number of members the cluster must have to be able operate.
+   *
+   * Recommendations: Your cluster should have an odd number of members. The
+   * minimum cluster size should be even and represent the majority of your
+   * cluster. For example, if your cluster has 7 nodes, set this value to 4.
+   * This makes sure that when a split-brain situation happens, the majority
+   * of your cluster will be able to continue operating while the smaller part
+   * will stop.
+   */
+  const val CLUSTER_HAZELCAST_SPLITBRAINPROTECTION_MINCLUSTERSIZE =
+      "steep.cluster.hazelcast.splitBrainProtection.minClusterSize"
+
+  /**
+   * `true` if the split-brain protection mechanism should only start to
+   * be in effect once the cluster has reached its minimum size. This allows
+   * the cluster to startup gracefully even if the member count is
+   * temporarily lower than the defined minimum.
+   */
+  const val CLUSTER_HAZELCAST_SPLITBRAINPROTECTION_GRACEFULSTARTUP =
+      "steep.cluster.hazelcast.splitBrainProtection.gracefulStartup"
+
+  /**
+   * An optional timeout specifying how long a Steep instance may keep running
+   * after a split-brain situation has been detected. When the timeout is
+   * reached and the split-brain situation has not been resolved in the
+   * meantime, the Steep instance shuts itself down with exit code 16. This
+   * mechanism can be used to prevent a Steep instance from doing any harm when
+   * it is in a split-brain situation.
+   */
+  const val CLUSTER_HAZELCAST_SPLITBRAINPROTECTION_EXITPROCESSAFTER =
+      "steep.cluster.hazelcast.splitBrainProtection.exitProcessAfter"
+
+  /**
    * The interval at which the [Main] thread looks for orphaned entries in the
    * remote agent registry. Such entries may happen if there is a network
    * failure during deregistration of an agent. The interval is specified

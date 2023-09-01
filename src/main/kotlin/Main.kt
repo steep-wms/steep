@@ -5,15 +5,22 @@ import cloud.CloudManager
 import com.hazelcast.cluster.MembershipAdapter
 import com.hazelcast.cluster.MembershipEvent
 import com.hazelcast.config.PartitionGroupConfig
+import com.hazelcast.config.SplitBrainProtectionConfig
+import com.hazelcast.config.SplitBrainProtectionListenerConfig
 import com.hazelcast.core.HazelcastInstance
 import com.hazelcast.core.LifecycleEvent
 import com.hazelcast.spi.partitiongroup.PartitionGroupMetaData.PARTITION_GROUP_PLACEMENT
+import com.hazelcast.spi.properties.ClusterProperty
+import com.hazelcast.spi.properties.HazelcastProperties
+import com.hazelcast.splitbrainprotection.SplitBrainProtectionOn
 import db.PluginRegistryFactory
 import db.VMRegistryFactory
 import helper.CompressedJsonObjectMessageCodec
 import helper.JsonUtils
 import helper.LazyJsonObjectMessageCodec
 import helper.UniqueID
+import helper.hazelcast.ExitingSplitBrainProtectionListener
+import helper.hazelcast.FallBelowSplitBrainProtectionFunction
 import helper.loadTemplate
 import helper.toDuration
 import io.micrometer.core.instrument.Clock
@@ -155,6 +162,38 @@ suspend fun main() {
     hazelcastConfig.isLiteMember = true
   }
 
+  // configure split-brain protection
+  val splitBrainProtectionName = "splitBrainProtection"
+  val splitBrainProtectionEnabled = conf.getBoolean(
+      ConfigConstants.CLUSTER_HAZELCAST_SPLITBRAINPROTECTION_ENABLED, false)
+  val splitBrainProtectionGraceful = conf.getBoolean(
+      ConfigConstants.CLUSTER_HAZELCAST_SPLITBRAINPROTECTION_GRACEFULSTARTUP, true)
+  if (splitBrainProtectionEnabled) {
+    val minClusterSize = conf.getInteger(ConfigConstants.CLUSTER_HAZELCAST_SPLITBRAINPROTECTION_MINCLUSTERSIZE)
+        ?: throw IllegalArgumentException("Configuration item `" +
+            ConfigConstants.CLUSTER_HAZELCAST_SPLITBRAINPROTECTION_MINCLUSTERSIZE +
+            "` must specified if split-brain protection is enabled.")
+    val splitBrainProtectionConfig = SplitBrainProtectionConfig(
+        splitBrainProtectionName, true, minClusterSize)
+    splitBrainProtectionConfig.protectOn = SplitBrainProtectionOn.READ_WRITE
+
+    if (splitBrainProtectionGraceful) {
+      splitBrainProtectionConfig.functionImplementation =
+          FallBelowSplitBrainProtectionFunction(
+              splitBrainProtectionConfig.minimumClusterSize)
+    }
+
+    val listenerConfig = SplitBrainProtectionListenerConfig(
+        ExitingSplitBrainProtectionListener(conf))
+    splitBrainProtectionConfig.addListenerConfig(listenerConfig)
+
+    hazelcastConfig.addSplitBrainProtectionConfig(splitBrainProtectionConfig)
+
+    // enable split-brain protection rule for all data structures
+    hazelcastConfig.mapConfigs["default"]?.splitBrainProtectionName =
+        splitBrainProtectionConfig.name
+  }
+
   // configure event bus
   val mgr = HazelcastClusterManager(hazelcastConfig)
   val options = VertxOptions().setClusterManager(mgr)
@@ -237,6 +276,28 @@ suspend fun main() {
       } catch (t: Throwable) {
         log.warn("Could not sync remote agents with cluster members", t)
       }
+    }
+  }
+
+  if (splitBrainProtectionEnabled && splitBrainProtectionGraceful) {
+    // Wait for split-brain protection to get out of initial state (see
+    // [SplitBrainProtectionImpl.SplitBrainProtectionState.INITIAL]). Otherwise,
+    // our verticles will fail instantly as soon as they try to access any
+    // Hazelcast data structure.
+    while (true) {
+      val hasMin = mgr.hazelcastInstance.splitBrainProtectionService
+          .getSplitBrainProtection(splitBrainProtectionName)
+          .hasMinimumSize()
+      if (hasMin) {
+        break
+      }
+
+      val props = HazelcastProperties(hazelcastConfig)
+      val s = props.getSeconds(ClusterProperty.HEARTBEAT_INTERVAL_SECONDS)
+
+      log.info("Waiting $s seconds for split-brain protection to " +
+          "become active (graceful startup) ...")
+      delay(s * 1000L)
     }
   }
 
