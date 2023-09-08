@@ -19,6 +19,7 @@ import helper.JsonUtils
 import helper.UniqueID
 import helper.YamlUtils
 import io.mockk.Runs
+import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -66,7 +67,9 @@ import model.workflow.ForEachAction
 import model.workflow.Variable
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -93,16 +96,65 @@ import java.util.regex.Pattern
 class HttpEndpointTest {
   companion object {
     private const val ENABLE_SETUPS = "enable-setups"
+
+    private lateinit var agentRegistry: AgentRegistry
+    private lateinit var submissionRegistry: SubmissionRegistry
+    private lateinit var metadataRegistry: MetadataRegistry
+    private lateinit var pluginRegistry: PluginRegistry
+    private lateinit var vmRegistry: VMRegistry
+    private lateinit var setupRegistry: SetupRegistry
+
+    /**
+     * Create mocks for registries only once for the whole test class. This
+     * speeds up test execution. Mocks must be cleared after each test in the
+     * [tearDown] method!
+     */
+    @BeforeAll
+    @JvmStatic
+    fun setUpAll() {
+      // mock agent registry
+      agentRegistry = mockk()
+      mockkObject(AgentRegistryFactory)
+      every { AgentRegistryFactory.create(any()) } returns agentRegistry
+
+      // mock submission registry
+      submissionRegistry = mockk()
+      mockkObject(SubmissionRegistryFactory)
+      every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
+
+      // mock metadata registry
+      metadataRegistry = mockk()
+      mockkObject(MetadataRegistryFactory)
+      every { MetadataRegistryFactory.create(any()) } returns metadataRegistry
+
+      // mock plugin registry
+      pluginRegistry = mockk()
+      mockkObject(PluginRegistryFactory)
+      every { PluginRegistryFactory.create() } returns pluginRegistry
+
+      // mock VM registry
+      vmRegistry = mockk()
+      mockkObject(VMRegistryFactory)
+      every { VMRegistryFactory.create(any()) } returns vmRegistry
+
+      // mock setup registry
+      setupRegistry = mockk()
+      mockkObject(SetupRegistryFactory)
+      every { SetupRegistryFactory.create(any(), any()) } returns setupRegistry
+    }
+
+    /**
+     * Remove mocks after all tests have been executed
+     */
+    @AfterAll
+    @JvmStatic
+    fun tearDownAll() {
+      unmockkAll()
+    }
   }
 
   private val maxPostSize = 1024
   private var port: Int = 0
-  private lateinit var agentRegistry: AgentRegistry
-  private lateinit var submissionRegistry: SubmissionRegistry
-  private lateinit var metadataRegistry: MetadataRegistry
-  private lateinit var pluginRegistry: PluginRegistry
-  private lateinit var vmRegistry: VMRegistry
-  private var setupRegistry: SetupRegistry? = null
 
   private val setup = Setup(id = "test-setup", flavor = "myflavor",
       imageName = "myimage", availabilityZone = "my-az", blockDeviceSizeGb = 20,
@@ -110,40 +162,10 @@ class HttpEndpointTest {
 
   @BeforeEach
   fun setUp(vertx: Vertx, ctx: VertxTestContext, info: TestInfo) {
-    port = ServerSocket(0).use { it.localPort }
-
-    // mock agent registry
-    agentRegistry = mockk()
-    mockkObject(AgentRegistryFactory)
-    every { AgentRegistryFactory.create(any()) } returns agentRegistry
-
-    // mock submission registry
-    submissionRegistry = mockk()
-    mockkObject(SubmissionRegistryFactory)
-    every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
+    // mock methods needed for every test
     coEvery { submissionRegistry.close() } just Runs
 
-    // mock metadata registry
-    metadataRegistry = mockk()
-    mockkObject(MetadataRegistryFactory)
-    every { MetadataRegistryFactory.create(any()) } returns metadataRegistry
-
-    // mock plugin registry
-    pluginRegistry = mockk()
-    mockkObject(PluginRegistryFactory)
-    every { PluginRegistryFactory.create() } returns pluginRegistry
-
-    // mock VM registry
-    vmRegistry = mockk()
-    mockkObject(VMRegistryFactory)
-    every { VMRegistryFactory.create(any()) } returns vmRegistry
-
-    if (info.tags.contains(ENABLE_SETUPS)) {
-      // mock setup registry
-      setupRegistry = mockk()
-      mockkObject(SetupRegistryFactory)
-      every { SetupRegistryFactory.create(any(), any()) } returns setupRegistry!!
-    }
+    port = ServerSocket(0).use { it.localPort }
 
     // deploy verticle under test
     val config = jsonObjectOf(
@@ -162,8 +184,26 @@ class HttpEndpointTest {
   }
 
   @AfterEach
-  fun tearDown() {
-    unmockkAll()
+  fun tearDown(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      // stop verticle before clearing mocks so any mocked cleanup method can
+      // still be called
+      vertx.deploymentIDs().forEach { deploymentId ->
+        awaitResult<Void> { vertx.undeploy(deploymentId, it) }
+      }
+
+      // clear mocks after each test to reset state
+      clearMocks(
+          agentRegistry,
+          submissionRegistry,
+          metadataRegistry,
+          pluginRegistry,
+          vmRegistry,
+          setupRegistry
+      )
+
+      ctx.completeNow()
+    }
   }
 
   /**
@@ -417,7 +457,7 @@ class HttpEndpointTest {
   @Test
   @Tag(ENABLE_SETUPS)
   fun getSetupsEmpty(vertx: Vertx, ctx: VertxTestContext) {
-    coEvery { setupRegistry!!.findSetups() } returns emptyList()
+    coEvery { setupRegistry.findSetups() } returns emptyList()
 
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
@@ -464,7 +504,7 @@ class HttpEndpointTest {
     )
     val setups = listOf(s1, s2)
 
-    coEvery { setupRegistry!!.findSetups() } returns setups
+    coEvery { setupRegistry.findSetups() } returns setups
 
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
@@ -534,7 +574,7 @@ class HttpEndpointTest {
     )
     val setups = listOf(s1, s2)
 
-    coEvery { setupRegistry!!.findSetups() } returns setups
+    coEvery { setupRegistry.findSetups() } returns setups
 
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
