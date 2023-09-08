@@ -15,6 +15,7 @@ import helper.UniqueID
 import helper.hazelcast.ClusterSemaphore
 import helper.hazelcast.DummyClusterSemaphore
 import io.mockk.Runs
+import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -33,6 +34,7 @@ import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.awaitResult
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -41,7 +43,9 @@ import model.processchain.ProcessChain
 import model.processchain.Run
 import model.retry.RetryPolicy
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -54,28 +58,51 @@ import java.util.concurrent.atomic.AtomicLong
  */
 @ExtendWith(VertxExtension::class)
 class SchedulerTest {
-  private lateinit var submissionRegistry: SubmissionRegistry
-  private lateinit var agentRegistry: AgentRegistry
+  companion object {
+    private lateinit var submissionRegistry: SubmissionRegistry
+    private lateinit var agentRegistry: AgentRegistry
+
+    /**
+     * Create mocks for registries only once for the whole test class. This
+     * speeds up test execution. Mocks must be cleared after each test in the
+     * [tearDown] method!
+     */
+    @BeforeAll
+    @JvmStatic
+    fun setUpAll() {
+      // mock ClusterSemaphore
+      mockkObject(ClusterSemaphore)
+      coEvery { ClusterSemaphore.create(any(), any(), any()) } answers { DummyClusterSemaphore(arg(1)) }
+
+      // mock submission registry
+      submissionRegistry = mockk()
+      mockkObject(SubmissionRegistryFactory)
+      every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
+
+      // mock agent registry
+      agentRegistry = mockk()
+      mockkObject(AgentRegistryFactory)
+      every { AgentRegistryFactory.create(any()) } returns agentRegistry
+    }
+
+    /**
+     * Remove mocks after all tests have been executed
+     */
+    @AfterAll
+    @JvmStatic
+    fun tearDownAll() {
+      unmockkAll()
+    }
+  }
+
   private lateinit var agentId: String
 
   @BeforeEach
   fun setUp(vertx: Vertx, ctx: VertxTestContext) {
-    // mock ClusterSemaphore
-    mockkObject(ClusterSemaphore)
-    coEvery { ClusterSemaphore.create(any(), any(), any()) } answers { DummyClusterSemaphore(arg(1)) }
-
-    // mock submission registry
-    submissionRegistry = mockk()
-    mockkObject(SubmissionRegistryFactory)
-    every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
+    // mock methods needed for every test
     coEvery { submissionRegistry.autoResumeProcessChains(any()) } just Runs
     coEvery { submissionRegistry.findProcessChainIdsByStatus(RUNNING) } returns emptyList()
     coEvery { submissionRegistry.close() } just Runs
-
-    // mock agent registry
-    agentRegistry = mockk()
-    mockkObject(AgentRegistryFactory)
-    every { AgentRegistryFactory.create(any()) } returns agentRegistry
 
     // deploy verticle under test
     agentId = UniqueID.next()
@@ -86,8 +113,22 @@ class SchedulerTest {
   }
 
   @AfterEach
-  fun tearDown() {
-    unmockkAll()
+  fun tearDown(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      // stop verticle before clearing mocks so any mocked cleanup method can
+      // still be called
+      vertx.deploymentIDs().forEach { deploymentId ->
+        awaitResult<Void> { vertx.undeploy(deploymentId, it) }
+      }
+
+      // clear mocks after each test to reset state
+      clearMocks(
+          submissionRegistry,
+          agentRegistry
+      )
+
+      ctx.completeNow()
+    }
   }
 
   /**
@@ -145,7 +186,7 @@ class SchedulerTest {
       for (r in 1..expectedRuns) {
         coEvery { agent.execute(capture(pcSlot), r) } coAnswers {
           onExecute?.invoke(pcSlot.captured.id, executedPcIds)
-          delay(1000) // pretend it takes 1 second to execute the process chain
+          delay(100) // pretend it takes 100 ms to execute the process chain
           mapOf("ARG1" to listOf("output-${pcSlot.captured.id}"))
         }
       }
