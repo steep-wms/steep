@@ -116,11 +116,10 @@ class ControllerTest {
           ConfigConstants.TMP_PATH to "/tmp",
           ConfigConstants.OUT_PATH to "/out",
           ConfigConstants.CONTROLLER_LOOKUP_MAXERRORS to 2L,
-          ConfigConstants.CONTROLLER_LOOKUP_INTERVAL to "0s",
-          Controller.CONTROLLER_DISABLE_PERIODIC_LOOKUP_FOR_SUBMISSIONS to true
+          ConfigConstants.CONTROLLER_LOOKUP_INTERVAL to "0s"
       )
       val options = deploymentOptionsOf(config = config)
-      vertx.deployVerticle(Controller::class.qualifiedName, options, ctx.succeedingThenComplete())
+      vertx.deployVerticle(Controller(true), options, ctx.succeedingThenComplete())
     }
   }
 

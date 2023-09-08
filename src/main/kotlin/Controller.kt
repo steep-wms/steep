@@ -45,9 +45,14 @@ import java.util.concurrent.CancellationException
  * The controller fetches submissions from a [SubmissionRegistry], converts
  * them to process chains, sends these chains to the [Scheduler] to execute
  * them, and finally and puts the results back into the [SubmissionRegistry].
+ *
+ * @param disablePeriodicLookupForSubmissions can be used in unit tests to
+ * disable the periodic timer that searches for new submissions. Should not
+ * be used in production!
+ *
  * @author Michel Kraemer
  */
-class Controller : CoroutineVerticle() {
+class Controller(private val disablePeriodicLookupForSubmissions: Boolean = false) : CoroutineVerticle() {
   companion object {
     private val log = LoggerFactory.getLogger(Controller::class.java)
     private const val DEFAULT_LOOKUP_INTERVAL = 2000L
@@ -55,13 +60,6 @@ class Controller : CoroutineVerticle() {
     private const val DEFAULT_LOOKUP_ORPHANS_INITIAL_DELAY = 0L
     private const val DEFAULT_LOOKUP_ORPHANS_INTERVAL = 300_000L
     private const val PROCESSING_SUBMISSION_LOCK_PREFIX = "Controller.ProcessingSubmission."
-
-    /**
-     * Undocumented configuration property that can be used in unit tests to
-     * disable the periodic timer that searches for new submissions
-     */
-    const val CONTROLLER_DISABLE_PERIODIC_LOOKUP_FOR_SUBMISSIONS =
-        "_steep.test.controller.disablePeriodicLookupForSubmissions"
 
     /**
      * The number of generated process chains the controller is waiting for
@@ -127,9 +125,6 @@ class Controller : CoroutineVerticle() {
         ?.toDuration()?.toMillis() ?: lookupOrphansInterval
     val lookupOrphansInitialDelay = config.getString(CONTROLLER_LOOKUP_ORPHANS_INITIAL_DELAY)
         ?.toDuration()?.toMillis() ?: DEFAULT_LOOKUP_ORPHANS_INITIAL_DELAY
-
-    val disablePeriodicLookupForSubmissions = config.getBoolean(
-        CONTROLLER_DISABLE_PERIODIC_LOOKUP_FOR_SUBMISSIONS, false)
 
     if (!disablePeriodicLookupForSubmissions) {
       // periodically look for new submissions and execute them
