@@ -57,6 +57,13 @@ class Controller : CoroutineVerticle() {
     private const val PROCESSING_SUBMISSION_LOCK_PREFIX = "Controller.ProcessingSubmission."
 
     /**
+     * Undocumented configuration property that can be used in unit tests to
+     * disable the periodic timer that searches for new submissions
+     */
+    const val CONTROLLER_DISABLE_PERIODIC_LOOKUP_FOR_SUBMISSIONS =
+        "_steep.test.controller.disablePeriodicLookupForSubmissions"
+
+    /**
      * The number of generated process chains the controller is waiting for
      */
     private val gaugeProcessChains = Gauge.build()
@@ -86,7 +93,7 @@ class Controller : CoroutineVerticle() {
 
   private var lookupInterval: Long = DEFAULT_LOOKUP_INTERVAL
   private var lookupMaxErrors: Long = DEFAULT_LOOKUP_MAX_ERRORS
-  private lateinit var periodicLookupJob: Job
+  private var periodicLookupJob: Job? = null
   private var lookupOrphansInterval: Long = DEFAULT_LOOKUP_ORPHANS_INTERVAL
   private var periodicLookupOrphansJob: Job? = null
   private var shuttingDown = false
@@ -121,14 +128,19 @@ class Controller : CoroutineVerticle() {
     val lookupOrphansInitialDelay = config.getString(CONTROLLER_LOOKUP_ORPHANS_INITIAL_DELAY)
         ?.toDuration()?.toMillis() ?: DEFAULT_LOOKUP_ORPHANS_INITIAL_DELAY
 
-    // periodically look for new submissions and execute them
-    periodicLookupJob = launch {
-      while (true) {
-        delay(lookupInterval)
-        try {
-          lookup()
-        } catch (t: Throwable) {
-          log.error("Failed to look for submissions", t)
+    val disablePeriodicLookupForSubmissions = config.getBoolean(
+        CONTROLLER_DISABLE_PERIODIC_LOOKUP_FOR_SUBMISSIONS, false)
+
+    if (!disablePeriodicLookupForSubmissions) {
+      // periodically look for new submissions and execute them
+      periodicLookupJob = launch {
+        while (true) {
+          delay(lookupInterval)
+          try {
+            lookup()
+          } catch (t: Throwable) {
+            log.error("Failed to look for submissions", t)
+          }
         }
       }
     }
@@ -175,7 +187,7 @@ class Controller : CoroutineVerticle() {
   override suspend fun stop() {
     log.info("Stopping controller ...")
     shuttingDown = true
-    periodicLookupJob.cancelAndJoin()
+    periodicLookupJob?.cancelAndJoin()
     periodicLookupOrphansJob?.cancelAndJoin()
     submissionRegistry.close()
   }

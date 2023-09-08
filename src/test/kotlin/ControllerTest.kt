@@ -12,6 +12,7 @@ import helper.JsonUtils
 import helper.YamlUtils
 import io.mockk.MockKVerificationScope
 import io.mockk.Runs
+import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -31,6 +32,7 @@ import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.awaitResult
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -43,7 +45,9 @@ import model.workflow.Action
 import model.workflow.Variable
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -59,22 +63,42 @@ class ControllerTest {
   companion object {
     private const val WITH_ADAPTER = "withAdapter"
     private const val NEW_REQUIRED_CAPABILITY = "NewRequiredCapability"
-  }
 
-  private lateinit var metadataRegistry: MetadataRegistry
-  private lateinit var submissionRegistry: SubmissionRegistry
+    private lateinit var metadataRegistry: MetadataRegistry
+    private lateinit var submissionRegistry: SubmissionRegistry
+
+    /**
+     * Create mocks for registries only once for the whole test class. This
+     * speeds up test execution. Mocks must be cleared after each test in the
+     * [tearDown] method!
+     */
+    @BeforeAll
+    @JvmStatic
+    fun setUpAll() {
+      // mock metadata registry
+      metadataRegistry = mockk()
+      mockkObject(MetadataRegistryFactory)
+      every { MetadataRegistryFactory.create(any()) } returns metadataRegistry
+
+      // mock submission registry
+      submissionRegistry = mockk()
+      mockkObject(SubmissionRegistryFactory)
+      every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
+    }
+
+    /**
+     * Remove mocks after all tests have been executed
+     */
+    @AfterAll
+    @JvmStatic
+    fun tearDownAll() {
+      unmockkAll()
+    }
+  }
 
   @BeforeEach
   fun setUp(vertx: Vertx, ctx: VertxTestContext, info: TestInfo) {
-    // mock metadata registry
-    metadataRegistry = mockk()
-    mockkObject(MetadataRegistryFactory)
-    every { MetadataRegistryFactory.create(any()) } returns metadataRegistry
-
-    // mock submission registry
-    submissionRegistry = mockk()
-    mockkObject(SubmissionRegistryFactory)
-    every { SubmissionRegistryFactory.create(any()) } returns submissionRegistry
+    // mock methods needed for every test
     coEvery { submissionRegistry.findSubmissionIdsByStatus(Status.RUNNING) } returns emptyList()
     coEvery { submissionRegistry.close() } just Runs
 
@@ -91,7 +115,9 @@ class ControllerTest {
       val config = jsonObjectOf(
           ConfigConstants.TMP_PATH to "/tmp",
           ConfigConstants.OUT_PATH to "/out",
-          ConfigConstants.CONTROLLER_LOOKUP_MAXERRORS to 2L
+          ConfigConstants.CONTROLLER_LOOKUP_MAXERRORS to 2L,
+          ConfigConstants.CONTROLLER_LOOKUP_INTERVAL to "0s",
+          Controller.CONTROLLER_DISABLE_PERIODIC_LOOKUP_FOR_SUBMISSIONS to true
       )
       val options = deploymentOptionsOf(config = config)
       vertx.deployVerticle(Controller::class.qualifiedName, options, ctx.succeedingThenComplete())
@@ -99,8 +125,22 @@ class ControllerTest {
   }
 
   @AfterEach
-  fun tearDown() {
-    unmockkAll()
+  fun tearDown(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      // stop verticle before clearing mocks so any mocked cleanup method can
+      // still be called
+      vertx.deploymentIDs().forEach { deploymentId ->
+        awaitResult<Void> { vertx.undeploy(deploymentId, it) }
+      }
+
+      // clear mocks after each test to reset state
+      clearMocks(
+          metadataRegistry,
+          submissionRegistry
+      )
+
+      ctx.completeNow()
+    }
   }
 
   private fun readWorkflow(name: String): Workflow {
