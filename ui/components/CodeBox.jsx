@@ -5,7 +5,8 @@ import React, { forwardRef, memo, useEffect, useRef, useState } from "react"
 import stringify from "./lib/yaml-stringify"
 import Clipboard from "clipboard"
 import { Clipboard as ClipboardIcon } from "lucide-react"
-import { toH } from "hast-to-hyperscript"
+import { toJsxRuntime } from "hast-util-to-jsx-runtime"
+import { Fragment, jsx, jsxs } from "react/jsx-runtime"
 import { VariableSizeList, areEqual } from "react-window"
 import { useRouter } from "next/router"
 
@@ -17,7 +18,7 @@ const Row = memo(({ data, index, style }) => {
   let item = data[index]
   let block = item.block
   if (typeof block === "object") {
-    block = toH(React.createElement, block)
+    block = toJsxRuntime(block, { Fragment, jsx, jsxs })
   }
   return <div style={style}>{block}</div>
 }, areEqual)
