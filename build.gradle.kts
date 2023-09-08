@@ -6,8 +6,8 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     application
     jacoco
-    kotlin("jvm") version "1.8.21"
-    id("com.github.ben-manes.versions") version "0.47.0"
+    kotlin("jvm") version "1.9.10"
+    id("com.github.ben-manes.versions") version "0.48.0"
     id("se.patrikerdes.use-latest-versions") version "0.2.18"
 }
 
@@ -20,12 +20,12 @@ buildscript {
 group = "de.fhg.igd"
 version = "6.6.0"
 
-val vertxVersion by extra("4.4.4")
+val vertxVersion by extra("4.4.5")
 val prometheusClientVersion by extra("0.16.0")
-val slf4jVersion by extra("2.0.7")
-val logbackVersion by extra("1.4.8")
-val junitVersion by extra("5.9.3")
-val testcontainersVersion by extra("1.18.3")
+val slf4jVersion by extra("2.0.9")
+val logbackVersion by extra("1.4.11")
+val junitVersion by extra("5.10.0")
+val testcontainersVersion by extra("1.19.0")
 
 repositories {
     mavenCentral()
@@ -59,18 +59,18 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
     implementation("com.github.luben:zstd-jni:1.5.5-5")
     implementation("com.github.zafarkhaja:java-semver:0.9.0")
-    implementation("com.google.guava:guava:32.1.1-jre")
+    implementation("com.google.guava:guava:32.1.2-jre")
     implementation("com.ongres.scram:client:2.1") // support PostgreSQL SCRAM-SHA-256 authentication
     implementation("com.zaxxer:HikariCP:5.0.1")
     implementation("io.airlift:aircompressor:0.25")
     implementation("io.pebbletemplates:pebble:3.2.1")
-    implementation("io.projectreactor:reactor-core:3.5.8") // necessary for reactive MongoDB driver
+    implementation("io.projectreactor:reactor-core:3.5.9") // necessary for reactive MongoDB driver
     implementation("io.prometheus:simpleclient:$prometheusClientVersion")
-    implementation("io.micrometer:micrometer-registry-prometheus:1.11.2")
-    implementation("org.apache.ant:ant:1.10.13")
-    implementation("org.apache.commons:commons-lang3:3.12.0")
+    implementation("io.micrometer:micrometer-registry-prometheus:1.11.3")
+    implementation("org.apache.ant:ant:1.10.14")
+    implementation("org.apache.commons:commons-lang3:3.13.0")
     implementation("org.apache.commons:commons-text:1.10.0")
-    implementation("org.flywaydb:flyway-core:9.20.1")
+    implementation("org.flywaydb:flyway-core:9.22.0")
     implementation("org.mongodb:mongodb-driver-reactivestreams:4.10.2")
     implementation("com.github.openstack4j.core:openstack4j:3.11")
     implementation("org.parboiled:parboiled-java:1.4.1")
@@ -79,7 +79,7 @@ dependencies {
         // we only need org.quartz.CronExpression, so we can exclude all dependencies
         isTransitive = false
     }
-    implementation("org.yaml:snakeyaml:2.0")
+    implementation("org.yaml:snakeyaml:2.2")
 
     implementation(kotlin("reflect"))
     implementation(kotlin("scripting-jvm"))
@@ -87,8 +87,8 @@ dependencies {
     implementation(kotlin("stdlib"))
     implementation(kotlin("script-runtime"))
 
-    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:4.7.1")
-    testImplementation("io.mockk:mockk:1.13.5")
+    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:4.9.2")
+    testImplementation("io.mockk:mockk:1.13.7")
     testImplementation("io.vertx:vertx-junit5:$vertxVersion")
     testImplementation("org.assertj:assertj-core:3.24.2")
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
