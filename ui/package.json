@@ -59,7 +59,7 @@
     "@playwright/test": "^1.37.1",
     "cypress": "^13.1.0",
     "eslint": "^8.48.0",
-    "eslint-config-next": "^13.4.19",
+    "eslint-config-next": "^13.5.1",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-cypress": "^2.14.0",
     "eslint-webpack-plugin": "^4.0.1",
