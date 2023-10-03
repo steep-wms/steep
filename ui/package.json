@@ -29,7 +29,7 @@
     "favicons": "^7.1.4",
     "hast-util-to-jsx-runtime": "^2.1.1",
     "highlight.js": "^11.8.0",
-    "immer": "^10.0.2",
+    "immer": "^10.0.3",
     "js-yaml": "^4.1.0",
     "json2yaml": "^1.1.0",
     "lodash": "^4.17.21",
