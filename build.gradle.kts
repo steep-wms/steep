@@ -66,7 +66,7 @@ dependencies {
     implementation("io.pebbletemplates:pebble:3.2.1")
     implementation("io.projectreactor:reactor-core:3.5.9") // necessary for reactive MongoDB driver
     implementation("io.prometheus:simpleclient:$prometheusClientVersion")
-    implementation("io.micrometer:micrometer-registry-prometheus:1.11.3")
+    implementation("io.micrometer:micrometer-registry-prometheus:1.11.5")
     implementation("org.apache.ant:ant:1.10.14")
     implementation("org.apache.commons:commons-lang3:3.13.0")
     implementation("org.apache.commons:commons-text:1.10.0")
