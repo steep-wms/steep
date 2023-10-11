@@ -59,7 +59,7 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
     implementation("com.github.luben:zstd-jni:1.5.5-5")
     implementation("com.github.zafarkhaja:java-semver:0.9.0")
-    implementation("com.google.guava:guava:32.1.2-jre")
+    implementation("com.google.guava:guava:32.1.3-jre")
     implementation("com.ongres.scram:client:2.1") // support PostgreSQL SCRAM-SHA-256 authentication
     implementation("com.zaxxer:HikariCP:5.0.1")
     implementation("io.airlift:aircompressor:0.25")
