@@ -7,8 +7,8 @@ import helper.UniqueID
 /**
  * A workflow action that includes a macro
  * @param macro the ID of the macro to include
- * @param inputs the service inputs
- * @param outputs the service outputs
+ * @param inputs a list of macro input parameters
+ * @param outputs a list of include output parameters
  * @author Michel Kraemer
  */
 data class IncludeAction(
