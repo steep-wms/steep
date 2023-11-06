@@ -60,7 +60,7 @@ dependencies {
     implementation("com.github.zafarkhaja:java-semver:0.9.0")
     implementation("com.google.guava:guava:32.1.3-jre")
     implementation("com.ongres.scram:client:2.1") // support PostgreSQL SCRAM-SHA-256 authentication
-    implementation("com.zaxxer:HikariCP:5.0.1")
+    implementation("com.zaxxer:HikariCP:5.1.0")
     implementation("io.airlift:aircompressor:0.25")
     implementation("io.pebbletemplates:pebble:3.2.1")
     implementation("io.projectreactor:reactor-core:3.5.11") // necessary for reactive MongoDB driver
