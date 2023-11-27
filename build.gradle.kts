@@ -67,7 +67,7 @@ dependencies {
     implementation("io.prometheus:simpleclient:$prometheusClientVersion")
     implementation("io.micrometer:micrometer-registry-prometheus:1.11.5")
     implementation("org.apache.ant:ant:1.10.14")
-    implementation("org.apache.commons:commons-lang3:3.13.0")
+    implementation("org.apache.commons:commons-lang3:3.14.0")
     implementation("org.apache.commons:commons-text:1.10.0")
     implementation("org.flywaydb:flyway-core:9.22.3")
     implementation("org.mongodb:mongodb-driver-reactivestreams:4.11.0")
