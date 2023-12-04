@@ -62,7 +62,7 @@ dependencies {
     implementation("com.ongres.scram:client:2.1") // support PostgreSQL SCRAM-SHA-256 authentication
     implementation("com.zaxxer:HikariCP:5.0.1")
     implementation("io.airlift:aircompressor:0.25")
-    implementation("io.pebbletemplates:pebble:3.2.1")
+    implementation("io.pebbletemplates:pebble:3.2.2")
     implementation("io.projectreactor:reactor-core:3.5.11") // necessary for reactive MongoDB driver
     implementation("io.prometheus:simpleclient:$prometheusClientVersion")
     implementation("io.micrometer:micrometer-registry-prometheus:1.11.5")
