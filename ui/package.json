@@ -27,7 +27,7 @@
     "date-fns": "^2.30.0",
     "dayjs": "^1.11.10",
     "favicons": "^7.1.4",
-    "hast-util-to-jsx-runtime": "^2.2.0",
+    "hast-util-to-jsx-runtime": "^2.3.0",
     "highlight.js": "^11.9.0",
     "immer": "^10.0.3",
     "js-yaml": "^4.1.0",
