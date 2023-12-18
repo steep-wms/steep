@@ -30,7 +30,7 @@ jobs:
         run: bash <(curl -s https://codecov.io/bash) -s build/reports/jacoco
 
       - name: Upload install directory as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: steep-install
           path: build/install
