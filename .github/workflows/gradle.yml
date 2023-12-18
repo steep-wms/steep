@@ -58,7 +58,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Download install directory
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: steep-install
           path: build/install
