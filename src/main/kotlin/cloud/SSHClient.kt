@@ -7,6 +7,7 @@ import io.vertx.kotlin.coroutines.awaitResult
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import java.io.IOException
+import java.time.Duration
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -15,9 +16,13 @@ import kotlin.coroutines.CoroutineContext
  * @param username the username used for authentication
  * @param identityFile the path to a private key file used for authentication
  * @param vertx the Vert.x instance
+ * @param commandTimeout a timeout for every command executed by the SSH
+ * client (including uploads). If a command runs longer than this timeout, it
+ * will be killed, no matter if it is still active or not.
  */
 class SSHClient(private val ip: String, private val username: String,
-    private val identityFile: String, private val vertx: Vertx) : CoroutineScope {
+    private val identityFile: String, private val vertx: Vertx,
+    private val commandTimeout: Duration) : CoroutineScope {
   override val coroutineContext: CoroutineContext = vertx.dispatcher()
 
   /**
@@ -48,7 +53,8 @@ class SSHClient(private val ip: String, private val username: String,
   /**
    * Upload multiple [sources] to the given [dest] on the remote machine.
    */
-  suspend fun uploadFiles(sources: List<String>, dest: String, recursive: Boolean = false) {
+  suspend fun uploadFiles(sources: List<String>, dest: String,
+      recursive: Boolean = false) {
     blocking {
       uploadFilesBlocking(sources, dest, recursive)
     }
@@ -57,7 +63,8 @@ class SSHClient(private val ip: String, private val username: String,
   /**
    * Blocking version of [uploadFiles]
    */
-  fun uploadFilesBlocking(sources: List<String>, dest: String, recursive: Boolean = false) {
+  fun uploadFilesBlocking(sources: List<String>, dest: String,
+      recursive: Boolean = false) {
     val args = mutableListOf("scp")
     if (recursive) {
       args.add("-r")
@@ -70,7 +77,7 @@ class SSHClient(private val ip: String, private val username: String,
     ))
     args.addAll(sources)
     args.add("$username@$ip:$dest")
-    execute(args)
+    execute(args, timeout = commandTimeout)
   }
 
   /**
@@ -92,7 +99,7 @@ class SSHClient(private val ip: String, private val username: String,
         "-o", "LogLevel=ERROR",
         "-o", "StrictHostKeyChecking=no",
         "-o", "UserKnownHostsFile=/dev/null",
-        "$username@$ip", command))
+        "$username@$ip", command), timeout = commandTimeout)
   }
 
   private suspend fun blocking(block: () -> Unit) {

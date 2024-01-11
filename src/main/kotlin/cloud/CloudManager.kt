@@ -183,6 +183,11 @@ class CloudManager : CoroutineVerticle() {
    */
   private var timeoutDestroyVM = Duration.ofMinutes(5)
 
+  /**
+   * The maximum time each provisioning step may take before it is killed
+   */
+  private var timeoutProvisioning = Duration.ofMinutes(10)
+
   override suspend fun start() {
     log.info("Launching cloud manager ...")
 
@@ -205,6 +210,8 @@ class CloudManager : CoroutineVerticle() {
         ?.toDuration() ?: timeoutCreateVM
     timeoutDestroyVM = config.getString(ConfigConstants.CLOUD_TIMEOUTS_DESTROYVM)
         ?.toDuration() ?: timeoutDestroyVM
+    timeoutProvisioning = config.getString(ConfigConstants.CLOUD_TIMEOUTS_PROVISIONING)
+        ?.toDuration() ?: timeoutProvisioning
 
     // load setups file
     setups = SetupRegistryFactory.create(vertx).findSetups()
@@ -709,7 +716,7 @@ class CloudManager : CoroutineVerticle() {
   private suspend fun provisionVM(ipAddress: String, vmId: String,
       externalId: String, setup: Setup) {
     val ssh = SSHClient(ipAddress, setup.sshUsername ?: sshUsername!!,
-        sshPrivateKeyLocation, vertx)
+        sshPrivateKeyLocation, vertx, timeoutProvisioning)
     waitForSSH(ipAddress, externalId, ssh)
 
     // register a handler that waits for the agent on the new virtual machine

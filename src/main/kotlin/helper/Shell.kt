@@ -5,6 +5,7 @@ import org.slf4j.MDC
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
+import java.time.Duration
 import java.util.concurrent.TimeUnit
 
 /**
@@ -20,11 +21,14 @@ object Shell {
    * @param outputCollector collects the command's output (stdout and stderr)
    * @param logFailedExitCode `true` if a failed process with a non-zero exit
    * code should be logged
+   * @param timeout an optional timeout after which the command should be
+   * killed if is has not finished
    */
-  fun execute(command: List<String>, outputCollector: OutputCollector = DefaultOutputCollector(),
-      logFailedExitCode: Boolean = true) {
+  fun execute(command: List<String>,
+      outputCollector: OutputCollector = DefaultOutputCollector(),
+      logFailedExitCode: Boolean = true, timeout: Duration? = null) {
     return execute(command, File(System.getProperty("user.dir")),
-        outputCollector, logFailedExitCode)
+        outputCollector, logFailedExitCode, timeout)
   }
 
   /**
@@ -34,11 +38,13 @@ object Shell {
    * @param outputCollector collects the command's output (stdout and stderr)
    * @param logFailedExitCode `true` if a failed process with a non-zero exit
    * code should be logged
+   * @param timeout an optional timeout after which the command should be
+   * killed if is has not finished
    * @throws ExecutionException if the command failed
    */
   private fun execute(command: List<String>, workingDir: File,
       outputCollector: OutputCollector = DefaultOutputCollector(),
-      logFailedExitCode: Boolean = true) {
+      logFailedExitCode: Boolean = true, timeout: Duration? = null) {
     val joinedCommand = command.joinToString(" ")
     log.info(joinedCommand)
 
@@ -53,7 +59,14 @@ object Shell {
     readerThread.start()
 
     try {
-      process.waitFor()
+      if (timeout != null) {
+        if (!process.waitFor(timeout.toSeconds(), TimeUnit.SECONDS)) {
+          log.error("Timed out waiting for process. Trying to kill it.")
+          throw InterruptedException("Timed out waiting for process")
+        }
+      } else {
+        process.waitFor()
+      }
     } catch (e: InterruptedException) {
       // Always destroy process forcibly because it seems Docker containers
       // cannot be destroyed normally. If necessary, we could make this

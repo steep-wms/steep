@@ -538,6 +538,15 @@ object ConfigConstants {
   const val CLOUD_TIMEOUTS_DESTROYVM = "steep.cloud.timeouts.destroyVM"
 
   /**
+   * The maximum time each individual provisioning step (i.e. executing a
+   * provisioning script or uploading files) may take before it is aborted.
+   * Running provisioning commands will be killed after this timeout regardless
+   * of whether they are still active or not. Specified as a human-readable
+   * duration (see [helper.toDuration]).
+   */
+  const val CLOUD_TIMEOUTS_PROVISIONING = "steep.cloud.timeouts.provisioning"
+
+  /**
    * Describes parameters of remote agents the CloudManager maintains in its pool
    */
   const val CLOUD_AGENTPOOL = "steep.cloud.agentPool"
