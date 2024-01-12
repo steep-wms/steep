@@ -18,7 +18,7 @@ buildscript {
 }
 
 group = "de.fhg.igd"
-version = "6.7.0"
+version = "6.7.1"
 
 val prometheusClientVersion by extra("0.16.0")
 val slf4jVersion by extra("2.0.9")
