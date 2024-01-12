@@ -118,6 +118,7 @@ steep:
       agentReady: 5m
       createVM: 5m
       destroyVM: 5m
+      provisioning: 10m
 
     # agentPool:
     #   - capabilities:
