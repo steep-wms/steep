@@ -417,6 +417,87 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
   }
 
   /**
+   * Find execute actions that depend on the given [action], either because
+   * they depend on an output of the action ([inputsToActions]) or because
+   * there is a `dependsOn` between the actions ([dependsOnToActions]).
+   */
+  private fun getNextExecuteActions(action: ExecuteAction,
+      inputsToActions: Map<Variable, MutableList<ExecuteAction>>,
+      dependsOnToActions: Map<String, MutableList<ExecuteAction>>): List<ExecuteAction> {
+    val moreActionsByOutput = action.outputs.map { it.variable }.flatMap {
+      inputsToActions[it] ?: mutableListOf() }
+    val moreActionsByDependsOn = dependsOnToActions[action.id] ?: emptyList()
+    return (moreActionsByOutput + moreActionsByDependsOn).distinct()
+  }
+
+  /**
+   * Check if the given list of [actions] is actually a graph where exactly
+   * one action is the root node and all other actions belong to the same graph.
+   * Return this single root action or `null` if there are several root nodes.
+   *
+   * Return `null` if the given list is empty or if the graph contains a cycle.
+   * If the list contains only one action, just return this action.
+   */
+  private fun findRootExecuteAction(actions: List<ExecuteAction>,
+      inputsToActions: Map<Variable, MutableList<ExecuteAction>>,
+      dependsOnToActions: Map<String, MutableList<ExecuteAction>>
+  ): ExecuteAction? {
+    if (actions.isEmpty()) {
+      return null
+    }
+
+    if (actions.size == 1) {
+      return actions[0]
+    }
+
+    val nChildrenPerAction = IdentityHashMap<ExecuteAction, Int>()
+    val temporary = IdentityHashMap<ExecuteAction, Unit>()
+
+    var topAction: ExecuteAction? = null
+    var visitedActions = 0
+
+    fun visit(a: ExecuteAction): Int? {
+      var nChildren = nChildrenPerAction[a]
+      if (nChildren != null) {
+        return nChildren
+      }
+
+      if (temporary.containsKey(a)) {
+        // graph has a cycle!
+        return null
+      }
+
+      temporary[a] = Unit
+
+      val children = getNextExecuteActions(a, inputsToActions, dependsOnToActions)
+      nChildren = children.size
+      for (c in children) {
+        nChildren += visit(c) ?: return null
+      }
+
+      temporary.remove(a)
+
+      nChildrenPerAction[a] = nChildren
+      topAction = a
+      visitedActions++
+
+      return nChildren
+    }
+
+    // sort given actions and their dependents topologically
+    for (a in actions) {
+      visit(a) ?: return null
+    }
+
+    return if (nChildrenPerAction[topAction] == visitedActions - 1) {
+      // All actions are children of `topAction`. This is the root node!
+      topAction
+    } else {
+      null
+    }
+  }
+
+  /**
    * Create process chains for all actions that are ready to be executed (i.e.
    * whose inputs are all available) and remove these actions from [actions].
    */
@@ -486,17 +567,14 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
             break
           }
 
-          // try to find next action
-          val moreActionsByOutput = nextAction.outputs.map { it.variable }.flatMap {
-            inputsToActions[it] ?: mutableListOf() }
-          val moreActionsByDependsOn = dependsOnToActions[nextAction.id] ?: emptyList()
-          val moreActions = (moreActionsByOutput + moreActionsByDependsOn).distinct()
-          if (moreActions.size != 1) {
-            // leverage parallelization and stop if there are more than one
-            // next actions (i.e. if the process chain would fork)
-            break
-          }
-          nextAction = moreActions[0]
+          // find list of next actions
+          val moreActions = getNextExecuteActions(nextAction, inputsToActions,
+              dependsOnToActions)
+
+          // leverage parallelization and stop if the process chain would fork
+          // or continue with the next best action
+          nextAction = findRootExecuteAction(moreActions, inputsToActions,
+              dependsOnToActions) ?: break
         } else {
           // the action is not executable at the moment - do not visit it
           // again unless it was the first action (it could depend on the

@@ -21,6 +21,8 @@
     output_directory:
       - /tmp/0/1.txt
       - /tmp/0/2.txt
+  executedExecutableIds:
+    - splitToDir
 - chains:
     - id: "4"
       executables:
@@ -62,8 +64,18 @@
                 value: /tmp/3
               type: output
               dataType: string
+    - id: "5"
+      executables:
+        - id: empty
+          serviceId: empty
+          path: empty
+          arguments: []
   results:
     output_file1:
       - /tmp/1
     output_file2:
       - /tmp/3
+  executedExecutableIds:
+    - joinFromDir1
+    - joinFromDir2
+    - empty

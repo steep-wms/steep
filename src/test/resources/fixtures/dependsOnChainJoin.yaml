@@ -1,0 +1,40 @@
+vars:
+  - id: input_file1
+    value: input_file1.txt
+  - id: output_file1
+  - id: output_file2
+  - id: output_file3
+actions:
+  - id: cp1
+    type: execute
+    service: cp
+    inputs:
+      - id: input_file
+        var: input_file1
+    outputs:
+      - id: output_file
+        var: output_file1
+  - id: cp2
+    type: execute
+    service: cp
+    dependsOn:
+      - cp1
+    inputs:
+      - id: input_file
+        var: input_file1
+    outputs:
+      - id: output_file
+        var: output_file2
+  - id: join
+    type: execute
+    service: join
+    dependsOn:
+      - cp2
+    inputs:
+      - id: i
+        var: output_file1
+      - id: i
+        var: output_file2
+    outputs:
+      - id: o
+        var: output_file3

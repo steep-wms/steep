@@ -275,6 +275,15 @@ class ProcessChainGeneratorTest {
         // Test if we can build a chain of three actions via `dependsOn`
         T("dependsOnChain"),
 
+        // Test if we can build a single process chain of three actions A, B,
+        // and C via `dependsOn` where the last one (C) is a join action that
+        // uses the outputs of the previous two actions (A and B) as inputs.
+        // Normally, this would mean that we get three process chains because
+        // A and B may run in parallel, but if all actions are connected
+        // through `dependsOn`, we should get only one process chain because
+        // they need to be executed in sequence anyhow.
+        T("dependsOnChainJoin"),
+
         // Test if an action inside a for-each action can depend on another
         // action inside the same for-each action
         T("dependsOnInsideForEach"),
@@ -439,7 +448,9 @@ class ProcessChainGeneratorTest {
       persistState: Boolean = false, perResult: Boolean = false,
       vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
-      doTestAll(workflowName, resultsName, persistState, perResult)
+      ctx.coVerify {
+        doTestAll(workflowName, resultsName, persistState, perResult)
+      }
       ctx.completeNow()
     }
   }
@@ -452,10 +463,12 @@ class ProcessChainGeneratorTest {
   @ValueSource(strings = ["false", "true"])
   fun forEachYieldCardinalityError(persistState: Boolean, vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
-      assertThatThrownBy {
-        doTestAll("forEachYieldCardinalityError", persistState = persistState)
-      }.isInstanceOf(IllegalStateException::class.java)
-          .hasMessageContaining("cardinality")
+      ctx.coVerify {
+        assertThatThrownBy {
+          doTestAll("forEachYieldCardinalityError", persistState = persistState)
+        }.isInstanceOf(IllegalStateException::class.java)
+            .hasMessageContaining("cardinality")
+      }
       ctx.completeNow()
     }
   }
@@ -476,10 +489,12 @@ class ProcessChainGeneratorTest {
       every { pluginRegistry.findOutputAdapter(any()) } returns null
       every { pluginRegistry.findOutputAdapter("custom") } returns p
 
-      try {
-        doTestAll("outputAdapter", persistState = persistState)
-      } finally {
-        unmockkAll()
+      ctx.coVerify {
+        try {
+          doTestAll("outputAdapter", persistState = persistState)
+        } finally {
+          unmockkAll()
+        }
       }
 
       ctx.completeNow()
@@ -493,18 +508,20 @@ class ProcessChainGeneratorTest {
   @ValueSource(strings = ["false", "true"])
   fun consistencyChecker(persistState: Boolean, vertx: Vertx, ctx: VertxTestContext) {
     CoroutineScope(vertx.dispatcher()).launch {
-      // let all actions through
-      doTestAll("consistencyChecker", "consistencyChecker", persistState = persistState)
+      ctx.coVerify {
+        // let all actions through
+        doTestAll("consistencyChecker", "consistencyChecker", persistState = persistState)
 
-      // split after the first action
-      doTestAll("consistencyChecker", "consistencyChecker_split", persistState = persistState,
-          consistencyChecker = { executables, action ->
-            executables.isEmpty() || action.id != "cp2"
-          })
+        // split after the first action
+        doTestAll("consistencyChecker", "consistencyChecker_split", persistState = persistState,
+            consistencyChecker = { executables, action ->
+              executables.isEmpty() || action.id != "cp2"
+            })
 
-      // don't let any action through
-      doTestAll("consistencyChecker", "consistencyChecker_false", persistState = persistState,
-          consistencyChecker = { _, _ -> false }, shouldBeFinished = false)
+        // don't let any action through
+        doTestAll("consistencyChecker", "consistencyChecker_false", persistState = persistState,
+            consistencyChecker = { _, _ -> false }, shouldBeFinished = false)
+      }
 
       ctx.completeNow()
     }

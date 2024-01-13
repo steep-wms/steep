@@ -34,3 +34,8 @@ actions:
     outputs:
       - id: o
         var: output_file2
+  # add empty action to force workflow to branch after `splitToDir`
+  - id: empty
+    type: execute
+    service: empty
+    dependsOn: splitToDir

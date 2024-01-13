@@ -117,7 +117,10 @@ object TestMetadata {
           Argument.Type.OUTPUT, Cardinality(1, 1))
   ), retries = RetryPolicy(maxAttempts = 5, delay = 1000, exponentialBackoff = 2, maxDelay = 10000))
 
+  private val serviceEmpty = Service("empty", "empty", "Empty", "empty",
+      Service.RUNTIME_OTHER, emptyList())
+
   val services = listOf(serviceCp, serviceCpCustom, serviceCpDefaultParam,
       serviceJoin, serviceSplit, serviceWithDocker, serviceWithRuntimeArgs,
-      serviceSplitToDir, serviceJoinFromDir, serviceRetry)
+      serviceSplitToDir, serviceJoinFromDir, serviceRetry, serviceEmpty)
 }
