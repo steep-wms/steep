@@ -41,15 +41,15 @@ dependencies {
     implementation("ch.qos.logback.contrib:logback-json-classic:0.1.5")
     implementation("org.codehaus.janino:janino:3.1.11") // for conditionals in logback.xml
 
-    implementation("io.vertx:vertx-core:4.5.0")
-    implementation("io.vertx:vertx-hazelcast:4.5.0")
-    implementation("io.vertx:vertx-lang-kotlin:4.5.0")
+    implementation("io.vertx:vertx-core:4.5.3")
+    implementation("io.vertx:vertx-hazelcast:4.5.3")
+    implementation("io.vertx:vertx-lang-kotlin:4.5.3")
     implementation("io.vertx:vertx-lang-kotlin-coroutines:4.5.1")
     implementation("io.vertx:vertx-micrometer-metrics:4.5.1")
-    implementation("io.vertx:vertx-mongo-client:4.5.1")
-    implementation("io.vertx:vertx-pg-client:4.5.1")
-    implementation("io.vertx:vertx-web:4.5.1")
-    implementation("io.vertx:vertx-web-client:4.5.1")
+    implementation("io.vertx:vertx-mongo-client:4.5.3")
+    implementation("io.vertx:vertx-pg-client:4.5.3")
+    implementation("io.vertx:vertx-web:4.5.3")
+    implementation("io.vertx:vertx-web-client:4.5.3")
 
     implementation("commons-codec:commons-codec:1.16.0")
     implementation("commons-io:commons-io:2.15.1")
@@ -87,7 +87,7 @@ dependencies {
 
     testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:4.12.0")
     testImplementation("io.mockk:mockk:1.13.8")
-    testImplementation("io.vertx:vertx-junit5:4.5.1")
+    testImplementation("io.vertx:vertx-junit5:4.5.3")
     testImplementation("org.assertj:assertj-core:3.24.2")
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
