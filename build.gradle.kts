@@ -49,7 +49,7 @@ dependencies {
     implementation("io.vertx:vertx-mongo-client:4.5.1")
     implementation("io.vertx:vertx-pg-client:4.5.1")
     implementation("io.vertx:vertx-web:4.5.1")
-    implementation("io.vertx:vertx-web-client:4.5.1")
+    implementation("io.vertx:vertx-web-client:4.5.3")
 
     implementation("commons-codec:commons-codec:1.16.0")
     implementation("commons-io:commons-io:2.15.1")
