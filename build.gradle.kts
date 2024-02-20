@@ -6,7 +6,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     application
     jacoco
-    kotlin("jvm") version "1.9.21"
+    kotlin("jvm") version "1.9.22"
     id("com.github.ben-manes.versions") version "0.50.0"
     id("se.patrikerdes.use-latest-versions") version "0.2.18"
 }
@@ -44,17 +44,17 @@ dependencies {
     implementation("io.vertx:vertx-core:4.5.0")
     implementation("io.vertx:vertx-hazelcast:4.5.0")
     implementation("io.vertx:vertx-lang-kotlin:4.5.0")
-    implementation("io.vertx:vertx-lang-kotlin-coroutines:4.5.0")
-    implementation("io.vertx:vertx-micrometer-metrics:4.5.0")
-    implementation("io.vertx:vertx-mongo-client:4.5.0")
-    implementation("io.vertx:vertx-pg-client:4.5.0")
-    implementation("io.vertx:vertx-web:4.5.0")
-    implementation("io.vertx:vertx-web-client:4.5.0")
+    implementation("io.vertx:vertx-lang-kotlin-coroutines:4.5.1")
+    implementation("io.vertx:vertx-micrometer-metrics:4.5.1")
+    implementation("io.vertx:vertx-mongo-client:4.5.1")
+    implementation("io.vertx:vertx-pg-client:4.5.1")
+    implementation("io.vertx:vertx-web:4.5.1")
+    implementation("io.vertx:vertx-web-client:4.5.1")
 
     implementation("commons-codec:commons-codec:1.16.0")
     implementation("commons-io:commons-io:2.15.1")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.16.0")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.16.0")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.16.1")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.16.1")
     implementation("com.github.luben:zstd-jni:1.5.5-11")
     implementation("com.github.zafarkhaja:java-semver:0.9.0")
     implementation("com.google.guava:guava:32.1.3-jre")
@@ -62,9 +62,9 @@ dependencies {
     implementation("com.zaxxer:HikariCP:5.1.0")
     implementation("io.airlift:aircompressor:0.25")
     implementation("io.pebbletemplates:pebble:3.2.2")
-    implementation("io.projectreactor:reactor-core:3.6.0") // necessary for reactive MongoDB driver
+    implementation("io.projectreactor:reactor-core:3.6.2") // necessary for reactive MongoDB driver
     implementation("io.prometheus:simpleclient:$prometheusClientVersion")
-    implementation("io.micrometer:micrometer-registry-prometheus:1.12.0")
+    implementation("io.micrometer:micrometer-registry-prometheus:1.12.2")
     implementation("org.apache.ant:ant:1.10.14")
     implementation("org.apache.commons:commons-lang3:3.14.0")
     implementation("org.apache.commons:commons-text:1.11.0")
@@ -85,9 +85,9 @@ dependencies {
     implementation(kotlin("stdlib"))
     implementation(kotlin("script-runtime"))
 
-    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:4.11.1")
+    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:4.12.0")
     testImplementation("io.mockk:mockk:1.13.8")
-    testImplementation("io.vertx:vertx-junit5:4.5.0")
+    testImplementation("io.vertx:vertx-junit5:4.5.1")
     testImplementation("org.assertj:assertj-core:3.24.2")
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
