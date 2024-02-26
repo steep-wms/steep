@@ -41,7 +41,7 @@ dependencies {
     implementation("ch.qos.logback.contrib:logback-json-classic:0.1.5")
     implementation("org.codehaus.janino:janino:3.1.11") // for conditionals in logback.xml
 
-    implementation("io.vertx:vertx-core:4.5.3")
+    implementation("io.vertx:vertx-core:4.5.4")
     implementation("io.vertx:vertx-hazelcast:4.5.3")
     implementation("io.vertx:vertx-lang-kotlin:4.5.3")
     implementation("io.vertx:vertx-lang-kotlin-coroutines:4.5.3")
