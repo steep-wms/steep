@@ -26,7 +26,7 @@
     "color": "^4.2.3",
     "date-fns": "^3.3.1",
     "dayjs": "^1.11.10",
-    "favicons": "^7.1.5",
+    "favicons": "^7.2.0",
     "hast-util-to-jsx-runtime": "^2.3.0",
     "highlight.js": "^11.9.0",
     "immer": "^10.0.3",
