@@ -27,6 +27,9 @@ import ConfigConstants
  * `setup` context object in provisioning script templates
  * @param creation an optional policy that defines rules for creating VMs from
  * this setup (default values for this parameter are defined in the `steep.yaml`)
+ * @param autoShutdownTimeout an optional timeout after which the VM should be
+ * shut down when it is idle. This overrides the `autoShutdownTimeout` parameter
+ * from the `steep.yaml`
  * @author Michel Kraemer
  */
 data class Setup(
@@ -44,5 +47,6 @@ data class Setup(
     val sshUsername: String? = null,
     val additionalVolumes: List<Volume> = emptyList(),
     val parameters: Map<String, Any> = emptyMap(),
-    val creation: CreationPolicy? = null
+    val creation: CreationPolicy? = null,
+    val autoShutdownTimeout: String? = null
 )

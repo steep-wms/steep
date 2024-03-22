@@ -14,6 +14,6 @@ docker run -d --name steep --restart=on-failure \
   -e "STEEP_CLUSTER_HAZELCAST_TCPENABLED=true" \
   -e "STEEP_AGENT_ID={{ agentId }}" \
   -e "STEEP_AGENT_CAPABILITIES=[{% for cap in agentCapabilities %}\"{{ cap }}\"{% if not loop.last %},{% endif %}{% endfor %}]" \
-  -e "STEEP_AGENT_AUTOSHUTDOWNTIMEOUTMINUTES={{ config["setups.default.agent.autoShutdownTimeoutMinutes"] }}" \
+  -e "STEEP_AGENT_AUTOSHUTDOWNTIMEOUT={% if setup.autoShutdownTimeout is empty %}{{ config["setups.default.agent.autoShutdownTimeout"] }}{% else %}{{ setup.autoShutdownTimeout }}{% endif %}" \
   -e "STEEP_SCHEDULER_ENABLED=false" \
   {{ config["setups.default.docker.image"] }}
