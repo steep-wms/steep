@@ -163,7 +163,7 @@ tasks {
         sourceSets {
             main {
                 resources {
-                    srcDirs("$buildDir/generated-src/main/resources")
+                    srcDirs("$projectDir/build/generated-src/main/resources")
                     srcDirs("$projectDir/ui/out")
                 }
             }
@@ -176,7 +176,7 @@ tasks {
 
     val generateVersionFile by creating {
         doLast {
-            val dst = File(buildDir, "generated-src/main/resources")
+            val dst = File(projectDir, "build/generated-src/main/resources")
             dst.mkdirs()
             val versionFile = File(dst, "version.json")
             val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
@@ -224,7 +224,7 @@ tasks {
                 from(projectDir) {
                     include("conf/**/*")
                 }
-                from("$buildDir/classes/kotlin/plugins") {
+                from("$projectDir/build/classes/kotlin/plugins") {
                     include("*.class")
                     into("conf/plugins")
                 }
