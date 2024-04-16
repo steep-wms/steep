@@ -71,6 +71,7 @@ dependencies {
     implementation("org.flywaydb:flyway-core:9.22.3")
     implementation("org.mongodb:mongodb-driver-reactivestreams:4.11.1")
     implementation("com.github.openstack4j.core:openstack4j:3.11")
+    implementation("org.ow2.asm:asm:9.7") // necessary to make org.parboiled:parboiled-java compatible with Java 21
     implementation("org.parboiled:parboiled-java:1.4.1")
     implementation("org.postgresql:postgresql:42.7.1")
     implementation("org.quartz-scheduler:quartz:2.3.2") {
@@ -113,7 +114,7 @@ application {
 }
 
 jacoco {
-    toolVersion = "0.8.7"
+    toolVersion = "0.8.12"
 }
 
 tasks {
@@ -159,7 +160,7 @@ tasks {
 
             compilations.all {
                 kotlinOptions {
-                    jvmTarget = "11"
+                    jvmTarget = "21"
                 }
             }
         }

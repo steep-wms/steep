@@ -24,7 +24,7 @@ Visit https://steep-wms.github.io/#documentation to view the documentation.
 Building and running
 --------------------
 
-This project requires at least JDK 11.
+This project requires at least JDK 21.
 
     ./gradlew build
     ./gradlew run
