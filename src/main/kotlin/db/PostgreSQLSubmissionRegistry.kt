@@ -11,7 +11,7 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.Tuple
 import model.Submission
@@ -85,7 +85,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     obj.getJsonObject(WORKFLOW)?.put(PRIORITY, submission.workflow.priority)
 
     val params = Tuple.of(submission.id, obj)
-    client.preparedQuery(statement).execute(params).await()
+    client.preparedQuery(statement).execute(params).coAwait()
   }
 
   override suspend fun findSubmissionsRaw(status: Submission.Status?, size: Int,
@@ -116,9 +116,9 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     statement.append("ORDER BY $SERIAL $asc LIMIT $limit OFFSET $offset")
 
     val rs = if (params != null) {
-      client.preparedQuery(statement.toString()).execute(params).await()
+      client.preparedQuery(statement.toString()).execute(params).coAwait()
     } else {
-      client.query(statement.toString()).execute().await()
+      client.query(statement.toString()).execute().coAwait()
     }
     return rs.map { row ->
       val s = row.getJsonObject(0)
@@ -135,7 +135,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   override suspend fun findSubmissionById(submissionId: String): Submission? {
     val statement = "SELECT $DATA::varchar FROM $SUBMISSIONS WHERE $ID=$1"
     val params = Tuple.of(submissionId)
-    val rs = client.preparedQuery(statement).execute(params).await()
+    val rs = client.preparedQuery(statement).execute(params).coAwait()
     return rs?.firstOrNull()?.let { JsonUtils.mapper.readValue(it.getString(0)) }
   }
 
@@ -143,7 +143,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     val statement = "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$STATUS'=$1 " +
         "ORDER BY $SERIAL"
     val params = Tuple.of(status.toString())
-    val rs = client.preparedQuery(statement).execute(params).await()
+    val rs = client.preparedQuery(statement).execute(params).coAwait()
     return rs.map { it.getString(0) }
   }
 
@@ -159,9 +159,9 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
 
     val rs = if (params != null) {
-      client.preparedQuery(statement.toString()).execute(params).await()
+      client.preparedQuery(statement.toString()).execute(params).coAwait()
     } else {
-      client.query(statement.toString()).execute().await()
+      client.query(statement.toString()).execute().coAwait()
     }
     return rs?.firstOrNull()?.getLong(0) ?: 0L
   }
@@ -178,7 +178,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         STATUS to newStatus.toString()
     )
     val updateParams = Tuple.of(newObj, currentStatus.toString())
-    val rs = client.preparedQuery(updateStatement).execute(updateParams).await()
+    val rs = client.preparedQuery(updateStatement).execute(updateParams).coAwait()
     return rs?.firstOrNull()?.let { JsonUtils.mapper.readValue<Submission>(it.getString(0))
         .copy(status = currentStatus) }
   }
@@ -207,7 +207,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   override suspend fun getSubmissionStatus(submissionId: String): Submission.Status {
     val statement = "SELECT $DATA->'$STATUS' FROM $SUBMISSIONS WHERE $ID=$1"
     val params = Tuple.of(submissionId)
-    val rs = client.preparedQuery(statement).execute(params).await()?.firstOrNull()
+    val rs = client.preparedQuery(statement).execute(params).coAwait()?.firstOrNull()
         ?: throw NoSuchElementException("There is no submission with ID `$submissionId'")
     return Submission.Status.valueOf(rs.getString(0))
   }
@@ -219,7 +219,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         "($DATA->'$STATUS'=$4 OR $DATA->'$STATUS'=$5) RETURNING 1"
     val updateParams = Tuple.of(newObj, submissionId, priority,
         Submission.Status.ACCEPTED.toString(), Submission.Status.RUNNING.toString())
-    val result = client.preparedQuery(updateStatement).execute(updateParams).await()
+    val result = client.preparedQuery(updateStatement).execute(updateParams).coAwait()
     return result.size() > 0
   }
 
@@ -227,7 +227,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       column: String, block: (Row) -> T): T {
     val statement = "SELECT $column FROM $SUBMISSIONS WHERE $ID=$1"
     val params = Tuple.of(submissionId)
-    val r = client.preparedQuery(statement).execute(params).await()?.firstOrNull()
+    val r = client.preparedQuery(statement).execute(params).coAwait()?.firstOrNull()
         ?: throw NoSuchElementException("There is no submission with ID `$submissionId'")
     return block(r)
   }
@@ -262,7 +262,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       // find IDs of submissions whose end time is before the given timestamp
       val statement1 = "SELECT $ID FROM $SUBMISSIONS WHERE $DATA->'$END_TIME' < $1"
       val params1 = Tuple.of(timestamp.toString())
-      val rs1 = connection.preparedQuery(statement1).execute(params1).await()
+      val rs1 = connection.preparedQuery(statement1).execute(params1).coAwait()
       val submissionIDs1 = rs1.map { it.getString(0) }
 
       // find IDs of finished submissions that do not have an endTime but
@@ -272,7 +272,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
           "AND $DATA->'$STATUS'!=$1 AND $DATA->'$STATUS'!=$2"
       val params2 = Tuple.of(Submission.Status.ACCEPTED.toString(),
         Submission.Status.RUNNING.toString())
-      val rs2 = connection.preparedQuery(statement2).execute(params2).await()
+      val rs2 = connection.preparedQuery(statement2).execute(params2).coAwait()
       val submissionIDs2 = rs2.map { it.getString(0) }
         .filter { Instant.ofEpochMilli(UniqueID.toMillis(it)).isBefore(timestamp) }
 
@@ -285,11 +285,11 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         // delete process chains first
         val statement3 = "DELETE FROM $PROCESS_CHAINS " +
             "WHERE $SUBMISSION_ID=ANY($1)"
-        connection.preparedQuery(statement3).execute(deleteParams).await()
+        connection.preparedQuery(statement3).execute(deleteParams).coAwait()
 
         // then delete submissions
         val statement4 = "DELETE FROM $SUBMISSIONS WHERE $ID=ANY($1)"
-        connection.preparedQuery(statement4).execute(deleteParams).await()
+        connection.preparedQuery(statement4).execute(deleteParams).coAwait()
       }
 
       submissionIDs
@@ -301,7 +301,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     withConnection { connection ->
       val existsStatement = "SELECT 1 FROM $SUBMISSIONS WHERE $ID=$1"
       val existsParam = Tuple.of(submissionId)
-      if (connection.preparedQuery(existsStatement).execute(existsParam).await()
+      if (connection.preparedQuery(existsStatement).execute(existsParam).coAwait()
           ?.firstOrNull() == null) {
         throw NoSuchElementException("There is no submission with ID `$submissionId'")
       }
@@ -317,7 +317,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
         Tuple.of(it.id, submissionId, status.toString(), obj)
       }
-      connection.preparedQuery(insertStatement).executeBatch(insertParams).await()
+      connection.preparedQuery(insertStatement).executeBatch(insertParams).coAwait()
     }
   }
 
@@ -350,9 +350,9 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     statement.append("ORDER BY $SERIAL $asc LIMIT $limit OFFSET $offset")
 
     val rs = if (params != null) {
-      client.preparedQuery(statement.toString()).execute(params).await()
+      client.preparedQuery(statement.toString()).execute(params).coAwait()
     } else {
-      client.query(statement.toString()).execute().await()
+      client.query(statement.toString()).execute().coAwait()
     }
 
     return rs.map { Pair(JsonUtils.mapper.readValue(it.getString(0)), it.getString(1)) }
@@ -363,7 +363,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     val statement = "SELECT $ID FROM $PROCESS_CHAINS " +
         "WHERE $STATUS=$1 ORDER BY $SERIAL"
     val params = Tuple.of(status.toString())
-    val rs = client.preparedQuery(statement).execute(params).await()
+    val rs = client.preparedQuery(statement).execute(params).coAwait()
     return rs.map { it.getString(0) }
   }
 
@@ -372,7 +372,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     val statement = "SELECT $ID FROM $PROCESS_CHAINS " +
         "WHERE $SUBMISSION_ID=$1 AND $STATUS=$2 ORDER BY $SERIAL"
     val params = Tuple.of(submissionId, status.toString())
-    val rs = client.preparedQuery(statement).execute(params).await()
+    val rs = client.preparedQuery(statement).execute(params).coAwait()
     return rs.map { it.getString(0) }
   }
 
@@ -381,7 +381,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     val statement = "SELECT $ID, $STATUS FROM $PROCESS_CHAINS " +
         "WHERE $SUBMISSION_ID=$1 ORDER BY $SERIAL"
     val params = Tuple.of(submissionId)
-    val rs = client.preparedQuery(statement).execute(params).await()
+    val rs = client.preparedQuery(statement).execute(params).coAwait()
     return rs.associate { Pair(it.getString(0), ProcessChainStatus.valueOf(it.getString(1))) }
   }
 
@@ -392,7 +392,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         "FROM $PROCESS_CHAINS WHERE $STATUS=$1 " +
         "GROUP BY $DATA->'$REQUIRED_CAPABILITIES'"
     val params = Tuple.of(status.toString())
-    val rs = client.preparedQuery(statement).execute(params).await()
+    val rs = client.preparedQuery(statement).execute(params).coAwait()
     return rs.map { row ->
       val rcs = row.getJsonArray(0).map { it.toString() }
       val min = row.getInteger(1)
@@ -404,7 +404,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   override suspend fun findProcessChainById(processChainId: String): ProcessChain? {
     val statement = "SELECT $DATA::varchar FROM $PROCESS_CHAINS WHERE $ID=$1"
     val params = Tuple.of(processChainId)
-    val rs = client.preparedQuery(statement).execute(params).await()
+    val rs = client.preparedQuery(statement).execute(params).coAwait()
     return rs?.firstOrNull()?.let { JsonUtils.mapper.readValue(it.getString(0)) }
   }
 
@@ -438,9 +438,9 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     val rs = if (conditions.isNotEmpty()) {
       statement.append(" WHERE ")
       statement.append(conditions.joinToString(" AND "))
-      client.preparedQuery(statement.toString()).execute(params).await()
+      client.preparedQuery(statement.toString()).execute(params).coAwait()
     } else {
-      client.query(statement.toString()).execute().await()
+      client.query(statement.toString()).execute().coAwait()
     }
 
     return rs?.firstOrNull()?.getLong(0) ?: 0L
@@ -458,7 +458,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     }
     statement.append(" GROUP BY $STATUS")
 
-    val rs = client.preparedQuery(statement.toString()).execute(params).await()
+    val rs = client.preparedQuery(statement.toString()).execute(params).coAwait()
     return rs.associateBy({ ProcessChainStatus.valueOf(it.getString(0)) },
         { it.getLong(1) })
   }
@@ -487,7 +487,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
           "ORDER BY $DATA->'$PRIORITY' DESC, $SERIAL ASC LIMIT 1 " +
           "FOR UPDATE SKIP LOCKED" + // skip rows being updated concurrently
         ") RETURNING $DATA::varchar"
-    val rs = client.preparedQuery(updateStatement).execute(params).await()
+    val rs = client.preparedQuery(updateStatement).execute(params).coAwait()
     return rs?.firstOrNull()?.let { JsonUtils.mapper.readValue(it.getString(0)) }
   }
 
@@ -505,7 +505,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         now.toString()
     )
 
-    client.preparedQuery(updateStatement).execute(params).await()
+    client.preparedQuery(updateStatement).execute(params).coAwait()
   }
 
   override suspend fun existsProcessChain(currentStatus: ProcessChainStatus,
@@ -519,14 +519,14 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
           Tuple.of(currentStatus.toString(), JsonArray(requiredCapabilities.toList()))
     }
 
-    return client.preparedQuery(statement).execute(params).await()?.firstOrNull() != null
+    return client.preparedQuery(statement).execute(params).coAwait()?.firstOrNull() != null
   }
 
   private suspend fun <T> getProcessChainColumn(processChainId: String,
       column: String, block: (Row) -> T): T {
     val statement = "SELECT $column FROM $PROCESS_CHAINS WHERE $ID=$1"
     val params = Tuple.of(processChainId)
-    val r = client.preparedQuery(statement).execute(params).await().firstOrNull()
+    val r = client.preparedQuery(statement).execute(params).coAwait().firstOrNull()
         ?: throw NoSuchElementException("There is no process chain with ID `$processChainId'")
     return block(r)
   }
@@ -545,7 +545,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         jsonArrayOf(JsonUtils.toJson(Run(agentId, startTime))),
         processChainId
     )
-    val r = client.preparedQuery(updateStatement).execute(updateParams).await()
+    val r = client.preparedQuery(updateStatement).execute(updateParams).coAwait()
     return r.first().getLong(0)
   }
 
@@ -553,7 +553,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     val updateStatement = "UPDATE $PROCESS_CHAINS SET $RUNS=$RUNS - (-1) " +
         "WHERE $ID=$1"
     val updateParams = Tuple.of(processChainId)
-    client.preparedQuery(updateStatement).execute(updateParams).await()
+    client.preparedQuery(updateStatement).execute(updateParams).coAwait()
   }
 
   override suspend fun deleteAllProcessChainRuns(processChainId: String) {
@@ -600,7 +600,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         },
         processChainId
     )
-    val r = client.preparedQuery(updateStatement).execute(updateParams).await()
+    val r = client.preparedQuery(updateStatement).execute(updateParams).coAwait()
     if (r.size() == 0) {
       throw NoSuchElementException("There is no process chain with ID " +
           "`$processChainId' or no run $runNumber")
@@ -611,7 +611,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     val statement = "SELECT jsonb_array_length($RUNS) FROM $PROCESS_CHAINS " +
         "WHERE $ID=$1"
     val params = Tuple.of(processChainId)
-    val rs = client.preparedQuery(statement).execute(params).await()
+    val rs = client.preparedQuery(statement).execute(params).coAwait()
     return rs?.firstOrNull()?.getLong(0) ?: 0L
   }
 
@@ -639,7 +639,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     val updateStatement = "UPDATE $PROCESS_CHAINS SET $STATUS=$1 WHERE " +
         "$SUBMISSION_ID=$2 AND $STATUS=$3"
     val updateParams = Tuple.of(newStatus.toString(), submissionId, currentStatus.toString())
-    client.preparedQuery(updateStatement).execute(updateParams).await()
+    client.preparedQuery(updateStatement).execute(updateParams).coAwait()
   }
 
   override suspend fun getProcessChainStatus(processChainId: String): ProcessChainStatus =
@@ -655,7 +655,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         ProcessChainStatus.REGISTERED.toString(),
         ProcessChainStatus.RUNNING.toString(),
         ProcessChainStatus.PAUSED.toString())
-    val result = client.preparedQuery(updateStatement).execute(updateParams).await()
+    val result = client.preparedQuery(updateStatement).execute(updateParams).coAwait()
     return result.size() > 0
   }
 
@@ -667,7 +667,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         ProcessChainStatus.REGISTERED.toString(),
         ProcessChainStatus.RUNNING.toString(),
         ProcessChainStatus.PAUSED.toString())
-    client.preparedQuery(updateStatement).execute(updateParams).await()
+    client.preparedQuery(updateStatement).execute(updateParams).coAwait()
   }
 
   override suspend fun setProcessChainResults(processChainId: String,
@@ -689,7 +689,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
         ProcessChainStatus.PAUSED,
         processChainIds.toTypedArray()
     )
-    val rs = client.preparedQuery(statement).execute(params).await()
+    val rs = client.preparedQuery(statement).execute(params).coAwait()
     return rs.associateBy({ it.getString(0) }, { row ->
       val status = ProcessChainStatus.valueOf(row.getString(1))
       val results = row.getString(2)?.let { JsonUtils.mapper.readValue<Map<String, List<Any>>>(it) }
@@ -803,9 +803,9 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
       Locator.STATUS -> {
         when (term) {
           is StringTerm -> (when (type) {
-            Type.WORKFLOW -> Submission.Status.values().find {
+            Type.WORKFLOW -> Submission.Status.entries.find {
               it.name.contains(term.value, true) }?.name
-            Type.PROCESS_CHAIN -> ProcessChainStatus.values().find {
+            Type.PROCESS_CHAIN -> ProcessChainStatus.entries.find {
               it.name.contains(term.value, true) }?.name
           })?.let { status -> locatorToField(locator, type)?.let { f -> "$f='$status'" } }
           else -> null
@@ -962,9 +962,9 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     val limit = if (size < 0) "ALL" else size.toString()
 
     // search in all places by default
-    val types = query.types.ifEmpty { Type.values().toSet() }
+    val types = query.types.ifEmpty { Type.entries.toSet() }
     val locators = if (query.terms.isNotEmpty()) {
-      query.locators.ifEmpty { Locator.values().toSet() }
+      query.locators.ifEmpty { Locator.entries.toSet() }
     } else {
       emptyList()
     }
@@ -1060,7 +1060,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
     val statement = "$withStatement ${statements.joinToString(" UNION ALL ")} " +
         "ORDER BY rank $desc,type $asc,$SERIAL $desc"
 
-    val rs = client.preparedQuery(statement).execute(Tuple.from(params.keys.toList())).await()
+    val rs = client.preparedQuery(statement).execute(Tuple.from(params.keys.toList())).coAwait()
     return rs.map { row ->
       val obj = row.toJson()
       // remove auxiliary columns
@@ -1073,7 +1073,7 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
   override suspend fun searchCount(query: Query, type: Type, estimate: Boolean): Long {
     // search in all places by default
     val locators = if (query.terms.isNotEmpty()) {
-      query.locators.ifEmpty { Locator.values().toSet() }
+      query.locators.ifEmpty { Locator.entries.toSet() }
     } else {
       emptyList()
     }
@@ -1117,12 +1117,12 @@ class PostgreSQLSubmissionRegistry(private val vertx: Vertx, url: String,
 
     return if (estimate) {
       val statement = "EXPLAIN (FORMAT JSON, TIMING FALSE) SELECT 1 from $table WHERE $where"
-      val rs = client.preparedQuery(statement).execute(Tuple.from(params.keys.toList())).await()
+      val rs = client.preparedQuery(statement).execute(Tuple.from(params.keys.toList())).coAwait()
       rs?.firstOrNull()?.getJsonArray(0)?.getJsonObject(0)?.getJsonObject("Plan")
           ?.getLong("Plan Rows") ?: 0L
     } else {
       val statement = "SELECT COUNT(*) FROM $table WHERE $where"
-      val rs = client.preparedQuery(statement).execute(Tuple.from(params.keys.toList())).await()
+      val rs = client.preparedQuery(statement).execute(Tuple.from(params.keys.toList())).coAwait()
       rs?.firstOrNull()?.getLong(0) ?: 0L
     }
   }

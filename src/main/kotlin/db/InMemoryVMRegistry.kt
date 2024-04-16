@@ -6,8 +6,8 @@ import io.vertx.core.Future
 import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.core.shareddata.AsyncMap
-import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitResult
+import io.vertx.kotlin.coroutines.coAwait
 import model.cloud.VM
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
@@ -54,12 +54,12 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
   override suspend fun addVM(vm: VM) {
     val entry = VMEntry(vmEntryID.getAndIncrement(), vm)
     val str = JsonUtils.writeValueAsString(entry)
-    vms.await().put(vm.id, str).await()
+    vms.coAwait().put(vm.id, str).coAwait()
   }
 
   override suspend fun findVMs(status: VM.Status?, size: Int, offset: Int,
       order: Int): Collection<VM> {
-    val map = vms.await()
+    val map = vms.coAwait()
     val values = awaitResult<List<String>> { map.values(it) }
     return values
         .map { JsonUtils.readValue<VMEntry>(it) }
@@ -72,7 +72,7 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
   }
 
   private suspend fun findVMEntryById(id: String): VMEntry? {
-    return vms.await().get(id).await()?.let {
+    return vms.coAwait().get(id).coAwait()?.let {
       JsonUtils.readValue<VMEntry>(it)
     }
   }
@@ -81,7 +81,7 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
       findVMEntryById(id)?.vm
 
   override suspend fun findVMByExternalId(externalId: String): VM? {
-    val map = vms.await()
+    val map = vms.coAwait()
     val values = awaitResult<List<String>> { map.values(it) }
     return values
         .map { JsonUtils.readValue<VMEntry>(it) }
@@ -89,7 +89,7 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
   }
 
   override suspend fun findNonTerminatedVMs(): Collection<VM> {
-    val map = vms.await()
+    val map = vms.coAwait()
     val values = awaitResult<List<String>> { map.values(it) }
     return values
         .map { JsonUtils.readValue<VMEntry>(it) }
@@ -98,9 +98,9 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
   }
 
   override suspend fun countVMs(status: VM.Status?): Long {
-    val map = vms.await()
+    val map = vms.coAwait()
     return if (status == null) {
-      map.size().await().toLong()
+      map.size().coAwait().toLong()
     } else {
       val values = awaitResult<List<String>> { map.values(it) }
       values
@@ -111,7 +111,7 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
   }
 
   override suspend fun countNonTerminatedVMsBySetup(setupId: String): Long {
-    val map = vms.await()
+    val map = vms.coAwait()
     val values = awaitResult<List<String>> { map.values(it) }
     return values
         .map { JsonUtils.readValue<VMEntry>(it) }
@@ -120,7 +120,7 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
   }
 
   override suspend fun countStartingVMsBySetup(setupId: String): Long {
-    val map = vms.await()
+    val map = vms.coAwait()
     val values = awaitResult<List<String>> { map.values(it) }
     return values
         .map { JsonUtils.readValue<VMEntry>(it) }
@@ -131,12 +131,12 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
   override suspend fun setVMStatus(id: String, currentStatus: VM.Status,
       newStatus: VM.Status) {
     val sharedData = vertx.sharedData()
-    val lock = sharedData.getLock(LOCK_VMS).await()
+    val lock = sharedData.getLock(LOCK_VMS).coAwait()
     try {
       val entry = findVMEntryById(id) ?: return
       if (entry.vm.status == currentStatus) {
         val newEntry = entry.copy(vm = entry.vm.copy(status = newStatus))
-        vms.await().put(entry.vm.id, JsonUtils.writeValueAsString(newEntry)).await()
+        vms.coAwait().put(entry.vm.id, JsonUtils.writeValueAsString(newEntry)).coAwait()
       }
     } finally {
       lock.release()
@@ -145,13 +145,13 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
 
   private suspend fun updateVMEntry(id: String, updater: (VMEntry) -> VMEntry) {
     val sharedData = vertx.sharedData()
-    val lock = sharedData.getLock(LOCK_VMS).await()
+    val lock = sharedData.getLock(LOCK_VMS).coAwait()
     try {
-      val map = vms.await()
-      map.get(id).await()?.let {
+      val map = vms.coAwait()
+      map.get(id).coAwait()?.let {
         val oldEntry = JsonUtils.readValue<VMEntry>(it)
         val newEntry = updater(oldEntry)
-        map.put(id, JsonUtils.writeValueAsString(newEntry)).await()
+        map.put(id, JsonUtils.writeValueAsString(newEntry)).coAwait()
       }
     } finally {
       lock.release()
@@ -197,10 +197,10 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
 
   override suspend fun deleteVMsDestroyedBefore(timestamp: Instant): Collection<String> {
     val sharedData = vertx.sharedData()
-    val lock = sharedData.getLock(LOCK_VMS).await()
+    val lock = sharedData.getLock(LOCK_VMS).coAwait()
     try {
       // find IDs of VMs whose destruction time is before the given timestamp
-      val map = vms.await()
+      val map = vms.coAwait()
       val values = awaitResult<List<String>> { map.values(it) }
       val ids1 = values
           .map { JsonUtils.readValue<VMEntry>(it) }
@@ -222,7 +222,7 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
       val ids = ids1 + ids2
 
       // delete VMs
-      ids.forEach { map.remove(it).await() }
+      ids.forEach { map.remove(it).coAwait() }
 
       return ids
     } finally {

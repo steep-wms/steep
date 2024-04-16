@@ -1102,9 +1102,9 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       Locator.STATUS -> {
         when (term) {
           is StringTerm -> (when (type) {
-            Type.WORKFLOW -> Submission.Status.values().find {
+            Type.WORKFLOW -> Submission.Status.entries.find {
               it.name.contains(term.value, true) }?.name
-            Type.PROCESS_CHAIN -> ProcessChainStatus.values().find {
+            Type.PROCESS_CHAIN -> ProcessChainStatus.entries.find {
               it.name.contains(term.value, true) }?.name
           })?.let { status -> locatorToField(locator, type)?.let { f -> jsonObjectOf(f to status) } }
           else -> null
@@ -1204,9 +1204,9 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     }
 
     // search in all places by default
-    val types = query.types.ifEmpty { Type.values().toSet() }
+    val types = query.types.ifEmpty { Type.entries.toSet() }
     val locators = if (query.terms.isNotEmpty()) {
-      query.locators.ifEmpty { Locator.values().toSet() }
+      query.locators.ifEmpty { Locator.entries.toSet() }
     } else {
       emptyList()
     }
@@ -1445,7 +1445,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
     // search in all places by default
     val locators = if (query.terms.isNotEmpty()) {
-      query.locators.ifEmpty { Locator.values().toSet() }
+      query.locators.ifEmpty { Locator.entries.toSet() }
     } else {
       emptyList()
     }

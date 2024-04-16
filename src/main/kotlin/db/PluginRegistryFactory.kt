@@ -6,7 +6,7 @@ import com.github.zafarkhaja.semver.Version
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.coAwait
 import model.plugins.InitializerPlugin
 import model.plugins.OutputAdapterPlugin
 import model.plugins.Plugin
@@ -126,7 +126,7 @@ object PluginRegistryFactory {
         }
         try {
           // throws if the version number does not follow semver rules
-          Version.valueOf(v)
+          Version.parse(v)
         } catch (e: ParseException) {
           throw IllegalStateException("Version of plugin `${p.name}' must " +
               "follow the semantic versioning specification", e)
@@ -191,7 +191,7 @@ object PluginRegistryFactory {
     val f = tryLoadPreCompiled(plugin) ?: run {
       log.info("Compiling plugin `${plugin.name}' (${plugin.scriptFile})")
 
-      val script = vertx.fileSystem().readFile(plugin.scriptFile).await().toString()
+      val script = vertx.fileSystem().readFile(plugin.scriptFile).coAwait().toString()
       vertx.executeBlocking<KFunction<*>> { promise ->
         var retry = false
         while (true) {
@@ -226,7 +226,7 @@ object PluginRegistryFactory {
           promise.complete(f)
           break
         }
-      }.await()
+      }.coAwait()
     }
 
     @Suppress("UNCHECKED_CAST")

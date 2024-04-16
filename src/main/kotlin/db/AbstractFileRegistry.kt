@@ -6,7 +6,7 @@ import helper.YamlUtils
 import helper.glob
 import helper.loadTemplate
 import io.vertx.core.Vertx
-import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.coAwait
 import org.yaml.snakeyaml.Yaml
 import java.util.Locale
 
@@ -28,9 +28,9 @@ abstract class AbstractFileRegistry {
       return emptyList()
     }
 
-    val files = vertx.executeBlocking<List<String>> { promise ->
+    val files = vertx.executeBlocking { promise ->
       promise.complete(glob(paths).flatMap { e -> e.value.map { file -> "${e.key}/$file" }})
-    }.await() ?: emptyList()
+    }.coAwait() ?: emptyList()
 
     // We need this here to get access to T.
     // com.fasterxml.jackson.module.kotlin.readValue does not work inside
@@ -38,7 +38,7 @@ abstract class AbstractFileRegistry {
     val tr = jacksonTypeRef<T>()
 
     return files.flatMap { file ->
-      val content = vertx.fileSystem().readFile(file).await().toString()
+      val content = vertx.fileSystem().readFile(file).coAwait().toString()
       if (file.lowercase(Locale.getDefault()).endsWith(".json")) {
         JsonUtils.mapper.readValue(content, tr)
       } else {

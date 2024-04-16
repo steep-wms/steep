@@ -8,8 +8,8 @@ import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.AsyncMap
-import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitResult
+import io.vertx.kotlin.coroutines.coAwait
 import model.Submission
 import model.processchain.ProcessChain
 import model.processchain.Run
@@ -107,13 +107,13 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   override suspend fun addSubmission(submission: Submission) {
     val entry = SubmissionEntry(submissionEntryID.getAndIncrement(), submission)
     val str = JsonUtils.writeValueAsString(entry)
-    submissions.await().put(submission.id, str).await()
+    submissions.coAwait().put(submission.id, str).coAwait()
   }
 
   override suspend fun findSubmissionsRaw(status: Submission.Status?, size: Int,
       offset: Int, order: Int, excludeWorkflows: Boolean,
       excludeSources: Boolean): List<JsonObject> {
-    val map = submissions.await()
+    val map = submissions.coAwait()
     val values = awaitResult<List<String>> { map.values(it) }
     return values
         .map { JsonUtils.readValue<SubmissionEntry>(it) }
@@ -135,7 +135,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   }
 
   private suspend fun findSubmissionEntryById(submissionId: String): SubmissionEntry? {
-    return submissions.await().get(submissionId).await()?.let {
+    return submissions.coAwait().get(submissionId).coAwait()?.let {
       JsonUtils.readValue<SubmissionEntry>(it)
     }
   }
@@ -144,7 +144,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       findSubmissionEntryById(submissionId)?.submission
 
   override suspend fun findSubmissionIdsByStatus(status: Submission.Status): Collection<String> {
-    val map = submissions.await()
+    val map = submissions.coAwait()
     val values = awaitResult<List<String>> { map.values(it) }
     return values.map { JsonUtils.readValue<SubmissionEntry>(it) }
         .filter { it.submission.status == status }
@@ -153,9 +153,9 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   }
 
   override suspend fun countSubmissions(status: Submission.Status?): Long {
-    val map = submissions.await()
+    val map = submissions.coAwait()
     return if (status == null) {
-      map.size().await().toLong()
+      map.size().coAwait().toLong()
     } else {
       val values = awaitResult<List<String>> { map.values(it) }
       values.map { JsonUtils.readValue<SubmissionEntry>(it) }
@@ -167,9 +167,9 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   override suspend fun fetchNextSubmission(currentStatus: Submission.Status,
       newStatus: Submission.Status): Submission? {
     val sharedData = vertx.sharedData()
-    val lock = sharedData.getLock(LOCK_SUBMISSIONS).await()
+    val lock = sharedData.getLock(LOCK_SUBMISSIONS).coAwait()
     try {
-      val map = submissions.await()
+      val map = submissions.coAwait()
       val values = awaitResult<List<String>> { map.values(it) }
       val entry = values.map { JsonUtils.readValue<SubmissionEntry>(it) }
           .filter { it.submission.status == currentStatus }
@@ -178,7 +178,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
           .firstOrNull()
       return entry?.let {
         val newEntry = it.copy(submission = it.submission.copy(status = newStatus))
-        map.put(it.submission.id, JsonUtils.writeValueAsString(newEntry)).await()
+        map.put(it.submission.id, JsonUtils.writeValueAsString(newEntry)).coAwait()
         it.submission
       }
     } finally {
@@ -189,13 +189,13 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   private suspend fun updateSubmissionEntry(submissionId: String,
       updater: (SubmissionEntry) -> SubmissionEntry) {
     val sharedData = vertx.sharedData()
-    val lock = sharedData.getLock(LOCK_SUBMISSIONS).await()
+    val lock = sharedData.getLock(LOCK_SUBMISSIONS).coAwait()
     try {
-      val map = submissions.await()
-      map.get(submissionId).await()?.let {
+      val map = submissions.coAwait()
+      map.get(submissionId).coAwait()?.let {
         val oldEntry = JsonUtils.readValue<SubmissionEntry>(it)
         val newEntry = updater(oldEntry)
-        map.put(submissionId, JsonUtils.writeValueAsString(newEntry)).await()
+        map.put(submissionId, JsonUtils.writeValueAsString(newEntry)).coAwait()
       }
     } finally {
       lock.release()
@@ -262,28 +262,28 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
 
   override suspend fun setSubmissionExecutionState(submissionId: String,
       state: JsonObject?) {
-    submissions.await().get(submissionId).await() ?: return
+    submissions.coAwait().get(submissionId).coAwait() ?: return
     if (state == null) {
-      executionStates.await().remove(submissionId).await()
+      executionStates.coAwait().remove(submissionId).coAwait()
     } else {
-      executionStates.await().put(submissionId, state.encode()).await()
+      executionStates.coAwait().put(submissionId, state.encode()).coAwait()
     }
   }
 
   override suspend fun getSubmissionExecutionState(submissionId: String): JsonObject? {
-    submissions.await().get(submissionId).await() ?: throw NoSuchElementException(
+    submissions.coAwait().get(submissionId).coAwait() ?: throw NoSuchElementException(
         "There is no submission with ID `$submissionId'")
-    return executionStates.await().get(submissionId).await()?.let { JsonObject(it) }
+    return executionStates.coAwait().get(submissionId).coAwait()?.let { JsonObject(it) }
   }
 
   override suspend fun deleteSubmissionsFinishedBefore(timestamp: Instant): Collection<String> {
     val sharedData = vertx.sharedData()
-    val submissionLock = sharedData.getLock(LOCK_SUBMISSIONS).await()
+    val submissionLock = sharedData.getLock(LOCK_SUBMISSIONS).coAwait()
     try {
-      val processChainLock = sharedData.getLock(LOCK_PROCESS_CHAINS).await()
+      val processChainLock = sharedData.getLock(LOCK_PROCESS_CHAINS).coAwait()
       try {
         // find IDs of submissions whose end time is before the given timestamp
-        val submissionMap = submissions.await()
+        val submissionMap = submissions.coAwait()
         val submissionValues = awaitResult<List<String>> { submissionMap.values(it) }
         val submissionIDs1 = submissionValues
             .map { JsonUtils.readValue<SubmissionEntry>(it) }
@@ -306,7 +306,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
         val submissionIDs = submissionIDs1 + submissionIDs2
 
         // find IDs of all process chains that belong to these submissions
-        val processChainMap = this.processChains.await()
+        val processChainMap = this.processChains.coAwait()
         val processChainValues = awaitResult<List<String>> { processChainMap.values(it) }
         val processChainIDs = processChainValues
             .map { JsonUtils.readValue<ProcessChainEntry>(it) }
@@ -314,8 +314,8 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
             .map { it.processChain.id }
 
         // delete process chains and then submissions
-        processChainIDs.forEach { processChainMap.remove(it).await() }
-        submissionIDs.forEach { submissionMap.remove(it).await() }
+        processChainIDs.forEach { processChainMap.remove(it).coAwait() }
+        submissionIDs.forEach { submissionMap.remove(it).coAwait() }
 
         return submissionIDs
       } finally {
@@ -329,18 +329,18 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   override suspend fun addProcessChains(processChains: Collection<ProcessChain>,
       submissionId: String, status: ProcessChainStatus) {
     val sharedData = vertx.sharedData()
-    val submissionLock = sharedData.getLock(LOCK_SUBMISSIONS).await()
+    val submissionLock = sharedData.getLock(LOCK_SUBMISSIONS).coAwait()
     try {
-      val processChainLock = sharedData.getLock(LOCK_PROCESS_CHAINS).await()
+      val processChainLock = sharedData.getLock(LOCK_PROCESS_CHAINS).coAwait()
       try {
-        if (submissions.await().get(submissionId).await() == null) {
+        if (submissions.coAwait().get(submissionId).coAwait() == null) {
           throw NoSuchElementException("There is no submission with ID `$submissionId'")
         }
-        val map = this.processChains.await()
+        val map = this.processChains.coAwait()
         for (processChain in processChains) {
           val e = ProcessChainEntry(processChainEntryID.getAndIncrement(),
               processChain, submissionId, status)
-          map.put(processChain.id, JsonUtils.writeValueAsString(e)).await()
+          map.put(processChain.id, JsonUtils.writeValueAsString(e)).coAwait()
         }
       } finally {
         processChainLock.release()
@@ -351,7 +351,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   }
 
   private suspend fun findProcessChainEntries(): List<ProcessChainEntry> {
-    val map = processChains.await()
+    val map = processChains.coAwait()
     val values = awaitResult<List<String>> { map.values(it) }
     return values.map { JsonUtils.readValue<ProcessChainEntry>(it) }
         .sortedBy { it.serial }
@@ -402,7 +402,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   }
 
   override suspend fun findProcessChainById(processChainId: String): ProcessChain? {
-    return processChains.await().get(processChainId).await()?.let {
+    return processChains.coAwait().get(processChainId).coAwait()?.let {
       JsonUtils.readValue<ProcessChainEntry>(it).processChain
     }
   }
@@ -436,9 +436,9 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
       newStatus: ProcessChainStatus, requiredCapabilities: Collection<String>?,
       minPriority: Int?): ProcessChain? {
     val sharedData = vertx.sharedData()
-    val lock = sharedData.getLock(LOCK_PROCESS_CHAINS).await()
+    val lock = sharedData.getLock(LOCK_PROCESS_CHAINS).coAwait()
     try {
-      val map = processChains.await()
+      val map = processChains.coAwait()
       val values = awaitResult<List<String>> { map.values(it) }
       val entry = values.map { JsonUtils.readValue<ProcessChainEntry>(it) }
           .filter { it.status == currentStatus && (requiredCapabilities == null ||
@@ -449,7 +449,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
           .firstOrNull()
       return entry?.let {
         val newEntry = it.copy(status = newStatus)
-        map.put(it.processChain.id, JsonUtils.writeValueAsString(newEntry)).await()
+        map.put(it.processChain.id, JsonUtils.writeValueAsString(newEntry)).coAwait()
         it.processChain
       }
     } finally {
@@ -459,9 +459,9 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
 
   override suspend fun autoResumeProcessChains(now: Instant) {
     val sharedData = vertx.sharedData()
-    val lock = sharedData.getLock(LOCK_PROCESS_CHAINS).await()
+    val lock = sharedData.getLock(LOCK_PROCESS_CHAINS).coAwait()
     try {
-      val map = processChains.await()
+      val map = processChains.coAwait()
       val values = awaitResult<List<String>> { map.values(it) }
       values.map { JsonUtils.readValue<ProcessChainEntry>(it) }
           .filter { it.status == ProcessChainStatus.PAUSED &&
@@ -469,7 +469,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
               it.runs.lastOrNull()?.autoResumeAfter?.isBefore(now) == true }
           .forEach { e ->
               val newEntry = e.copy(status = ProcessChainStatus.REGISTERED)
-              map.put(e.processChain.id, JsonUtils.writeValueAsString(newEntry)).await()
+              map.put(e.processChain.id, JsonUtils.writeValueAsString(newEntry)).coAwait()
           }
     } finally {
       lock.release()
@@ -479,9 +479,9 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   override suspend fun existsProcessChain(currentStatus: ProcessChainStatus,
       requiredCapabilities: Collection<String>?): Boolean {
     val sharedData = vertx.sharedData()
-    val lock = sharedData.getLock(LOCK_PROCESS_CHAINS).await()
+    val lock = sharedData.getLock(LOCK_PROCESS_CHAINS).coAwait()
     try {
-      val map = processChains.await()
+      val map = processChains.coAwait()
       val values = awaitResult<List<String>> { map.values(it) }
       return values.map { JsonUtils.readValue<ProcessChainEntry>(it) }
           .any { it.status == currentStatus && (requiredCapabilities == null ||
@@ -493,8 +493,8 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   }
 
   private suspend fun getProcessChainEntryById(processChainId: String): ProcessChainEntry {
-    val map = processChains.await()
-    val str = map.get(processChainId).await() ?: throw NoSuchElementException(
+    val map = processChains.coAwait()
+    val str = map.get(processChainId).coAwait() ?: throw NoSuchElementException(
         "There is no process chain with ID `$processChainId'")
     return JsonUtils.readValue(str)
   }
@@ -502,13 +502,13 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   private suspend fun updateProcessChain(processChainId: String,
       updater: (ProcessChainEntry) -> ProcessChainEntry) {
     val sharedData = vertx.sharedData()
-    val lock = sharedData.getLock(LOCK_PROCESS_CHAINS).await()
+    val lock = sharedData.getLock(LOCK_PROCESS_CHAINS).coAwait()
     try {
-      val map = processChains.await()
-      map.get(processChainId).await()?.let {
+      val map = processChains.coAwait()
+      map.get(processChainId).coAwait()?.let {
         val entry = JsonUtils.readValue<ProcessChainEntry>(it)
         val newEntry = updater(entry)
-        map.put(processChainId, JsonUtils.writeValueAsString(newEntry)).await()
+        map.put(processChainId, JsonUtils.writeValueAsString(newEntry)).coAwait()
       }
     } finally {
       lock.release()
@@ -605,16 +605,16 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   override suspend fun setAllProcessChainsStatus(submissionId: String,
       currentStatus: ProcessChainStatus, newStatus: ProcessChainStatus) {
     val sharedData = vertx.sharedData()
-    val lock = sharedData.getLock(LOCK_PROCESS_CHAINS).await()
+    val lock = sharedData.getLock(LOCK_PROCESS_CHAINS).coAwait()
     try {
-      val map = processChains.await()
+      val map = processChains.coAwait()
       val values = awaitResult<List<String>> { map.values(it) }
       values.map { JsonUtils.readValue<ProcessChainEntry>(it) }
           .filter { it.submissionId == submissionId && it.status == currentStatus }
           .forEach { entry ->
             val newEntry = entry.copy(status = newStatus)
             map.put(entry.processChain.id,
-              JsonUtils.writeValueAsString(newEntry)).await()
+              JsonUtils.writeValueAsString(newEntry)).coAwait()
           }
     } finally {
       lock.release()
@@ -646,9 +646,9 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
   override suspend fun setAllProcessChainsPriority(submissionId: String,
       priority: Int) {
     val sharedData = vertx.sharedData()
-    val lock = sharedData.getLock(LOCK_PROCESS_CHAINS).await()
+    val lock = sharedData.getLock(LOCK_PROCESS_CHAINS).coAwait()
     try {
-      val map = processChains.await()
+      val map = processChains.coAwait()
       val values = awaitResult<List<String>> { map.values(it) }
       values.map { JsonUtils.readValue<ProcessChainEntry>(it) }
           .filter { it.submissionId == submissionId &&
@@ -660,7 +660,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
                 processChain = entry.processChain.copy(priority = priority)
             )
             map.put(entry.processChain.id,
-                JsonUtils.writeValueAsString(newEntry)).await()
+                JsonUtils.writeValueAsString(newEntry)).coAwait()
           }
     } finally {
       lock.release()
@@ -690,7 +690,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
 
   private suspend fun searchSubmissions(query: Query, locators: Set<Locator>):
       List<InternalSearchResult> {
-    val map = submissions.await()
+    val map = submissions.coAwait()
     val values = awaitResult<List<String>> { map.values(it) }
     return values
         .map { JsonUtils.readValue<SubmissionEntry>(it) }
@@ -706,7 +706,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
 
   private suspend fun searchProcessChains(query: Query, locators: Set<Locator>):
       List<InternalSearchResult> {
-    val map = processChains.await()
+    val map = processChains.coAwait()
     val values = awaitResult<List<String>> { map.values(it) }
     return values
         .map { JsonUtils.readValue<ProcessChainEntry>(it) }
@@ -731,9 +731,9 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
 
   private suspend fun searchUnsorted(query: Query): List<InternalSearchResult> {
     // search in all places by default
-    val types = query.types.ifEmpty { Type.values().toSet() }
+    val types = query.types.ifEmpty { Type.entries.toSet() }
     val locators = if (query.terms.isNotEmpty()) {
-      query.locators.ifEmpty { Locator.values().toSet() }
+      query.locators.ifEmpty { Locator.entries.toSet() }
     } else {
       emptySet()
     } + query.filters.map { it.first }
