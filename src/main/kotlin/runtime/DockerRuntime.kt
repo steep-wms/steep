@@ -1,5 +1,6 @@
 package runtime
 
+import ConfigConstants
 import helper.OutputCollector
 import helper.Shell
 import helper.UniqueID
@@ -15,10 +16,36 @@ import model.processchain.Executable
  * @author Michel Kraemer
  */
 class DockerRuntime(config: JsonObject) : OtherRuntime() {
+  companion object {
+    private const val DEFAULT_PULL_AUTO: String = "auto"
+
+    // The following block of patterns is based on the Distribution Project
+    // from the Cloud Native Computing Foundation (CNCF), released under the
+    // Apache 2.0 license
+    // https://github.com/distribution/reference/blob/ff14fafe2236e51c2894ac07d4bdfc778e96d682/reference.go
+    private const val DIGEST_ALGORITHM_COMPONENT = """[A-Za-z][A-Za-z0-9]*"""
+    private const val DIGEST_ALGORITHM_SEPARATOR = """[+.-_]"""
+    private const val DIGEST_ALGORITHM = DIGEST_ALGORITHM_COMPONENT +
+        "(?:$DIGEST_ALGORITHM_SEPARATOR$DIGEST_ALGORITHM_COMPONENT)*"
+    private const val DIGEST_HEX = """[0-9a-fA-F]{32,}"""
+    private const val DIGEST = "$DIGEST_ALGORITHM:$DIGEST_HEX"
+    private const val TAG = """\w[\w.-]{0,127}"""
+
+    // an image name that ends with a digest
+    private val ENDS_WITH_DIGEST_REGEX = "@$DIGEST$".toRegex()
+
+    // An image name that ends with either a digest or a tag and an optional
+    // digest. We have to match against the digest first since any digest
+    // (without the algorithm name) is also a valid tag.
+    private val TAG_REGEX = "(@$DIGEST)$|:($TAG)(@$DIGEST)?$".toRegex()
+  }
+
   private val additionalDockerEnvironment: List<String> = config.getJsonArray(
       ConfigConstants.RUNTIMES_DOCKER_ENV, JsonArray()).map { it.toString() }
   private val additionalDockerVolumes: List<String> = config.getJsonArray(
       ConfigConstants.RUNTIMES_DOCKER_VOLUMES, JsonArray()).map { it.toString() }
+  private val defaultPull: String = config.getString(
+      ConfigConstants.RUNTIMES_DOCKER_PULL, DEFAULT_PULL_AUTO)
   private val tmpPath: String = config.getString(ConfigConstants.TMP_PATH) ?:
       throw IllegalStateException("Missing configuration item `${ConfigConstants.TMP_PATH}'")
 
@@ -46,11 +73,31 @@ class DockerRuntime(config: JsonObject) : OtherRuntime() {
       emptyList()
     }
 
+    // decide whether we need to pull the image or not
+    var pull = executable.runtimeArgs.firstOrNull { it.label == "--pull" }?.variable?.value ?: defaultPull
+    if (pull != "auto" && pull != "always" && pull != "missing" && pull != "never") {
+      throw IllegalArgumentException("Invalid value for `pull' argument: `$pull'. " +
+          "Possible values: `auto', `always', `missing', `never'.")
+    }
+    if (pull == DEFAULT_PULL_AUTO) {
+      val tag = getTag(executable.path)
+      pull = if (hasDigest(executable.path) || (tag != null && tag != "latest")) {
+        "missing"
+      } else {
+        "always"
+      }
+    }
+    val runtimeArgsWithPull = executable.runtimeArgs.filter { it.label != "--pull" } + Argument(
+        id = UniqueID.next(), label = "--pull",
+        variable = ArgumentVariable(UniqueID.next(), pull),
+        type = Argument.Type.INPUT
+    )
+
     val dockerArgs = listOf(
         Argument(id = UniqueID.next(),
             variable = ArgumentVariable("dockerRun", "run"),
             type = Argument.Type.INPUT)
-    ) + executable.runtimeArgs + additionalEnvironment + additionalVolumes + containerNameArgument + listOf(
+    ) + runtimeArgsWithPull + additionalEnvironment + additionalVolumes + containerNameArgument + listOf(
         Argument(id = UniqueID.next(),
             label = "-v", variable = ArgumentVariable("dockerMount", "$tmpPath:$tmpPath"),
             type = Argument.Type.INPUT),
@@ -72,4 +119,17 @@ class DockerRuntime(config: JsonObject) : OtherRuntime() {
       throw e
     }
   }
+
+  /**
+   * Check if a Docker [imageName] contains a digest
+   */
+  private fun hasDigest(imageName: String): Boolean =
+      ENDS_WITH_DIGEST_REGEX.containsMatchIn(imageName)
+
+  /**
+   * Get the tag from a Docker [imageName] or `null` if it does not
+   * contain a tag
+   */
+  private fun getTag(imageName: String): String? =
+     TAG_REGEX.find(imageName)?.let { it.groupValues[2].ifEmpty { null } }
 }

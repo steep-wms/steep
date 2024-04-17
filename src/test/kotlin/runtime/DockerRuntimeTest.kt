@@ -4,6 +4,13 @@ import ConfigConstants
 import helper.DefaultOutputCollector
 import helper.Shell
 import helper.UniqueID
+import io.mockk.Runs
+import io.mockk.clearMocks
+import io.mockk.every
+import io.mockk.just
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
+import io.mockk.verify
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
@@ -20,7 +27,10 @@ import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.io.TempDir
@@ -68,7 +78,8 @@ class DockerRuntimeTest {
   @Test
   fun executeEcho(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
     val config = jsonObjectOf(
-        ConfigConstants.TMP_PATH to tempDir.toString()
+        ConfigConstants.TMP_PATH to tempDir.toString(),
+        ConfigConstants.RUNTIMES_DOCKER_PULL to "never"
     )
 
     val exec = Executable(path = "alpine", serviceId = "echo", arguments = listOf(
@@ -98,7 +109,8 @@ class DockerRuntimeTest {
     f.writeText(EXPECTED)
 
     val config = jsonObjectOf(
-        ConfigConstants.TMP_PATH to tempDir.toString()
+        ConfigConstants.TMP_PATH to tempDir.toString(),
+        ConfigConstants.RUNTIMES_DOCKER_PULL to "never"
     )
 
     val exec = Executable(path = "alpine", serviceId = "cat", arguments = listOf(
@@ -129,7 +141,8 @@ class DockerRuntimeTest {
     f.writeText(EXPECTED)
 
     val config = jsonObjectOf(
-        ConfigConstants.TMP_PATH to tempDir.toString()
+        ConfigConstants.TMP_PATH to tempDir.toString(),
+        ConfigConstants.RUNTIMES_DOCKER_PULL to "never"
     )
 
     val containerFileName = "/tmp/test.txt"
@@ -163,7 +176,8 @@ class DockerRuntimeTest {
   @Test
   fun executeEnv(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
     val config = jsonObjectOf(
-        ConfigConstants.TMP_PATH to tempDir.toString()
+        ConfigConstants.TMP_PATH to tempDir.toString(),
+        ConfigConstants.RUNTIMES_DOCKER_PULL to "never"
     )
 
     val exec = Executable(path = "alpine", serviceId = "sh", arguments = listOf(
@@ -206,7 +220,8 @@ class DockerRuntimeTest {
         ConfigConstants.TMP_PATH to tempDir.toString(),
         ConfigConstants.RUNTIMES_DOCKER_VOLUMES to jsonArrayOf(
             "${f.absolutePath}:$containerFileName"
-        )
+        ),
+        ConfigConstants.RUNTIMES_DOCKER_PULL to "never"
     )
 
     val exec = Executable(path = "alpine", serviceId = "cat", arguments = listOf(
@@ -237,7 +252,8 @@ class DockerRuntimeTest {
         ConfigConstants.TMP_PATH to tempDir.toString(),
         ConfigConstants.RUNTIMES_DOCKER_ENV to jsonArrayOf(
             "MYVAR=$EXPECTED"
-        )
+        ),
+        ConfigConstants.RUNTIMES_DOCKER_PULL to "never"
     )
 
     val exec = Executable(path = "alpine", serviceId = "sh", arguments = listOf(
@@ -276,7 +292,8 @@ class DockerRuntimeTest {
   @Test
   fun killContainerOnCancel(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
     val config = jsonObjectOf(
-        ConfigConstants.TMP_PATH to tempDir.toString()
+        ConfigConstants.TMP_PATH to tempDir.toString(),
+        ConfigConstants.RUNTIMES_DOCKER_PULL to "never"
     )
 
     val exec = Executable(path = "alpine", serviceId = "sleep", arguments = listOf(
@@ -327,7 +344,8 @@ class DockerRuntimeTest {
   @Test
   fun setContainerName(vertx: Vertx, ctx: VertxTestContext, @TempDir tempDir: Path) {
     val config = jsonObjectOf(
-        ConfigConstants.TMP_PATH to tempDir.toString()
+        ConfigConstants.TMP_PATH to tempDir.toString(),
+        ConfigConstants.RUNTIMES_DOCKER_PULL to "never"
     )
 
     val containerName = "testing-steep-container-names-" + UniqueID.next()
@@ -376,6 +394,259 @@ class DockerRuntimeTest {
       }
 
       ctx.completeNow()
+    }
+  }
+
+  @Nested
+  inner class Pull {
+    @BeforeEach
+    fun setUp() {
+      mockkObject(Shell)
+      every { Shell.execute(any(), any()) } just Runs
+    }
+
+    @AfterEach
+    fun tearDown() {
+      unmockkObject(Shell)
+    }
+
+    /**
+     * Clear recorded calls but not the mock itself so we can call verify()
+     * again. Clearing the mock itself would also remove any answer specified
+     * with `every { ... } ...`.
+     */
+    private fun clearRecordedCalls() {
+      clearMocks(
+          Shell,
+          answers = false,
+          recordedCalls = true,
+          childMocks = false,
+          verificationMarks = true,
+          exclusionRules = false
+      )
+    }
+
+    /**
+     * Test if we can specify a pull argument
+     */
+    @Test
+    fun static() {
+      val config = jsonObjectOf(ConfigConstants.TMP_PATH to "/tmp")
+      val rt = DockerRuntime(config)
+
+      for (v in listOf("always", "missing", "never")) {
+        rt.execute(
+            Executable(
+                path = "alpine",
+                serviceId = "sleep",
+                arguments = emptyList(),
+                runtimeArgs = listOf(
+                    Argument(
+                        label = "--pull",
+                        variable = ArgumentVariable(UniqueID.next(), v),
+                        type = Argument.Type.INPUT
+                    )
+                )
+            ),
+            DefaultOutputCollector()
+        )
+        verify { Shell.execute(match { it.windowed(2).any { w ->
+          w == listOf("--pull", v)
+        }}, any(), any(), any()) }
+        clearRecordedCalls()
+      }
+    }
+
+    /**
+     * Test if we can specify a default pull value
+     */
+    @Test
+    fun default() {
+      for (v in listOf("always", "missing", "never")) {
+        val config = jsonObjectOf(
+            ConfigConstants.TMP_PATH to "/tmp",
+            ConfigConstants.RUNTIMES_DOCKER_PULL to v
+        )
+        val rt = DockerRuntime(config)
+        rt.execute(
+            Executable(
+                path = "alpine",
+                serviceId = "sleep",
+                arguments = emptyList(),
+            ),
+            DefaultOutputCollector()
+        )
+        verify { Shell.execute(match { it.windowed(2).any { w ->
+          w == listOf("--pull", v)
+        }}, any(), any(), any()) }
+        clearRecordedCalls()
+      }
+    }
+
+    /**
+     * Test if we can override a default pull value
+     */
+    @Test
+    fun override() {
+      val config = jsonObjectOf(
+          ConfigConstants.TMP_PATH to "/tmp",
+          ConfigConstants.RUNTIMES_DOCKER_PULL to "never"
+      )
+      val rt = DockerRuntime(config)
+
+      for (v in listOf("always", "missing", "never")) {
+        rt.execute(
+            Executable(
+                path = "alpine",
+                serviceId = "sleep",
+                arguments = emptyList(),
+                runtimeArgs = listOf(
+                    Argument(
+                        label = "--pull",
+                        variable = ArgumentVariable(UniqueID.next(), v),
+                        type = Argument.Type.INPUT
+                    )
+                )
+            ),
+            DefaultOutputCollector()
+        )
+        verify { Shell.execute(match { it.windowed(2).any { w ->
+          w == listOf("--pull", v)
+        }}, any(), any(), any()) }
+        clearRecordedCalls()
+      }
+    }
+
+    /**
+     * Test if an invalid default value will be rejected
+     */
+    @Test
+    fun invalidDefault() {
+      val config = jsonObjectOf(
+          ConfigConstants.TMP_PATH to "/tmp",
+          ConfigConstants.RUNTIMES_DOCKER_PULL to "invalid"
+      )
+      val rt = DockerRuntime(config)
+      assertThatThrownBy {
+        rt.execute(
+            Executable(
+                path = "alpine",
+                serviceId = "sleep",
+                arguments = emptyList(),
+            ),
+            DefaultOutputCollector()
+        )
+      }.isInstanceOf(IllegalArgumentException::class.java)
+          .hasMessageContaining("Invalid value for `pull' argument")
+    }
+
+    /**
+     * Test if an invalid value will be rejected
+     */
+    @Test
+    fun invalidStatic() {
+      val config = jsonObjectOf(ConfigConstants.TMP_PATH to "/tmp")
+      val rt = DockerRuntime(config)
+      assertThatThrownBy {
+        rt.execute(
+            Executable(
+                path = "alpine",
+                serviceId = "sleep",
+                arguments = emptyList(),
+                runtimeArgs = listOf(
+                    Argument(
+                        label = "--pull",
+                        variable = ArgumentVariable(UniqueID.next(), "invalid"),
+                        type = Argument.Type.INPUT
+                    )
+                )
+            ),
+            DefaultOutputCollector()
+        )
+      }.isInstanceOf(IllegalArgumentException::class.java)
+          .hasMessageContaining("Invalid value for `pull' argument")
+    }
+
+    /**
+     * Test if the value can automatically be detected from the image tag
+     */
+    @Test
+    fun auto() {
+      val config = jsonObjectOf(ConfigConstants.TMP_PATH to "/tmp")
+      val rt = DockerRuntime(config)
+
+      // an image without a tag should always be pulled
+      rt.execute(
+          Executable(
+              path = "alpine",
+              serviceId = "sleep",
+              arguments = emptyList()
+          ),
+          DefaultOutputCollector()
+      )
+      verify { Shell.execute(match { it.windowed(2).any { w ->
+        w == listOf("--pull", "always")
+      }}, any(), any(), any()) }
+      clearRecordedCalls()
+
+      // an image with a tag matching `latest` should always be pulled
+      rt.execute(
+          Executable(
+              path = "alpine:latest",
+              serviceId = "sleep",
+              arguments = emptyList()
+          ),
+          DefaultOutputCollector()
+      )
+      verify { Shell.execute(match { it.windowed(2).any { w ->
+        w == listOf("--pull", "always")
+      }}, any(), any(), any()) }
+      clearRecordedCalls()
+
+      // an image with a tag not matching `latest` should only be pulled if
+      // the image does not exist locally
+      rt.execute(
+          Executable(
+              path = "alpine:mytag",
+              serviceId = "sleep",
+              arguments = emptyList()
+          ),
+          DefaultOutputCollector()
+      )
+      verify { Shell.execute(match { it.windowed(2).any { w ->
+        w == listOf("--pull", "missing")
+      }}, any(), any(), any()) }
+      clearRecordedCalls()
+
+      // an image with a digest should only be pulled if the image does not
+      // exist locally
+      rt.execute(
+          Executable(
+              path = "alpine@sha256:abcdefabcdefabcdefabcdefabcdefab",
+              serviceId = "sleep",
+              arguments = emptyList()
+          ),
+          DefaultOutputCollector()
+      )
+      verify { Shell.execute(match { it.windowed(2).any { w ->
+        w == listOf("--pull", "missing")
+      }}, any(), any(), any()) }
+      clearRecordedCalls()
+
+      // an image with a digest should only be pulled if the image does not
+      // exist locally, even if the tag is `latest`
+      rt.execute(
+          Executable(
+              path = "alpine:latest@sha256:abcdefabcdefabcdefabcdefabcdefab",
+              serviceId = "sleep",
+              arguments = emptyList()
+          ),
+          DefaultOutputCollector()
+      )
+      verify { Shell.execute(match { it.windowed(2).any { w ->
+        w == listOf("--pull", "missing")
+      }}, any(), any(), any()) }
+      clearRecordedCalls()
     }
   }
 }

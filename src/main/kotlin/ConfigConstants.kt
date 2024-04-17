@@ -418,7 +418,31 @@ object ConfigConstants {
   /**
    * Additional volume mounts to be passed to the Docker runtime
    */
-  const val RUNTIMES_DOCKER_VOLUMES= "steep.runtimes.docker.volumes"
+  const val RUNTIMES_DOCKER_VOLUMES = "steep.runtimes.docker.volumes"
+
+  /**
+   * Defines if the Docker runtime should pull the image before running a
+   * container. Possible values:
+   *
+   * * `always` - Always pull the image before running, regardless of whether
+   *   it is already present locally or not.
+   * * `missing` - Only pull the image if it is not present locally.
+   * * `never` - Never pull the image. If it is not present locally, the
+   *   operation will fail.
+   * * `auto` - Automatically decide whether to pull the image or not based on
+   *   the following criteria (in this order):
+   *     * If an image digest is given, the Docker runtime will behave as if
+   *       the value were equal to `missing`
+   *     * If an image tag is given that is not `latest`, the Docker runtime
+   *       will behave as if the value were equal to `missing`
+   *     * If an image tag is given and it is `latest`, the Docker runtime
+   *       will behave as if the value was `always`
+   *     * If no image tag is given, the Docker runtime will behave as if the
+   *       value was `always`
+   *
+   * The default value is `auto`.
+   */
+  const val RUNTIMES_DOCKER_PULL = "steep.runtimes.docker.pull"
 
   /**
    * The database driver (see [db.SubmissionRegistryFactory] for valid values)
