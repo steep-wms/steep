@@ -28,7 +28,7 @@ import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.kotlin.coroutines.toReceiveChannel
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
@@ -167,7 +167,7 @@ class Steep : CoroutineVerticle() {
       } else {
         vertx.eventBus().request<Boolean>(REMOTE_AGENT_ADDRESS_PREFIX + id, jsonObjectOf(
             "action" to "canAutoShutdown"
-        ), deliveryOptionsOf(localOnly = true)).await().body()
+        ), deliveryOptionsOf(localOnly = true)).coAwait().body()
       }
     }
     if (allAgentsCanShutdown) {
@@ -298,9 +298,9 @@ class Steep : CoroutineVerticle() {
       // try to open the log file
       val (size, file) = try {
         val fs = vertx.fileSystem()
-        val props = fs.props(filepath).await()
+        val props = fs.props(filepath).coAwait()
         val f = fs.open(filepath, openOptionsOf(read = true,
-            write = false, create = false)).await()
+            write = false, create = false)).coAwait()
         (props.size() to f)
       } catch (t: Throwable) {
         if (t.cause is NoSuchFileException || t.cause?.cause is NoSuchFileException) {
@@ -358,7 +358,7 @@ class Steep : CoroutineVerticle() {
             "start" to start,
             "end" to (end - 1),
             "length" to length
-        )).await()
+        )).coAwait()
 
         if (!checkOnly) {
           // send the file to the reply address
@@ -378,14 +378,14 @@ class Steep : CoroutineVerticle() {
             )
             vertx.eventBus().request<Unit>(replyAddress, chunk, deliveryOptionsOf(
                 codecName = CompressedJsonObjectMessageCodec.NAME
-            )).await()
+            )).coAwait()
           }
 
           // send end marker
           vertx.eventBus().send(replyAddress, JsonObject())
         }
       } finally {
-        file.close().await()
+        file.close().coAwait()
       }
     }
   }
@@ -626,7 +626,7 @@ class Steep : CoroutineVerticle() {
                       "to $address ...")
                   vertx.eventBus().request<Any>(address, answer, deliveryOptionsOf(
                       codecName = CompressedJsonObjectMessageCodec.NAME
-                  )).await()
+                  )).coAwait()
                 } catch (t: Throwable) {
                   log.error("Error sending results of process chain " +
                       "${processChain.id} to $address")

@@ -26,7 +26,7 @@ import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.Lock
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.coAwait
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -329,7 +329,7 @@ class CloudManager : CoroutineVerticle() {
   private suspend fun tryLockVM(id: String): Lock? {
     val lockName = VM_CREATION_LOCK_PREFIX + id
     return try {
-      vertx.sharedData().getLockWithTimeout(lockName, 1).await()
+      vertx.sharedData().getLockWithTimeout(lockName, 1).coAwait()
     } catch (t: Throwable) {
       // Could not acquire lock. Assume someone else is already creating the VM
       null
@@ -414,7 +414,7 @@ class CloudManager : CoroutineVerticle() {
         }
       }
       val deletedVMs = deleteDeferreds.awaitAll()
-      val remainingVMs = existingVMs.toSet() - deletedVMs
+      val remainingVMs = existingVMs.toSet() - deletedVMs.toSet()
 
       // update status of VMs that don't exist anymore
       val nonTerminatedVMs = vmRegistry.findNonTerminatedVMs()
@@ -567,7 +567,7 @@ class CloudManager : CoroutineVerticle() {
   private suspend fun createRemoteAgent(selector: suspend () -> List<Setup>): List<Pair<VM, Boolean>> {
     // atomically create VM entries in the registry
     val sharedData = vertx.sharedData()
-    val lock = sharedData.getLock(LOCK_VMS).await()
+    val lock = sharedData.getLock(LOCK_VMS).coAwait()
     val vmsToCreate = try {
       val setupsToCreate = selector()
       setupsToCreate.map { setup ->
@@ -593,7 +593,7 @@ class CloudManager : CoroutineVerticle() {
       // create multiple VMs in parallel
       async {
         // hold a lock as long as we are creating this VM
-        val creatingLock = sharedData.getLock(VM_CREATION_LOCK_PREFIX + vm.id).await()
+        val creatingLock = sharedData.getLock(VM_CREATION_LOCK_PREFIX + vm.id).coAwait()
         try {
           log.info("Creating virtual machine ${vm.id} with setup `${setup.id}' ...")
 
@@ -763,7 +763,7 @@ class CloudManager : CoroutineVerticle() {
           f.delete()
           throw t
         }
-      }, false).await()!!
+      }, false).coAwait()!!
 
       // upload compiled script
       try {
@@ -785,7 +785,7 @@ class CloudManager : CoroutineVerticle() {
     }
 
     try {
-      promise.future().await()
+      promise.future().coAwait()
       log.info("Successfully created remote agent `$vmId' with IP " +
           "address `$ipAddress'.")
     } finally {

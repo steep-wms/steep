@@ -91,7 +91,11 @@ class CompressedJsonObjectMessageCodec(private val forcePureJava: Boolean = fals
   }
 
   private fun decompressNative(compressed: ByteArray): Pair<ByteArray, Int> {
-    val decompressedSize = Zstd.decompressedSize(compressed, 0, compressed.size)
+    val decompressedSize = Zstd.getFrameContentSize(compressed, 0, compressed.size)
+    if (Zstd.isError(decompressedSize)) {
+      throw IllegalStateException("Could not decompress message. Error: " +
+          "${Zstd.getErrorName(decompressedSize)} (${Zstd.getErrorCode(decompressedSize)})")
+    }
     val dst = ByteArray(decompressedSize.toInt())
     val decompressedLength = Zstd.decompress(dst, compressed)
     if (Zstd.isError(decompressedLength)) {

@@ -3,8 +3,9 @@ package db
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
+import io.vertx.pgclient.PgBuilder
 import io.vertx.pgclient.PgConnectOptions
-import io.vertx.pgclient.PgPool
+import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.PoolOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -38,7 +39,11 @@ interface PostgreSQLTest {
 
     val poolOptions = PoolOptions()
         .setMaxSize(5)
-    val client = PgPool.pool(isolatedVertx, connectOptions, poolOptions)
+    val client = PgBuilder.pool()
+        .with(poolOptions)
+        .connectingTo(connectOptions)
+        .using(isolatedVertx)
+        .build()
 
     CoroutineScope(isolatedVertx.dispatcher()).launch {
       deleteFromTables(client)
@@ -54,5 +59,5 @@ interface PostgreSQLTest {
   /**
    * Will be called after each test to clean up all tables
    */
-  suspend fun deleteFromTables(client: PgPool)
+  suspend fun deleteFromTables(client: Pool)
 }

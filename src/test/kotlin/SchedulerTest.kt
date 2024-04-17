@@ -33,8 +33,8 @@ import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitResult
+import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -504,8 +504,8 @@ class SchedulerTest {
       val sharedData = vertx.sharedData()
       val schedulersPromise = Promise.promise<AsyncMap<String, Boolean>>()
       sharedData.getAsyncMap("Scheduler.Async", schedulersPromise)
-      val schedulers = schedulersPromise.future().await()
-      schedulers.put(otherSchedulerId, true).await()
+      val schedulers = schedulersPromise.future().coAwait()
+      schedulers.put(otherSchedulerId, true).coAwait()
       var otherSchedulerCalled = false
       val schedulerRunningAddress = AddressConstants.SCHEDULER_PREFIX +
           "$otherSchedulerId${AddressConstants.SCHEDULER_RUNNING_PROCESS_CHAINS_SUFFIX}"
@@ -685,7 +685,7 @@ class SchedulerTest {
 
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        finished.future().await()
+        finished.future().coAwait()
 
         // check that all mocked methods have only been called once (except for
         // findProcessChainIdsByStatus() and findProcessChainById(), which are

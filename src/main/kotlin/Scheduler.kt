@@ -31,7 +31,7 @@ import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.AsyncMap
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.coAwait
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
@@ -200,10 +200,10 @@ class Scheduler : CoroutineVerticle() {
     val sharedData = vertx.sharedData()
     val schedulersPromise = Promise.promise<AsyncMap<String, Boolean>>()
     sharedData.getAsyncMap(ASYNC_MAP_NAME, schedulersPromise)
-    schedulers = schedulersPromise.future().await()
+    schedulers = schedulersPromise.future().coAwait()
 
     val register = suspend {
-      schedulers.put(agentId, true).await()
+      schedulers.put(agentId, true).coAwait()
     }
     val debouncedRegister = debounce(vertx) { register() }
     val debouncedLookupOrphans = debounce(vertx) { lookupOrphans() }
@@ -213,7 +213,7 @@ class Scheduler : CoroutineVerticle() {
       launch {
         val theirAgentId = msg.body().getString("agentId")
         log.trace("Node `$theirAgentId' has left the cluster. Removing scheduler.")
-        schedulers.remove(theirAgentId).await()
+        schedulers.remove(theirAgentId).coAwait()
 
         // safeguard to make sure our instance is always in the list even if
         // data in the cluster is lost
@@ -260,7 +260,7 @@ class Scheduler : CoroutineVerticle() {
     periodicLookupJob.cancelAndJoin()
     periodicLookupOrphansJob?.cancelAndJoin()
     submissionRegistry.close()
-    schedulers.remove(agentId).await()
+    schedulers.remove(agentId).coAwait()
   }
 
   private suspend fun findProcessChainRequiredCapabilities(): List<SelectCandidatesParam> {
@@ -618,13 +618,13 @@ class Scheduler : CoroutineVerticle() {
       allRunningProcessChains.addAll(executingProcessChainIds.getAll()) // always consider our own process chains
       val keysPromise = Promise.promise<Set<String>>()
       schedulers.keys(keysPromise)
-      for (scheduler in keysPromise.future().await()) {
+      for (scheduler in keysPromise.future().coAwait()) {
         if (scheduler == agentId) {
           // no need to send a message to `this` (we've already added
           // `executingProcessChainIds` to `allRunningProcessChains` above)
         } else {
           val address = "$SCHEDULER_PREFIX$scheduler$SCHEDULER_RUNNING_PROCESS_CHAINS_SUFFIX"
-          val ids = vertx.eventBus().request<JsonArray>(address, null).await()
+          val ids = vertx.eventBus().request<JsonArray>(address, null).coAwait()
           for (id in ids.body()) {
             allRunningProcessChains.add(id.toString())
           }
@@ -659,7 +659,7 @@ class Scheduler : CoroutineVerticle() {
           "action" to "info"
       )
       val agentInfos = agentIds.map { vertx.eventBus().request<JsonObject>(
-          REMOTE_AGENT_ADDRESS_PREFIX + it, msg).await() }.map { it.body() }
+          REMOTE_AGENT_ADDRESS_PREFIX + it, msg).coAwait() }.map { it.body() }
       val processChainsToAgents = agentInfos.mapNotNull { info ->
         val pcId = info.getString("processChainId")
         if (pcId != null) {

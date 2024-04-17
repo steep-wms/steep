@@ -36,7 +36,7 @@ import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
@@ -245,7 +245,7 @@ class CloudManagerTest {
 
       ctx.coVerify {
         // this should not throw!
-        vertx.deployVerticle(cloudManager, options).await()
+        vertx.deployVerticle(cloudManager, options).coAwait()
 
         assertThat(cloudManager.setups).hasSize(2)
         val s1 = cloudManager.setups[0]

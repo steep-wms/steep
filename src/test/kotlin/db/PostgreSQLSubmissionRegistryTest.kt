@@ -1,8 +1,8 @@
 package db
 
 import io.vertx.core.Vertx
-import io.vertx.kotlin.coroutines.await
-import io.vertx.pgclient.PgPool
+import io.vertx.kotlin.coroutines.coAwait
+import io.vertx.sqlclient.Pool
 import org.testcontainers.containers.PostgreSQLContainerProvider
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
@@ -25,8 +25,8 @@ class PostgreSQLSubmissionRegistryTest : PostgreSQLTest, SubmissionRegistryTest(
         postgresql.username, postgresql.password)
   }
 
-  override suspend fun deleteFromTables(client: PgPool) {
-    client.query("DELETE FROM submissions").execute().await()
-    client.query("DELETE FROM processchains").execute().await()
+  override suspend fun deleteFromTables(client: Pool) {
+    client.query("DELETE FROM submissions").execute().coAwait()
+    client.query("DELETE FROM processchains").execute().coAwait()
   }
 }

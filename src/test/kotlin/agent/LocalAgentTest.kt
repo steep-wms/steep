@@ -26,7 +26,7 @@ import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -193,7 +193,7 @@ class LocalAgentTest : AgentTest() {
         ctx.coVerify {
           val msg = vertx.eventBus().request<Double?>(address, jsonObjectOf(
               "action" to "getProgress"
-          )).await<Message<Double?>>()
+          )).coAwait<Message<Double?>>()
           assertThat(msg.body()).isNull()
         }
       }
@@ -205,7 +205,7 @@ class LocalAgentTest : AgentTest() {
         ctx.coVerify {
           val msg = vertx.eventBus().request<Double?>(address, jsonObjectOf(
               "action" to "getProgress"
-          )).await<Message<Double?>>()
+          )).coAwait<Message<Double?>>()
           assertThat(msg.body()).isGreaterThan(0.0)
         }
       }
@@ -260,7 +260,7 @@ class LocalAgentTest : AgentTest() {
           val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
           val msg = vertx.eventBus().request<Double?>(address, jsonObjectOf(
               "action" to "getProgress"
-          )).await()
+          )).coAwait()
           assertThat(msg.body()).isEqualTo(i / 5.0)
         }
       }
@@ -326,7 +326,7 @@ class LocalAgentTest : AgentTest() {
           val address = LOCAL_AGENT_ADDRESS_PREFIX + processChain.id
           val msg = vertx.eventBus().request<Double?>(address, jsonObjectOf(
               "action" to "getProgress"
-          )).await()
+          )).coAwait()
           assertThat(msg.body()).isEqualTo(i / 5.0)
         }
 
@@ -377,7 +377,7 @@ class LocalAgentTest : AgentTest() {
           assertThatThrownBy {
             vertx.eventBus().request<Double?>(address, jsonObjectOf(
                 "action" to "INVALID_ACTION"
-            )).await()
+            )).coAwait()
           }.hasMessage("Invalid action")
           messageSent = true
         }

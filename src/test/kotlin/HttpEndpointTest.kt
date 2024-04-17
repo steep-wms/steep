@@ -41,8 +41,8 @@ import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitResult
+import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -219,7 +219,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
         assertThat(response.body().map).containsKey("version")
       }
       ctx.completeNow()
@@ -241,7 +241,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.JSON)
             .putHeader("Accept", "application/json")
             .send()
-            .await()
+            .coAwait()
         assertThat(response1.body().map).containsKey("version")
 
         // with "Accept: text/html"
@@ -251,7 +251,7 @@ class HttpEndpointTest {
             .expect(contentType("text/html"))
             .putHeader("Accept", "text/html")
             .send()
-            .await()
+            .coAwait()
         assertThat(response2.body()).contains("html")
 
         // with "Accept: */*"
@@ -261,7 +261,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.JSON)
             .putHeader("Accept", "*/*")
             .send()
-            .await()
+            .coAwait()
         assertThat(response3.body().map).containsKey("version")
 
         // with complex "Accept" header
@@ -271,7 +271,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.JSON)
             .putHeader("Accept", "application/json,text/html")
             .send()
-            .await()
+            .coAwait()
         assertThat(response4.body().map).containsKey("version")
 
         // with complex "Accept" header
@@ -281,7 +281,7 @@ class HttpEndpointTest {
             .expect(contentType("text/html"))
             .putHeader("Accept", "text/html,application/json")
             .send()
-            .await()
+            .coAwait()
         assertThat(response5.body()).contains("html")
 
         // with complex "Accept" header
@@ -291,14 +291,14 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.JSON)
             .putHeader("Accept", "text/html;q=0.5,application/json;q=1.0")
             .send()
-            .await()
+            .coAwait()
         assertThat(response6.body().map).containsKey("version")
 
         // without "Accept" header
         val response7 = client.get(port, "localhost", "/")
             .expect(ResponsePredicate.SC_OK)
             .send()
-            .await()
+            .coAwait()
         assertThat(JsonObject(response7.body().toString(StandardCharsets.UTF_8)).map).containsKey("version")
       }
       ctx.completeNow()
@@ -337,17 +337,17 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
         client.get(port, "localhost", "/services")
             .`as`(BodyCodec.jsonArray())
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
         client.get(port, "localhost", "/plugins")
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .send()
-            .await()
+            .coAwait()
       }
       ctx.completeNow()
     }
@@ -375,7 +375,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(JsonUtils.mapper.convertValue<List<Service>>(response.body().list))
             .isEqualTo(serviceMetadata)
@@ -405,14 +405,14 @@ class HttpEndpointTest {
         client.get(port, "localhost", "/services/UNKNOWN_ID")
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .send()
-            .await()
+            .coAwait()
 
         val response = client.get(port, "localhost", "/services/ID")
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(JsonUtils.fromJson<Service>(response.body()))
             .isEqualTo(serviceMetadata[0])
@@ -435,14 +435,14 @@ class HttpEndpointTest {
             .`as`(BodyCodec.string())
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .send()
-            .await()
+            .coAwait()
             .body()
         assertThat(b1).contains("cloud configuration is disabled")
         val b2 = client.get(port, "localhost", "/setups/foobar")
             .`as`(BodyCodec.string())
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .send()
-            .await()
+            .coAwait()
             .body()
         assertThat(b2).contains("cloud configuration is disabled")
         ctx.completeNow()
@@ -466,14 +466,14 @@ class HttpEndpointTest {
             .`as`(BodyCodec.jsonArray())
             .expect(ResponsePredicate.SC_OK)
             .send()
-            .await()
+            .coAwait()
             .body()
         assertThat(result).isEmpty()
 
         client.get(port, "localhost", "/setups/foobar")
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .send()
-            .await()
+            .coAwait()
 
         ctx.completeNow()
       }
@@ -513,7 +513,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.jsonArray())
             .expect(ResponsePredicate.SC_OK)
             .send()
-            .await()
+            .coAwait()
             .body()
         assertThat(result).isEqualTo(jsonArrayOf(
             jsonObjectOf(
@@ -583,7 +583,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .send()
-            .await()
+            .coAwait()
             .body()
         assertThat(result).isEqualTo(jsonObjectOf(
             "id" to s1.id,
@@ -603,7 +603,7 @@ class HttpEndpointTest {
         client.get(port, "localhost", "/setups/foobar")
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .send()
-            .await()
+            .coAwait()
 
         ctx.completeNow()
       }
@@ -638,7 +638,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
             .body()
 
         assertThat(result).isEqualTo(jsonArrayOf(
@@ -709,14 +709,14 @@ class HttpEndpointTest {
         client.get(port, "localhost", "/plugins/UNKNOWN_NAME")
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .send()
-            .await()
+            .coAwait()
 
         val result = client.get(port, "localhost", "/plugins/InitializerPluginName")
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
             .body()
 
         assertThat(result).isEqualTo(jsonObjectOf(
@@ -784,7 +784,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.headers()["x-page-size"]).isEqualTo("10")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
@@ -859,7 +859,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.headers()["x-page-size"]).isEqualTo("10")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
@@ -911,14 +911,14 @@ class HttpEndpointTest {
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .send()
-            .await()
+            .coAwait()
 
         val response = client.get(port, "localhost", "/workflows/${s1.id}")
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.body()).isEqualTo(jsonObjectOf(
             "id" to s1.id,
@@ -963,7 +963,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.body()).isEqualTo(jsonObjectOf(
             "id" to s1.id,
@@ -1007,7 +1007,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.body()).isEqualTo(jsonObjectOf(
             "id" to s1.id,
@@ -1052,7 +1052,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.body()).isEqualTo(jsonObjectOf(
             "id" to s1.id,
@@ -1122,50 +1122,50 @@ class HttpEndpointTest {
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .send()
-            .await()
+            .coAwait()
 
         client.put(port, "localhost", "/workflows/${s1.id}")
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .sendBuffer(Buffer.buffer("INVALID BODY"))
-            .await()
+            .coAwait()
 
         client.put(port, "localhost", "/workflows/${s1.id}")
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .sendJsonObject(missingBody)
-            .await()
+            .coAwait()
 
         client.put(port, "localhost", "/workflows/${s1.id}")
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .sendJsonObject(invalidBody1)
-            .await()
+            .coAwait()
 
         client.put(port, "localhost", "/workflows/${s1.id}")
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .sendJsonObject(invalidBody2)
-            .await()
+            .coAwait()
 
         client.put(port, "localhost", "/workflows/${s1.id}")
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .sendJsonObject(invalidBody3)
-            .await()
+            .coAwait()
 
         client.put(port, "localhost", "/workflows/UNKNOWN")
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .sendJsonObject(cancelledBody)
-            .await()
+            .coAwait()
 
         client.put(port, "localhost", "/workflows/${s1.id}")
             .`as`(BodyCodec.none())
             .putHeader("accept", "text/html")
             .expect(ResponsePredicate.SC_NOT_ACCEPTABLE)
             .sendJsonObject(cancelledBody)
-            .await()
+            .coAwait()
 
         // now test valid requests (cancel submission)
         coEvery { submissionRegistry.setAllProcessChainsStatus(s1.id,
@@ -1180,7 +1180,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .sendJsonObject(cancelledBody)
-            .await()
+            .coAwait()
 
         assertThat(response1.body()).isEqualTo(jsonObjectOf(
             "id" to s1.id,
@@ -1210,7 +1210,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .sendJsonObject(priorityBody)
-            .await()
+            .coAwait()
 
         assertThat(response2.body()).isEqualTo(jsonObjectOf(
             "id" to s1.id,
@@ -1239,7 +1239,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_UNPROCESSABLE_ENTITY)
             .sendJsonObject(priorityBody)
-            .await()
+            .coAwait()
       }
 
       ctx.completeNow()
@@ -1257,7 +1257,7 @@ class HttpEndpointTest {
         client.post(port, "localhost", "/workflows")
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .send()
-            .await()
+            .coAwait()
       }
       ctx.completeNow()
     }
@@ -1274,7 +1274,7 @@ class HttpEndpointTest {
         client.post(port, "localhost", "/workflows")
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .sendJsonObject(JsonObject().put("invalid", true))
-            .await()
+            .coAwait()
       }
       ctx.completeNow()
     }
@@ -1293,7 +1293,7 @@ class HttpEndpointTest {
         client.post(port, "localhost", "/workflows")
             .expect(ResponsePredicate.SC_REQUEST_ENTITY_TOO_LARGE)
             .sendJsonObject(JsonUtils.toJson(w))
-            .await()
+            .coAwait()
       }
       ctx.completeNow()
     }
@@ -1312,7 +1312,7 @@ class HttpEndpointTest {
         client.post(port, "localhost", "/workflows")
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .sendJsonObject(JsonUtils.toJson(w))
-            .await()
+            .coAwait()
       }
       ctx.completeNow()
     }
@@ -1337,7 +1337,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_ACCEPTED)
             .expect(ResponsePredicate.JSON)
             .sendBuffer(body)
-            .await()
+            .coAwait()
 
         assertThat(response.body()).isEqualTo(jsonObjectOf(
             "id" to submissionSlot.captured.id,
@@ -1460,7 +1460,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.headers()["x-page-size"]).isEqualTo("10")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
@@ -1555,7 +1555,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.headers()["x-page-size"]).isEqualTo("10")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
@@ -1624,7 +1624,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.headers()["x-page-size"]).isEqualTo("10")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
@@ -1677,14 +1677,14 @@ class HttpEndpointTest {
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .send()
-            .await()
+            .coAwait()
 
         val response = client.get(port, "localhost", "/processchains/${pc1.id}")
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.body()).isEqualTo(jsonObjectOf(
             "id" to pc1.id,
@@ -1754,7 +1754,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.body()).isEqualTo(jsonObjectOf(
             "id" to pc1.id,
@@ -1826,7 +1826,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .send()
-            .await()
+            .coAwait()
       }
 
       ctx.coVerify {
@@ -1834,7 +1834,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.string())
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .send()
-            .await()
+            .coAwait()
             .body()
         assertThat(r).isEqualTo("There is no run -1")
       }
@@ -1844,7 +1844,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.string())
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .send()
-            .await()
+            .coAwait()
             .body()
         assertThat(r).isEqualTo("There is no run 0")
       }
@@ -1854,7 +1854,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.string())
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .send()
-            .await()
+            .coAwait()
             .body()
         assertThat(r).isEqualTo("There is no run 3")
       }
@@ -1893,7 +1893,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.body()).isEqualTo(expectedRun2)
       }
@@ -1904,7 +1904,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.body()).isEqualTo(jsonObjectOf(
             "id" to pc1.id,
@@ -1937,7 +1937,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.body()).isEqualTo(expectedRun2)
       }
@@ -1991,7 +1991,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         val expectedResponse = jsonObjectOf(
             "id" to pc1.id,
@@ -2103,7 +2103,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.string())
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .send()
-            .await()
+            .coAwait()
             .body()
         assertThat(r).isEqualTo("There is no process chain with ID `$wrongId'")
       }
@@ -2113,7 +2113,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.jsonArray())
             .expect(ResponsePredicate.SC_OK)
             .send()
-            .await()
+            .coAwait()
             .body()
         assertThat(runs).isEqualTo(jsonArrayOf(
             jsonObjectOf(
@@ -2212,50 +2212,50 @@ class HttpEndpointTest {
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .send()
-            .await()
+            .coAwait()
 
         client.put(port, "localhost", "/processchains/${pc1.id}")
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .sendBuffer(Buffer.buffer("INVALID BODY"))
-            .await()
+            .coAwait()
 
         client.put(port, "localhost", "/processchains/${pc1.id}")
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .sendJsonObject(missingBody)
-            .await()
+            .coAwait()
 
         client.put(port, "localhost", "/processchains/${pc1.id}")
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .sendJsonObject(invalidBody1)
-            .await()
+            .coAwait()
 
         client.put(port, "localhost", "/processchains/${pc1.id}")
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .sendJsonObject(invalidBody2)
-            .await()
+            .coAwait()
 
         client.put(port, "localhost", "/processchains/${pc1.id}")
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .sendJsonObject(invalidBody3)
-            .await()
+            .coAwait()
 
         client.put(port, "localhost", "/processchains/UNKNOWN")
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .sendJsonObject(cancelledBody)
-            .await()
+            .coAwait()
 
         client.put(port, "localhost", "/processchains/${pc1.id}")
             .`as`(BodyCodec.none())
             .putHeader("accept", "text/html")
             .expect(ResponsePredicate.SC_NOT_ACCEPTABLE)
             .sendJsonObject(cancelledBody)
-            .await()
+            .coAwait()
 
         // now test valid requests (cancel process chain)
         coEvery { submissionRegistry.getProcessChainStatus(pc1.id) } returns
@@ -2264,7 +2264,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .sendJsonObject(cancelledBody)
-            .await()
+            .coAwait()
 
         assertThat(response1.body()).isEqualTo(jsonObjectOf(
             "id" to pc1.id,
@@ -2282,7 +2282,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .sendJsonObject(cancelledBody)
-            .await()
+            .coAwait()
 
         assertThat(response2.body()).isEqualTo(jsonObjectOf(
             "id" to pc2.id,
@@ -2301,7 +2301,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .sendJsonObject(cancelledBody)
-            .await()
+            .coAwait()
 
         assertThat(response3.body()).isEqualTo(jsonObjectOf(
             "id" to pc3.id,
@@ -2318,7 +2318,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .sendJsonObject(cancelledBody)
-            .await()
+            .coAwait()
 
         assertThat(response5.body()).isEqualTo(jsonObjectOf(
             "id" to pc5.id,
@@ -2338,7 +2338,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .sendJsonObject(cancelledBody)
-            .await()
+            .coAwait()
 
         assertThat(response6.body()).isEqualTo(jsonObjectOf(
             "id" to pc6.id,
@@ -2364,7 +2364,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.jsonObject())
             .expect(ResponsePredicate.SC_OK)
             .sendJsonObject(priorityBody)
-            .await()
+            .coAwait()
 
         assertThat(response4.body()).isEqualTo(jsonObjectOf(
             "id" to pc4.id,
@@ -2384,7 +2384,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.none())
             .expect(ResponsePredicate.SC_UNPROCESSABLE_ENTITY)
             .sendJsonObject(priorityBody)
-            .await()
+            .coAwait()
       }
 
       ctx.completeNow()
@@ -2411,7 +2411,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.headers()["x-page-size"]).isEqualTo("10")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
@@ -2459,7 +2459,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.headers()["x-page-size"]).isEqualTo("10")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
@@ -2498,7 +2498,7 @@ class HttpEndpointTest {
         client.get(port, "localhost", "/logs/processchains/$id")
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .send()
-            .await()
+            .coAwait()
       }
       ctx.completeNow()
     }
@@ -2523,7 +2523,7 @@ class HttpEndpointTest {
         client.get(port, "localhost", "/logs/processchains/$id")
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .send()
-            .await()
+            .coAwait()
       }
       ctx.completeNow()
     }
@@ -2609,13 +2609,13 @@ class HttpEndpointTest {
                 "start" to start.toLong(),
                 "end" to end.toLong() - 1L,
                 "length" to (end - start).toLong()
-            )).await()
+            )).coAwait()
 
             if (!checkOnly) {
               val chunk = jsonObjectOf(
                   "data" to cts.substring(start, end)
               )
-              vertx.eventBus().request<Unit>(replyAddress, chunk).await()
+              vertx.eventBus().request<Unit>(replyAddress, chunk).coAwait()
               vertx.eventBus().send(replyAddress, JsonObject())
             }
           }
@@ -2645,7 +2645,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(contentType("text/plain"))
             .send()
-            .await()
+            .coAwait()
 
         assertThat(agent1Asked.get()).isEqualTo(1)
         assertThat(agent2Asked.get()).isEqualTo(1)
@@ -2678,7 +2678,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_PARTIAL_CONTENT)
             .expect(contentType("text/plain"))
             .send()
-            .await()
+            .coAwait()
 
         assertThat(agent1Asked.get()).isEqualTo(1)
         assertThat(agent2Asked.get()).isEqualTo(1)
@@ -2715,7 +2715,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(contentType("text/plain"))
             .send()
-            .await()
+            .coAwait()
 
         assertThat(agent1Asked.get()).isEqualTo(1)
         assertThat(agent2Asked.get()).isEqualTo(1)
@@ -2749,7 +2749,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.string())
             .expect(ResponsePredicate.SC_OK)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.getHeader("Content-Length").toInt())
             .isEqualTo(contents.length)
@@ -2785,7 +2785,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.string())
             .expect(ResponsePredicate.SC_SERVER_ERRORS)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(agent1Asked.get()).isEqualTo(1)
         assertThat(agent2Asked.get()).isEqualTo(1)
@@ -2817,7 +2817,7 @@ class HttpEndpointTest {
             .putHeader("Range", "bytes=3-2")
             .expect(ResponsePredicate.SC_REQUESTED_RANGE_NOT_SATISFIABLE)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(agent1Asked.get()).isEqualTo(1)
         assertThat(agent2Asked.get()).isEqualTo(0)
@@ -2844,7 +2844,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.string())
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .send()
-            .await()
+            .coAwait()
             .body()
         assertThat(body).isEqualTo("Invalid run number")
       }
@@ -2854,7 +2854,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.string())
             .expect(ResponsePredicate.SC_NOT_FOUND)
             .send()
-            .await()
+            .coAwait()
             .body()
         assertThat(body).contains("Run number out of range")
       }
@@ -2864,7 +2864,7 @@ class HttpEndpointTest {
             .`as`(BodyCodec.string())
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .send()
-            .await()
+            .coAwait()
             .body()
         assertThat(body).contains("Run number must be greater than 0")
       }
@@ -2890,7 +2890,7 @@ class HttpEndpointTest {
               .`as`(BodyCodec.string())
               .expect(ResponsePredicate.SC_NOT_FOUND)
               .send()
-              .await()
+              .coAwait()
               .body()
           assertThat(body).contains("$s and does not have a log file")
         }
@@ -2956,7 +2956,7 @@ class HttpEndpointTest {
                 .expect(p.third)
                 .expect(contentType("text/plain"))
                 .send()
-                .await()
+                .coAwait()
 
             assertThat(agent1Asked.get()).isEqualTo(1 + i)
             assertThat(agent2Asked.get()).isEqualTo(1 + i)
@@ -2997,7 +2997,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
         assertThat(response.body()).isEqualTo(jsonArrayOf(
           jsonObjectOf("id" to agentId1), jsonObjectOf("id" to agentId2)))
       }
@@ -3029,7 +3029,7 @@ class HttpEndpointTest {
         client.get(port, "localhost", "/agents")
             .expect(ResponsePredicate.SC_SERVICE_UNAVAILABLE)
             .send()
-            .await()
+            .coAwait()
       }
       ctx.completeNow()
     }
@@ -3073,7 +3073,7 @@ class HttpEndpointTest {
             .expect(if (systemHealthy) ResponsePredicate.SC_OK else ResponsePredicate.SC_SERVICE_UNAVAILABLE)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
         assertThat(response.body()).isEqualTo(jsonObjectOf(
             "services" to expectedOutput(services),
             "agents" to expectedOutput(agents),
@@ -3178,7 +3178,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.headers()["x-page-size"]).isEqualTo("10")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
@@ -3240,7 +3240,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.headers()["x-page-size"]).isEqualTo("10")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
@@ -3259,7 +3259,7 @@ class HttpEndpointTest {
         client.get(port, "localhost", "/search?q=$encodedQuery&count=invalid")
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .send()
-            .await()
+            .coAwait()
       }
 
       ctx.coVerify {
@@ -3269,7 +3269,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.headers()["x-page-size"]).isEqualTo("10")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
@@ -3286,7 +3286,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.headers()["x-page-size"]).isEqualTo("0")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
@@ -3303,7 +3303,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.headers()["x-page-size"]).isEqualTo("0")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
@@ -3325,7 +3325,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.headers()["x-page-size"]).isEqualTo("0")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
@@ -3408,7 +3408,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.headers()["x-page-size"]).isEqualTo("10")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
@@ -3430,7 +3430,7 @@ class HttpEndpointTest {
             .expect(ResponsePredicate.SC_OK)
             .expect(ResponsePredicate.JSON)
             .send()
-            .await()
+            .coAwait()
 
         assertThat(response.headers()["x-page-size"]).isEqualTo("10")
         assertThat(response.headers()["x-page-offset"]).isEqualTo("0")
@@ -3449,7 +3449,7 @@ class HttpEndpointTest {
         client.get(port, "localhost", "/search?q=$query&timeZone=invalid")
             .expect(ResponsePredicate.SC_BAD_REQUEST)
             .send()
-            .await()
+            .coAwait()
       }
 
       ctx.completeNow()

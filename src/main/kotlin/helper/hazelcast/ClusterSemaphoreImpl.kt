@@ -2,7 +2,7 @@ package helper.hazelcast
 
 import com.hazelcast.cp.ISemaphore
 import io.vertx.core.Vertx
-import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.coAwait
 import java.util.concurrent.TimeUnit
 
 /**
@@ -13,32 +13,32 @@ class ClusterSemaphoreImpl(private val semaphore: ISemaphore, private val vertx:
   suspend fun init(permits: Int): Boolean {
     return vertx.executeBlocking({ p ->
       p.complete(semaphore.init(permits))
-    }, false).await()
+    }, false).coAwait()
   }
 
   override suspend fun acquire() {
     vertx.executeBlocking<Unit>({ p ->
       semaphore.acquire()
       p.complete()
-    }, false).await()
+    }, false).coAwait()
   }
 
   override suspend fun tryAcquire(): Boolean {
     return vertx.executeBlocking({ p ->
       p.complete(semaphore.tryAcquire())
-    }, false).await()
+    }, false).coAwait()
   }
 
   override suspend fun tryAcquire(time: Long, unit: TimeUnit): Boolean {
     return vertx.executeBlocking({ p ->
       p.complete(semaphore.tryAcquire(time, unit))
-    }, false).await()
+    }, false).coAwait()
   }
 
   override suspend fun release() {
     vertx.executeBlocking<Unit>({ p ->
       semaphore.release()
       p.complete()
-    }, false).await()
+    }, false).coAwait()
   }
 }

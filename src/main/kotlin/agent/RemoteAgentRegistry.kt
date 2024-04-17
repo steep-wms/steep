@@ -16,7 +16,7 @@ import io.vertx.core.shareddata.LocalMap
 import io.vertx.core.shareddata.Shareable
 import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -295,7 +295,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
 
       // inquire agent
       try {
-        val replyInquire = vertx.eventBus().request<JsonObject>(address, msgInquire).await()
+        val replyInquire = vertx.eventBus().request<JsonObject>(address, msgInquire).coAwait()
         val lastSequence = replyInquire.body().getLong("lastSequence", -1L)
 
         // check if the agent is available
@@ -346,7 +346,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     )
 
     try {
-      val replyAllocate = vertx.eventBus().request<String>(address, msgAllocate).await()
+      val replyAllocate = vertx.eventBus().request<String>(address, msgAllocate).coAwait()
       if (replyAllocate.body() == "ACK") {
         val agentId = address.substring(REMOTE_AGENT_ADDRESS_PREFIX.length)
         allocatedAgentsCache[agentId] = true
@@ -365,7 +365,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
     )
 
     try {
-      val reply = vertx.eventBus().request<String>(agent.id, msg).await()
+      val reply = vertx.eventBus().request<String>(agent.id, msg).coAwait()
       if (reply.body() != "ACK") {
         throw NoStackTraceThrowable("Unknown answer: ${reply.body()}")
       }

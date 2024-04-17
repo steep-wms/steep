@@ -14,7 +14,7 @@ import io.vertx.core.shareddata.Counter
 import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.kotlin.coroutines.receiveChannelHandler
 import kotlinx.coroutines.isActive
 import model.processchain.ProcessChain
@@ -85,11 +85,11 @@ class RemoteAgent(override val id: String, private val vertx: Vertx) : Agent {
             "processChain" to JsonUtils.toJson(processChain),
             "runNumber" to runNumber,
             "replyAddress" to replyAddress,
-            "sequence" to counter.await().andIncrement.await()
+            "sequence" to counter.coAwait().andIncrement.coAwait()
         )
         vertx.eventBus().request<Any>(id, msg, deliveryOptionsOf(
             codecName = CompressedJsonObjectMessageCodec.NAME
-        )).await()
+        )).coAwait()
 
         // wait for reply
         val result = adapter.receive()

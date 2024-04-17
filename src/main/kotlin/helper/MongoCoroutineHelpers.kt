@@ -198,7 +198,7 @@ suspend fun <T> MongoCollection<T>.aggregateAwait(pipeline: List<JsonObject>): L
   }
 }
 
-suspend fun <T> MongoCollection<T>.insertOneAwait(document: T) {
+suspend fun <T> MongoCollection<T>.insertOneAwait(document: T & Any) {
   wrapCoroutine {
     insertOne(document)
   }

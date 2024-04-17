@@ -25,7 +25,7 @@ import io.vertx.core.json.JsonObject
 import io.vertx.core.shareddata.Lock
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.coAwait
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
@@ -233,7 +233,7 @@ class Controller(private val disablePeriodicLookupForSubmissions: Boolean = fals
   private suspend fun tryLockSubmission(submissionId: String): Lock? {
     val lockName = PROCESSING_SUBMISSION_LOCK_PREFIX + submissionId
     return try {
-      vertx.sharedData().getLockWithTimeout(lockName, 1).await()
+      vertx.sharedData().getLockWithTimeout(lockName, 1).coAwait()
     } catch (t: Throwable) {
       // Could not acquire lock. Assume someone else is already processing
       // this submission

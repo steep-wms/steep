@@ -27,14 +27,14 @@ import io.micrometer.core.instrument.Clock
 import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import io.prometheus.client.CollectorRegistry
-import io.vertx.core.Vertx.clusteredVertx
+import io.vertx.core.Vertx
 import io.vertx.core.VertxOptions
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.eventbus.deliveryOptionsOf
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.kotlin.coroutines.dispatcher
 import io.vertx.kotlin.micrometer.micrometerMetricsOptionsOf
 import io.vertx.kotlin.micrometer.vertxPrometheusOptionsOf
@@ -195,8 +195,7 @@ suspend fun main() {
   }
 
   // configure event bus
-  val mgr = HazelcastClusterManager(hazelcastConfig)
-  val options = VertxOptions().setClusterManager(mgr)
+  val options = VertxOptions()
   val eventBusHost = conf.getString(ConfigConstants.CLUSTER_EVENTBUS_HOST) ?: getDefaultAddress()
   eventBusHost?.let { options.eventBusOptions.setHost(it) }
   val eventBusPort = conf.getInteger(ConfigConstants.CLUSTER_EVENTBUS_PORT)
@@ -216,7 +215,12 @@ suspend fun main() {
   )
 
   // start Vert.x
-  val vertx = clusteredVertx(options).await()
+  val mgr = HazelcastClusterManager(hazelcastConfig)
+  val vertx = Vertx.builder()
+      .with(options)
+      .withClusterManager(mgr)
+      .buildClustered()
+      .coAwait()
   globalVertxInstance = vertx
   globalHazelcastInstance = mgr.hazelcastInstance
 
@@ -304,7 +308,7 @@ suspend fun main() {
   // start Steep's main verticle
   val deploymentOptions = deploymentOptionsOf(config = conf)
   val mainVerticleId = try {
-    vertx.deployVerticle(Main::class.qualifiedName!!, deploymentOptions).await()
+    vertx.deployVerticle(Main::class.qualifiedName!!, deploymentOptions).coAwait()
   } catch (e: Exception) {
     e.printStackTrace()
     exitProcess(1)
@@ -522,7 +526,7 @@ suspend fun restoreMembers(defaultPort: Int, config: JsonObject): List<String> {
       vmRegistry.close()
     }
   } finally {
-    vertx.close().await()
+    vertx.close().coAwait()
   }
 }
 
@@ -545,15 +549,15 @@ class Main : CoroutineVerticle() {
     val options = deploymentOptionsOf(config = config)
 
     if (config.getBoolean(ConfigConstants.CLOUD_ENABLED, false)) {
-      vertx.deployVerticle(CloudManager::class.qualifiedName!!, options).await()
+      vertx.deployVerticle(CloudManager::class.qualifiedName!!, options).coAwait()
     }
 
     if (config.getBoolean(ConfigConstants.SCHEDULER_ENABLED, true)) {
-      vertx.deployVerticle(Scheduler::class.qualifiedName!!, options).await()
+      vertx.deployVerticle(Scheduler::class.qualifiedName!!, options).coAwait()
     }
 
     if (config.getBoolean(ConfigConstants.CONTROLLER_ENABLED, true)) {
-      vertx.deployVerticle(Controller::class.qualifiedName!!, options).await()
+      vertx.deployVerticle(Controller::class.qualifiedName!!, options).coAwait()
     }
 
     if (config.getBoolean(ConfigConstants.AGENT_ENABLED, true)) {
@@ -564,16 +568,16 @@ class Main : CoroutineVerticle() {
         val id = if (i == 1) agentId else "$agentId[$i]"
         val configWithAgentId = config.copy().put(ConfigConstants.AGENT_ID, id)
         val optionsWithAgentId = deploymentOptionsOf(config = configWithAgentId)
-        vertx.deployVerticle(Steep::class.qualifiedName!!, optionsWithAgentId).await()
+        vertx.deployVerticle(Steep::class.qualifiedName!!, optionsWithAgentId).coAwait()
       }
     }
 
     if (config.getBoolean(ConfigConstants.HTTP_ENABLED, true)) {
-      vertx.deployVerticle(HttpEndpoint::class.qualifiedName!!, options).await()
+      vertx.deployVerticle(HttpEndpoint::class.qualifiedName!!, options).coAwait()
     }
 
     if (config.getBoolean(ConfigConstants.GARBAGECOLLECTOR_ENABLED, false)) {
-      vertx.deployVerticle(GarbageCollector::class.qualifiedName!!, options).await()
+      vertx.deployVerticle(GarbageCollector::class.qualifiedName!!, options).coAwait()
     }
   }
 }

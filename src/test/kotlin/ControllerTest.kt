@@ -31,8 +31,8 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitResult
+import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -649,7 +649,7 @@ class ControllerTest {
             // wait for the next event loop tick (i.e. make sure the message is processed)
             val p = Promise.promise<Unit>()
             vertx.runOnContext { p.complete() }
-            p.future().await()
+            p.future().coAwait()
 
             priorityChanged = true
           }

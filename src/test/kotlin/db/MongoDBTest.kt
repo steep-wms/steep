@@ -56,7 +56,7 @@ interface MongoDBTest {
       // a few seconds vs several minutes) because the collections do not have
       // to be recreated all the time.
       // client.getDatabase(cs.database).dropAwait()
-      val db = client.getDatabase(cs.database)
+      val db = client.getDatabase(cs.database!!)
       val collectionNames = db.listCollectionNamesAwait()
       for (name in collectionNames) {
         val coll = db.getCollection(name)

@@ -6,7 +6,7 @@ import com.hazelcast.map.listener.EntryAddedListener
 import com.hazelcast.map.listener.EntryMergedListener
 import com.hazelcast.map.listener.EntryRemovedListener
 import io.vertx.core.Vertx
-import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.coAwait
 
 /**
  * A thin wrapper around Hazelcast's [IMap]
@@ -19,55 +19,55 @@ class ClusterMapImpl<K : Any, V : Any>(private val map: IMap<K, V>,
   override suspend fun size(): Int {
     return vertx.executeBlocking({ p ->
       p.complete(map.size)
-    }, false).await()
+    }, false).coAwait()
   }
 
   override suspend fun get(key: K): V? {
     return vertx.executeBlocking({ p ->
       p.complete(map[key])
-    }, false).await()
+    }, false).coAwait()
   }
 
   override suspend fun put(key: K, value: V): V? {
     return vertx.executeBlocking({ p ->
       p.complete(map.put(key, value))
-    }, false).await()
+    }, false).coAwait()
   }
 
   override suspend fun putIfAbsent(key: K, value: V): V? {
     return vertx.executeBlocking({ p ->
       p.complete(map.putIfAbsent(key, value))
-    }, false).await()
+    }, false).coAwait()
   }
 
   override suspend fun computeIfAbsent(key: K, mappingFunction: (K) -> V): V? {
     return vertx.executeBlocking({ p ->
       p.complete(map.computeIfAbsent(key, mappingFunction))
-    }, false).await()
+    }, false).coAwait()
   }
 
   override suspend fun computeIfPresent(key: K, remappingFunction: (K, V) -> V): V? {
     return vertx.executeBlocking({ p ->
       p.complete(map.computeIfPresent(key, remappingFunction))
-    }, false).await()
+    }, false).coAwait()
   }
 
   override suspend fun delete(key: K) {
     return vertx.executeBlocking({ p ->
       p.complete(map.delete(key))
-    }, false).await()
+    }, false).coAwait()
   }
 
   override suspend fun entries(): Set<Map.Entry<K, V>> {
     return vertx.executeBlocking({ p ->
       p.complete(map.entries)
-    }, false).await()
+    }, false).coAwait()
   }
 
   override suspend fun keys(): Set<K> {
     return vertx.executeBlocking({ p ->
       p.complete(map.keys)
-    }, false).await()
+    }, false).coAwait()
   }
 
   override fun addEntryAddedListener(includeValue: Boolean, listener: (K, V?) -> Unit) {

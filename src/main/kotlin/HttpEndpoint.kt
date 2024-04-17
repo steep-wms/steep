@@ -86,7 +86,7 @@ import io.vertx.ext.web.handler.sockjs.SockJSHandler
 import io.vertx.ext.web.impl.ParsableMIMEValue
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.kotlin.coroutines.toReceiveChannel
 import io.vertx.micrometer.PrometheusScrapingHandler
 import kotlinx.coroutines.CancellationException
@@ -415,14 +415,14 @@ class HttpEndpoint : CoroutineVerticle() {
 
     val baseRouter = Router.router(vertx)
     baseRouter.route("$basePath/*").subRouter(router)
-    server.requestHandler(baseRouter).listen(port, host).await()
+    server.requestHandler(baseRouter).listen(port, host).coAwait()
 
     log.info("HTTP endpoint deployed to http://$host:$port$basePath")
   }
 
   override suspend fun stop() {
     log.info("Stopping HTTP endpoint ...")
-    server.close().await()
+    server.close().coAwait()
     submissionRegistry.close()
   }
 
@@ -430,9 +430,12 @@ class HttpEndpoint : CoroutineVerticle() {
    * Create and configure a [CorsHandler]
    */
   private fun createCorsHandler(): CorsHandler {
-    val allowedOrigin: String = config.getString(
+    var allowedOrigin: String = config.getString(
         ConfigConstants.HTTP_CORS_ALLOW_ORIGIN, "$.") // match nothing by default
-    val corsHandler = CorsHandler.create(allowedOrigin)
+    if (allowedOrigin == "*") {
+      allowedOrigin = ".*"
+    }
+    val corsHandler = CorsHandler.create().addRelativeOrigin(allowedOrigin)
 
     // configure whether Access-Control-Allow-Credentials should be returned
     if (config.getBoolean(ConfigConstants.HTTP_CORS_ALLOW_CREDENTIALS, false)) {
@@ -513,7 +516,7 @@ class HttpEndpoint : CoroutineVerticle() {
   private fun renderAsset(name: String, response: HttpServerResponse,
       replaceFavicons: Boolean = false) {
     val url = this.javaClass.getResource(name)
-    if (url == null) {
+    if (url === null) {
       response
           .setStatusCode(404)
           .end()
@@ -602,7 +605,7 @@ class HttpEndpoint : CoroutineVerticle() {
 
         try {
           val agents = agentIds.map { vertx.eventBus().request<JsonObject>(
-              REMOTE_AGENT_ADDRESS_PREFIX + it, msg).await() }.map { it.body() }
+              REMOTE_AGENT_ADDRESS_PREFIX + it, msg).coAwait() }.map { it.body() }
 
           val result = JsonArray(agents).encode()
 
@@ -641,7 +644,7 @@ class HttpEndpoint : CoroutineVerticle() {
 
         try {
           val agent = vertx.eventBus().request<JsonObject>(
-              REMOTE_AGENT_ADDRESS_PREFIX + id, msg).await().body()
+              REMOTE_AGENT_ADDRESS_PREFIX + id, msg).coAwait().body()
           ctx.response()
               .putHeader("content-type", "application/json")
               .end(agent.encode())
@@ -763,7 +766,7 @@ class HttpEndpoint : CoroutineVerticle() {
           // Important! Wait for consumer registration to be propagated across
           // cluster before sending any request. Otherwise, responses might
           // be sent too early!
-          consumerRegisteredPromise.future().await()
+          consumerRegisteredPromise.future().coAwait()
 
           // create periodic timer that cancels the channel on timeout
           val timeoutTimerId = vertx.setPeriodic(1000L * 30) { timerId ->
@@ -841,7 +844,7 @@ class HttpEndpoint : CoroutineVerticle() {
                   resp.exceptionHandler { drainPromise.fail(it) }
                   resp.drainHandler { drainPromise.complete() }
                   try {
-                    drainPromise.future().await()
+                    drainPromise.future().coAwait()
                   } catch (t: Throwable) {
                     reply.fail(500, t.message)
                     @Suppress("UNUSED_VALUE") // will be used in catch clause below
@@ -993,7 +996,7 @@ class HttpEndpoint : CoroutineVerticle() {
         }
 
         val countJobs = if (count != "none") {
-          Type.values().map { type ->
+          Type.entries.map { type ->
             async {
               type to submissionRegistry.searchCount(query, type, count == "estimate")
             }
@@ -1436,7 +1439,7 @@ class HttpEndpoint : CoroutineVerticle() {
     }
 
     val api = try {
-      SemVersion.valueOf(workflowJson["api"].toString())
+      SemVersion.parse(workflowJson["api"].toString())
     } catch (e: Exception) {
       renderError(ctx, 400, "Invalid workflow API version: " + e.message)
       return
@@ -1640,7 +1643,7 @@ class HttpEndpoint : CoroutineVerticle() {
       val response = try {
         vertx.eventBus().request<Double?>(LOCAL_AGENT_ADDRESS_PREFIX + id, jsonObjectOf(
             "action" to "getProgress"
-        )).await<Message<Double?>>()
+        )).coAwait<Message<Double?>>()
       } catch (_: ReplyException) {
         null
       }

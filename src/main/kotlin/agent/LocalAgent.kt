@@ -17,7 +17,7 @@ import io.vertx.core.Context
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonObjectOf
-import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.coAwait
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -194,7 +194,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
       }
     } finally {
       // make sure the consumer is unregistered
-      consumer.unregister().await()
+      consumer.unregister().coAwait()
 
       // close executor
       executor.shutdown()
