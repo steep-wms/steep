@@ -28,7 +28,7 @@ dependencies {
     implementation("org.slf4j:log4j-over-slf4j:2.0.13")
     implementation("org.slf4j:slf4j-api:2.0.13")
 
-    implementation("ch.qos.logback:logback-classic:1.5.5")
+    implementation("ch.qos.logback:logback-classic:1.5.6")
     implementation("ch.qos.logback:logback-core:1.5.5")
     implementation("ch.qos.logback.contrib:logback-jackson:0.1.5")
     implementation("ch.qos.logback.contrib:logback-json-classic:0.1.5")
