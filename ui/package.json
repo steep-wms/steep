@@ -47,7 +47,7 @@
     "react-virtualized-auto-sizer": "^1.0.24",
     "react-window": "^1.8.10",
     "sass": "^1.75.0",
-    "sass-loader": "^14.2.0",
+    "sass-loader": "^14.2.1",
     "serve": "^14.2.1",
     "sockjs-client": "^1.6.1",
     "spinkit": "^2.0.1",
