@@ -61,7 +61,7 @@ dependencies {
     implementation("org.apache.ant:ant:1.10.14")
     implementation("org.apache.commons:commons-lang3:3.14.0")
     implementation("org.apache.commons:commons-text:1.11.0")
-    implementation("org.flywaydb:flyway-core:10.11.0")
+    implementation("org.flywaydb:flyway-core:10.11.1")
     implementation("org.flywaydb:flyway-database-postgresql:10.11.0")
     implementation("org.mongodb:mongodb-driver-reactivestreams:5.0.1")
     implementation("com.github.openstack4j.core:openstack4j:3.11")
