@@ -44,7 +44,7 @@ dependencies {
     implementation("io.vertx:vertx-web:4.5.7")
     implementation("io.vertx:vertx-web-client:4.5.7")
 
-    implementation("commons-codec:commons-codec:1.16.1")
+    implementation("commons-codec:commons-codec:1.17.0")
     implementation("commons-io:commons-io:2.16.1")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.17.0")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.0")
