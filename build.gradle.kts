@@ -46,7 +46,7 @@ dependencies {
 
     implementation("commons-codec:commons-codec:1.16.1")
     implementation("commons-io:commons-io:2.16.1")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.17.0")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.17.1")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.0")
     implementation("com.github.luben:zstd-jni:1.5.6-2")
     implementation("com.github.zafarkhaja:java-semver:0.10.2")
