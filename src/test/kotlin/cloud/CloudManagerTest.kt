@@ -611,9 +611,9 @@ class CloudManagerTest {
           testVolume2.type, null, false, AZ01, any()) } returns volumeId2
       coEvery { client.createBlockDevice(testVolume3.sizeGb,
           testVolume3.type, null, false, AZ02, any()) } returns volumeId3
-      coEvery { client.attachVolume(any(), volumeId1) } just Runs
-      coEvery { client.attachVolume(any(), volumeId2) } just Runs
-      coEvery { client.attachVolume(any(), volumeId3) } just Runs
+      coEvery { client.attachVolume(any(), volumeId1, null) } just Runs
+      coEvery { client.attachVolume(any(), volumeId2, null) } just Runs
+      coEvery { client.attachVolume(any(), volumeId3, null) } just Runs
 
       CoroutineScope(vertx.dispatcher()).launch {
         doCreateOnDemand(testSetupWithVolumes, vertx, ctx, 1)
@@ -632,9 +632,9 @@ class CloudManagerTest {
                 null, false, AZ01, any())
             client.createBlockDevice(testVolume3.sizeGb, testVolume3.type,
                 null, false, AZ02, any())
-            client.attachVolume(any(), volumeId1)
-            client.attachVolume(any(), volumeId2)
-            client.attachVolume(any(), volumeId3)
+            client.attachVolume(any(), volumeId1, null)
+            client.attachVolume(any(), volumeId2, null)
+            client.attachVolume(any(), volumeId3, null)
 
             client.getIPAddress(any())
           }
