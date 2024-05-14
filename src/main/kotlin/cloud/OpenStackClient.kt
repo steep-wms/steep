@@ -411,9 +411,14 @@ class OpenStackClient(endpoint: String, username: String, password: String,
     }
   }
 
-  override suspend fun attachVolume(vmId: String, volumeId: String) {
-    log.info("Attaching volume `$volumeId' to VM `$vmId' ...")
+  override suspend fun attachVolume(vmId: String, volumeId: String,
+      deviceName: String?) {
+    if (deviceName != null) {
+      log.info("Attaching volume `$volumeId' to VM `$vmId' using device name `$deviceName' ...")
+    } else {
+      log.info("Attaching volume `$volumeId' to VM `$vmId' ...")
+    }
     val os = this.os.await()
-    blocking { os.compute().servers().attachVolume(vmId, volumeId, null) }
+    blocking { os.compute().servers().attachVolume(vmId, volumeId, deviceName) }
   }
 }

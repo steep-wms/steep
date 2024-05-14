@@ -36,6 +36,7 @@ import model.cloud.PoolAgentParams
 import model.cloud.VM
 import model.retry.RetryPolicy
 import model.setup.Setup
+import model.setup.Volume
 import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
 import java.io.File
@@ -615,9 +616,9 @@ class CloudManager : CoroutineVerticle() {
             try {
               cloudClient.waitForVM(externalId, timeoutCreateVM)
 
-              val volumeIds = volumeDeferreds.awaitAll()
-              for (volumeId in volumeIds) {
-                cloudClient.attachVolume(externalId, volumeId)
+              val volumes = volumeDeferreds.awaitAll()
+              for ((volumeId, volume) in volumes) {
+                cloudClient.attachVolume(externalId, volumeId, volume.deviceName)
               }
 
               val ipAddress = cloudClient.getIPAddress(externalId)
@@ -630,7 +631,7 @@ class CloudManager : CoroutineVerticle() {
               cloudClient.destroyVM(externalId, timeoutDestroyVM)
               for (vd in volumeDeferreds) {
                 val volumeId = try {
-                  vd.await()
+                  vd.await().first
                 } catch (vt: Throwable) {
                   log.error("Could not create volume", vt)
                   null
@@ -695,13 +696,14 @@ class CloudManager : CoroutineVerticle() {
    * objects that can be used to wait for the completion of the asynchronous
    * operation and to obtain the IDs of the created volumes.
    */
-  private suspend fun createVolumesAsync(externalId: String, setup: Setup): List<Deferred<String>> {
+  private suspend fun createVolumesAsync(externalId: String,
+      setup: Setup): List<Deferred<Pair<String, Volume>>> {
     val metadata = mapOf(CREATED_BY to createdByTag, SETUP_ID to setup.id,
         VM_EXTERNAL_ID to externalId)
     return setup.additionalVolumes.map { volume ->
       async {
         cloudClient.createBlockDevice(volume.sizeGb, volume.type, null, false,
-            volume.availabilityZone ?: setup.availabilityZone, metadata)
+            volume.availabilityZone ?: setup.availabilityZone, metadata) to volume
       }
     }
   }
