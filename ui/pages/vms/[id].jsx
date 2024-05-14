@@ -204,6 +204,9 @@ function VMDetails({ id }) {
                             {volume.availabilityZone ||
                               vm.setup.availabilityZone || <>&ndash;</>}
                           </div>
+                          <div className="vm-details-volume-deviceName">
+                            {volume.deviceName || <>&ndash;</>}
+                          </div>
                         </>
                       ))}
                     </div>
