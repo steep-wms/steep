@@ -12,10 +12,11 @@ package model.setup
  * @param deviceName the device name under which the volume will be exposed to
  * the operating system on the virtual machine (e.g. `/dev/sdb`). Please note
  * that this value is mandatory for some cloud providers, while for others, it
- * is optional and they automatically assign a name. Also, some cloud providers
- * only accept names that correspond to a specific scheme. Please refer to your
- * cloud provider's documentation on whether specifying a name is mandatory and
- * which values are considered valid.
+ * is optional and they automatically assign a name. Some even ignore this
+ * value completely (e.g. OpenStack). Also, some cloud providers only accept
+ * names that correspond to a specific scheme. Please refer to your cloud
+ * provider's documentation on whether specifying a name is mandatory and which
+ * values are considered valid.
  */
 data class Volume(
     val sizeGb: Int,
