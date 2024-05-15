@@ -11,6 +11,7 @@ import ConfigConstants.CLOUD_SSH_PRIVATE_KEY_LOCATION
 import ConfigConstants.CLOUD_SSH_USERNAME
 import agent.AgentRegistry
 import agent.AgentRegistryFactory
+import cloud.template.AttachedVolume
 import cloud.template.ProvisioningTemplateExtension
 import com.fasterxml.jackson.module.kotlin.convertValue
 import db.SetupRegistryFactory
@@ -625,7 +626,9 @@ class CloudManager : CoroutineVerticle() {
               vmRegistry.setVMIPAddress(vm.id, ipAddress)
 
               vmRegistry.setVMStatus(vm.id, VM.Status.CREATING, VM.Status.PROVISIONING)
-              provisionVM(ipAddress, vm.id, externalId, setup)
+
+              val attachedVolumes = volumes.map { AttachedVolume(it.first, it.second) }
+              provisionVM(ipAddress, vm.id, externalId, setup, attachedVolumes)
             } catch (e: Throwable) {
               vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYING)
               cloudClient.destroyVM(externalId, timeoutDestroyVM)
@@ -714,9 +717,10 @@ class CloudManager : CoroutineVerticle() {
    * @param vmId the VM's ID
    * @param externalId the VM's external ID
    * @param setup the setup that contains information how to provision the VM
+   * @param attachedVolumes the volumes attached to this VM
    */
   private suspend fun provisionVM(ipAddress: String, vmId: String,
-      externalId: String, setup: Setup) {
+      externalId: String, setup: Setup, attachedVolumes: List<AttachedVolume>) {
     val ssh = SSHClient(ipAddress, setup.sshUsername ?: sshUsername!!,
         sshPrivateKeyLocation, vertx, timeoutProvisioning)
     waitForSSH(ipAddress, externalId, ssh)
@@ -743,7 +747,8 @@ class CloudManager : CoroutineVerticle() {
         "ipAddress" to ipAddress,
         "agentId" to vmId,
         "agentCapabilities" to setup.providedCapabilities, // TODO deprecated - it's available through `setup` now
-        "setup" to setup
+        "setup" to setup,
+        "attachedVolumes" to attachedVolumes
     )
 
     // run provisioning scripts
