@@ -62,7 +62,7 @@ dependencies {
     implementation("org.apache.commons:commons-lang3:3.14.0")
     implementation("org.apache.commons:commons-text:1.11.0")
     implementation("org.flywaydb:flyway-core:10.11.0")
-    implementation("org.flywaydb:flyway-database-postgresql:10.11.0")
+    implementation("org.flywaydb:flyway-database-postgresql:10.13.0")
     implementation("org.mongodb:mongodb-driver-reactivestreams:5.0.1")
     implementation("com.github.openstack4j.core:openstack4j:3.11")
     implementation("org.ow2.asm:asm:9.7") // necessary to make org.parboiled:parboiled-java compatible with Java 21
