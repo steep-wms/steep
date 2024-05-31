@@ -1,4 +1,4 @@
-FROM azul/zulu-openjdk:21
+FROM azul/zulu-openjdk:22
 
 # prepare
 RUN apt-get update && \
