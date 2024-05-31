@@ -8,7 +8,7 @@ import CodeBox from "../CodeBox"
 import DefinitionList from "../DefinitionList"
 import DefinitionListItem from "../DefinitionListItem"
 import EventBusContext from "../lib/EventBusContext"
-import { LOGS_PROCESSCHAINS_PREFIX } from "../lib/EventBusMessages"
+import { AGENT_LEFT, LOGS_PROCESSCHAINS_PREFIX } from "../lib/EventBusMessages"
 import Label from "../Label"
 import ListItemProgressBox from "../ListItemProgressBox"
 import LiveDuration from "../LiveDuration"
@@ -37,6 +37,7 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
   const [logCollapsed, setLogCollapsed] = useState()
   const [logError, setLogError] = useState()
   const [waitForLog, setWaitForLog] = useState(false)
+  const [agentRunning, setAgentRunning] = useState(undefined)
 
   let processChain
   if (processChains.items !== undefined && processChains.items.length > 0) {
@@ -68,6 +69,17 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
     }
   } else {
     processChain = undefined
+  }
+
+  // get ID of agent to which this process chain is or was allocated
+  let allocatedAgentId = undefined
+  if (
+    runs.items !== undefined &&
+    processChain?.runNumber !== undefined &&
+    runs.items.length >= processChain.runNumber
+  ) {
+    allocatedAgentId =
+      runs.items[runs.items.length - processChain.runNumber].agentId
   }
 
   useEffect(() => {
@@ -172,6 +184,45 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
       unregisterLogConsumer()
     }
   }, [id, eventBus, waitForLog, runNumber])
+
+  useEffect(() => {
+    function onAgentLeft(_, msg) {
+      let agentId = msg.body
+      if (agentId === allocatedAgentId) {
+        setAgentRunning(false)
+      }
+    }
+
+    function unregisterAgentLeftConsumer() {
+      if (eventBus !== undefined && eventBus.state === EventBus.OPEN) {
+        eventBus.unregisterHandler(AGENT_LEFT, onAgentLeft)
+      }
+    }
+
+    // we don't know the agent's status yet
+    setAgentRunning(undefined)
+
+    if (allocatedAgentId === undefined) {
+      // unknown agent ID - do nothing
+      return
+    }
+
+    // check if agent exists
+    fetcher(`${process.env.baseUrl}/agents/${allocatedAgentId}`, false, {
+      method: "HEAD"
+    })
+      .then(() => setAgentRunning(true))
+      .catch(() => setAgentRunning(false))
+
+    // register handler that notices when the agent has left the cluster
+    if (eventBus !== undefined) {
+      eventBus.registerHandler(AGENT_LEFT, onAgentLeft)
+    }
+
+    return () => {
+      unregisterAgentLeftConsumer()
+    }
+  }, [allocatedAgentId, eventBus])
 
   function onCancel() {
     setCancelModalOpen(true)
@@ -346,6 +397,20 @@ const ProcessChainDetails = ({ id, runNumber = undefined }) => {
                 <DefinitionListItem title="Required capabilities">
                   {reqcap}
                 </DefinitionListItem>
+                {allocatedAgentId !== undefined ? (
+                  <DefinitionListItem title="Agent">
+                    {agentRunning ? (
+                      <Link
+                        href="/agents/[id]"
+                        as={`/agents/${allocatedAgentId}`}
+                      >
+                        {allocatedAgentId}
+                      </Link>
+                    ) : (
+                      allocatedAgentId
+                    )}
+                  </DefinitionListItem>
+                ) : undefined}
               </DefinitionList>
             </div>
           </div>
