@@ -1,0 +1,30 @@
+vars:
+  - id: outer
+    value:
+      - "outer.txt"
+  - id: inner
+    value:
+      - "inner.txt"
+  - id: i
+  - id: o
+  - id: j
+  - id: innero
+actions:
+  - type: for
+    input: outer
+    enumerator: i
+    actions:
+      - type: for
+        input: inner
+        enumerator: j
+        actions:
+          - id: cp
+            type: execute
+            service: cp
+            inputs:
+              - id: input_file
+                var: j
+            outputs:
+              - id: output_file
+                var: o
+        yieldToInput: o

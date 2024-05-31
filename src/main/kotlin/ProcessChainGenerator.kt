@@ -381,6 +381,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
             input = substitutions[action.input.id] ?: action.input,
             actions = newActions,
             yieldToOutput = action.yieldToOutput?.let { substitutions[it.id] ?: it },
+            yieldToInput = action.yieldToInput?.let { substitutions[it.id] ?: it },
             dependsOn = action.dependsOn.map { substitutions[it]?.id ?: it }
           )
         }

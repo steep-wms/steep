@@ -1,0 +1,45 @@
+- chains:
+    - id: 1
+      executables:
+        - id: cp$0$0
+          path: cp
+          serviceId: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: j$0$0
+                value: inner.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: o$0$0
+                value: /tmp/0
+              type: output
+              dataType: string
+  results:
+    o$0$0:
+      - innerCp.txt
+- chains:
+    - id: 3
+      executables:
+        - id: cp$0$1
+          path: cp
+          serviceId: cp
+          arguments:
+            - id: input_file
+              variable:
+                id: j$0$1
+                value: innerCp.txt
+              type: input
+              dataType: string
+            - id: output_file
+              variable:
+                id: o$0$1
+                value: /tmp/2
+              type: output
+              dataType: string
+  results:
+    o$0$1: [] # Simulating an empty list. In fact cp would copy the file again and again leading to an endless loop.
+- chains: []
+  results: {}
