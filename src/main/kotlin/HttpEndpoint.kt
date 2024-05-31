@@ -192,6 +192,9 @@ class HttpEndpoint : CoroutineVerticle() {
         .produces("text/html")
         .handler(this::onGetAgents)
 
+    router.head("/agents/:id/?")
+        .handler(this::onHeadAgentById)
+
     router.get("/agents/:id/?")
         .produces("application/json")
         .produces("text/html")
@@ -624,6 +627,21 @@ class HttpEndpoint : CoroutineVerticle() {
               .end("Could not request agent information")
           }
         }
+      }
+    }
+  }
+
+  /**
+   * Check if an agent exists
+   */
+  private fun onHeadAgentById(ctx: RoutingContext) {
+    launch {
+      val id = ctx.pathParam("id")
+      val agentIds = agentRegistry.getAgentIds()
+      if (agentIds.contains(id)) {
+        ctx.response().end()
+      } else {
+          renderError(ctx, 404)
       }
     }
   }
