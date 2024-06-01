@@ -1,6 +1,9 @@
 import { test, expect } from "@playwright/test"
 
-test.describe.configure({ mode: "parallel" })
+// Run tests in serial mode. Each of them starts a workflow and then relies on
+// it to be visible on the overview page. If the tests run in parallel, they
+// might interfere with each other.
+test.describe.configure({ mode: "serial", retries: 4 })
 
 test("submit workflow", async ({ page, request }) => {
   let workflow = `api: 4.7.0
