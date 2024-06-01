@@ -197,6 +197,9 @@ class ProcessChainGeneratorTest {
         // action
         T("forEachYieldToInputNested"),
 
+        // Test if yield to input is also working in inner loops
+        T("forEachYieldToInputNestedDeep"),
+
         // Test if a recursive for-each action can have sub-actions that
         // lead to three process chains, one of which contains another
         // for-each action
