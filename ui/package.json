@@ -64,7 +64,7 @@
     "eslint-plugin-cypress": "^2.15.2",
     "eslint-webpack-plugin": "^4.2.0",
     "npm-check-updates": "^16.14.20",
-    "prettier": "^3.2.5",
+    "prettier": "^3.3.2",
     "start-server-and-test": "^2.0.3"
   }
 }
