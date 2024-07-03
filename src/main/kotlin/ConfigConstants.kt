@@ -223,6 +223,37 @@ object ConfigConstants {
       "steep.cluster.hazelcast.splitBrainProtection.exitProcessAfter"
 
   /**
+   * `true` if Hazelcast should try to automatically discover other members in
+   * a Kubernetes cluster
+   */
+  const val CLUSTER_HAZELCAST_KUBERNETES_ENABLED = "steep.cluster.kubernetes.enabled"
+
+  /**
+   * The Kubernetes namespace where Steep is running. Falls back to the values
+   * of the environment variables `KUBERNETES_NAMESPACE` or
+   * `OPENSHIFT_BUILD_NAMESPACE`, or to the pod's namespace retrieved from
+   * `/var/run/secrets/kubernetes.io/serviceaccount/namespace`.
+   */
+  const val CLUSTER_HAZELCAST_KUBERNETES_NAMESPACE = "steep.cluster.kubernetes.namespace"
+
+  /**
+   * An optional service name to limit the cluster members to pods that are
+   * connected to a given service. If not specified, all pods in the namespace
+   * will be considered potential cluster members.
+   */
+  const val CLUSTER_HAZELCAST_KUBERNETES_SERVICE_NAME = "steep.cluster.kubernetes.serviceName"
+
+  /**
+   * Instead of specifying a namespace and a service name through
+   * [CLUSTER_HAZELCAST_KUBERNETES_NAMESPACE] and
+   * [CLUSTER_HAZELCAST_KUBERNETES_SERVICE_NAME], you can also specify a DNS
+   * name in the form `SERVICE-NAME.NAMESPACE.svc.cluster.local`. Hazelcast
+   * will perform a DNS lookup to obtain the pod IP addresses of cluster
+   * members.
+   */
+  const val CLUSTER_HAZELCAST_KUBERNETES_SERVICE_DNS = "steep.cluster.kubernetes.serviceDns"
+
+  /**
    * The interval at which the [Main] thread looks for orphaned entries in the
    * remote agent registry. Such entries may happen if there is a network
    * failure during deregistration of an agent. The interval is specified

@@ -130,8 +130,16 @@ suspend fun main() {
 
   // enable TCP or multicast
   val tcpEnabled = conf.getBoolean(ConfigConstants.CLUSTER_HAZELCAST_TCPENABLED, false)
-  hazelcastConfig.networkConfig.join.multicastConfig.isEnabled = !tcpEnabled
+  val kubernetesEnabled = conf.getBoolean(ConfigConstants.CLUSTER_HAZELCAST_KUBERNETES_ENABLED, false)
+  if (tcpEnabled && kubernetesEnabled) {
+    throw IllegalArgumentException("Configuration items " +
+        "`${ConfigConstants.CLUSTER_HAZELCAST_TCPENABLED}' and " +
+        "`${ConfigConstants.CLUSTER_HAZELCAST_KUBERNETES_ENABLED}' cannot be " +
+        "used together.")
+  }
+  hazelcastConfig.networkConfig.join.multicastConfig.isEnabled = !tcpEnabled && !kubernetesEnabled
   hazelcastConfig.networkConfig.join.tcpIpConfig.isEnabled = tcpEnabled
+  hazelcastConfig.networkConfig.join.kubernetesConfig.isEnabled = kubernetesEnabled
 
   val agentId = conf.getString(ConfigConstants.AGENT_ID) ?: run {
     val id = UniqueID.next()
@@ -192,6 +200,26 @@ suspend fun main() {
     // enable split-brain protection rule for all data structures
     hazelcastConfig.mapConfigs["default"]?.splitBrainProtectionName =
         splitBrainProtectionConfig.name
+  }
+
+  // configure Kubernetes discovery
+  val kubernetesNamespace = conf.getString(
+      ConfigConstants.CLUSTER_HAZELCAST_KUBERNETES_NAMESPACE)
+  if (kubernetesNamespace != null) {
+    hazelcastConfig.networkConfig.join.kubernetesConfig
+        .setProperty("namespace", kubernetesNamespace)
+  }
+  val kubernetesServiceName = conf.getString(
+      ConfigConstants.CLUSTER_HAZELCAST_KUBERNETES_SERVICE_NAME)
+  if (kubernetesServiceName != null) {
+    hazelcastConfig.networkConfig.join.kubernetesConfig
+        .setProperty("service-name", kubernetesServiceName)
+  }
+  val kubernetesServiceDns = conf.getString(
+      ConfigConstants.CLUSTER_HAZELCAST_KUBERNETES_SERVICE_DNS)
+  if (kubernetesServiceDns != null) {
+    hazelcastConfig.networkConfig.join.kubernetesConfig
+        .setProperty("service-dns", kubernetesServiceDns)
   }
 
   // configure event bus
