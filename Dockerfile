@@ -13,13 +13,15 @@ RUN apt-get update && \
       openssh-client \
       software-properties-common \
     && \
-    curl -fsSL https://download.docker.com/linux/$(. /etc/os-release; echo "$ID")/gpg | apt-key add - && \
-    add-apt-repository \
-       "deb [arch=amd64] https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") \
-       $(lsb_release -cs) \
-       stable" && \
+    install -m 0755 -d /etc/apt/keyrings && \
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc && \
+    chmod a+r /etc/apt/keyrings/docker.asc && \
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+      $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+      tee /etc/apt/sources.list.d/docker.list > /dev/null && \
     apt-get update && \
-    apt-get install -y --no-install-recommends docker-ce && \
+    apt-get install -y --no-install-recommends docker-ce-cli && \
     apt-get purge -y software-properties-common && \
     apt-get autoremove -y && \
     apt-get clean && \
