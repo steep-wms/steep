@@ -4,11 +4,13 @@ import ch.qos.logback.classic.joran.JoranConfigurator
 import cloud.CloudManager
 import com.hazelcast.cluster.MembershipAdapter
 import com.hazelcast.cluster.MembershipEvent
+import com.hazelcast.config.Config
 import com.hazelcast.config.PartitionGroupConfig
 import com.hazelcast.config.SplitBrainProtectionConfig
 import com.hazelcast.config.SplitBrainProtectionListenerConfig
 import com.hazelcast.core.HazelcastInstance
 import com.hazelcast.core.LifecycleEvent
+import com.hazelcast.instance.impl.HazelcastInstanceFactory
 import com.hazelcast.spi.partitiongroup.PartitionGroupMetaData.PARTITION_GROUP_PLACEMENT
 import com.hazelcast.spi.properties.ClusterProperty
 import com.hazelcast.spi.properties.HazelcastProperties
@@ -19,6 +21,7 @@ import helper.CompressedJsonObjectMessageCodec
 import helper.JsonUtils
 import helper.LazyJsonObjectMessageCodec
 import helper.UniqueID
+import helper.hazelcast.CombinedNodeContext
 import helper.hazelcast.ExitingSplitBrainProtectionListener
 import helper.hazelcast.FallBelowSplitBrainProtectionFunction
 import helper.loadTemplate
@@ -53,6 +56,7 @@ import java.net.NetworkInterface
 import java.net.SocketException
 import java.util.Enumeration
 import java.util.Locale
+import java.util.UUID
 import java.util.concurrent.CountDownLatch
 import kotlin.system.exitProcess
 
@@ -243,14 +247,14 @@ suspend fun main() {
   )
 
   // start Vert.x
-  val mgr = HazelcastClusterManager(hazelcastConfig)
+  globalHazelcastInstance = createHazelcastInstance(hazelcastConfig, kubernetesEnabled)
+  val mgr = HazelcastClusterManager(globalHazelcastInstance)
   val vertx = Vertx.builder()
       .with(options)
       .withClusterManager(mgr)
       .buildClustered()
       .coAwait()
   globalVertxInstance = vertx
-  globalHazelcastInstance = mgr.hazelcastInstance
 
   // listen to added and left cluster nodes
   // BUGFIX: do not use mgr.nodeListener() or you will override Vert.x's
@@ -414,6 +418,18 @@ private fun getDefaultAddress(): String? {
   }
 
   return null
+}
+
+/**
+ * Creates a new custom Hazelcast instance. Works similar to
+ * [io.vertx.spi.cluster.hazelcast.HazelcastClusterManager.join] but overwrites
+ * the default node context.
+ */
+fun createHazelcastInstance(hazelcastConfig: Config, kubernetesEnabled: Boolean): HazelcastInstance {
+  hazelcastConfig.setProperty("hazelcast.shutdownhook.enabled", "false")
+  hazelcastConfig.memberAttributeConfig.setAttribute("__vertx.nodeId", UUID.randomUUID().toString())
+  return HazelcastInstanceFactory.newHazelcastInstance(hazelcastConfig,
+      hazelcastConfig.instanceName, CombinedNodeContext(kubernetesEnabled))
 }
 
 /**
