@@ -1,5 +1,6 @@
 package runtime
 
+import ConfigConstants
 import helper.OutputCollector
 import helper.UniqueID
 import io.fabric8.kubernetes.api.model.batch.v1.Job
@@ -10,7 +11,10 @@ import io.fabric8.kubernetes.client.KubernetesClient
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
 import io.vertx.core.json.JsonObject
 import model.processchain.Executable
+import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 import java.io.IOException
+import java.io.InputStream
 import java.util.concurrent.TimeUnit
 
 /**
@@ -23,6 +27,8 @@ class KubernetesRuntime(
     private val kubernetesConfig: Config? = ConfigBuilder().build()
 ) : Runtime {
   companion object {
+    private val log = LoggerFactory.getLogger(KubernetesRuntime::class.java)
+
     const val DEFAULT_NAMESPACE = "default"
   }
 
@@ -33,7 +39,7 @@ class KubernetesRuntime(
    * Wait for a job to finish. Handles output and failures.
    */
   private fun waitForJob(client: KubernetesClient, job: Job,
-      commandLine: List<String>, outputCollector: OutputCollector) {
+      commandLine: List<String>) {
     // get all pods created by the job
     val podList = client.pods().inNamespace(namespace)
         .withLabel("job-name", job.metadata.name).list()
@@ -67,22 +73,9 @@ class KubernetesRuntime(
           }
         }, Long.MAX_VALUE, TimeUnit.DAYS)
 
-    // get job log
-    val joblog = client.batch().v1().jobs().inNamespace(namespace).withName(job.metadata.name).log
-    for (line in joblog.lines()) {
-      outputCollector.collect(line)
-    }
-
     if (failed) {
-      throw IOException(
-          """
-              Failed to run `${commandLine.joinToString(" ")}'.
-
-              Reason: $errorMessages.
-
-              Last output: ${outputCollector.output()}
-            """.trimIndent()
-      )
+      throw IOException("Failed to run `${commandLine.joinToString(" ")}'. " +
+          "Reason: $errorMessages.")
     }
   }
 
@@ -91,7 +84,8 @@ class KubernetesRuntime(
    */
   private fun execute(executable: Executable, outputCollector: OutputCollector,
       client: KubernetesClient) {
-    val jobName = "steep-${executable.id}-${executable.serviceId}-${UniqueID.next()}"
+    val jobId = UniqueID.next()
+    val jobName = "steep-${executable.id}-${executable.serviceId}-${jobId}"
         .lowercase().replace("""[^a-z0-9]""".toRegex(), "-")
 
     val commandLine = Runtime.executableToCommandLine(executable)
@@ -117,20 +111,53 @@ class KubernetesRuntime(
         .endSpec()
         .build()
 
-    val jobs = client.batch().v1().jobs().inNamespace(namespace)
-    jobs.resource(job).create()
-
+    // start job now
+    client.batch().v1().jobs().inNamespace(namespace).resource(job).create()
     try {
-      waitForJob(client, job, commandLine, outputCollector)
+      val resource = client.batch().v1().jobs().inNamespace(namespace)
+          .withName(job.metadata.name)
+
+      // watch output
+      val watchLog = resource.watchLog()
+      val streamGobbler = StreamGobbler(jobId, watchLog.output, outputCollector,
+          MDC.getCopyOfContextMap())
+      val readerThread = Thread(streamGobbler)
+      readerThread.start()
+
+      try {
+        waitForJob(client, job, commandLine)
+      } finally {
+        readerThread.join()
+      }
     } finally {
       // make sure to delete the job after it has finished
-      jobs.resource(job).delete()
+      client.batch().v1().jobs().inNamespace(namespace)
+          .withName(job.metadata.name).delete()
     }
   }
 
   override fun execute(executable: Executable, outputCollector: OutputCollector) {
     KubernetesClientBuilder().withConfig(kubernetesConfig).build().use { client ->
       execute(executable, outputCollector, client)
+    }
+  }
+
+  /**
+   * A background thread that reads all lines from the [inputStream] of a job
+   * with the given [jobId] and collects them in an [outputCollector]
+   */
+  private class StreamGobbler(
+      private val jobId: String,
+      private val inputStream: InputStream,
+      private val outputCollector: OutputCollector,
+      private val mdc: Map<String, String>?
+  ) : Runnable {
+    override fun run() {
+      mdc?.let { MDC.setContextMap(it) }
+      inputStream.bufferedReader().forEachLine { line ->
+        log.info("[$jobId] $line")
+        outputCollector.collect(line)
+      }
     }
   }
 }

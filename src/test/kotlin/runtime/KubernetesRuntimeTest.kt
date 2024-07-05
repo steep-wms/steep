@@ -25,7 +25,7 @@ import java.io.IOException
 @Testcontainers
 class KubernetesRuntimeTest {
   companion object {
-    private const val EXPECTED = "Elvis"
+    private const val EXPECTED = "Elvis\n"
 
     @Container
     val k3s = K3sContainer(DockerImageName.parse("rancher/k3s:v1.30.2-k3s1"))
@@ -46,7 +46,28 @@ class KubernetesRuntimeTest {
     val runtime = KubernetesRuntime(jsonObjectOf(), Config.fromKubeconfig(k3s.kubeConfigYaml))
     val collector = DefaultOutputCollector()
     runtime.execute(exec, collector)
-    assertThat(collector.output().trim()).isEqualTo(EXPECTED)
+    assertThat(collector.output()).isEqualTo(EXPECTED)
+  }
+
+  /**
+   * Test that a simple Docker container can be executed and that its output
+   * (multiple lines) can be collected
+   */
+  @Test
+  fun executeEchoMultiline() {
+    val exec = Executable(path = "alpine", serviceId = "myservice", arguments = listOf(
+        Argument(variable = ArgumentVariable(UniqueID.next(), "sh"),
+            type = Argument.Type.INPUT),
+        Argument(variable = ArgumentVariable(UniqueID.next(), "-c"),
+            type = Argument.Type.INPUT),
+        Argument(variable = ArgumentVariable(UniqueID.next(), "echo Hello && sleep 0.1 && echo World"),
+            type = Argument.Type.INPUT)
+    ), runtime = Service.RUNTIME_KUBERNETES)
+
+    val runtime = KubernetesRuntime(jsonObjectOf(), Config.fromKubeconfig(k3s.kubeConfigYaml))
+    val collector = DefaultOutputCollector()
+    runtime.execute(exec, collector)
+    assertThat(collector.output()).isEqualTo("Hello\nWorld")
   }
 
   /**
