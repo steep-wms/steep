@@ -40,6 +40,7 @@ import model.timeout.TimeoutPolicy
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 import runtime.DockerRuntime
+import runtime.KubernetesRuntime
 import runtime.OtherRuntime
 import java.io.File
 import java.lang.reflect.InvocationTargetException
@@ -114,6 +115,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
 
   private val otherRuntime by lazy { OtherRuntime() }
   private val dockerRuntime by lazy { DockerRuntime(config) }
+  private val kubernetesRuntime by lazy { KubernetesRuntime(config) }
 
   override suspend fun execute(processChain: ProcessChain,
       runNumber: Long): Map<String, List<Any>> {
@@ -249,6 +251,12 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
         interruptable(executor) {
           withMDC(exec, processChainId) {
             dockerRuntime.execute(exec, collector)
+          }
+        }
+      } else if (exec.runtime == Service.RUNTIME_KUBERNETES) {
+        interruptable(executor) {
+          withMDC(exec, processChainId) {
+            kubernetesRuntime.execute(exec, collector)
           }
         }
       } else if (exec.runtime == Service.RUNTIME_OTHER) {

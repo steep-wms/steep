@@ -69,6 +69,7 @@ dependencies {
     implementation("com.ongres.scram:client:2.1") // support PostgreSQL SCRAM-SHA-256 authentication
     implementation("com.zaxxer:HikariCP:5.1.0")
     implementation("io.airlift:aircompressor:0.27")
+    implementation("io.fabric8:kubernetes-client:6.13.1")
     implementation("io.pebbletemplates:pebble:3.2.2")
     implementation("io.projectreactor:reactor-core:3.6.6") // necessary for reactive MongoDB driver
     implementation("io.prometheus:simpleclient:0.16.0")
@@ -99,11 +100,13 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.11")
     testImplementation("io.vertx:vertx-junit5:4.5.8")
     testImplementation("org.assertj:assertj-core:3.26.0")
+    testImplementation("org.bouncycastle:bcpkix-jdk18on:1.78.1") // necessary for org.testcontainers:k3s
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.2")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.2")
     testImplementation("org.testcontainers:testcontainers:1.19.8")
     testImplementation("org.testcontainers:junit-jupiter:1.19.8")
+    testImplementation("org.testcontainers:k3s:1.19.8")
     testImplementation("org.testcontainers:postgresql:1.19.8")
 }
 

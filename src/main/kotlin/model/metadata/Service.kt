@@ -51,6 +51,7 @@ data class Service(
      * A list of built-in runtime environments
      */
     const val RUNTIME_DOCKER = "docker"
+    const val RUNTIME_KUBERNETES = "kubernetes"
     const val RUNTIME_OTHER = "other"
   }
 }

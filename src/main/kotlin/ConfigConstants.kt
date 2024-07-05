@@ -476,6 +476,11 @@ object ConfigConstants {
   const val RUNTIMES_DOCKER_PULL = "steep.runtimes.docker.pull"
 
   /**
+   * The namespace in which Steep should create Kubernetes jobs and pods
+   */
+  const val RUNTIMES_KUBERNETES_NAMESPACE = "steep.runtimes.kubernetes.namespace"
+
+  /**
    * The database driver (see [db.SubmissionRegistryFactory] for valid values)
    */
   const val DB_DRIVER = "steep.db.driver"

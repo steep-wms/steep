@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="logback.xml"/>
+
+    <!-- disable HTTP client logging for test containers -->
+    <logger name="com.github.dockerjava.zerodep.shaded.org.apache.hc.client5.http" level="OFF" />
+</configuration>
