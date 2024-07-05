@@ -103,7 +103,7 @@ dependencies {
     testImplementation("org.bouncycastle:bcpkix-jdk18on:1.78.1") // necessary for org.testcontainers:k3s
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.2")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.3")
     testImplementation("org.testcontainers:testcontainers:1.19.8")
     testImplementation("org.testcontainers:junit-jupiter:1.19.8")
     testImplementation("org.testcontainers:k3s:1.19.8")
