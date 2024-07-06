@@ -12,11 +12,13 @@ import model.processchain.Executable
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.fail
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.k3s.K3sContainer
 import org.testcontainers.utility.DockerImageName
 import java.io.IOException
+import java.util.concurrent.Executors
 
 /**
  * Tests for [KubernetesRuntime]
@@ -134,6 +136,58 @@ class KubernetesRuntimeTest {
       assertThat(jobs.items).isEmpty()
       val pods = client.pods().inNamespace(KubernetesRuntime.DEFAULT_NAMESPACE).list()
       assertThat(pods.items).isEmpty()
+    }
+  }
+
+  /**
+   * Make sure the pod is immediately deleted when the executable is cancelled
+   */
+  @Test
+  fun killPodOnCancel() {
+    val exec = Executable(path = "alpine", serviceId = "sleep", arguments = listOf(
+        Argument(variable = ArgumentVariable(UniqueID.next(), "sleep"),
+            type = Argument.Type.INPUT),
+        Argument(variable = ArgumentVariable(UniqueID.next(), "120"),
+            type = Argument.Type.INPUT)
+    ), runtime = Service.RUNTIME_KUBERNETES)
+
+    // launch a job in the background
+    val kubernetesConfig = Config.fromKubeconfig(k3s.kubeConfigYaml)
+    val executor = Executors.newSingleThreadExecutor()
+    val execFuture = executor.submit {
+      val runtime = KubernetesRuntime(jsonObjectOf(), kubernetesConfig)
+      runtime.execute(exec, DefaultOutputCollector())
+    }
+
+    KubernetesClientBuilder().withConfig(kubernetesConfig).build().use { client ->
+      // wait until the pod is there
+      while (true) {
+        val pods = client.pods().list().items
+        val sleepPod = pods.any { it.metadata.name.startsWith("steep-${exec.id}-") }
+        if (sleepPod) {
+          break
+        }
+        Thread.sleep(1000)
+      }
+
+      // cancel job
+      execFuture.cancel(true)
+
+      // wait for the pod to disappear (should be immediate, but we'll give
+      // it some leeway to avoid becoming flaky)
+      var count = 0
+      while (true) {
+        val pods = client.pods().list().items
+        val sleepPodGone = pods.none { it.metadata.name.startsWith("steep-${exec.id}-") }
+        if (sleepPodGone) {
+          break
+        }
+        Thread.sleep(1000)
+        count++
+        if (count == 2) {
+          fail("It took too long to delete the pod!")
+        }
+      }
     }
   }
 }

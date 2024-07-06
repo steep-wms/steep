@@ -130,6 +130,16 @@ class KubernetesRuntime(
       } finally {
         readerThread.join()
       }
+    } catch (e: InterruptedException) {
+      try {
+        // delete pod immediately on cancel
+        client.pods().inNamespace(namespace)
+            .withLabel("job-name", job.metadata.name)
+            .withGracePeriod(0).delete()
+      } catch (t: Throwable) {
+        // ignore
+      }
+      throw e;
     } finally {
       // make sure to delete the job after it has finished
       client.batch().v1().jobs().inNamespace(namespace)
