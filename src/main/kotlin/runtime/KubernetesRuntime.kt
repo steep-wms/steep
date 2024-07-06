@@ -85,8 +85,9 @@ class KubernetesRuntime(
   private fun execute(executable: Executable, outputCollector: OutputCollector,
       client: KubernetesClient) {
     val jobId = UniqueID.next()
-    val jobName = "steep-${executable.id}-${executable.serviceId}-${jobId}"
+    val jobName = "steep-${executable.id}-${jobId}-${executable.serviceId}-"
         .lowercase().replace("""[^a-z0-9]""".toRegex(), "-")
+        .take(63).trimEnd { !it.isLetterOrDigit() }
 
     val commandLine = Runtime.executableToCommandLine(executable)
     val args = commandLine.drop(1)
