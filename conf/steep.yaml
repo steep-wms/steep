@@ -78,6 +78,15 @@ steep:
       volumes: []
         # - /data:/data
       # pull: auto
+    kubernetes:
+      # namespace: default
+      # volumeMounts:
+      #   - name: steep-tmp-path
+      #     mountPath: /tmp
+      # volumes:
+      #   - name: steep-tmp-path
+      #     hostPath:
+      #       path: /tmp
 
   controller:
     lookupInterval: 2s

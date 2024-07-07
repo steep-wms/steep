@@ -1,8 +1,10 @@
 package runtime
 
+import ConfigConstants
 import helper.DefaultOutputCollector
 import helper.UniqueID
 import io.vertx.core.json.JsonObject
+import model.metadata.Service
 import model.processchain.Argument
 import model.processchain.ArgumentVariable
 import model.processchain.Executable
@@ -10,6 +12,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.io.File
 import java.io.IOException
 import java.nio.file.Path
 
@@ -87,5 +90,26 @@ interface ContainerRuntimeTest {
     val collector = DefaultOutputCollector()
     assertThatThrownBy { runtime.execute(exec, collector) }
         .isInstanceOf(IOException::class.java)
+  }
+
+  /**
+   * Test that [ConfigConstants.TMP_PATH] is correctly mounted
+   */
+  @Test
+  fun executeTmpPath(@TempDir tempDir: Path) {
+    val f = File(tempDir.toFile(), "test.txt")
+    f.writeText(EXPECTED)
+
+    val exec = Executable(path = "alpine", serviceId = "cat", arguments = listOf(
+        Argument(variable = ArgumentVariable(UniqueID.next(), "cat"),
+            type = Argument.Type.INPUT),
+        Argument(variable = ArgumentVariable(UniqueID.next(), f.absolutePath),
+            type = Argument.Type.INPUT)
+    ), runtime = Service.RUNTIME_DOCKER)
+
+    val runtime = createRuntime(createDefaultConfig(tempDir))
+    val collector = DefaultOutputCollector()
+    runtime.execute(exec, collector)
+    assertThat(collector.output()).isEqualTo(EXPECTED)
   }
 }

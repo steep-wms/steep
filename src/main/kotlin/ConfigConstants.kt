@@ -481,6 +481,52 @@ object ConfigConstants {
   const val RUNTIMES_KUBERNETES_NAMESPACE = "steep.runtimes.kubernetes.namespace"
 
   /**
+   * An optional list of Kubernetes volume mount objects. The Kubernetes runtime
+   * mounts volumes specified here into the started containers. For example,
+   * the following configuration mounts a volume with the name `steep-tmp-path`
+   * to the path `/tmp/steep/tmp` inside the container:
+   *
+   * ```yaml
+   * volumeMounts:
+   *   - name: steep-tmp-path
+   *     mountPath: /tmp/steep/tmp
+   * ```
+   *
+   * The volume `steep-tmp-path` must be defined through the configuration item
+   * [RUNTIMES_KUBERNETES_VOLUMES].
+   *
+   * See the [Kubernetes API reference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volumemount-v1-core)
+   * for more information about volume mount objects.
+   */
+  const val RUNTIMES_KUBERNETES_VOLUMEMOUNTS = "steep.runtimes.kubernetes.volumeMounts"
+
+  /**
+   * An optional list of Kubernetes volumes. The Kubernetes runtime attaches
+   * these volumes to the started pods. For example, the following configuration
+   * defines a volume that refers to a host path:
+   *
+   * ```yaml
+   * volumes:
+   *   - name: steep-tmp-path
+   *     hostPath:
+   *       path: /path/to/steep/tmp_path
+   * ```
+   *
+   * You can also refer to persistent volume claims:
+   *
+   * ```yaml
+   * volumes:
+   *   - name: steep-tmp-path
+   *     persistentVolumeClaim:
+   *       claimName: steep-tmp-path-volume-claim
+   * ```
+   *
+   * See the [Kubernetes API reference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volume-v1-core)
+   * for more information about volumes.
+   */
+  const val RUNTIMES_KUBERNETES_VOLUMES = "steep.runtimes.kubernetes.volumes"
+
+  /**
    * The database driver (see [db.SubmissionRegistryFactory] for valid values)
    */
   const val DB_DRIVER = "steep.db.driver"

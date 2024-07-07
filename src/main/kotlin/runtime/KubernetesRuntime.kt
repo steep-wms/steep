@@ -1,8 +1,11 @@
 package runtime
 
 import ConfigConstants
+import helper.JsonUtils
 import helper.OutputCollector
 import helper.UniqueID
+import io.fabric8.kubernetes.api.model.Volume
+import io.fabric8.kubernetes.api.model.VolumeMount
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import io.fabric8.kubernetes.api.model.batch.v1.JobBuilder
 import io.fabric8.kubernetes.client.Config
@@ -10,6 +13,7 @@ import io.fabric8.kubernetes.client.ConfigBuilder
 import io.fabric8.kubernetes.client.KubernetesClient
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
 import io.vertx.core.json.JsonObject
+import io.vertx.kotlin.core.json.jsonArrayOf
 import model.processchain.Executable
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
@@ -30,10 +34,32 @@ class KubernetesRuntime(
     private val log = LoggerFactory.getLogger(KubernetesRuntime::class.java)
 
     const val DEFAULT_NAMESPACE = "default"
+
+    private inline fun <reified T> deserConfig(config: JsonObject, name: String,
+        humanReadableName: String): List<T> {
+      val jsonArr = config.getJsonArray(name, jsonArrayOf())
+      return jsonArr.map { obj ->
+        if (obj is JsonObject) {
+          try {
+            JsonUtils.fromJson<T>(obj)
+          } catch (t: Throwable) {
+            throw IllegalArgumentException("Unable to deserialize element in " +
+                "configuration item `$name' to a $humanReadableName object.", t)
+          }
+        } else {
+          throw IllegalArgumentException("Configuration item " +
+              "`$name' must be an array of $humanReadableName objects")
+        }
+      }
+    }
   }
 
   private val namespace: String = config.getString(
       ConfigConstants.RUNTIMES_KUBERNETES_NAMESPACE, DEFAULT_NAMESPACE)
+  private val volumeMounts = deserConfig<VolumeMount>(config,
+      ConfigConstants.RUNTIMES_KUBERNETES_VOLUMEMOUNTS, "volume mount")
+  private val volumes = deserConfig<Volume>(config,
+      ConfigConstants.RUNTIMES_KUBERNETES_VOLUMES, "volume")
 
   /**
    * Wait for a job to finish. Handles output and failures.
@@ -105,8 +131,10 @@ class KubernetesRuntime(
                 .withName(jobName)
                 .withImage(executable.path)
                 .withArgs(*args.toTypedArray())
+                .withVolumeMounts(volumeMounts)
               .endContainer()
               .withRestartPolicy("Never")
+              .withVolumes(volumes)
             .endSpec()
           .endTemplate()
         .endSpec()

@@ -1,10 +1,12 @@
 package runtime
 
+import ConfigConstants
 import helper.DefaultOutputCollector
 import helper.UniqueID
 import io.fabric8.kubernetes.client.Config
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
 import io.vertx.core.json.JsonObject
+import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
 import model.metadata.Service
 import model.processchain.Argument
@@ -23,6 +25,7 @@ import runtime.ContainerRuntimeTest.Companion.EXPECTED
 import java.io.IOException
 import java.nio.file.Path
 import java.util.concurrent.Executors
+import kotlin.io.path.absolute
 
 /**
  * Tests for [KubernetesRuntime]
@@ -38,6 +41,20 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
   override fun createDefaultConfig(tempDir: Path): JsonObject {
     return jsonObjectOf(
         ConfigConstants.TMP_PATH to tempDir.toString(),
+        ConfigConstants.RUNTIMES_KUBERNETES_VOLUMES to jsonArrayOf(
+            jsonObjectOf(
+                "name" to "tmp-path",
+                "hostPath" to jsonObjectOf(
+                    "path" to tempDir.absolute().toString()
+                )
+            )
+        ),
+        ConfigConstants.RUNTIMES_KUBERNETES_VOLUMEMOUNTS to jsonArrayOf(
+            jsonObjectOf(
+                "name" to "tmp-path",
+                "mountPath" to tempDir.absolute().toString()
+            )
+        )
     )
   }
 
@@ -146,5 +163,12 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
         }
       }
     }
+  }
+
+  @Test
+  override fun executeTmpPath(@TempDir tempDir: Path) {
+    k3s.execInContainer("mkdir", "-p", tempDir.absolute().toString())
+    k3s.execInContainer("sh", "-c", "echo \"$EXPECTED\" > ${tempDir.absolute()}/test.txt")
+    super.executeTmpPath(tempDir)
   }
 }

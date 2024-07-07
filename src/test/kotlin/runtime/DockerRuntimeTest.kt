@@ -70,32 +70,6 @@ class DockerRuntimeTest : ContainerRuntimeTest {
   }
 
   /**
-   * Test that [ConfigConstants.TMP_PATH] is correctly mounted
-   */
-  @Test
-  fun executeTmpPath(@TempDir tempDir: Path) {
-    val f = File(tempDir.toFile(), "test.txt")
-    f.writeText(EXPECTED)
-
-    val config = jsonObjectOf(
-        ConfigConstants.TMP_PATH to tempDir.toString(),
-        ConfigConstants.RUNTIMES_DOCKER_PULL to "never"
-    )
-
-    val exec = Executable(path = "alpine", serviceId = "cat", arguments = listOf(
-        Argument(variable = ArgumentVariable(UniqueID.next(), "cat"),
-            type = Argument.Type.INPUT),
-        Argument(variable = ArgumentVariable(UniqueID.next(), f.absolutePath),
-            type = Argument.Type.INPUT)
-    ), runtime = Service.RUNTIME_DOCKER)
-
-    val runtime = DockerRuntime(config)
-    val collector = DefaultOutputCollector()
-    runtime.execute(exec, collector)
-    assertThat(collector.output()).isEqualTo(EXPECTED)
-  }
-
-  /**
    * Test that a Docker container can be executed with a mounted volume
    */
   @Test
