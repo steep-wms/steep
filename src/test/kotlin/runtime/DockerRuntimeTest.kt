@@ -26,6 +26,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import runtime.ContainerRuntimeTest.Companion.EXPECTED
 import java.io.File
 import java.nio.file.Path
 import java.util.concurrent.Executors
@@ -34,10 +35,8 @@ import java.util.concurrent.Executors
  * Tests for [DockerRuntime]
  * @author Michel Kraemer
  */
-class DockerRuntimeTest {
+class DockerRuntimeTest : ContainerRuntimeTest {
   companion object {
-    private const val EXPECTED = "Elvis"
-
     @BeforeAll
     @JvmStatic
     fun setUp() {
@@ -49,38 +48,25 @@ class DockerRuntimeTest {
     }
   }
 
+  override fun createDefaultConfig(tempDir: Path): JsonObject {
+    return jsonObjectOf(
+        ConfigConstants.TMP_PATH to tempDir.toString(),
+        ConfigConstants.RUNTIMES_DOCKER_PULL to "never"
+    )
+  }
+
+  override fun createRuntime(config: JsonObject): Runtime {
+    return DockerRuntime(config)
+  }
+
   /**
    * Test that the runtime fails if [ConfigConstants.TMP_PATH] is not configured
    */
   @Test
   fun missingConf() {
     assertThatThrownBy {
-      DockerRuntime(JsonObject())
+      createRuntime(JsonObject())
     }.isInstanceOf(IllegalStateException::class.java)
-  }
-
-  /**
-   * Test that a simple Docker container can be executed and that its output
-   * can be collected
-   */
-  @Test
-  fun executeEcho(@TempDir tempDir: Path) {
-    val config = jsonObjectOf(
-        ConfigConstants.TMP_PATH to tempDir.toString(),
-        ConfigConstants.RUNTIMES_DOCKER_PULL to "never"
-    )
-
-    val exec = Executable(path = "alpine", serviceId = "echo", arguments = listOf(
-        Argument(variable = ArgumentVariable(UniqueID.next(), "echo"),
-            type = Argument.Type.INPUT),
-        Argument(variable = ArgumentVariable(UniqueID.next(), EXPECTED),
-            type = Argument.Type.INPUT)
-    ), runtime = Service.RUNTIME_DOCKER)
-
-    val runtime = DockerRuntime(config)
-    val collector = DefaultOutputCollector()
-    runtime.execute(exec, collector)
-    assertThat(collector.output()).isEqualTo(EXPECTED)
   }
 
   /**
