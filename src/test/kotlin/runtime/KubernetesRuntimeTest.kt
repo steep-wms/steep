@@ -19,6 +19,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInfo
 import org.junit.jupiter.api.fail
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.api.parallel.Execution
+import org.junit.jupiter.api.parallel.ExecutionMode
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.k3s.K3sContainer
@@ -34,6 +36,7 @@ import kotlin.io.path.absolute
  * @author Michel Kraemer
  */
 @Testcontainers
+@Execution(ExecutionMode.CONCURRENT)
 class KubernetesRuntimeTest : ContainerRuntimeTest {
   companion object {
     @Container
@@ -97,9 +100,9 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
     val kubernetesConfig = Config.fromKubeconfig(k3s.kubeConfigYaml)
     KubernetesClientBuilder().withConfig(kubernetesConfig).build().use { client ->
       val jobs = client.batch().v1().jobs().inNamespace(KubernetesRuntime.DEFAULT_NAMESPACE).list()
-      assertThat(jobs.items).isEmpty()
+      assertThat(jobs.items).noneMatch { it.metadata.name.startsWith("steep-${exec.id}") }
       val pods = client.pods().inNamespace(KubernetesRuntime.DEFAULT_NAMESPACE).list()
-      assertThat(pods.items).isEmpty()
+      assertThat(pods.items).noneMatch { it.metadata.name.startsWith("steep-${exec.id}") }
     }
   }
 
@@ -123,9 +126,9 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
     val kubernetesConfig = Config.fromKubeconfig(k3s.kubeConfigYaml)
     KubernetesClientBuilder().withConfig(kubernetesConfig).build().use { client ->
       val jobs = client.batch().v1().jobs().inNamespace(KubernetesRuntime.DEFAULT_NAMESPACE).list()
-      assertThat(jobs.items).isEmpty()
+      assertThat(jobs.items).noneMatch { it.metadata.name.startsWith("steep-${exec.id}") }
       val pods = client.pods().inNamespace(KubernetesRuntime.DEFAULT_NAMESPACE).list()
-      assertThat(pods.items).isEmpty()
+      assertThat(pods.items).noneMatch { it.metadata.name.startsWith("steep-${exec.id}") }
     }
   }
 
