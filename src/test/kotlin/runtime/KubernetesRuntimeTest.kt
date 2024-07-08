@@ -134,18 +134,24 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
    */
   @Test
   fun killPodOnCancel(@TempDir tempDir: Path, testInfo: TestInfo) {
+    val seconds = 120
     val exec = Executable(path = "alpine", serviceId = "sleep", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "sleep"),
             type = Argument.Type.INPUT),
-        Argument(variable = ArgumentVariable(UniqueID.next(), "120"),
+        Argument(variable = ArgumentVariable(UniqueID.next(), seconds.toString()),
             type = Argument.Type.INPUT)
     ), runtime = Service.RUNTIME_KUBERNETES)
 
     // launch a job in the background
     val executor = Executors.newSingleThreadExecutor()
+    val runtime = createRuntime(createConfig(tempDir, testInfo))
     val execFuture = executor.submit {
-      val runtime = createRuntime(createConfig(tempDir, testInfo))
-      runtime.execute(exec, DefaultOutputCollector())
+      try {
+        runtime.execute(exec, DefaultOutputCollector())
+      } catch (t: Throwable) {
+        t.printStackTrace()
+        fail(t)
+      }
     }
 
     val kubernetesConfig = Config.fromKubeconfig(k3s.kubeConfigYaml)
@@ -164,7 +170,8 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
       execFuture.cancel(true)
 
       // wait for the pod to disappear (should be immediate, but we'll give
-      // it some leeway to avoid becoming flaky)
+      // it some leeway to avoid becoming flaky - it might take some time to
+      // start the job)
       var count = 0
       while (true) {
         val pods = client.pods().list().items
@@ -174,7 +181,7 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
         }
         Thread.sleep(1000)
         count++
-        if (count == 2) {
+        if (count == seconds / 2) {
           fail("It took too long to delete the pod!")
         }
       }

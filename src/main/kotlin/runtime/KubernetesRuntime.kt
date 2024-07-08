@@ -187,16 +187,26 @@ class KubernetesRuntime(
         lazyStartWatchLog()
         watchHolder.get().join()
       }
-    } catch (e: InterruptedException) {
-      try {
-        // delete pod immediately on cancel
-        client.pods().inNamespace(namespace)
-            .withLabel("job-name", job.metadata.name)
-            .withGracePeriod(0).delete()
-      } catch (t: Throwable) {
-        // ignore
+    } catch (t: Throwable) {
+      val isInterrupted = ExceptionUtils.stream(t).anyMatch { it is InterruptedException }
+      if (isInterrupted) {
+        // clear interrupted flag, so we can use the Kubernetes client again
+        Thread.interrupted()
+
+        try {
+          // delete pod immediately on cancel
+          client.pods().inNamespace(namespace)
+              .withLabel("job-name", job.metadata.name)
+              .withGracePeriod(0).delete()
+        } catch (t: Throwable) {
+          log.error("Unable to immediately delete pod", t)
+          throw t
+        }
+
+        throw InterruptedException("Job execution cancelled")
       }
-      throw e;
+
+      throw t;
     } finally {
       // make sure to delete the job after it has finished
       client.batch().v1().jobs().inNamespace(namespace)
