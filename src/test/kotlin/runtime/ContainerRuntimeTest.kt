@@ -10,7 +10,9 @@ import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInfo
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.io.IOException
@@ -27,9 +29,9 @@ interface ContainerRuntimeTest {
   }
 
   /**
-   * Create a default configuration object to pass to the container runtime
+   * Create a configuration object to pass to the container runtime
    */
-  fun createDefaultConfig(tempDir: Path): JsonObject
+  fun createConfig(tempDir: Path, testInfo: TestInfo): JsonObject
 
   /**
    * Create the container runtime
@@ -41,7 +43,7 @@ interface ContainerRuntimeTest {
    * collected
    */
   @Test
-  fun executeEcho(@TempDir tempDir: Path) {
+  fun executeEcho(@TempDir tempDir: Path, testInfo: TestInfo) {
     val exec = Executable(path = "alpine", serviceId = "echo", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "echo"),
             type = Argument.Type.INPUT),
@@ -49,7 +51,7 @@ interface ContainerRuntimeTest {
             type = Argument.Type.INPUT)
     ))
 
-    val runtime = createRuntime(createDefaultConfig(tempDir))
+    val runtime = createRuntime(createConfig(tempDir, testInfo))
     val collector = DefaultOutputCollector()
     runtime.execute(exec, collector)
     assertThat(collector.output()).isEqualTo(EXPECTED)
@@ -60,7 +62,7 @@ interface ContainerRuntimeTest {
    * lines) can be collected
    */
   @Test
-  fun executeEchoMultiline(@TempDir tempDir: Path) {
+  fun executeEchoMultiline(@TempDir tempDir: Path, testInfo: TestInfo) {
     val exec = Executable(path = "alpine", serviceId = "myservice", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "sh"),
             type = Argument.Type.INPUT),
@@ -70,7 +72,7 @@ interface ContainerRuntimeTest {
             type = Argument.Type.INPUT)
     ))
 
-    val runtime = createRuntime(createDefaultConfig(tempDir))
+    val runtime = createRuntime(createConfig(tempDir, testInfo))
     val collector = DefaultOutputCollector()
     runtime.execute(exec, collector)
     assertThat(collector.output()).isEqualTo("Hello\nWorld")
@@ -80,13 +82,13 @@ interface ContainerRuntimeTest {
    * Test that a failure is correctly detected
    */
   @Test
-  fun failure(@TempDir tempDir: Path) {
+  fun failure(@TempDir tempDir: Path, testInfo: TestInfo) {
     val exec = Executable(path = "alpine", serviceId = "false", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "false"),
             type = Argument.Type.INPUT),
     ))
 
-    val runtime = createRuntime(createDefaultConfig(tempDir))
+    val runtime = createRuntime(createConfig(tempDir, testInfo))
     val collector = DefaultOutputCollector()
     assertThatThrownBy { runtime.execute(exec, collector) }
         .isInstanceOf(IOException::class.java)
@@ -96,7 +98,8 @@ interface ContainerRuntimeTest {
    * Test that [ConfigConstants.TMP_PATH] is correctly mounted
    */
   @Test
-  fun executeTmpPath(@TempDir tempDir: Path) {
+  @Tag("tmpPath")
+  fun executeTmpPath(@TempDir tempDir: Path, testInfo: TestInfo) {
     val f = File(tempDir.toFile(), "test.txt")
     f.writeText(EXPECTED)
 
@@ -107,7 +110,29 @@ interface ContainerRuntimeTest {
             type = Argument.Type.INPUT)
     ), runtime = Service.RUNTIME_DOCKER)
 
-    val runtime = createRuntime(createDefaultConfig(tempDir))
+    val runtime = createRuntime(createConfig(tempDir, testInfo))
+    val collector = DefaultOutputCollector()
+    runtime.execute(exec, collector)
+    assertThat(collector.output()).isEqualTo(EXPECTED)
+  }
+
+  /**
+   * Test that a container can be executed with an environment variable
+   * specified in the configuration object
+   */
+  @Test
+  @Tag("envVar")
+  fun executeEnvConf(@TempDir tempDir: Path, testInfo: TestInfo) {
+    val exec = Executable(path = "alpine", serviceId = "sh", arguments = listOf(
+        Argument(variable = ArgumentVariable(UniqueID.next(), "sh"),
+            type = Argument.Type.INPUT),
+        Argument(variable = ArgumentVariable(UniqueID.next(), "-c"),
+            type = Argument.Type.INPUT),
+        Argument(variable = ArgumentVariable(UniqueID.next(), "echo \$MYVAR"),
+            type = Argument.Type.INPUT)
+    ), runtime = Service.RUNTIME_DOCKER)
+
+    val runtime = createRuntime(createConfig(tempDir, testInfo))
     val collector = DefaultOutputCollector()
     runtime.execute(exec, collector)
     assertThat(collector.output()).isEqualTo(EXPECTED)

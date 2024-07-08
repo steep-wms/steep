@@ -14,7 +14,9 @@ import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInfo
 import org.junit.jupiter.api.fail
 import org.junit.jupiter.api.io.TempDir
 import org.testcontainers.junit.jupiter.Container
@@ -38,24 +40,38 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
     val k3s = K3sContainer(DockerImageName.parse("rancher/k3s:v1.30.2-k3s1"))
   }
 
-  override fun createDefaultConfig(tempDir: Path): JsonObject {
-    return jsonObjectOf(
-        ConfigConstants.TMP_PATH to tempDir.toString(),
-        ConfigConstants.RUNTIMES_KUBERNETES_VOLUMES to jsonArrayOf(
-            jsonObjectOf(
-                "name" to "tmp-path",
-                "hostPath" to jsonObjectOf(
-                    "path" to tempDir.absolute().toString()
-                )
-            )
-        ),
-        ConfigConstants.RUNTIMES_KUBERNETES_VOLUMEMOUNTS to jsonArrayOf(
-            jsonObjectOf(
-                "name" to "tmp-path",
-                "mountPath" to tempDir.absolute().toString()
-            )
-        )
+  override fun createConfig(tempDir: Path, testInfo: TestInfo): JsonObject {
+    val result = jsonObjectOf(
+        ConfigConstants.TMP_PATH to tempDir.toString()
     )
+
+    if (testInfo.tags.contains("tmpPath")) {
+      result.put(ConfigConstants.RUNTIMES_KUBERNETES_VOLUMES, jsonArrayOf(
+          jsonObjectOf(
+              "name" to "tmp-path",
+              "hostPath" to jsonObjectOf(
+                  "path" to tempDir.absolute().toString()
+              )
+          )
+      ))
+      result.put(ConfigConstants.RUNTIMES_KUBERNETES_VOLUMEMOUNTS, jsonArrayOf(
+          jsonObjectOf(
+              "name" to "tmp-path",
+              "mountPath" to tempDir.absolute().toString()
+          )
+      ))
+    }
+
+    if (testInfo.tags.contains("envVar")) {
+      result.put(ConfigConstants.RUNTIMES_KUBERNETES_ENV, jsonArrayOf(
+          jsonObjectOf(
+              "name" to "MYVAR",
+              "value" to EXPECTED
+          )
+      ))
+    }
+
+    return result
   }
 
   override fun createRuntime(config: JsonObject): Runtime {
@@ -66,7 +82,7 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
    * Check that the runtime deletes the job after is has finished successfully
    */
   @Test
-  fun deleteJob(@TempDir tempDir: Path) {
+  fun deleteJob(@TempDir tempDir: Path, testInfo: TestInfo) {
     val exec = Executable(path = "alpine", serviceId = "echo", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "echo"),
             type = Argument.Type.INPUT),
@@ -74,7 +90,7 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
             type = Argument.Type.INPUT)
     ), runtime = Service.RUNTIME_KUBERNETES)
 
-    val runtime = createRuntime(createDefaultConfig(tempDir))
+    val runtime = createRuntime(createConfig(tempDir, testInfo))
     val collector = DefaultOutputCollector()
     runtime.execute(exec, collector)
 
@@ -91,7 +107,7 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
    * Check that the runtime deletes the job after is has finished with an error
    */
   @Test
-  fun deleteJobAfterFailure(@TempDir tempDir: Path) {
+  fun deleteJobAfterFailure(@TempDir tempDir: Path, testInfo: TestInfo) {
     val exec = Executable(path = "alpine", serviceId = "false", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "false"),
             type = Argument.Type.INPUT),
@@ -99,7 +115,7 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
             type = Argument.Type.INPUT)
     ), runtime = Service.RUNTIME_KUBERNETES)
 
-    val runtime = createRuntime(createDefaultConfig(tempDir))
+    val runtime = createRuntime(createConfig(tempDir, testInfo))
     val collector = DefaultOutputCollector()
     assertThatThrownBy { runtime.execute(exec, collector) }
         .isInstanceOf(IOException::class.java)
@@ -117,7 +133,7 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
    * Make sure the pod is immediately deleted when the executable is cancelled
    */
   @Test
-  fun killPodOnCancel(@TempDir tempDir: Path) {
+  fun killPodOnCancel(@TempDir tempDir: Path, testInfo: TestInfo) {
     val exec = Executable(path = "alpine", serviceId = "sleep", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "sleep"),
             type = Argument.Type.INPUT),
@@ -128,7 +144,7 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
     // launch a job in the background
     val executor = Executors.newSingleThreadExecutor()
     val execFuture = executor.submit {
-      val runtime = createRuntime(createDefaultConfig(tempDir))
+      val runtime = createRuntime(createConfig(tempDir, testInfo))
       runtime.execute(exec, DefaultOutputCollector())
     }
 
@@ -166,9 +182,10 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
   }
 
   @Test
-  override fun executeTmpPath(@TempDir tempDir: Path) {
+  @Tag("tmpPath")
+  override fun executeTmpPath(@TempDir tempDir: Path, testInfo: TestInfo) {
     k3s.execInContainer("mkdir", "-p", tempDir.absolute().toString())
     k3s.execInContainer("sh", "-c", "echo \"$EXPECTED\" > ${tempDir.absolute()}/test.txt")
-    super.executeTmpPath(tempDir)
+    super.executeTmpPath(tempDir, testInfo)
   }
 }

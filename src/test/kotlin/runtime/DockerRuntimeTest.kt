@@ -25,6 +25,7 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInfo
 import org.junit.jupiter.api.io.TempDir
 import runtime.ContainerRuntimeTest.Companion.EXPECTED
 import java.io.File
@@ -48,11 +49,19 @@ class DockerRuntimeTest : ContainerRuntimeTest {
     }
   }
 
-  override fun createDefaultConfig(tempDir: Path): JsonObject {
-    return jsonObjectOf(
+  override fun createConfig(tempDir: Path, testInfo: TestInfo): JsonObject {
+    val result = jsonObjectOf(
         ConfigConstants.TMP_PATH to tempDir.toString(),
         ConfigConstants.RUNTIMES_DOCKER_PULL to "never"
     )
+
+    if (testInfo.tags.contains("envVar")) {
+      result.put(ConfigConstants.RUNTIMES_DOCKER_ENV, jsonArrayOf(
+          "MYVAR=$EXPECTED"
+      ))
+    }
+
+    return result
   }
 
   override fun createRuntime(config: JsonObject): Runtime {
@@ -154,35 +163,6 @@ class DockerRuntimeTest : ContainerRuntimeTest {
         Argument(variable = ArgumentVariable(UniqueID.next(), "cat"),
             type = Argument.Type.INPUT),
         Argument(variable = ArgumentVariable(UniqueID.next(), containerFileName),
-            type = Argument.Type.INPUT)
-    ), runtime = Service.RUNTIME_DOCKER)
-
-    val runtime = DockerRuntime(config)
-    val collector = DefaultOutputCollector()
-    runtime.execute(exec, collector)
-    assertThat(collector.output()).isEqualTo(EXPECTED)
-  }
-
-  /**
-   * Test that a Docker container can be executed with an environment variable
-   * specified in the configuration object
-   */
-  @Test
-  fun executeEnvConf(@TempDir tempDir: Path) {
-    val config = jsonObjectOf(
-        ConfigConstants.TMP_PATH to tempDir.toString(),
-        ConfigConstants.RUNTIMES_DOCKER_ENV to jsonArrayOf(
-            "MYVAR=$EXPECTED"
-        ),
-        ConfigConstants.RUNTIMES_DOCKER_PULL to "never"
-    )
-
-    val exec = Executable(path = "alpine", serviceId = "sh", arguments = listOf(
-        Argument(variable = ArgumentVariable(UniqueID.next(), "sh"),
-            type = Argument.Type.INPUT),
-        Argument(variable = ArgumentVariable(UniqueID.next(), "-c"),
-            type = Argument.Type.INPUT),
-        Argument(variable = ArgumentVariable(UniqueID.next(), "echo \$MYVAR"),
             type = Argument.Type.INPUT)
     ), runtime = Service.RUNTIME_DOCKER)
 

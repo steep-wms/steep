@@ -481,6 +481,21 @@ object ConfigConstants {
   const val RUNTIMES_KUBERNETES_NAMESPACE = "steep.runtimes.kubernetes.namespace"
 
   /**
+   * An optional list of environment variables that should be injected into the
+   * containers started by the Kubernetes runtime. The list items should be
+   * Kubernetes environment variable objects. See the
+   * [Kubernetes API reference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core)
+   * for more information. Example:
+   *
+   * ```yaml
+   * env:
+   *   - name: MYVAR
+   *     value: something
+   * ```
+   */
+  const val RUNTIMES_KUBERNETES_ENV = "steep.runtimes.kubernetes.env"
+
+  /**
    * An optional list of Kubernetes volume mount objects. The Kubernetes runtime
    * mounts volumes specified here into the started containers. For example,
    * the following configuration mounts a volume with the name `steep-tmp-path`

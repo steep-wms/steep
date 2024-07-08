@@ -80,6 +80,9 @@ steep:
       # pull: auto
     kubernetes:
       # namespace: default
+      # env:
+      #   - name: MYVAR
+      #     value: something
       # volumeMounts:
       #   - name: steep-tmp-path
       #     mountPath: /tmp

@@ -4,6 +4,7 @@ import ConfigConstants
 import helper.JsonUtils
 import helper.OutputCollector
 import helper.UniqueID
+import io.fabric8.kubernetes.api.model.EnvVar
 import io.fabric8.kubernetes.api.model.Volume
 import io.fabric8.kubernetes.api.model.VolumeMount
 import io.fabric8.kubernetes.api.model.batch.v1.Job
@@ -36,7 +37,7 @@ class KubernetesRuntime(
     const val DEFAULT_NAMESPACE = "default"
 
     private inline fun <reified T> deserConfig(config: JsonObject, name: String,
-        humanReadableName: String): List<T> {
+        humanReadableName: String, article: String = "a"): List<T> {
       val jsonArr = config.getJsonArray(name, jsonArrayOf())
       return jsonArr.map { obj ->
         if (obj is JsonObject) {
@@ -44,11 +45,12 @@ class KubernetesRuntime(
             JsonUtils.fromJson<T>(obj)
           } catch (t: Throwable) {
             throw IllegalArgumentException("Unable to deserialize element in " +
-                "configuration item `$name' to a $humanReadableName object.", t)
+                "configuration item `$name' to $article $humanReadableName object.", t)
           }
         } else {
           throw IllegalArgumentException("Configuration item " +
-              "`$name' must be an array of $humanReadableName objects")
+              "`$name' must be an array of $humanReadableName objects. " +
+              "Found: ${obj.javaClass}.")
         }
       }
     }
@@ -56,6 +58,8 @@ class KubernetesRuntime(
 
   private val namespace: String = config.getString(
       ConfigConstants.RUNTIMES_KUBERNETES_NAMESPACE, DEFAULT_NAMESPACE)
+  private val envVars = deserConfig<EnvVar>(config,
+      ConfigConstants.RUNTIMES_KUBERNETES_ENV, "environment variable", "an")
   private val volumeMounts = deserConfig<VolumeMount>(config,
       ConfigConstants.RUNTIMES_KUBERNETES_VOLUMEMOUNTS, "volume mount")
   private val volumes = deserConfig<Volume>(config,
@@ -130,8 +134,9 @@ class KubernetesRuntime(
               .addNewContainer()
                 .withName(jobName)
                 .withImage(executable.path)
-                .withArgs(*args.toTypedArray())
+                .withArgs(args)
                 .withVolumeMounts(volumeMounts)
+                .withEnv(envVars)
               .endContainer()
               .withRestartPolicy("Never")
               .withVolumes(volumes)
