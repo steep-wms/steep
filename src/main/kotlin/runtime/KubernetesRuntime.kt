@@ -16,11 +16,13 @@ import io.fabric8.kubernetes.client.KubernetesClientBuilder
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonArrayOf
 import model.processchain.Executable
+import org.apache.commons.lang3.exception.ExceptionUtils
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 import java.io.IOException
 import java.io.InputStream
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Runs executables as Kubernetes jobs. Uses the executable's path as the
@@ -69,7 +71,7 @@ class KubernetesRuntime(
    * Wait for a job to finish. Handles output and failures.
    */
   private fun waitForJob(client: KubernetesClient, job: Job,
-      commandLine: List<String>) {
+      commandLine: List<String>, lazyStartWatchLog: () -> Unit) {
     // get all pods created by the job
     val podList = client.pods().inNamespace(namespace)
         .withLabel("job-name", job.metadata.name).list()
@@ -80,8 +82,14 @@ class KubernetesRuntime(
     client.pods().inNamespace(namespace)
         .withName(podList.items[0].metadata.name)
         .waitUntilCondition({ pod ->
+          if (pod.status.containerStatuses.all { it.state.running != null }) {
+            // now that the container is running, we can start the watch log
+            lazyStartWatchLog()
+          }
+
           when (pod.status.phase) {
             "Succeeded" -> true
+
             "Failed" -> {
               if (pod.status.message != null) {
                 errorMessages.add(pod.status.message)
@@ -94,11 +102,13 @@ class KubernetesRuntime(
               failed = true
               true
             }
+
             "Unknown" -> {
               errorMessages.add("Pod status could not be obtained")
               failed = true
               true
             }
+
             else -> false
           }
         }, Long.MAX_VALUE, TimeUnit.DAYS)
@@ -148,20 +158,34 @@ class KubernetesRuntime(
     // start job now
     client.batch().v1().jobs().inNamespace(namespace).resource(job).create()
     try {
-      val resource = client.batch().v1().jobs().inNamespace(namespace)
-          .withName(job.metadata.name)
+      // A reference to a thread that reads logs from the started container.
+      // This thread needs to be lazily initialized because the logs are not
+      // available as long as the container is starting.
+      val watchHolder = AtomicReference<Thread>(null)
 
-      // watch output
-      val watchLog = resource.watchLog()
-      val streamGobbler = StreamGobbler(jobId, watchLog.output, outputCollector,
-          MDC.getCopyOfContextMap())
-      val readerThread = Thread(streamGobbler)
-      readerThread.start()
+      // Start the watch log thread or do nothing if it is already started
+      fun lazyStartWatchLog() {
+        if (watchHolder.get() == null) {
+          val resource = client.batch().v1().jobs().inNamespace(namespace)
+              .withName(job.metadata.name)
+          val watchLog = resource.watchLog()
+          val streamGobbler = StreamGobbler(jobId, watchLog.output, outputCollector,
+              MDC.getCopyOfContextMap())
+          val readerThread = Thread(streamGobbler)
+          readerThread.start()
+          watchHolder.set(readerThread)
+        }
+      }
 
       try {
-        waitForJob(client, job, commandLine)
+        waitForJob(client, job, commandLine, ::lazyStartWatchLog)
       } finally {
-        readerThread.join()
+        // Collect logs. We need to make sure the thread is started because
+        // the container execution might be so fast, that we haven't received
+        // the pod status change event and, therefore, haven't started the
+        // thread yet.
+        lazyStartWatchLog()
+        watchHolder.get().join()
       }
     } catch (e: InterruptedException) {
       try {
