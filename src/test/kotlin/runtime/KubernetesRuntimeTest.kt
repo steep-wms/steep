@@ -1,10 +1,17 @@
 package runtime
 
 import ConfigConstants
+import com.fasterxml.jackson.module.kotlin.readValue
 import helper.DefaultOutputCollector
+import helper.JsonUtils
 import helper.UniqueID
+import io.fabric8.kubernetes.api.model.batch.v1.Job
+import io.fabric8.kubernetes.api.model.batch.v1.JobBuilder
 import io.fabric8.kubernetes.client.Config
+import io.fabric8.kubernetes.client.KubernetesClient
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
+import io.fabric8.kubernetes.client.server.mock.EnableKubernetesMockClient
+import io.fabric8.kubernetes.client.server.mock.KubernetesMockServer
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
@@ -14,6 +21,7 @@ import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail
 import org.junit.jupiter.api.io.TempDir
@@ -25,6 +33,7 @@ import org.testcontainers.k3s.K3sContainer
 import org.testcontainers.utility.DockerImageName
 import runtime.ContainerRuntimeTest.Companion.EXPECTED
 import java.io.IOException
+import java.net.HttpURLConnection
 import java.nio.file.Path
 import java.util.concurrent.Executors
 import kotlin.io.path.absolute
@@ -250,6 +259,101 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
           fail("It took too long to delete the pod!")
         }
       }
+    }
+  }
+
+  @Nested
+  @EnableKubernetesMockClient
+  @Execution(ExecutionMode.SAME_THREAD)
+  inner class Pull {
+    lateinit var mockServer: KubernetesMockServer
+    lateinit var mockClient: KubernetesClient
+
+    private fun simpleExecute(tempDir: Path, additionalConfig: JsonObject = jsonObjectOf(),
+        runtimeArgs: List<Argument> = emptyList()) {
+      mockServer.expect().post().withPath("/apis/batch/v1/namespaces/default/jobs")
+          .andReturn(HttpURLConnection.HTTP_CREATED, JobBuilder().build()).once()
+
+      val exec = Executable(path = "alpine", serviceId = "echo", arguments = listOf(
+          Argument(variable = ArgumentVariable(UniqueID.next(), "echo"),
+              type = Argument.Type.INPUT),
+          Argument(variable = ArgumentVariable(UniqueID.next(), EXPECTED),
+              type = Argument.Type.INPUT)
+      ), runtimeArgs = runtimeArgs)
+
+      try {
+        val config = mockClient.configuration
+        val runtime = KubernetesRuntime(createConfig(tempDir, additionalConfig), config)
+        val collector = DefaultOutputCollector()
+        runtime.execute(exec, collector)
+        assertThat(collector.output()).isEqualTo(EXPECTED)
+      } catch (t: Throwable) {
+        // will fail because we only mock one request
+      }
+    }
+
+    /**
+     * Test if the default value if `imagePullPolicy` is `null`
+     */
+    @Test
+    fun defaultImagePullPolicy(@TempDir tempDir: Path) {
+      simpleExecute(tempDir)
+
+      val r = mockServer.takeRequest()
+      val job: Job = JsonUtils.mapper.readValue(r.body.inputStream())
+      assertThat(job.spec.template.spec.containers.first().imagePullPolicy).isNull()
+    }
+
+    /**
+     * Test if a configured image pull policy is forwarded
+     */
+    @Test
+    fun forwardConfiguredImagePullPolicy(@TempDir tempDir: Path) {
+      simpleExecute(tempDir, additionalConfig = jsonObjectOf(
+          ConfigConstants.RUNTIMES_KUBERNETES_IMAGEPULLPOLICY to "Never"
+      ))
+
+      val r = mockServer.takeRequest()
+      val job: Job = JsonUtils.mapper.readValue(r.body.inputStream())
+      assertThat(job.spec.template.spec.containers.first().imagePullPolicy).isEqualTo("Never")
+    }
+
+    /**
+     * Test if we can set an image pull policy on the executable
+     */
+    @Test
+    fun imagePullPolicyOnExecutable(@TempDir tempDir: Path) {
+      simpleExecute(tempDir, runtimeArgs = listOf(
+          Argument(
+              id = "imagePullPolicy",
+              variable = ArgumentVariable(UniqueID.next(), "Never"),
+              type = Argument.Type.INPUT
+          )
+      ))
+
+      val r = mockServer.takeRequest()
+      val job: Job = JsonUtils.mapper.readValue(r.body.inputStream())
+      assertThat(job.spec.template.spec.containers.first().imagePullPolicy).isEqualTo("Never")
+    }
+
+    /**
+     * Test if a configured image pull policy can be overridden
+     */
+    @Test
+    fun overwriteConfiguredImagePullPolicy(@TempDir tempDir: Path) {
+      simpleExecute(tempDir, additionalConfig = jsonObjectOf(
+          ConfigConstants.RUNTIMES_KUBERNETES_IMAGEPULLPOLICY to "Never"
+      ), runtimeArgs = listOf(
+          Argument(
+              id = "imagePullPolicy",
+              variable = ArgumentVariable(UniqueID.next(), "Always"),
+              type = Argument.Type.INPUT
+          )
+      ))
+
+      val r = mockServer.takeRequest()
+      val job: Job = JsonUtils.mapper.readValue(r.body.inputStream())
+      assertThat(job.spec.template.spec.containers.first().imagePullPolicy).isEqualTo("Always")
     }
   }
 }

@@ -67,6 +67,8 @@ class KubernetesRuntime(
       ConfigConstants.RUNTIMES_KUBERNETES_VOLUMEMOUNTS, "volume mount")
   private val volumes = deserConfig<Volume>(config,
       ConfigConstants.RUNTIMES_KUBERNETES_VOLUMES, "volume")
+  private val imagePullPolicy: String? = config.getString(
+      ConfigConstants.RUNTIMES_KUBERNETES_IMAGEPULLPOLICY)
 
   /**
    * Wait for a job to finish. Handles output and failures.
@@ -162,6 +164,14 @@ class KubernetesRuntime(
   }
 
   /**
+   * Get the image pull policy for a new job
+   */
+  private fun getJobImagePullPolicy(executable: Executable): String? {
+    return executable.runtimeArgs.find { it.id == "imagePullPolicy" }
+        ?.variable?.value ?: imagePullPolicy
+  }
+
+  /**
    * Executes an [executable] using the given Kubernetes [client]
    */
   private fun execute(executable: Executable, outputCollector: OutputCollector,
@@ -177,6 +187,7 @@ class KubernetesRuntime(
     val jobVolumes = getJobVolumes(executable)
     val jobVolumeMounts = getJobVolumeMounts(executable)
     val jobEnvVars = getJobEnvVars(executable)
+    val jobImagePullPolicy = getJobImagePullPolicy(executable)
 
     // create job
     val job = JobBuilder()
@@ -193,6 +204,7 @@ class KubernetesRuntime(
                 .withArgs(args)
                 .withVolumeMounts(jobVolumeMounts)
                 .withEnv(jobEnvVars)
+                .withImagePullPolicy(jobImagePullPolicy)
               .endContainer()
               .withRestartPolicy("Never")
               .withVolumes(jobVolumes)

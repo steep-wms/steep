@@ -97,6 +97,7 @@ dependencies {
     implementation(kotlin("script-runtime"))
 
     testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:4.13.1")
+    testImplementation("io.fabric8:kubernetes-server-mock:6.13.1")
     testImplementation("io.mockk:mockk:1.13.11")
     testImplementation("io.vertx:vertx-junit5:4.5.8")
     testImplementation("org.assertj:assertj-core:3.26.0")

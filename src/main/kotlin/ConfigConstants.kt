@@ -542,6 +542,15 @@ object ConfigConstants {
   const val RUNTIMES_KUBERNETES_VOLUMES = "steep.runtimes.kubernetes.volumes"
 
   /**
+   * The image pull policy for any job the Kubernetes runtime starts. See the
+   * [Kubernetes documentation](https://kubernetes.io/docs/concepts/containers/images/#updating-images)
+   * or the `imagePullPolicy` parameter of the `Container` object in the
+   * [Kubernetes API reference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core)
+   * for more information.
+   */
+  const val RUNTIMES_KUBERNETES_IMAGEPULLPOLICY = "steep.runtimes.kubernetes.imagePullPolicy"
+
+  /**
    * The database driver (see [db.SubmissionRegistryFactory] for valid values)
    */
   const val DB_DRIVER = "steep.db.driver"
