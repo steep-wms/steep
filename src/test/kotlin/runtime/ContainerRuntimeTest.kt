@@ -92,6 +92,32 @@ interface ContainerRuntimeTest {
         .isInstanceOf(IOException::class.java)
   }
 
+  /**
+   * Return the runtime argument required for the [executeVolume] test
+   */
+  fun getVolumeRuntimeArgs(tempDir: Path): List<Argument>
+
+  /**
+   * Test that a Docker container can be executed with a mounted volume
+   */
+  @Test
+  fun executeVolume(@TempDir tempDir: Path, @TempDir tempDir2: Path) {
+    val f = File(tempDir2.toFile(), "test.txt")
+    f.writeText(EXPECTED)
+
+    val exec = Executable(path = "alpine", serviceId = "cat", arguments = listOf(
+        Argument(variable = ArgumentVariable(UniqueID.next(), "cat"),
+            type = Argument.Type.INPUT),
+        Argument(variable = ArgumentVariable(UniqueID.next(), "/tmp/test.txt"),
+            type = Argument.Type.INPUT)
+    ), runtime = Service.RUNTIME_DOCKER, runtimeArgs = getVolumeRuntimeArgs(tempDir2))
+
+    val runtime = createRuntime(createConfig(tempDir))
+    val collector = DefaultOutputCollector()
+    runtime.execute(exec, collector)
+    assertThat(collector.output()).isEqualTo(EXPECTED)
+  }
+
   fun doExecuteVolumeConf(@TempDir tempDir: Path, @TempDir tempDir2: Path,
       additionalConfig: JsonObject) {
     val f = File(tempDir2.toFile(), "test.txt")
@@ -118,6 +144,31 @@ interface ContainerRuntimeTest {
    */
   @Test
   fun executeVolumeConf(@TempDir tempDir: Path, @TempDir tempDir2: Path)
+
+  /**
+   * Return the runtime argument required for the [executeEnv] test
+   */
+  fun getEnvRuntimeArgs(): List<Argument>
+
+  /**
+   * Test that a container can be executed with an environment variable
+   */
+  @Test
+  fun executeEnv(@TempDir tempDir: Path) {
+    val exec = Executable(path = "alpine", serviceId = "sh", arguments = listOf(
+        Argument(variable = ArgumentVariable(UniqueID.next(), "sh"),
+            type = Argument.Type.INPUT),
+        Argument(variable = ArgumentVariable(UniqueID.next(), "-c"),
+            type = Argument.Type.INPUT),
+        Argument(variable = ArgumentVariable(UniqueID.next(), "echo \$MYVAR"),
+            type = Argument.Type.INPUT)
+    ), runtime = Service.RUNTIME_DOCKER, runtimeArgs = getEnvRuntimeArgs())
+
+    val runtime = createRuntime(createConfig(tempDir))
+    val collector = DefaultOutputCollector()
+    runtime.execute(exec, collector)
+    assertThat(collector.output()).isEqualTo(EXPECTED)
+  }
 
   fun doExecuteEnvConf(@TempDir tempDir: Path, additionalConfig: JsonObject) {
     val exec = Executable(path = "alpine", serviceId = "sh", arguments = listOf(

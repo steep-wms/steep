@@ -72,69 +72,6 @@ class DockerRuntimeTest : ContainerRuntimeTest {
   }
 
   /**
-   * Test that a Docker container can be executed with a mounted volume
-   */
-  @Test
-  fun executeVolume(@TempDir tempDir: Path, @TempDir tempDir2: Path) {
-    val f = File(tempDir2.toFile(), "test.txt")
-    f.writeText(EXPECTED)
-
-    val config = jsonObjectOf(
-        ConfigConstants.TMP_PATH to tempDir.toString(),
-        ConfigConstants.RUNTIMES_DOCKER_PULL to "never"
-    )
-
-    val containerFileName = "/tmp/test.txt"
-    val exec = Executable(path = "alpine", serviceId = "cat", arguments = listOf(
-        Argument(variable = ArgumentVariable(UniqueID.next(), "cat"),
-            type = Argument.Type.INPUT),
-        Argument(variable = ArgumentVariable(UniqueID.next(), containerFileName),
-            type = Argument.Type.INPUT)
-    ), runtime = Service.RUNTIME_DOCKER, runtimeArgs = listOf(
-        Argument(variable = ArgumentVariable(UniqueID.next(), "-v"),
-            type = Argument.Type.INPUT),
-        Argument(variable = ArgumentVariable(UniqueID.next(),
-            "${f.absolutePath}:$containerFileName"),
-            type = Argument.Type.INPUT)
-    ))
-
-    val runtime = DockerRuntime(config)
-    val collector = DefaultOutputCollector()
-    runtime.execute(exec, collector)
-    assertThat(collector.output()).isEqualTo(EXPECTED)
-  }
-
-  /**
-   * Test that a Docker container can be executed with an environment variable
-   */
-  @Test
-  fun executeEnv(@TempDir tempDir: Path) {
-    val config = jsonObjectOf(
-        ConfigConstants.TMP_PATH to tempDir.toString(),
-        ConfigConstants.RUNTIMES_DOCKER_PULL to "never"
-    )
-
-    val exec = Executable(path = "alpine", serviceId = "sh", arguments = listOf(
-        Argument(variable = ArgumentVariable(UniqueID.next(), "sh"),
-            type = Argument.Type.INPUT),
-        Argument(variable = ArgumentVariable(UniqueID.next(), "-c"),
-            type = Argument.Type.INPUT),
-        Argument(variable = ArgumentVariable(UniqueID.next(), "echo \$MYVAR"),
-            type = Argument.Type.INPUT)
-    ), runtime = Service.RUNTIME_DOCKER, runtimeArgs = listOf(
-        Argument(variable = ArgumentVariable(UniqueID.next(), "-e"),
-            type = Argument.Type.INPUT),
-        Argument(variable = ArgumentVariable(UniqueID.next(), "MYVAR=$EXPECTED"),
-            type = Argument.Type.INPUT)
-    ))
-
-    val runtime = DockerRuntime(config)
-    val collector = DefaultOutputCollector()
-    runtime.execute(exec, collector)
-    assertThat(collector.output()).isEqualTo(EXPECTED)
-  }
-
-  /**
    * Test that [ConfigConstants.TMP_PATH] is correctly mounted
    */
   @Test
@@ -155,6 +92,17 @@ class DockerRuntimeTest : ContainerRuntimeTest {
     assertThat(collector.output()).isEqualTo(EXPECTED)
   }
 
+  override fun getVolumeRuntimeArgs(tempDir: Path): List<Argument> {
+    val f = File(tempDir.toFile(), "test.txt")
+    return listOf(
+        Argument(variable = ArgumentVariable(UniqueID.next(), "-v"),
+            type = Argument.Type.INPUT),
+        Argument(variable = ArgumentVariable(UniqueID.next(),
+            "${f.absolutePath}:/tmp/test.txt"),
+            type = Argument.Type.INPUT)
+    )
+  }
+
   @Test
   override fun executeVolumeConf(@TempDir tempDir: Path, @TempDir tempDir2: Path) {
     val f = File(tempDir2.toFile(), "test.txt")
@@ -163,6 +111,15 @@ class DockerRuntimeTest : ContainerRuntimeTest {
             "${f.absolutePath}:/tmp/test.txt"
         )
     ))
+  }
+
+  override fun getEnvRuntimeArgs(): List<Argument> {
+    return listOf(
+        Argument(variable = ArgumentVariable(UniqueID.next(), "-e"),
+            type = Argument.Type.INPUT),
+        Argument(variable = ArgumentVariable(UniqueID.next(), "MYVAR=$EXPECTED"),
+            type = Argument.Type.INPUT)
+    )
   }
 
   @Test

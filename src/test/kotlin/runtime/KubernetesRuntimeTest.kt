@@ -54,6 +54,43 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
     return KubernetesRuntime(config, Config.fromKubeconfig(k3s.kubeConfigYaml))
   }
 
+  override fun getVolumeRuntimeArgs(tempDir: Path): List<Argument> {
+    return listOf(
+        Argument(
+            id = "volumes",
+            variable = ArgumentVariable(
+                UniqueID.next(),
+                """
+                  - name: tmp-path
+                    hostPath:
+                      path: ${tempDir.absolute()}
+                """.trimIndent()
+            ),
+            type = Argument.Type.INPUT
+        ),
+        Argument(
+            id = "volumeMounts",
+            variable = ArgumentVariable(
+                UniqueID.next(),
+                """
+                  - name: tmp-path
+                    mountPath: /tmp
+                """.trimIndent()
+            ),
+            type = Argument.Type.INPUT
+        )
+    )
+  }
+
+  @Test
+  override fun executeVolume(@TempDir tempDir: Path, @TempDir tempDir2: Path) {
+    // make sure the test file exists in the K3S environment (this is not the pod!)
+    k3s.execInContainer("mkdir", "-p", tempDir2.absolute().toString())
+    k3s.execInContainer("sh", "-c", "echo \"$EXPECTED\" > ${tempDir2.absolute()}/test.txt")
+
+    super.executeVolume(tempDir, tempDir2)
+  }
+
   @Test
   override fun executeVolumeConf(@TempDir tempDir: Path, @TempDir tempDir2: Path) {
     // make sure the test file exists in the K3S environment (this is not the pod!)
@@ -76,6 +113,22 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
             )
         )
     ))
+  }
+
+  override fun getEnvRuntimeArgs(): List<Argument> {
+    return listOf(
+        Argument(
+            id = "env",
+            variable = ArgumentVariable(
+                UniqueID.next(),
+                """
+                  - name: MYVAR
+                    value: $EXPECTED
+                """.trimIndent()
+            ),
+            type = Argument.Type.INPUT
+        ),
+    )
   }
 
   @Test

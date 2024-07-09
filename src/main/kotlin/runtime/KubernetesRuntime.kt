@@ -4,6 +4,7 @@ import ConfigConstants
 import helper.JsonUtils
 import helper.OutputCollector
 import helper.UniqueID
+import helper.YamlUtils
 import io.fabric8.kubernetes.api.model.EnvVar
 import io.fabric8.kubernetes.api.model.Volume
 import io.fabric8.kubernetes.api.model.VolumeMount
@@ -120,6 +121,47 @@ class KubernetesRuntime(
   }
 
   /**
+   * Get a runtime argument with the given [id] from an [executable], parse
+   * its Yaml value and return a list containing the parsed values and all
+   * values from the given [default] list. If the [executable] does not have
+   * a runtime argument with this [id], just return [default].
+   */
+  private inline fun <reified T> getRuntimeArg(executable: Executable,
+      id: String, default: List<T>): List<T> {
+    val arg = executable.runtimeArgs.find { it.id == id }
+    if (arg == null) {
+      return default
+    }
+
+    val result = default.toMutableList()
+    val additional = YamlUtils.readValue<List<T>>(arg.variable.value)
+    result.addAll(additional)
+
+    return result
+  }
+
+  /**
+   * Get all volumes that should be added to a new job
+   */
+  private fun getJobVolumes(executable: Executable): List<Volume> {
+    return getRuntimeArg(executable, "volumes", volumes)
+  }
+
+  /**
+   * Get all volume mounts that should be added to a new job
+   */
+  private fun getJobVolumeMounts(executable: Executable): List<VolumeMount> {
+    return getRuntimeArg(executable, "volumeMounts", volumeMounts)
+  }
+
+  /**
+   * Get all environment variables that should be added to a new job
+   */
+  private fun getJobEnvVars(executable: Executable): List<EnvVar> {
+    return getRuntimeArg(executable, "env", envVars)
+  }
+
+  /**
    * Executes an [executable] using the given Kubernetes [client]
    */
   private fun execute(executable: Executable, outputCollector: OutputCollector,
@@ -131,6 +173,10 @@ class KubernetesRuntime(
 
     val commandLine = Runtime.executableToCommandLine(executable)
     val args = commandLine.drop(1)
+
+    val jobVolumes = getJobVolumes(executable)
+    val jobVolumeMounts = getJobVolumeMounts(executable)
+    val jobEnvVars = getJobEnvVars(executable)
 
     // create job
     val job = JobBuilder()
@@ -145,11 +191,11 @@ class KubernetesRuntime(
                 .withName(jobName)
                 .withImage(executable.path)
                 .withArgs(args)
-                .withVolumeMounts(volumeMounts)
-                .withEnv(envVars)
+                .withVolumeMounts(jobVolumeMounts)
+                .withEnv(jobEnvVars)
               .endContainer()
               .withRestartPolicy("Never")
-              .withVolumes(volumes)
+              .withVolumes(jobVolumes)
             .endSpec()
           .endTemplate()
         .endSpec()
