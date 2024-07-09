@@ -134,7 +134,7 @@ class KubernetesRuntime(
    */
   private inline fun <reified T> getRuntimeArg(executable: Executable,
       id: String, default: List<T>): List<T> {
-    val arg = executable.runtimeArgs.find { it.id == id }
+    val arg = executable.runtimeArgs.find { it.variable.id == id }
     if (arg == null) {
       return default
     }
@@ -171,7 +171,7 @@ class KubernetesRuntime(
    * Get the image pull policy for a new job
    */
   private fun getJobImagePullPolicy(executable: Executable): String? {
-    return executable.runtimeArgs.find { it.id == "imagePullPolicy" }
+    return executable.runtimeArgs.find { it.variable.id == "imagePullPolicy" }
         ?.variable?.value ?: imagePullPolicy
   }
 

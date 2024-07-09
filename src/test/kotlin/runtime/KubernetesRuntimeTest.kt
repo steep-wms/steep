@@ -67,9 +67,8 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
   override fun getVolumeRuntimeArgs(tempDir: Path): List<Argument> {
     return listOf(
         Argument(
-            id = "volumes",
             variable = ArgumentVariable(
-                UniqueID.next(),
+                "volumes",
                 """
                   - name: tmp-path
                     hostPath:
@@ -79,9 +78,8 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
             type = Argument.Type.INPUT
         ),
         Argument(
-            id = "volumeMounts",
             variable = ArgumentVariable(
-                UniqueID.next(),
+                "volumeMounts",
                 """
                   - name: tmp-path
                     mountPath: /tmp
@@ -128,9 +126,8 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
   override fun getEnvRuntimeArgs(): List<Argument> {
     return listOf(
         Argument(
-            id = "env",
             variable = ArgumentVariable(
-                UniqueID.next(),
+                "env",
                 """
                   - name: MYVAR
                     value: $EXPECTED
@@ -335,14 +332,12 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
     fun onExecutable(@TempDir tempDir: Path) {
       simpleExecute(tempDir, runtimeArgs = listOf(
           Argument(
-              id = "imagePullPolicy",
-              variable = ArgumentVariable(UniqueID.next(), "Never"),
+              variable = ArgumentVariable("imagePullPolicy", "Never"),
               type = Argument.Type.INPUT
           ),
           Argument(
-              id = "imagePullSecrets",
               variable = ArgumentVariable(
-                  UniqueID.next(),
+                  "imagePullSecrets",
                   """
                     - name: mysecret
                   """.trimIndent()
@@ -371,14 +366,12 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
           )
       ), runtimeArgs = listOf(
           Argument(
-              id = "imagePullPolicy",
-              variable = ArgumentVariable(UniqueID.next(), "Always"),
+              variable = ArgumentVariable("imagePullPolicy", "Always"),
               type = Argument.Type.INPUT
           ),
           Argument(
-              id = "imagePullSecrets",
               variable = ArgumentVariable(
-                  UniqueID.next(),
+                  "imagePullSecrets",
                   """
                     - name: anothersecret
                   """.trimIndent()
