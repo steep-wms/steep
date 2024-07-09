@@ -19,7 +19,7 @@ const config = {
   trailingSlash: true,
 
   eslint: {
-    dirs: ["components", "cypress", "pages"]
+    dirs: ["components", "pages"]
   },
 
   images: {

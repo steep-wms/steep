@@ -1,5 +1,5 @@
 {
-  "extends": ["next/core-web-vitals", "plugin:cypress/recommended", "prettier"],
+  "extends": ["next/core-web-vitals", "prettier"],
   "rules": {
     "@next/next/google-font-display": "off",
     "@next/next/no-img-element": "off",
@@ -19,6 +19,5 @@
     "react/prop-types": "off",
     "react/react-in-jsx-scope": "off",
     "semi": ["error", "never"],
-    "cypress/no-unnecessary-waiting": "off"
   }
 }
