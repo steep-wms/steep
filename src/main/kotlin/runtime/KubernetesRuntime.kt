@@ -85,7 +85,8 @@ class KubernetesRuntime(
     client.pods().inNamespace(namespace)
         .withName(podList.items[0].metadata.name)
         .waitUntilCondition({ pod ->
-          if (pod.status.containerStatuses.all { it.state.running != null }) {
+          if (pod.status.containerStatuses.isNotEmpty() &&
+              pod.status.containerStatuses.all { it.state.running != null }) {
             // now that the container is running, we can start the watch log
             lazyStartWatchLog()
           }
