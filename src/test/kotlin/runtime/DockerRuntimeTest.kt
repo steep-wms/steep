@@ -25,7 +25,6 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInfo
 import org.junit.jupiter.api.io.TempDir
 import runtime.ContainerRuntimeTest.Companion.EXPECTED
 import java.io.File
@@ -49,18 +48,12 @@ class DockerRuntimeTest : ContainerRuntimeTest {
     }
   }
 
-  override fun createConfig(tempDir: Path, testInfo: TestInfo): JsonObject {
+  override fun createConfig(tempDir: Path, additional: JsonObject): JsonObject {
     val result = jsonObjectOf(
         ConfigConstants.TMP_PATH to tempDir.toString(),
         ConfigConstants.RUNTIMES_DOCKER_PULL to "never"
     )
-
-    if (testInfo.tags.contains("envVar")) {
-      result.put(ConfigConstants.RUNTIMES_DOCKER_ENV, jsonArrayOf(
-          "MYVAR=$EXPECTED"
-      ))
-    }
-
+    result.mergeIn(additional)
     return result
   }
 
@@ -142,34 +135,43 @@ class DockerRuntimeTest : ContainerRuntimeTest {
   }
 
   /**
-   * Test that a Docker container can be executed with a mounted volume specified
-   * in the configuration object
+   * Test that [ConfigConstants.TMP_PATH] is correctly mounted
    */
   @Test
-  fun executeVolumeConf(@TempDir tempDir: Path, @TempDir tempDir2: Path) {
-    val f = File(tempDir2.toFile(), "test.txt")
+  fun executeTmpPath(@TempDir tempDir: Path) {
+    val f = File(tempDir.toFile(), "test.txt")
     f.writeText(EXPECTED)
-
-    val containerFileName = "/tmp/test.txt"
-    val config = jsonObjectOf(
-        ConfigConstants.TMP_PATH to tempDir.toString(),
-        ConfigConstants.RUNTIMES_DOCKER_VOLUMES to jsonArrayOf(
-            "${f.absolutePath}:$containerFileName"
-        ),
-        ConfigConstants.RUNTIMES_DOCKER_PULL to "never"
-    )
 
     val exec = Executable(path = "alpine", serviceId = "cat", arguments = listOf(
         Argument(variable = ArgumentVariable(UniqueID.next(), "cat"),
             type = Argument.Type.INPUT),
-        Argument(variable = ArgumentVariable(UniqueID.next(), containerFileName),
+        Argument(variable = ArgumentVariable(UniqueID.next(), f.absolutePath),
             type = Argument.Type.INPUT)
     ), runtime = Service.RUNTIME_DOCKER)
 
-    val runtime = DockerRuntime(config)
+    val runtime = createRuntime(createConfig(tempDir))
     val collector = DefaultOutputCollector()
     runtime.execute(exec, collector)
     assertThat(collector.output()).isEqualTo(EXPECTED)
+  }
+
+  @Test
+  override fun executeVolumeConf(@TempDir tempDir: Path, @TempDir tempDir2: Path) {
+    val f = File(tempDir2.toFile(), "test.txt")
+    doExecuteVolumeConf(tempDir, tempDir2, jsonObjectOf(
+        ConfigConstants.RUNTIMES_DOCKER_VOLUMES to jsonArrayOf(
+            "${f.absolutePath}:/tmp/test.txt"
+        )
+    ))
+  }
+
+  @Test
+  override fun executeEnvConf(@TempDir tempDir: Path) {
+    doExecuteEnvConf(tempDir, jsonObjectOf(
+        ConfigConstants.RUNTIMES_DOCKER_ENV to jsonArrayOf(
+            "MYVAR=$EXPECTED"
+        )
+    ))
   }
 
   /**
