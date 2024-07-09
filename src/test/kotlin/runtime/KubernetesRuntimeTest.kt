@@ -5,6 +5,7 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import helper.DefaultOutputCollector
 import helper.JsonUtils
 import helper.UniqueID
+import io.fabric8.kubernetes.api.model.LocalObjectReferenceBuilder
 import io.fabric8.kubernetes.api.model.batch.v1.Job
 import io.fabric8.kubernetes.api.model.batch.v1.JobBuilder
 import io.fabric8.kubernetes.client.Config
@@ -281,52 +282,71 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
               type = Argument.Type.INPUT)
       ), runtimeArgs = runtimeArgs)
 
+      val config = mockClient.configuration
+      val runtime = KubernetesRuntime(createConfig(tempDir, additionalConfig), config)
+      val collector = DefaultOutputCollector()
       try {
-        val config = mockClient.configuration
-        val runtime = KubernetesRuntime(createConfig(tempDir, additionalConfig), config)
-        val collector = DefaultOutputCollector()
         runtime.execute(exec, collector)
-        assertThat(collector.output()).isEqualTo(EXPECTED)
       } catch (t: Throwable) {
         // will fail because we only mock one request
+        t.printStackTrace()
       }
     }
 
     /**
-     * Test if the default value if `imagePullPolicy` is `null`
+     * Test if the default values of `imagePullPolicy` and `imagePullSecrets`
+     * are `null` and empty list respectively
      */
     @Test
-    fun defaultImagePullPolicy(@TempDir tempDir: Path) {
+    fun default(@TempDir tempDir: Path) {
       simpleExecute(tempDir)
 
       val r = mockServer.takeRequest()
       val job: Job = JsonUtils.mapper.readValue(r.body.inputStream())
       assertThat(job.spec.template.spec.containers.first().imagePullPolicy).isNull()
+      assertThat(job.spec.template.spec.imagePullSecrets).isEmpty()
     }
 
     /**
-     * Test if a configured image pull policy is forwarded
+     * Test if the configured image pull policy and the image pull secrets are
+     * forwarded
      */
     @Test
-    fun forwardConfiguredImagePullPolicy(@TempDir tempDir: Path) {
+    fun forwardConfigured(@TempDir tempDir: Path) {
       simpleExecute(tempDir, additionalConfig = jsonObjectOf(
-          ConfigConstants.RUNTIMES_KUBERNETES_IMAGEPULLPOLICY to "Never"
+          ConfigConstants.RUNTIMES_KUBERNETES_IMAGEPULLPOLICY to "Never",
+          ConfigConstants.RUNTIMES_KUBERNETES_IMAGEPULLSECRETS to jsonArrayOf(
+              jsonObjectOf("name" to "mysecret")
+          )
       ))
 
       val r = mockServer.takeRequest()
       val job: Job = JsonUtils.mapper.readValue(r.body.inputStream())
       assertThat(job.spec.template.spec.containers.first().imagePullPolicy).isEqualTo("Never")
+      assertThat(job.spec.template.spec.imagePullSecrets).containsOnly(
+          LocalObjectReferenceBuilder().withName("mysecret").build())
     }
 
     /**
-     * Test if we can set an image pull policy on the executable
+     * Test if we can set an image pull policy and image pull secrets on the
+     * executable
      */
     @Test
-    fun imagePullPolicyOnExecutable(@TempDir tempDir: Path) {
+    fun onExecutable(@TempDir tempDir: Path) {
       simpleExecute(tempDir, runtimeArgs = listOf(
           Argument(
               id = "imagePullPolicy",
               variable = ArgumentVariable(UniqueID.next(), "Never"),
+              type = Argument.Type.INPUT
+          ),
+          Argument(
+              id = "imagePullSecrets",
+              variable = ArgumentVariable(
+                  UniqueID.next(),
+                  """
+                    - name: mysecret
+                  """.trimIndent()
+              ),
               type = Argument.Type.INPUT
           )
       ))
@@ -334,19 +354,35 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
       val r = mockServer.takeRequest()
       val job: Job = JsonUtils.mapper.readValue(r.body.inputStream())
       assertThat(job.spec.template.spec.containers.first().imagePullPolicy).isEqualTo("Never")
+      assertThat(job.spec.template.spec.imagePullSecrets).containsOnly(
+          LocalObjectReferenceBuilder().withName("mysecret").build())
     }
 
     /**
-     * Test if a configured image pull policy can be overridden
+     * Test if the configured image pull policy and the image pull secrets can
+     * be overridden
      */
     @Test
-    fun overwriteConfiguredImagePullPolicy(@TempDir tempDir: Path) {
+    fun overwriteConfigured(@TempDir tempDir: Path) {
       simpleExecute(tempDir, additionalConfig = jsonObjectOf(
-          ConfigConstants.RUNTIMES_KUBERNETES_IMAGEPULLPOLICY to "Never"
+          ConfigConstants.RUNTIMES_KUBERNETES_IMAGEPULLPOLICY to "Never",
+          ConfigConstants.RUNTIMES_KUBERNETES_IMAGEPULLSECRETS to jsonArrayOf(
+              jsonObjectOf("name" to "mysecret")
+          )
       ), runtimeArgs = listOf(
           Argument(
               id = "imagePullPolicy",
               variable = ArgumentVariable(UniqueID.next(), "Always"),
+              type = Argument.Type.INPUT
+          ),
+          Argument(
+              id = "imagePullSecrets",
+              variable = ArgumentVariable(
+                  UniqueID.next(),
+                  """
+                    - name: anothersecret
+                  """.trimIndent()
+              ),
               type = Argument.Type.INPUT
           )
       ))
@@ -354,6 +390,10 @@ class KubernetesRuntimeTest : ContainerRuntimeTest {
       val r = mockServer.takeRequest()
       val job: Job = JsonUtils.mapper.readValue(r.body.inputStream())
       assertThat(job.spec.template.spec.containers.first().imagePullPolicy).isEqualTo("Always")
+      assertThat(job.spec.template.spec.imagePullSecrets).containsOnly(
+          LocalObjectReferenceBuilder().withName("mysecret").build(),
+          LocalObjectReferenceBuilder().withName("anothersecret").build()
+      )
     }
   }
 }

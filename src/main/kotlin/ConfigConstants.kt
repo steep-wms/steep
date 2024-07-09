@@ -551,6 +551,15 @@ object ConfigConstants {
   const val RUNTIMES_KUBERNETES_IMAGEPULLPOLICY = "steep.runtimes.kubernetes.imagePullPolicy"
 
   /**
+   * A list of image pull secrets for any job the Kubernetes runtime starts. See the
+   * [Kubernetes documentation](https://kubernetes.io/docs/concepts/containers/images#specifying-imagepullsecrets-on-a-pod)
+   * or the
+   * [Kubernetes API reference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core)
+   * for more information.
+   */
+  const val RUNTIMES_KUBERNETES_IMAGEPULLSECRETS = "steep.runtimes.kubernetes.imagePullSecrets"
+
+  /**
    * The database driver (see [db.SubmissionRegistryFactory] for valid values)
    */
   const val DB_DRIVER = "steep.db.driver"

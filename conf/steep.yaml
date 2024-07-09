@@ -90,6 +90,9 @@ steep:
       #   - name: steep-tmp-path
       #     hostPath:
       #       path: /tmp
+      # imagePullPolicy: Always
+      # imagePullSecrets:
+      #   - name: mysecret
 
   controller:
     lookupInterval: 2s

@@ -6,6 +6,7 @@ import helper.OutputCollector
 import helper.UniqueID
 import helper.YamlUtils
 import io.fabric8.kubernetes.api.model.EnvVar
+import io.fabric8.kubernetes.api.model.LocalObjectReference
 import io.fabric8.kubernetes.api.model.Volume
 import io.fabric8.kubernetes.api.model.VolumeMount
 import io.fabric8.kubernetes.api.model.batch.v1.Job
@@ -69,6 +70,8 @@ class KubernetesRuntime(
       ConfigConstants.RUNTIMES_KUBERNETES_VOLUMES, "volume")
   private val imagePullPolicy: String? = config.getString(
       ConfigConstants.RUNTIMES_KUBERNETES_IMAGEPULLPOLICY)
+  private val imagePullSecrets = deserConfig<LocalObjectReference>(config,
+      ConfigConstants.RUNTIMES_KUBERNETES_IMAGEPULLSECRETS, "local object reference")
 
   /**
    * Wait for a job to finish. Handles output and failures.
@@ -173,6 +176,13 @@ class KubernetesRuntime(
   }
 
   /**
+   * Get the image pull secrets that should be added to a new job
+   */
+  private fun getJobImagePullSecrets(executable: Executable): List<LocalObjectReference> {
+    return getRuntimeArg(executable, "imagePullSecrets", imagePullSecrets)
+  }
+
+  /**
    * Executes an [executable] using the given Kubernetes [client]
    */
   private fun execute(executable: Executable, outputCollector: OutputCollector,
@@ -189,6 +199,7 @@ class KubernetesRuntime(
     val jobVolumeMounts = getJobVolumeMounts(executable)
     val jobEnvVars = getJobEnvVars(executable)
     val jobImagePullPolicy = getJobImagePullPolicy(executable)
+    val jobImagePullSecrets = getJobImagePullSecrets(executable)
 
     // create job
     val job = JobBuilder()
@@ -208,6 +219,7 @@ class KubernetesRuntime(
                 .withImagePullPolicy(jobImagePullPolicy)
               .endContainer()
               .withRestartPolicy("Never")
+              .withImagePullSecrets(jobImagePullSecrets)
               .withVolumes(jobVolumes)
             .endSpec()
           .endTemplate()
