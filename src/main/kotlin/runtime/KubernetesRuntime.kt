@@ -15,6 +15,7 @@ import io.fabric8.kubernetes.client.Config
 import io.fabric8.kubernetes.client.ConfigBuilder
 import io.fabric8.kubernetes.client.KubernetesClient
 import io.fabric8.kubernetes.client.KubernetesClientBuilder
+import io.fabric8.kubernetes.client.KubernetesClientException
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonArrayOf
 import model.processchain.Executable
@@ -77,13 +78,14 @@ class KubernetesRuntime(
    * Wait for a job to finish. Handles output and failures.
    */
   private fun waitForJob(client: KubernetesClient, job: Job,
-      commandLine: List<String>, lazyStartWatchLog: () -> Unit) {
+      args: List<String>, lazyStartWatchLog: () -> Unit) {
     // get all pods created by the job
     val podList = client.pods().inNamespace(namespace)
         .withLabel("job-name", job.metadata.name).list()
 
     // wait for pod to complete
     val errorMessages = mutableListOf<String>()
+    var exitCode: Int? = null
     var failed = false
     client.pods().inNamespace(namespace)
         .withName(podList.items[0].metadata.name)
@@ -102,8 +104,13 @@ class KubernetesRuntime(
                 errorMessages.add(pod.status.message)
               }
               for (containerStatus in pod.status.containerStatuses) {
-                if (containerStatus?.state?.terminated?.message != null) {
-                  errorMessages.add(containerStatus.state.terminated.message)
+                if (containerStatus?.state?.terminated != null) {
+                  if (containerStatus.state.terminated.message != null) {
+                    errorMessages.add(containerStatus.state.terminated.message)
+                  }
+                  if (containerStatus.state.terminated.exitCode != null) {
+                    exitCode = containerStatus.state.terminated.exitCode
+                  }
                 }
               }
               failed = true
@@ -121,8 +128,10 @@ class KubernetesRuntime(
         }, Long.MAX_VALUE, TimeUnit.DAYS)
 
     if (failed) {
-      throw IOException("Failed to run `${commandLine.joinToString(" ")}'. " +
-          "Reason: $errorMessages.")
+      // leave `lastOutput` empty for now and fill it in later when we have
+      // collected all output (see #execute())
+      throw KubernetesJobExecutionException(
+          "Failed to run `${args.joinToString(" ")}'", "", exitCode, errorMessages)
     }
   }
 
@@ -249,7 +258,7 @@ class KubernetesRuntime(
       }
 
       try {
-        waitForJob(client, job, commandLine, ::lazyStartWatchLog)
+        waitForJob(client, job, args, ::lazyStartWatchLog)
       } finally {
         // Collect logs. We need to make sure the thread is started because
         // the container execution might be so fast, that we haven't received
@@ -286,10 +295,37 @@ class KubernetesRuntime(
   }
 
   override fun execute(executable: Executable, outputCollector: OutputCollector) {
-    KubernetesClientBuilder().withConfig(kubernetesConfig).build().use { client ->
-      execute(executable, outputCollector, client)
+    try {
+      KubernetesClientBuilder().withConfig(kubernetesConfig).build().use { client ->
+        execute(executable, outputCollector, client)
+      }
+    } catch (e: KubernetesJobExecutionException) {
+      // add last output
+      throw KubernetesJobExecutionException(e.message!!,
+          outputCollector.output(), e.exitCode, e.reasons)
+    } catch (e: KubernetesClientException) {
+      // convert stacktrace to nicer error message
+      log.error("Kubernetes client failed", e)
+      val msg = ExceptionUtils.stream(e).map { t -> ExceptionUtils.getMessage(t) }
+          .toList().joinToString("\nCaused by: ")
+      throw IOException(msg, e)
     }
   }
+
+  /**
+   * An exception thrown by the Kubernetes runtime when a job has failed
+   * @param message a generic error message
+   * @param lastOutput the last output collected from the command before it
+   * failed (may contain the actual error message issued by the command)
+   * @param exitCode the command's exit code (if available)
+   * @param reasons a list of reasons for the error (if available, may be empty)
+   */
+  class KubernetesJobExecutionException(
+      message: String,
+      val lastOutput: String,
+      val exitCode: Int?,
+      val reasons: List<String>
+  ) : IOException(message)
 
   /**
    * A background thread that reads all lines from the [inputStream] of a job

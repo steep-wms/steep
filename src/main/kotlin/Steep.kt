@@ -37,6 +37,7 @@ import kotlinx.coroutines.launch
 import model.processchain.ProcessChain
 import model.retry.RetryPolicy
 import org.slf4j.LoggerFactory
+import runtime.KubernetesRuntime
 import java.nio.file.NoSuchFileException
 import java.nio.file.Paths
 import java.time.Duration
@@ -670,17 +671,39 @@ class Steep : CoroutineVerticle() {
         "status" to SubmissionRegistry.ProcessChainStatus.CANCELLED.toString()
     )
   } catch (t: Throwable) {
-    val message = if (t is Shell.ExecutionException) {
-      """
+    val message = when (t) {
+      is Shell.ExecutionException -> {
+        """
         ${t.message}
 
         Exit code: ${t.exitCode}
 
         ${t.lastOutput}
       """.trimIndent()
-    } else {
-      log.debug("Could not execute process chain", t)
-      t.message ?: "Unknown internal error"
+      }
+
+      is KubernetesRuntime.KubernetesJobExecutionException -> {
+        val msg = StringBuilder(t.message)
+        if (t.exitCode != null) {
+          msg.append("\n\nExit code: ${t.exitCode}")
+        }
+        if (t.reasons.isNotEmpty()) {
+          msg.append("\n\n")
+          if (t.reasons.size == 1) {
+            msg.append("Reason: ${t.reasons[0]}")
+          } else {
+            msg.append("Reasons:\n- ${t.reasons.joinToString("\n- ")}")
+          }
+        }
+        msg.append("\n\n")
+        msg.append(t.lastOutput)
+        msg.toString()
+      }
+
+      else -> {
+        log.debug("Could not execute process chain", t)
+        t.message ?: "Unknown internal error"
+      }
     }
     jsonObjectOf(
         "errorMessage" to message,
