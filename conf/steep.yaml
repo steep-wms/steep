@@ -34,7 +34,7 @@ steep:
       #   gracefulStartup: true
       #   exitProcessAfter: 5s
       # kubernetes:
-      #   enabled: true
+      #   enabled: false
       #   namespace: default
       #   serviceName: steep
       #   serviceDns: steep.default.svc.cluster.local
