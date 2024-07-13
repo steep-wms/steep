@@ -14,7 +14,7 @@ import model.timeout.TimeoutPolicy
  * or nested [model.workflow.ForEachAction]s (e.g. `myaction$2$1`).
  * @param path the path to the program to execute
  * @param arguments the program arguments
- * @param runtime the runtime environment for this executable
+ * @param runtime the name of the runtime for this executable
  * @param serviceId the ID of the processing service to be called (may be
  * `null` if an executable should be called that does not refer to a service
  * or if the object has been created prior to Steep v5.4.0)

@@ -7,9 +7,9 @@ import model.processchain.Executable
 import kotlin.reflect.KFunction
 
 /**
- * A runtime plugin is a function that can run process chain executables within
- * a certain runtime environment (see [model.metadata.Service.runtime]). The
- * function has the following signature:
+ * A runtime plugin is a function that can run process chain executables with
+ * a certain runtime (see [model.metadata.Service.runtime]). The function has
+ * the following signature:
  *
  *     suspend fun myRuntime(executable: model.processchain.Executable,
  *       outputCollector: helper.OutputCollector, vertx: io.vertx.core.Vertx)
@@ -24,7 +24,7 @@ data class RuntimePlugin(
     override val version: String? = null,
 
     /**
-     * The name of the supported runtime environment
+     * The name of the supported runtime
      */
     val supportedRuntime: String,
 

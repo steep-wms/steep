@@ -9,7 +9,7 @@ import model.timeout.TimeoutPolicy
  * @param name a human-readable name
  * @param description a human-readable description
  * @param path relative path to the service executable in the service artifact
- * @param runtime the runtime environment
+ * @param runtime the runtime to execute the service
  * @param parameters list of parameters
  * @param runtimeArgs optional list of arguments to pass to the runtime
  * @param requiredCapabilities a set of capabilities this service needs the
@@ -48,7 +48,7 @@ data class Service(
 ) {
   companion object {
     /**
-     * A list of built-in runtime environments
+     * A list of names of built-in runtimes
      */
     const val RUNTIME_DOCKER = "docker"
     const val RUNTIME_KUBERNETES = "kubernetes"

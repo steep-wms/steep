@@ -6,7 +6,7 @@ import model.processchain.Executable
 import org.apache.commons.lang3.BooleanUtils
 
 /**
- * A runtime environment for process chain executables
+ * A runtime for process chain executables
  * @author Michel Kraemer
  */
 interface Runtime {
