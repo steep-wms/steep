@@ -248,8 +248,8 @@ object ConfigConstants {
   const val CLUSTER_HAZELCAST_KUBERNETES_SERVICENAME = "steep.cluster.kubernetes.serviceName"
 
   /**
-   * An optional service label name (or a comma-separated list of names) to
-   * limit the cluster members to pods that are connected to a given service.
+   * An optional service label name to limit the cluster members to pods that
+   * are connected to a given service.
    *
    * Must be used together with [CLUSTER_HAZELCAST_KUBERNETES_SERVICELABELVALUE].
    *
@@ -261,11 +261,10 @@ object ConfigConstants {
   const val CLUSTER_HAZELCAST_KUBERNETES_SERVICELABELNAME = "steep.cluster.kubernetes.serviceLabelName"
 
   /**
-   * An optional service label value (or a comma-separated list of value) to
-   * limit the cluster members to pods that are connected to a given service.
+   * An optional service label value to limit the cluster members to pods that
+   * are connected to a given service.
    *
-   * Must be used together with [CLUSTER_HAZELCAST_KUBERNETES_SERVICELABELNAME]
-   * and the number of values must match the number of names.
+   * Must be used together with [CLUSTER_HAZELCAST_KUBERNETES_SERVICELABELNAME].
    */
   const val CLUSTER_HAZELCAST_KUBERNETES_SERVICELABELVALUE = "steep.cluster.kubernetes.serviceLabelValue"
 
