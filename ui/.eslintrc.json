@@ -18,6 +18,6 @@
     "react/jsx-curly-spacing": ["error", "never"],
     "react/prop-types": "off",
     "react/react-in-jsx-scope": "off",
-    "semi": ["error", "never"],
+    "semi": ["error", "never"]
   }
 }
