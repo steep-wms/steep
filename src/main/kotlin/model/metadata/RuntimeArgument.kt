@@ -27,6 +27,12 @@ data class RuntimeArgument(
     val value: String? = null
 )
 
+/**
+ * A deserializer that converts JSON nodes to strings and keeps strings as
+ * they are. Since runtime argument values can only be strings, this is useful
+ * if a runtime also accepts JSON objects or arrays.
+ * @author Michel Kraemer
+ */
 private class ToStringDeserializer : JsonDeserializer<String>() {
   override fun deserialize(p: JsonParser, ctxt: DeserializationContext): String {
     val node: JsonNode = p.codec.readTree(p)
