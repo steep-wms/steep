@@ -71,7 +71,7 @@ dependencies {
     implementation("io.airlift:aircompressor:0.27")
     implementation("io.fabric8:kubernetes-client:6.13.1")
     implementation("io.pebbletemplates:pebble:3.2.2")
-    implementation("io.projectreactor:reactor-core:3.6.7") // necessary for reactive MongoDB driver
+    implementation("io.projectreactor:reactor-core:3.6.8") // necessary for reactive MongoDB driver
     implementation("io.prometheus:simpleclient:0.16.0")
     implementation("io.micrometer:micrometer-registry-prometheus:1.12.5")
     implementation("org.apache.ant:ant:1.10.14")
