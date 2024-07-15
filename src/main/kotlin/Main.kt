@@ -214,10 +214,22 @@ suspend fun main() {
         .setProperty("namespace", kubernetesNamespace)
   }
   val kubernetesServiceName = conf.getString(
-      ConfigConstants.CLUSTER_HAZELCAST_KUBERNETES_SERVICE_NAME)
+      ConfigConstants.CLUSTER_HAZELCAST_KUBERNETES_SERVICENAME)
   if (kubernetesServiceName != null) {
     hazelcastConfig.networkConfig.join.kubernetesConfig
         .setProperty("service-name", kubernetesServiceName)
+  }
+  val kubernetesServiceLabelName = conf.getString(
+      ConfigConstants.CLUSTER_HAZELCAST_KUBERNETES_SERVICELABELNAME)
+  if (kubernetesServiceLabelName != null) {
+    hazelcastConfig.networkConfig.join.kubernetesConfig
+        .setProperty("service-label-name", kubernetesServiceLabelName)
+  }
+  val kubernetesServiceLabelValue = conf.getString(
+      ConfigConstants.CLUSTER_HAZELCAST_KUBERNETES_SERVICELABELVALUE)
+  if (kubernetesServiceLabelValue != null) {
+    hazelcastConfig.networkConfig.join.kubernetesConfig
+        .setProperty("service-label-value", kubernetesServiceLabelValue)
   }
   val kubernetesServiceDns = conf.getString(
       ConfigConstants.CLUSTER_HAZELCAST_KUBERNETES_SERVICE_DNS)

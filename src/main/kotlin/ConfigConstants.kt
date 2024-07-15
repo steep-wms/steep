@@ -238,18 +238,44 @@ object ConfigConstants {
 
   /**
    * An optional service name to limit the cluster members to pods that are
-   * connected to a given service. If not specified, all pods in the namespace
-   * will be considered potential cluster members.
+   * connected to a given service.
+   *
+   * Only one of [CLUSTER_HAZELCAST_KUBERNETES_SERVICENAME] or
+   * [CLUSTER_HAZELCAST_KUBERNETES_SERVICELABELNAME] can be specified at a time.
+   * If neither of them are specified, all pods in the namespace will be
+   * considered potential cluster members.
    */
-  const val CLUSTER_HAZELCAST_KUBERNETES_SERVICE_NAME = "steep.cluster.kubernetes.serviceName"
+  const val CLUSTER_HAZELCAST_KUBERNETES_SERVICENAME = "steep.cluster.kubernetes.serviceName"
 
   /**
-   * Instead of specifying a namespace and a service name through
-   * [CLUSTER_HAZELCAST_KUBERNETES_NAMESPACE] and
-   * [CLUSTER_HAZELCAST_KUBERNETES_SERVICE_NAME], you can also specify a DNS
-   * name in the form `SERVICE-NAME.NAMESPACE.svc.cluster.local`. Hazelcast
-   * will perform a DNS lookup to obtain the pod IP addresses of cluster
-   * members.
+   * An optional service label name (or a comma-separated list of names) to
+   * limit the cluster members to pods that are connected to a given service.
+   *
+   * Must be used together with [CLUSTER_HAZELCAST_KUBERNETES_SERVICELABELVALUE].
+   *
+   * Only one of [CLUSTER_HAZELCAST_KUBERNETES_SERVICENAME] or
+   * [CLUSTER_HAZELCAST_KUBERNETES_SERVICELABELNAME] can be specified at a time.
+   * If neither of them are specified, all pods in the namespace will be
+   * considered potential cluster members.
+   */
+  const val CLUSTER_HAZELCAST_KUBERNETES_SERVICELABELNAME = "steep.cluster.kubernetes.serviceLabelName"
+
+  /**
+   * An optional service label value (or a comma-separated list of value) to
+   * limit the cluster members to pods that are connected to a given service.
+   *
+   * Must be used together with [CLUSTER_HAZELCAST_KUBERNETES_SERVICELABELNAME]
+   * and the number of values must match the number of names.
+   */
+  const val CLUSTER_HAZELCAST_KUBERNETES_SERVICELABELVALUE = "steep.cluster.kubernetes.serviceLabelValue"
+
+  /**
+   * Instead of specifying a namespace through [CLUSTER_HAZELCAST_KUBERNETES_NAMESPACE]
+   * and selecting a service by its name ([CLUSTER_HAZELCAST_KUBERNETES_SERVICENAME])
+   * or by label ([CLUSTER_HAZELCAST_KUBERNETES_SERVICELABELNAME]), you can also
+   * specify a DNS name in the form `SERVICE-NAME.NAMESPACE.svc.cluster.local`.
+   * Hazelcast will perform a DNS lookup to obtain the pod IP addresses of
+   * cluster members.
    */
   const val CLUSTER_HAZELCAST_KUBERNETES_SERVICE_DNS = "steep.cluster.kubernetes.serviceDns"
 
