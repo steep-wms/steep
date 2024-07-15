@@ -17,7 +17,7 @@ buildscript {
 }
 
 group = "de.fhg.igd"
-version = "6.9.0-SNAPSHOT"
+version = "6.9.0"
 
 repositories {
     mavenCentral()
