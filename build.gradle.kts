@@ -59,7 +59,7 @@ dependencies {
     // TODO upgrade to v5 (i.e. remove this line) with Steep 7.0
     implementation("com.hazelcast:hazelcast-kubernetes:2.2.3")
 
-    implementation("commons-codec:commons-codec:1.17.0")
+    implementation("commons-codec:commons-codec:1.17.1")
     implementation("commons-io:commons-io:2.16.1")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.17.2")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2")
