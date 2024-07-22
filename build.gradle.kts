@@ -38,7 +38,7 @@ dependencies {
     implementation("io.vertx:vertx-hazelcast:4.5.8")
     implementation("io.vertx:vertx-lang-kotlin:4.5.8")
     implementation("io.vertx:vertx-lang-kotlin-coroutines:4.5.8")
-    implementation("io.vertx:vertx-micrometer-metrics:4.5.8")
+    implementation("io.vertx:vertx-micrometer-metrics:4.5.9")
     implementation("io.vertx:vertx-mongo-client:4.5.8")
     implementation("io.vertx:vertx-pg-client:4.5.8")
     implementation("io.vertx:vertx-web:4.5.8")
