@@ -96,7 +96,7 @@ dependencies {
     implementation(kotlin("stdlib"))
     implementation(kotlin("script-runtime"))
 
-    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:4.15.0")
+    testImplementation("de.flapdoodle.embed:de.flapdoodle.embed.mongo:4.16.2")
     testImplementation("io.fabric8:kubernetes-server-mock:6.13.1")
     testImplementation("io.mockk:mockk:1.13.11")
     testImplementation("io.vertx:vertx-junit5:4.5.8")
