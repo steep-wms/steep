@@ -75,7 +75,7 @@ dependencies {
     implementation("io.prometheus:simpleclient:0.16.0")
     implementation("io.micrometer:micrometer-registry-prometheus:1.12.5")
     implementation("org.apache.ant:ant:1.10.14")
-    implementation("org.apache.commons:commons-lang3:3.14.0")
+    implementation("org.apache.commons:commons-lang3:3.17.0")
     implementation("org.apache.commons:commons-text:1.12.0")
     implementation("org.flywaydb:flyway-core:10.15.2")
     implementation("org.flywaydb:flyway-database-postgresql:10.15.2")
