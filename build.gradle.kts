@@ -40,7 +40,7 @@ dependencies {
     implementation("io.vertx:vertx-lang-kotlin-coroutines:4.5.8")
     implementation("io.vertx:vertx-micrometer-metrics:4.5.8")
     implementation("io.vertx:vertx-mongo-client:4.5.8")
-    implementation("io.vertx:vertx-pg-client:4.5.8")
+    implementation("io.vertx:vertx-pg-client:4.5.10")
     implementation("io.vertx:vertx-web:4.5.8")
     implementation("io.vertx:vertx-web-client:4.5.8")
 
