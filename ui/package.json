@@ -22,7 +22,7 @@
     "classnames": "^2.5.1",
     "clipboard": "^2.0.11",
     "color": "^4.2.3",
-    "date-fns": "^3.6.0",
+    "date-fns": "^4.0.0",
     "dayjs": "^1.11.11",
     "favicons": "^7.2.0",
     "hast-util-to-jsx-runtime": "^2.3.0",
