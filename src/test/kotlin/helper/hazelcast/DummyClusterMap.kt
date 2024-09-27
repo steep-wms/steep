@@ -81,7 +81,37 @@ class DummyClusterMap<K : Any, V : Any>(name: String, vertx: Vertx) : ClusterMap
     return r
   }
 
-  override suspend fun computeIfPresent(key: K, remappingFunction: (K, V) -> V): V? {
-    return map.computeIfPresent(key, remappingFunction)
+  override suspend fun computeIfPresent(key: K, remappingFunction: (K, V) -> V?): V? {
+    return map.computeIfPresent(key) { _, oldValue ->
+      val newValue = remappingFunction(key, oldValue)
+      if (newValue == null) {
+        for (l in entryRemovedListeners) {
+          context.runOnContext {
+            l(key)
+          }
+        }
+      }
+      newValue
+    }
+  }
+
+  override suspend fun compute(key: K, remappingFunction: (K, V?) -> V?): V? {
+    return map.compute(key) { _, oldValue ->
+      val newValue = remappingFunction(key, oldValue)
+      if (oldValue == null && newValue != null) {
+        for ((l, includeValue) in entryAddedListeners) {
+          context.runOnContext {
+            l(key, if (includeValue) newValue else null)
+          }
+        }
+      } else if (oldValue != null && newValue == null) {
+        for (l in entryRemovedListeners) {
+          context.runOnContext {
+            l(key)
+          }
+        }
+      }
+      newValue
+    }
   }
 }

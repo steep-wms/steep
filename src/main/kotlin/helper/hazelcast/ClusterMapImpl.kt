@@ -46,9 +46,15 @@ class ClusterMapImpl<K : Any, V : Any>(private val map: IMap<K, V>,
     }, false).coAwait()
   }
 
-  override suspend fun computeIfPresent(key: K, remappingFunction: (K, V) -> V): V? {
+  override suspend fun computeIfPresent(key: K, remappingFunction: (K, V) -> V?): V? {
     return vertx.executeBlocking({ p ->
       p.complete(map.computeIfPresent(key, remappingFunction))
+    }, false).coAwait()
+  }
+
+  override suspend fun compute(key: K, remappingFunction: (K, V?) -> V?): V? {
+    return vertx.executeBlocking({ p ->
+      p.complete(map.compute(key, remappingFunction))
     }, false).coAwait()
   }
 
