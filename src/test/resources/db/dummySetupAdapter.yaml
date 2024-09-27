@@ -1,0 +1,4 @@
+# A setup adapter that modifies properties of a setup based on workflow variables
+- name: dummySetupAdapter
+  type: setupAdapter
+  scriptFile: db/dummySetupAdapter.kts

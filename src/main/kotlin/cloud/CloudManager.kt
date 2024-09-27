@@ -14,6 +14,8 @@ import agent.AgentRegistryFactory
 import cloud.template.AttachedVolume
 import cloud.template.ProvisioningTemplateExtension
 import com.fasterxml.jackson.module.kotlin.convertValue
+import db.PluginRegistry
+import db.PluginRegistryFactory
 import db.SetupRegistryFactory
 import db.VMRegistry
 import db.VMRegistryFactory
@@ -35,6 +37,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import model.cloud.PoolAgentParams
 import model.cloud.VM
+import model.plugins.call
 import model.retry.RetryPolicy
 import model.setup.Setup
 import model.setup.Volume
@@ -98,6 +101,22 @@ class CloudManager : CoroutineVerticle() {
   }
 
   /**
+   * Contains information about a VM to create
+   */
+  private data class VMToCreate(
+      /**
+       * The VM to create (with the actual setup from which it should be created)
+       */
+      val vm: VM,
+
+      /**
+       * The original setup. May differ from the VM's setup if it has been
+       * modified by setup adapter plugins.
+       */
+      val originalSetup: Setup
+  )
+
+  /**
    * The client to connect to the Cloud
    */
   private lateinit var cloudClient: CloudClient
@@ -155,6 +174,11 @@ class CloudManager : CoroutineVerticle() {
    * to create a VM, delays, and whether another attempt can be performed or not
    */
   private lateinit var setupCircuitBreakers: VMCircuitBreakerMap
+
+  /**
+   * The plugin registry
+   */
+  private val pluginRegistry: PluginRegistry = PluginRegistryFactory.create()
 
   /**
    * A cluster-wide semaphore to prevent [sync] from being called multiple
@@ -475,7 +499,7 @@ class CloudManager : CoroutineVerticle() {
       if (!cleanupOnly) {
         // ensure there's a minimum number of VMs
         launch {
-          createRemoteAgent { setupSelector.selectMinimum(setups) }
+          createRemoteAgent(emptyList()) { setupSelector.selectMinimum(setups) }
         }
       }
     } finally {
@@ -561,21 +585,44 @@ class CloudManager : CoroutineVerticle() {
         break
       }
 
-      val result = createRemoteAgent { setupSelector.select(remaining, requiredCapabilities, possibleSetups) }
+      val result = createRemoteAgent(requiredCapabilities) {
+        setupSelector.select(remaining, requiredCapabilities, possibleSetups)
+      }
       remaining = result.count { !it.second }.toLong()
     }
   }
 
-  private suspend fun createRemoteAgent(selector: suspend () -> List<Setup>): List<Pair<VM, Boolean>> {
+  /**
+   * Applies all setup adapter plugins to the given setup and returns the new
+   * instance. If there are no plugins or if they did not make any modifications,
+   * the method returns the original setup.
+   */
+  private suspend fun applyPlugins(setup: Setup,
+      requiredCapabilities: Collection<String>): Setup {
+    val adapters = pluginRegistry.getSetupAdapters()
+    var result = setup
+    for (adapter in adapters) {
+      result = adapter.call(result, requiredCapabilities, vertx)
+    }
+    return result
+  }
+
+  private suspend fun createRemoteAgent(requiredCapabilities: Collection<String>,
+      selector: suspend () -> List<Setup>): List<Pair<VM, Boolean>> {
     // atomically create VM entries in the registry
     val sharedData = vertx.sharedData()
     val lock = sharedData.getLock(LOCK_VMS).coAwait()
     val vmsToCreate = try {
       val setupsToCreate = selector()
       setupsToCreate.map { setup ->
-        VM(setup = setup).also {
-          vmRegistry.addVM(it)
-        } to setup
+        // call setup adapters and modify setup if necessary
+        val modifiedSetup = applyPlugins(setup, requiredCapabilities)
+
+        // add VM to registry
+        val vm = VM(setup = modifiedSetup)
+        vmRegistry.addVM(vm)
+
+        VMToCreate(vm = vm, originalSetup = setup)
       }
     } finally {
       lock.release()
@@ -589,17 +636,17 @@ class CloudManager : CoroutineVerticle() {
    * Return a list that contains pairs of a VM and a boolean telling if the
    * VM was created successfully or not.
    */
-  private suspend fun createRemoteAgents(vmsToCreate: List<Pair<VM, Setup>>): List<Pair<VM, Boolean>> {
+  private suspend fun createRemoteAgents(vmsToCreate: List<VMToCreate>): List<Pair<VM, Boolean>> {
     val sharedData = vertx.sharedData()
-    val deferreds = vmsToCreate.map { (vm, setup) ->
+    val deferreds = vmsToCreate.map { (vm, originalSetup) ->
       // create multiple VMs in parallel
       async {
         // hold a lock as long as we are creating this VM
         val creatingLock = sharedData.getLock(VM_CREATION_LOCK_PREFIX + vm.id).coAwait()
         try {
-          log.info("Creating virtual machine ${vm.id} with setup `${setup.id}' ...")
+          log.info("Creating virtual machine ${vm.id} with setup `${vm.setup.id}' ...")
 
-          val delay = setupCircuitBreakers.computeIfAbsent(setup).currentDelay
+          val delay = setupCircuitBreakers.computeIfAbsent(originalSetup).currentDelay
           if (delay > 0) {
             log.info("Backing off for $delay milliseconds due to too many failed attempts.")
             delay(delay)
@@ -607,12 +654,12 @@ class CloudManager : CoroutineVerticle() {
 
           try {
             // create VM
-            val externalId = createVM(vm.id, setup)
+            val externalId = createVM(vm.id, vm.setup)
             vmRegistry.setVMExternalID(vm.id, externalId)
             vmRegistry.setVMCreationTime(vm.id, Instant.now())
 
             // create other volumes in background
-            val volumeDeferreds = createVolumesAsync(externalId, setup)
+            val volumeDeferreds = createVolumesAsync(externalId, vm.setup)
 
             try {
               cloudClient.waitForVM(externalId, timeoutCreateVM)
@@ -628,7 +675,7 @@ class CloudManager : CoroutineVerticle() {
               vmRegistry.setVMStatus(vm.id, VM.Status.CREATING, VM.Status.PROVISIONING)
 
               val attachedVolumes = volumes.map { AttachedVolume(it.first, it.second) }
-              provisionVM(ipAddress, vm.id, externalId, setup, attachedVolumes)
+              provisionVM(ipAddress, vm.id, externalId, vm.setup, attachedVolumes)
             } catch (e: Throwable) {
               vmRegistry.forceSetVMStatus(vm.id, VM.Status.DESTROYING)
               cloudClient.destroyVM(externalId, timeoutDestroyVM)
@@ -646,12 +693,16 @@ class CloudManager : CoroutineVerticle() {
 
             vmRegistry.setVMStatus(vm.id, VM.Status.PROVISIONING, VM.Status.RUNNING)
             vmRegistry.setVMAgentJoinTime(vm.id, Instant.now())
-            setupCircuitBreakers.afterAttemptPerformed(setup.id, true)
+            // always call setupCircuitBreakers with original setup ID! (see
+            // computeIfAbsent() call above)
+            setupCircuitBreakers.afterAttemptPerformed(originalSetup.id, true)
           } catch (t: Throwable) {
             vmRegistry.forceSetVMStatus(vm.id, VM.Status.ERROR)
             vmRegistry.setVMReason(vm.id, t.message ?: "Unknown error")
             vmRegistry.setVMDestructionTime(vm.id, Instant.now())
-            setupCircuitBreakers.afterAttemptPerformed(setup.id, false)
+            // always call setupCircuitBreakers with original setup ID! (see
+            // computeIfAbsent() call above)
+            setupCircuitBreakers.afterAttemptPerformed(originalSetup.id, false)
             throw t
           }
         } finally {
@@ -661,7 +712,7 @@ class CloudManager : CoroutineVerticle() {
     }
 
     return deferreds.mapIndexed { i, d ->
-      vmsToCreate[i].first to try {
+      vmsToCreate[i].vm to try {
         d.await()
         true
       } catch (t: Throwable) {
@@ -699,7 +750,7 @@ class CloudManager : CoroutineVerticle() {
    * objects that can be used to wait for the completion of the asynchronous
    * operation and to obtain the IDs of the created volumes.
    */
-  private suspend fun createVolumesAsync(externalId: String,
+  private fun createVolumesAsync(externalId: String,
       setup: Setup): List<Deferred<Pair<String, Volume>>> {
     val metadata = mapOf(CREATED_BY to createdByTag, SETUP_ID to setup.id,
         VM_EXTERNAL_ID to externalId)

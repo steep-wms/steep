@@ -23,7 +23,8 @@ import kotlin.reflect.jvm.javaType
     JsonSubTypes.Type(value = ProcessChainAdapterPlugin::class, name = "processChainAdapter"),
     JsonSubTypes.Type(value = ProcessChainConsistencyCheckerPlugin::class, name = "processChainConsistencyChecker"),
     JsonSubTypes.Type(value = ProgressEstimatorPlugin::class, name = "progressEstimator"),
-    JsonSubTypes.Type(value = RuntimePlugin::class, name = "runtime")
+    JsonSubTypes.Type(value = RuntimePlugin::class, name = "runtime"),
+    JsonSubTypes.Type(value = SetupAdapterPlugin::class, name = "setupAdapter")
 )
 interface Plugin {
   /**

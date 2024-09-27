@@ -14,14 +14,17 @@ import model.plugins.ProcessChainAdapterPlugin
 import model.plugins.ProcessChainConsistencyCheckerPlugin
 import model.plugins.ProgressEstimatorPlugin
 import model.plugins.RuntimePlugin
+import model.plugins.SetupAdapterPlugin
 import model.plugins.initializerPluginTemplate
 import model.plugins.outputAdapterPluginTemplate
 import model.plugins.processChainAdapterPluginTemplate
 import model.plugins.processChainConsistencyCheckerPluginTemplate
 import model.plugins.progressEstimatorPluginTemplate
 import model.plugins.runtimePluginTemplate
+import model.plugins.setupAdapterPluginTemplate
 import model.plugins.wrapPluginFunction
 import model.processchain.ProcessChain
+import model.setup.Setup
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.net.URLClassLoader
@@ -243,6 +246,8 @@ object PluginRegistryFactory {
           f as KFunction<Double?>, ::progressEstimatorPluginTemplate.parameters))
       is RuntimePlugin -> plugin.copy(compiledFunction = wrapPluginFunction(
           f as KFunction<Unit>, ::runtimePluginTemplate.parameters))
+      is SetupAdapterPlugin -> plugin.copy(compiledFunction = wrapPluginFunction(
+          f as KFunction<Setup>, ::setupAdapterPluginTemplate.parameters))
       else -> throw RuntimeException("Unknown plugin type: ${plugin::class.java}")
     }
   }

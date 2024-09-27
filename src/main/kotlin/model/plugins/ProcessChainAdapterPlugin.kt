@@ -2,7 +2,6 @@ package model.plugins
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import io.vertx.core.Vertx
-import model.processchain.Argument
 import model.processchain.ProcessChain
 import model.workflow.Workflow
 import kotlin.reflect.KFunction

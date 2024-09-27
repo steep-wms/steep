@@ -7,6 +7,7 @@ import model.plugins.ProcessChainAdapterPlugin
 import model.plugins.ProcessChainConsistencyCheckerPlugin
 import model.plugins.ProgressEstimatorPlugin
 import model.plugins.RuntimePlugin
+import model.plugins.SetupAdapterPlugin
 
 /**
  * Provides access to compiled plugins
@@ -28,6 +29,8 @@ class PluginRegistry(private val compiledPlugins: List<Plugin>) {
       .toMap()
   private val runtimes = compiledPlugins.filterIsInstance<RuntimePlugin>()
       .associateBy { it.supportedRuntime }
+  private val setupAdapters = compiledPlugins.filterIsInstance<SetupAdapterPlugin>()
+      .toResolved()
 
   /**
    * Get a list of all plugins
@@ -63,4 +66,9 @@ class PluginRegistry(private val compiledPlugins: List<Plugin>) {
    * Get all process chain consistency checkers
    */
   fun getProcessChainConsistencyCheckers() = processChainConsistencyCheckers
+
+  /**
+   * Get all setup adapters
+   */
+  fun getSetupAdapters() = setupAdapters
 }

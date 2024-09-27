@@ -19,11 +19,13 @@ import model.plugins.OutputAdapterPlugin
 import model.plugins.ProcessChainAdapterPlugin
 import model.plugins.ProgressEstimatorPlugin
 import model.plugins.RuntimePlugin
+import model.plugins.SetupAdapterPlugin
 import model.plugins.call
 import model.processchain.Argument
 import model.processchain.ArgumentVariable
 import model.processchain.Executable
 import model.processchain.ProcessChain
+import model.setup.Setup
 import model.workflow.ExecuteAction
 import model.workflow.Workflow
 import org.assertj.core.api.Assertions.assertThat
@@ -383,6 +385,71 @@ class PluginRegistryTest {
     val pr = PluginRegistry(listOf(adapter1, adapter2, adapter3))
     assertThat(pr.findRuntime("ssh")).isSameAs(adapter2)
     assertThat(pr.findRuntime("wrongRuntime")).isNull()
+  }
+
+  /**
+   * Test if a simple setup adapter can be compiled and executed
+   */
+  @Test
+  fun compileDummySetupAdapter(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val config = jsonObjectOf(
+          ConfigConstants.PLUGINS to "src/**/db/dummySetupAdapter.yaml"
+      )
+      PluginRegistryFactory.initialize(vertx, config)
+
+      val pr = PluginRegistryFactory.create()
+      val adapters = pr.getSetupAdapters()
+      ctx.coVerify {
+        assertThat(adapters).hasSize(1)
+        val adapter = adapters[0]
+        val setup = Setup(
+            id = UniqueID.next(),
+            flavor = "xs",
+            imageName = "image",
+            availabilityZone = "Europe",
+            blockDeviceSizeGb = 50,
+            maxVMs = 1
+        )
+
+        var newSetup = adapter.call(setup, emptyList(), vertx)
+        assertThat(newSetup).isSameAs(setup)
+
+        val rcs = listOf("xxl")
+        newSetup = adapter.call(setup, rcs, vertx)
+        assertThat(newSetup).isNotSameAs(setup)
+        assertThat(newSetup.flavor).isEqualTo("xxl")
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if [PluginRegistry.getSetupAdapters] works correctly
+   */
+  @Test
+  fun getSetupAdapters() {
+    val adapter1 = SetupAdapterPlugin("a", "file.kts")
+    val adapter2 = SetupAdapterPlugin("b", "file2.kts")
+    val adapter3 = SetupAdapterPlugin("c", "file3.kts")
+    val expected = listOf(adapter1, adapter2, adapter3)
+    val pr = PluginRegistry(expected)
+    assertThat(pr.getSetupAdapters()).isEqualTo(expected)
+    assertThat(pr.getSetupAdapters()).isNotSameAs(expected)
+  }
+
+  /**
+   * Test if [PluginRegistry.getSetupAdapters] returns plugins with
+   * dependencies in the correct order
+   */
+  @Test
+  fun getSetupAdaptersWithDependencies() {
+    val adapter1 = SetupAdapterPlugin("a", "file.kts", dependsOn = listOf("c"))
+    val adapter2 = SetupAdapterPlugin("b", "file2.kts")
+    val adapter3 = SetupAdapterPlugin("c", "file3.kts")
+    val pr = PluginRegistry(listOf(adapter1, adapter2, adapter3))
+    assertThat(pr.getSetupAdapters()).isEqualTo(listOf(adapter2, adapter3, adapter1))
   }
 
   /**
