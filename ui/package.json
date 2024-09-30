@@ -51,7 +51,7 @@
     "spinkit": "^2.0.1",
     "svgo-loader": "^4.0.0",
     "swr": "^2.2.5",
-    "webpack": "^5.92.1"
+    "webpack": "^5.95.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.45.1",
