@@ -14,7 +14,7 @@ import kotlin.reflect.full.callSuspend
  * and [model.processchain.Argument.dataType]). The function has the following
  * signature:
  *
- *     suspend fun myInputAdapter(output: model.processchain.Argument,
+ *     suspend fun myInputAdapter(input: model.processchain.Argument,
  *       processChain: model.processchain.ProcessChain,
  *       vertx: io.vertx.core.Vertx): List<model.processchain.Argument>
  *
