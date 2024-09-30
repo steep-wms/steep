@@ -33,6 +33,7 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import model.metadata.Service
+import model.plugins.InputAdapterPlugin
 import model.plugins.ProgressEstimatorPlugin
 import model.processchain.Argument
 import model.processchain.ArgumentVariable
@@ -814,5 +815,59 @@ class LocalAgentTest : AgentTest() {
   @Test
   fun maxInactivityRetry(vertx: Vertx, ctx: VertxTestContext) {
     doMaxInactivity(vertx, ctx, RetryPolicy(3), 3)
+  }
+
+  /**
+   * Test if the agent calls an input adapter plugin
+   */
+  @Test
+  fun inputAdapter(vertx: Vertx, ctx: VertxTestContext) {
+    val supportedDataType = "foobar"
+
+    val customInputAdapter = spyk(object {
+      @Suppress("UNUSED_PARAMETER")
+      fun execute(input: Argument, executable: Executable,
+          processChain: ProcessChain, vertx: Vertx): List<Argument> {
+        return listOf(input.copy(label = "-a"))
+      }
+    })
+
+    val pluginRegistry = mockk<PluginRegistry>()
+    mockkObject(PluginRegistryFactory)
+    every { PluginRegistryFactory.create() } returns pluginRegistry
+    every { pluginRegistry.findInputAdapter(supportedDataType) } returns InputAdapterPlugin(
+        name = "foobar",
+        scriptFile = "",
+        supportedDataType = supportedDataType,
+        compiledFunction = customInputAdapter::execute
+    )
+    every { pluginRegistry.findProgressEstimator(any()) } returns null
+
+    mockkConstructor(OtherRuntime::class)
+    every { anyConstructed<OtherRuntime>().execute(any(), any() as OutputCollector) } just Runs
+
+    val inputArg = Argument(
+        variable = ArgumentVariable("id", "myValue"),
+        type = Argument.Type.INPUT,
+        dataType = supportedDataType
+    )
+    val modifiedArg = inputArg.copy(label = "-a")
+    val exec = Executable(path = "ls", serviceId = "ls",
+        arguments = listOf(inputArg))
+    val modifiedExec = exec.copy(arguments = listOf(modifiedArg))
+    val processChain = ProcessChain(executables = listOf(exec))
+
+    val agent = createAgent(vertx)
+
+    CoroutineScope(vertx.dispatcher()).launch {
+      ctx.coVerify {
+        agent.execute(processChain, 1)
+        verify(exactly = 1) {
+          customInputAdapter.execute(inputArg, exec, processChain, any())
+          anyConstructed<OtherRuntime>().execute(modifiedExec, any() as OutputCollector)
+        }
+      }
+      ctx.completeNow()
+    }
   }
 }

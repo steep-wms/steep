@@ -15,6 +15,7 @@ import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import model.plugins.InitializerPlugin
+import model.plugins.InputAdapterPlugin
 import model.plugins.OutputAdapterPlugin
 import model.plugins.ProcessChainAdapterPlugin
 import model.plugins.ProgressEstimatorPlugin
@@ -110,6 +111,54 @@ class PluginRegistryTest {
     val init3 = InitializerPlugin("c", "file3.kts")
     val pr = PluginRegistry(listOf(init1, init2, init3))
     assertThat(pr.getInitializers()).isEqualTo(listOf(init2, init3, init1))
+  }
+
+  /**
+   * Test if a simple input adapter can be compiled and executed
+   */
+  @Test
+  fun compileDummyInputAdapter(vertx: Vertx, ctx: VertxTestContext) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val config = jsonObjectOf(
+          ConfigConstants.PLUGINS to "src/**/db/dummyInputAdapter.yaml"
+      )
+      PluginRegistryFactory.initialize(vertx, config)
+
+      val pr = PluginRegistryFactory.create()
+      val adapter = pr.findInputAdapter("dummy")
+      ctx.coVerify {
+        val inputArg = Argument(
+            variable = ArgumentVariable("id", "myValue"),
+            type = Argument.Type.OUTPUT
+        )
+        val exec = Executable(
+            path = "myService",
+            serviceId = "myService",
+            arguments = listOf(inputArg)
+        )
+
+        assertThat(adapter).isNotNull
+        val result = adapter!!.call(inputArg, exec, ProcessChain(), vertx)
+        assertThat(result).hasSize(2)
+        assertThat(result[0].label).isEqualTo("-a")
+        assertThat(result[1].label).isEqualTo("-b")
+      }
+
+      ctx.completeNow()
+    }
+  }
+
+  /**
+   * Test if [PluginRegistry.findInputAdapter] works correctly
+   */
+  @Test
+  fun findInputAdapter() {
+    val adapter1 = InputAdapterPlugin("a", "file.kts", supportedDataType = "dataType")
+    val adapter2 = InputAdapterPlugin("b", "file2.kts", supportedDataType = "dataType")
+    val adapter3 = InputAdapterPlugin("c", "file3.kts", supportedDataType = "custom")
+    val pr = PluginRegistry(listOf(adapter1, adapter2, adapter3))
+    assertThat(pr.findInputAdapter("dataType")).isSameAs(adapter2)
+    assertThat(pr.findInputAdapter("wrongDataType")).isNull()
   }
 
   private fun doCompileDummyOutputAdapter(vertx: Vertx, ctx: VertxTestContext, name: String) {

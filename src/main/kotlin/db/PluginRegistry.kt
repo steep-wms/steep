@@ -1,6 +1,7 @@
 package db
 
 import model.plugins.InitializerPlugin
+import model.plugins.InputAdapterPlugin
 import model.plugins.OutputAdapterPlugin
 import model.plugins.Plugin
 import model.plugins.ProcessChainAdapterPlugin
@@ -16,6 +17,8 @@ import model.plugins.SetupAdapterPlugin
 class PluginRegistry(private val compiledPlugins: List<Plugin>) {
   private val initializers = compiledPlugins.filterIsInstance<InitializerPlugin>()
       .toResolved()
+  private val inputAdapters = compiledPlugins.filterIsInstance<InputAdapterPlugin>()
+      .associateBy { it.supportedDataType }
   private val outputAdapters = compiledPlugins.filterIsInstance<OutputAdapterPlugin>()
       .associateBy { it.supportedDataType }
   private val processChainAdapters = compiledPlugins
@@ -41,6 +44,11 @@ class PluginRegistry(private val compiledPlugins: List<Plugin>) {
    * Get all initializers
    */
   fun getInitializers() = initializers
+
+  /**
+   * Get an input adapter that supports the given [dataType]
+   */
+  fun findInputAdapter(dataType: String) = inputAdapters[dataType]
 
   /**
    * Get an output adapter that supports the given [dataType]

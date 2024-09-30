@@ -19,6 +19,7 @@ import kotlin.reflect.jvm.javaType
     property = "type")
 @JsonSubTypes(
     JsonSubTypes.Type(value = InitializerPlugin::class, name = "initializer"),
+    JsonSubTypes.Type(value = InputAdapterPlugin::class, name = "inputAdapter"),
     JsonSubTypes.Type(value = OutputAdapterPlugin::class, name = "outputAdapter"),
     JsonSubTypes.Type(value = ProcessChainAdapterPlugin::class, name = "processChainAdapter"),
     JsonSubTypes.Type(value = ProcessChainConsistencyCheckerPlugin::class, name = "processChainConsistencyChecker"),

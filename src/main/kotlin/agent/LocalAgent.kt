@@ -175,7 +175,8 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
                   gaugeRetries.labels(exec.serviceId).inc()
                 }
                 withTimeout(exec.maxRuntime, "maximum runtime", exec.serviceId) {
-                  execute(exec, processChain.id, runNumber, executor, contextWrapper) { p ->
+                  val modifiedExec = applyInputAdapters(exec, processChain)
+                  execute(modifiedExec, processChain.id, runNumber, executor, contextWrapper) { p ->
                     val step = 1.0 / processChain.executables.size
                     setProgress(step * index + step * p)
                   }
@@ -221,6 +222,35 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
    */
   fun cancel() {
     coroutineContext.cancel()
+  }
+
+  /**
+   * Applies any configured input adapter plugin to the given [executable].
+   * Returns the modified executable, or the original one if no matching
+   * input adapters were found.
+   */
+  private suspend fun applyInputAdapters(executable: Executable, processChain: ProcessChain): Executable {
+    var changed = false
+
+    val newArguments = executable.arguments.flatMap { arg ->
+      if (arg.type == Argument.Type.INPUT) {
+        val inputAdapter = pluginRegistry.findInputAdapter(arg.dataType)
+        if (inputAdapter == null) {
+          listOf(arg)
+        } else {
+          changed = true
+          inputAdapter.call(arg, executable, processChain, vertx)
+        }
+      } else {
+        listOf(arg)
+      }
+    }
+
+    return if (changed) {
+      executable.copy(arguments = newArguments)
+    } else {
+      executable
+    }
   }
 
   private suspend fun execute(exec: Executable, processChainId: String,

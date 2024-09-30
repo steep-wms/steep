@@ -1,0 +1,5 @@
+# An input adapter that creates a dummy list of files
+- name: dummyInputAdapter
+  type: inputAdapter
+  scriptFile: db/dummyInputAdapter.kts
+  supportedDataType: dummy

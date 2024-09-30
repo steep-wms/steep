@@ -8,6 +8,7 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.coroutines.coAwait
 import model.plugins.InitializerPlugin
+import model.plugins.InputAdapterPlugin
 import model.plugins.OutputAdapterPlugin
 import model.plugins.Plugin
 import model.plugins.ProcessChainAdapterPlugin
@@ -16,6 +17,7 @@ import model.plugins.ProgressEstimatorPlugin
 import model.plugins.RuntimePlugin
 import model.plugins.SetupAdapterPlugin
 import model.plugins.initializerPluginTemplate
+import model.plugins.inputAdapterPluginTemplate
 import model.plugins.outputAdapterPluginTemplate
 import model.plugins.processChainAdapterPluginTemplate
 import model.plugins.processChainConsistencyCheckerPluginTemplate
@@ -23,6 +25,7 @@ import model.plugins.progressEstimatorPluginTemplate
 import model.plugins.runtimePluginTemplate
 import model.plugins.setupAdapterPluginTemplate
 import model.plugins.wrapPluginFunction
+import model.processchain.Argument
 import model.processchain.ProcessChain
 import model.setup.Setup
 import org.slf4j.LoggerFactory
@@ -236,6 +239,8 @@ object PluginRegistryFactory {
     return when (plugin) {
       is InitializerPlugin -> plugin.copy(compiledFunction = wrapPluginFunction(
           f as KFunction<Unit>, ::initializerPluginTemplate.parameters))
+      is InputAdapterPlugin -> plugin.copy(compiledFunction = wrapPluginFunction(
+          f as KFunction<List<Argument>>, ::inputAdapterPluginTemplate.parameters))
       is OutputAdapterPlugin -> plugin.copy(compiledFunction = wrapPluginFunction(
           f as KFunction<List<Any>>, ::outputAdapterPluginTemplate.parameters))
       is ProcessChainAdapterPlugin -> plugin.copy(compiledFunction = wrapPluginFunction(
