@@ -1,0 +1,5 @@
+# A capability matcher that returns 1 if `subject` is contained in the
+# collection of provided capabilities and -1 if it's not.
+- name: dummyCapabilityMatcher
+  type: capabilityMatcher
+  scriptFile: db/dummyCapabilityMatcher.kts

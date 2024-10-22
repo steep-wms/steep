@@ -7,6 +7,7 @@ import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.coroutines.coAwait
+import model.plugins.CapabilityMatcherPlugin
 import model.plugins.InitializerPlugin
 import model.plugins.InputAdapterPlugin
 import model.plugins.OutputAdapterPlugin
@@ -16,6 +17,7 @@ import model.plugins.ProcessChainConsistencyCheckerPlugin
 import model.plugins.ProgressEstimatorPlugin
 import model.plugins.RuntimePlugin
 import model.plugins.SetupAdapterPlugin
+import model.plugins.capabilityMatcherPluginTemplate
 import model.plugins.initializerPluginTemplate
 import model.plugins.inputAdapterPluginTemplate
 import model.plugins.outputAdapterPluginTemplate
@@ -237,6 +239,8 @@ object PluginRegistryFactory {
 
     @Suppress("UNCHECKED_CAST")
     return when (plugin) {
+      is CapabilityMatcherPlugin -> plugin.copy(compiledFunction = wrapPluginFunction(
+          f as KFunction<Int>, ::capabilityMatcherPluginTemplate.parameters))
       is InitializerPlugin -> plugin.copy(compiledFunction = wrapPluginFunction(
           f as KFunction<Unit>, ::initializerPluginTemplate.parameters))
       is InputAdapterPlugin -> plugin.copy(compiledFunction = wrapPluginFunction(

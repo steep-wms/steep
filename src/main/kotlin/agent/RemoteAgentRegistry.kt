@@ -5,7 +5,7 @@ import AddressConstants.REMOTE_AGENT_ADDED
 import AddressConstants.REMOTE_AGENT_ADDRESS_PREFIX
 import AddressConstants.REMOTE_AGENT_LEFT
 import agent.AgentRegistry.SelectCandidatesParam
-import helper.CapabilitiesMatcher
+import helper.CapabilityMatcher
 import helper.JsonUtils
 import helper.debounce
 import helper.hazelcast.ClusterMap
@@ -116,7 +116,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
    * Matches required capabilities of process chains against provided
    * capabilities of agents
    */
-  private val capabilitiesMatcher = CapabilitiesMatcher()
+  private val capabilityMatcher = CapabilityMatcher()
 
   init {
     // create shared maps
@@ -281,7 +281,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
             // agent's lastSequence would definitely be higher
             continue
           }
-          if (capabilitiesMatcher.matches(ps.requiredCapabilities, supportedCapabilities)) {
+          if (capabilityMatcher.matches(ps.requiredCapabilities, supportedCapabilities)) {
             // the agent supports at least one required capabilities set
             shouldInquire = true
             break
