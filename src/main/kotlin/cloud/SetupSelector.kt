@@ -1,7 +1,6 @@
 package cloud
 
 import db.VMRegistry
-import helper.CapabilitiesMatcher
 import model.cloud.PoolAgentParams
 import model.setup.Setup
 import org.slf4j.LoggerFactory
@@ -20,11 +19,6 @@ class SetupSelector(private val vmRegistry: VMRegistry,
   }
 
   /**
-   * Matches required capabilities with those provided by setups
-   */
-  private val capabilitiesMatcher = CapabilitiesMatcher()
-
-  /**
    * Iterate through [nVMsPerSetup] and [nCreatedPerSetup] and count how many
    * of the VMs provide the given [capabilities]
    */
@@ -35,7 +29,7 @@ class SetupSelector(private val vmRegistry: VMRegistry,
         .groupBy { it.key }.mapValues { e -> e.value.sumOf { v -> v.value } }
 
     return merged.map { (setup, n) ->
-      if (capabilitiesMatcher.matches(capabilities, setup.providedCapabilities)) {
+      if (setup.providedCapabilities.containsAll(capabilities)) {
         n
       } else {
         0
@@ -67,9 +61,7 @@ class SetupSelector(private val vmRegistry: VMRegistry,
   suspend fun select(n: Long, requiredCapabilities: Collection<String>,
       setups: List<Setup>): List<Setup> {
     // select candidate setups that satisfy the given required capabilities
-    val matchingSetups = setups.filter { s ->
-      capabilitiesMatcher.matches(requiredCapabilities, s.providedCapabilities)
-    }
+    val matchingSetups = setups.filter { it.providedCapabilities.containsAll(requiredCapabilities) }
     if (matchingSetups.isEmpty()) {
       return emptyList()
     }
@@ -99,8 +91,7 @@ class SetupSelector(private val vmRegistry: VMRegistry,
 
       // check if we already have enough VMs that provide similar capabilities
       for (params in poolAgentParams) {
-        if (params.max != null && capabilitiesMatcher.matches(params.capabilities,
-                setup.providedCapabilities)) {
+        if (params.max != null && setup.providedCapabilities.containsAll(params.capabilities)) {
           // Creating a new VM with [setup] would add an agent with the given
           // provided capabilities. Check if this would exceed the maximum
           // number of agents...
@@ -165,7 +156,7 @@ class SetupSelector(private val vmRegistry: VMRegistry,
       val papi = pap.iterator()
       while (papi.hasNext()) {
         val p = papi.next()
-        if (capabilitiesMatcher.matches(p.capabilities, setup.providedCapabilities)) {
+        if (setup.providedCapabilities.containsAll(p.capabilities)) {
           // we found parameters our setup satisfies
           if (p.min > minimum) {
             minimum = min(p.min, maximum)
@@ -195,7 +186,7 @@ class SetupSelector(private val vmRegistry: VMRegistry,
         val i = result.iterator()
         while (i.hasNext()) {
           val setup = i.next()
-          if (capabilitiesMatcher.matches(p.capabilities, setup.providedCapabilities)) {
+          if (setup.providedCapabilities.containsAll(p.capabilities)) {
             if (count == p.max) {
               i.remove()
             } else {
