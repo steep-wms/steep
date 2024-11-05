@@ -1,6 +1,5 @@
 package db
 
-import model.plugins.CapabilityMatcherPlugin
 import model.plugins.InitializerPlugin
 import model.plugins.InputAdapterPlugin
 import model.plugins.OutputAdapterPlugin
@@ -16,8 +15,6 @@ import model.plugins.SetupAdapterPlugin
  * @author Michel Kraemer
  */
 class PluginRegistry(private val compiledPlugins: List<Plugin>) {
-  private val capabilityMatchers = compiledPlugins
-      .filterIsInstance<CapabilityMatcherPlugin>()
   private val initializers = compiledPlugins.filterIsInstance<InitializerPlugin>()
       .toResolved()
   private val inputAdapters = compiledPlugins.filterIsInstance<InputAdapterPlugin>()
@@ -42,11 +39,6 @@ class PluginRegistry(private val compiledPlugins: List<Plugin>) {
    * Get a list of all plugins
    */
   fun getAllPlugins() = compiledPlugins
-
-  /**
-   * Get all capability matchers
-   */
-  fun getCapabilityMatchers() = capabilityMatchers
 
   /**
    * Get all initializers

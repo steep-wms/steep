@@ -7,7 +7,7 @@ package helper
  * [CapabilityMatcherPlugin]s doing custom comparisons.
  * @author Michel Kraemer
  */
-class CapabilityMatcher {
+class CapabilitiesMatcher {
   /**
    * Matches a collection of [requiredCapabilities] with a collection of
    * [providedCapabilities]. Returns `true` if the collection of provided

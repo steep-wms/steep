@@ -14,7 +14,6 @@ import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import model.plugins.CapabilityMatcherPlugin
 import model.plugins.InitializerPlugin
 import model.plugins.InputAdapterPlugin
 import model.plugins.OutputAdapterPlugin
@@ -22,7 +21,6 @@ import model.plugins.ProcessChainAdapterPlugin
 import model.plugins.ProgressEstimatorPlugin
 import model.plugins.RuntimePlugin
 import model.plugins.SetupAdapterPlugin
-import model.plugins.SimpleCapabilityMatcherParams
 import model.plugins.call
 import model.processchain.Argument
 import model.processchain.ArgumentVariable
@@ -82,50 +80,6 @@ class PluginRegistryTest {
         }
         initializer.call(vertx)
         assertThat(called).isEqualTo(1)
-      }
-
-      ctx.completeNow()
-    }
-  }
-
-  /**
-   * Test if [PluginRegistry.getCapabilityMatchers] works correctly
-   */
-  @Test
-  fun getCapabilityMatchers() {
-    val cm1 = CapabilityMatcherPlugin("a", "file.kts")
-    val cm2 = CapabilityMatcherPlugin("b", "file2.kts")
-    val cm3 = CapabilityMatcherPlugin("c", "file3.kts")
-    val expected = listOf(cm1, cm2, cm3)
-    val pr = PluginRegistry(expected)
-    assertThat(pr.getCapabilityMatchers()).isEqualTo(expected)
-    assertThat(pr.getCapabilityMatchers()).isNotSameAs(expected)
-  }
-
-  /**
-   * Test if a simple capability matcher can be compiled and executed
-   */
-  @Test
-  fun compileDummyCapabilityMatcher(vertx: Vertx, ctx: VertxTestContext) {
-    CoroutineScope(vertx.dispatcher()).launch {
-      val config = jsonObjectOf(
-          ConfigConstants.PLUGINS to "src/**/db/dummyCapabilityMatcher.yaml"
-      )
-      PluginRegistryFactory.initialize(vertx, config)
-
-      val pr = PluginRegistryFactory.create()
-      val matchers = pr.getCapabilityMatchers()
-      ctx.coVerify {
-        assertThat(matchers).hasSize(1)
-        val matcher = matchers[0]
-
-        val matches = matcher.call(SimpleCapabilityMatcherParams(
-            "elvis", listOf("max", "elvis", "sean"), listOf("elvis")), vertx)
-        assertThat(matches).isEqualTo(1)
-
-        val doesNotMatch = matcher.call(SimpleCapabilityMatcherParams(
-            "elvis", listOf("max", "sean"), listOf("elvis")), vertx)
-        assertThat(doesNotMatch).isEqualTo(-1)
       }
 
       ctx.completeNow()

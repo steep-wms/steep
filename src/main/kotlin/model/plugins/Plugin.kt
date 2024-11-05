@@ -18,7 +18,6 @@ import kotlin.reflect.jvm.javaType
     include = JsonTypeInfo.As.PROPERTY,
     property = "type")
 @JsonSubTypes(
-    JsonSubTypes.Type(value = CapabilityMatcherPlugin::class, name = "capabilityMatcher"),
     JsonSubTypes.Type(value = InitializerPlugin::class, name = "initializer"),
     JsonSubTypes.Type(value = InputAdapterPlugin::class, name = "inputAdapter"),
     JsonSubTypes.Type(value = OutputAdapterPlugin::class, name = "outputAdapter"),

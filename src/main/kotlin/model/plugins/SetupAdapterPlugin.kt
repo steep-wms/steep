@@ -13,12 +13,12 @@ import kotlin.reflect.full.callSuspend
  *
  *     suspend fun mySetupAdapter(setup: model.setup.Setup,
  *       requiredCapabilities: Collection<String>,
- *       vertx: io.vertx.core.Vertx): model.setup.Setup
+ *       vertx: io.vertx.core.Vertx): model.setup.Setup,
  *
  * The function will be called with a setup to modify and a collection of
  * required capabilities the modified setup should meet. The function should
  * return a new setup instance or the original one if no modifications were
- * necessary. If required, the function can be a suspend function.
+ * necessary.
  */
 data class SetupAdapterPlugin(
     override val name: String,
