@@ -61,6 +61,6 @@
     "eslint-webpack-plugin": "^4.2.0",
     "npm-check-updates": "^16.14.20",
     "prettier": "^3.3.2",
-    "start-server-and-test": "^2.0.4"
+    "start-server-and-test": "^2.0.8"
   }
 }
