@@ -54,7 +54,7 @@
     "webpack": "^5.92.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.45.1",
+    "@playwright/test": "^1.47.2",
     "eslint": "^8.56.0",
     "eslint-config-next": "^13.5.5",
     "eslint-config-prettier": "^9.1.0",
