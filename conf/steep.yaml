@@ -159,6 +159,9 @@ steep:
       keypairName: steep
       securityGroups:
         - default
+      timeouts:
+        connect: 30s
+        read: 30s
 
     ssh:
       username: ubuntu
