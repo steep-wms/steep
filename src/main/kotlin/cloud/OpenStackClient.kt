@@ -44,7 +44,8 @@ class OpenStackClient(endpoint: String, username: String, password: String,
     domainName: String, projectId: String?, projectName: String?,
     private val networkId: String, private val usePublicIp: Boolean,
     private val securityGroups: List<String>, private val keypairName: String,
-    vertx: Vertx) : CloudClient, CoroutineScope {
+    connectionTimeout: Duration, readTimeout: Duration, vertx: Vertx) :
+    CloudClient, CoroutineScope {
   companion object {
     private val log = LoggerFactory.getLogger(OpenStackClient::class.java)
   }
@@ -69,8 +70,8 @@ class OpenStackClient(endpoint: String, username: String, password: String,
       var builder = OSFactory.builderV3()
           .endpoint(endpoint)
           .withConfig(Config.newConfig()
-              .withConnectionTimeout(1000 * 30) // 30s
-              .withReadTimeout(1000 * 30)) // 30s
+              .withConnectionTimeout(connectionTimeout.toMillis().toInt())
+              .withReadTimeout(readTimeout.toMillis().toInt()))
           .credentials(username, password, Identifier.byName(domainName))
       builder = if (projectId != null) {
         builder.scopeToProject(Identifier.byId(projectId))

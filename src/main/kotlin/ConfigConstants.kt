@@ -770,6 +770,18 @@ object ConfigConstants {
   const val CLOUD_OPENSTACK_KEYPAIR_NAME = "steep.cloud.openstack.keypairName"
 
   /**
+   * The maximum time connecting to the OpenStack API may take before the
+   * operation is aborted
+   */
+  const val CLOUD_OPENSTACK_TIMEOUTS_CONNECT = "steep.cloud.openstack.timeouts.connect"
+
+  /**
+   * The maximum time reading a response from the OpenStack API may take before
+   * the operation is aborted
+   */
+  const val CLOUD_OPENSTACK_TIMEOUTS_READ = "steep.cloud.openstack.timeouts.read"
+
+  /**
    * Username for SSH access to VMs
    */
   const val CLOUD_SSH_USERNAME = "steep.cloud.ssh.username"

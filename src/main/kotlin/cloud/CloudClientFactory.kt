@@ -9,8 +9,11 @@ import ConfigConstants.CLOUD_OPENSTACK_PASSWORD
 import ConfigConstants.CLOUD_OPENSTACK_PROJECT_ID
 import ConfigConstants.CLOUD_OPENSTACK_PROJECT_NAME
 import ConfigConstants.CLOUD_OPENSTACK_SECURITY_GROUPS
+import ConfigConstants.CLOUD_OPENSTACK_TIMEOUTS_CONNECT
+import ConfigConstants.CLOUD_OPENSTACK_TIMEOUTS_READ
 import ConfigConstants.CLOUD_OPENSTACK_USERNAME
 import ConfigConstants.CLOUD_OPENSTACK_USE_PUBLIC_IP
+import helper.toDuration
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 
@@ -75,8 +78,13 @@ object CloudClientFactory {
         throw IllegalArgumentException("Missing configuration item " +
             "`$CLOUD_OPENSTACK_KEYPAIR_NAME'")
 
+    val connectTimeout = config.getString(CLOUD_OPENSTACK_TIMEOUTS_CONNECT, "30s")
+        .toDuration()
+    val readTimeout = config.getString(CLOUD_OPENSTACK_TIMEOUTS_READ, "30s")
+        .toDuration()
+
     return OpenStackClient(endpoint, username, password, domainName,
         projectId, projectName, networkId, usePublicIp, securityGroups,
-        keypairName, vertx)
+        keypairName, connectTimeout, readTimeout, vertx)
   }
 }
