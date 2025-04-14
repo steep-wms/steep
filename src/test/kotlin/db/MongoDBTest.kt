@@ -34,7 +34,7 @@ interface MongoDBTest {
     @JvmStatic
     @Suppress("UNUSED")
     fun startUp() {
-      mongod = Mongod.instance().start(Version.V4_4_16)
+      mongod = Mongod.instance().start(Version.V6_0_21)
     }
 
     @AfterAll
