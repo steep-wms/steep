@@ -446,7 +446,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
       var ex: TimeoutCancellationException? = null
       val timeout = DefaultTimeoutTimer(policy) {
         ex = TimeoutCancellationException(policy, type, serviceId)
-        log.warn(ex.message)
+        log.warn(ex!!.message)
         job?.cancel(ex)
       }
       try {
@@ -455,7 +455,7 @@ class LocalAgent(private val vertx: Vertx, val dispatcher: CoroutineDispatcher,
             block(timeout)
           } else {
             // timeout was reached before the job was started
-            throw ex
+            throw ex!!
           }
         }
         job.await()
