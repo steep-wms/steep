@@ -130,6 +130,7 @@ actions:
 
   // visit details page
   await link.click()
+  await page.waitForURL(new RegExp(`/workflows/${submissionId}/?`))
 
   // check if workflow is displayed as 'Running' (or 'Success' if our test was too slow)
   let status = page.locator(".list-item-progress-box")
@@ -166,6 +167,7 @@ actions:
 
   // visit details page
   await link.click()
+  await page.waitForURL(new RegExp(`/workflows/${submissionId}/?`))
 
   // check if workflow is displayed as 'Running'
   let status = page.locator(".list-item-progress-box")
@@ -212,6 +214,7 @@ actions:
 
   // visit details page
   await link.click()
+  await page.waitForURL(new RegExp(`/workflows/${submissionId}/?`))
 
   // check if workflow is displayed as 'Running'
   let status = page.locator(".list-item-progress-box")
@@ -270,6 +273,7 @@ actions:
   // visit details page
   let link = row.locator(`a:text("${submissionId}")`)
   await link.click()
+  await page.waitForURL(new RegExp(`/workflows/${submissionId}/?`))
 
   // check if workflow is displayed as 'Running'
   let status = page.locator(".list-item-progress-box")
