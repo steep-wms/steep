@@ -1,6 +1,7 @@
 import java.text.SimpleDateFormat
 import java.util.Date
 import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 
 plugins {
     application
@@ -146,6 +147,11 @@ tasks {
 
     test {
         useJUnitPlatform()
+
+        testLogging {
+            exceptionFormat = TestExceptionFormat.FULL
+            showStackTraces = true
+        }
     }
 
     jacocoTestReport {
