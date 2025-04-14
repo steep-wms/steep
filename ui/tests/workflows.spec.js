@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test"
+import { ulid } from "ulid"
 
 // Run tests in serial mode. Each of them starts a workflow and then relies on
 // it to be visible on the overview page. If the tests run in parallel, they
@@ -38,7 +39,7 @@ actions:
 })
 
 test("submit named workflow", async ({ page, request }) => {
-  let name = "fred"
+  let name = ulid()
   let workflow = `api: 4.7.0
 name: ${name}
 actions:
