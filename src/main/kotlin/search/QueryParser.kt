@@ -120,10 +120,10 @@ open class QueryParser(private val timeZone: ZoneId) : BaseParser<QueryParser.Qu
               ctx.valueStack.push(QueryParserNode(term = DateTimeRangeTerm(
                   dateFrom.get(),
                   timeFrom.get()?.first,
-                  timeFrom.get()?.second ?: false,
+                  timeFrom.get()?.second == true,
                   dateTo.get(),
                   timeTo.get()?.first,
-                  timeTo.get()?.second ?: false,
+                  timeTo.get()?.second == true,
                   timeZone
               )))
               true

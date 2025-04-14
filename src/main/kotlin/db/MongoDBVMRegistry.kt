@@ -215,7 +215,7 @@ class MongoDBVMRegistry(private val vertx: Vertx,
         "\$project" to jsonObjectOf(
             DESTRUCTION_TIME to jsonObjectOf(
                 "\$toLong" to jsonObjectOf(
-                    "\$toDate" to "\$$DESTRUCTION_TIME"
+                    "\$toDate" to "$$DESTRUCTION_TIME"
                 )
             )
         )

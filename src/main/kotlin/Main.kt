@@ -63,7 +63,7 @@ import kotlin.system.exitProcess
 const val ATTR_AGENT_ID = "Agent-ID"
 const val ATTR_AGENT_INSTANCES = "Agent-Instances"
 
-lateinit var globalVertxInstance: io.vertx.core.Vertx
+lateinit var globalVertxInstance: Vertx
 lateinit var globalHazelcastInstance: HazelcastInstance
 
 suspend fun main() {
@@ -359,7 +359,6 @@ suspend fun main() {
   }
 
   // enable graceful shutdown
-  @Suppress("BlockingMethodInNonBlockingContext")
   Runtime.getRuntime().addShutdownHook(Thread {
     // gracefully undeploy all verticles
     val l1 = CountDownLatch(1)
@@ -410,7 +409,7 @@ private fun getDefaultAddress(): String? {
   val nets: Enumeration<NetworkInterface>
   try {
     nets = NetworkInterface.getNetworkInterfaces()
-  } catch (e: SocketException) {
+  } catch (_: SocketException) {
     return null
   }
 
@@ -564,7 +563,7 @@ fun configureLogging(conf: JsonObject) {
 
 suspend fun restoreMembers(defaultPort: Int, config: JsonObject): List<String> {
   // create temporary non-clustered Vert.x instance
-  val vertx = io.vertx.core.Vertx.vertx()
+  val vertx = Vertx.vertx()
   try {
     // create temporary VM registry
     val vmRegistry = VMRegistryFactory.create(vertx, config)

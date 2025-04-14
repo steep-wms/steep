@@ -286,7 +286,7 @@ class KubernetesRuntime(
         throw InterruptedException("Job execution cancelled")
       }
 
-      throw t;
+      throw t
     } finally {
       // make sure to delete the job after it has finished
       client.batch().v1().jobs().inNamespace(namespace)

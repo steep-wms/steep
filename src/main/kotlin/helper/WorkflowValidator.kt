@@ -307,7 +307,7 @@ class WorkflowValidator private constructor(private val type: Type,
 
     try {
       DependencyResolver.resolve(filteredNodes.map { it.value })
-    } catch (e: MissingDependencyException) {
+    } catch (_: MissingDependencyException) {
       // can never happen
     } catch (e: DependencyCycleException) {
       results.add(makeDependsOnCycleError(e.nodes.map { it.id }, listOf(type.rootPath)))
@@ -340,7 +340,7 @@ class WorkflowValidator private constructor(private val type: Type,
 
     try {
       DependencyResolver.resolve(filteredNodes.map { it.value })
-    } catch (e: MissingDependencyException) {
+    } catch (_: MissingDependencyException) {
       // can never happen
     } catch (e: DependencyCycleException) {
       results.add(makeIncludeCycleError(e.nodes.map { it.id }, listOf(type.rootPath)))

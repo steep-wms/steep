@@ -113,7 +113,7 @@ class DockerRuntime(config: JsonObject) : OtherRuntime() {
     } catch (e: InterruptedException) {
       try {
         Shell.execute(listOf("docker", "kill", containerName), outputCollector)
-      } catch (t: Throwable) {
+      } catch (_: Throwable) {
         // ignore
       }
       throw e

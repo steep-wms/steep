@@ -34,22 +34,19 @@ data class TimeoutPolicy @JsonCreator constructor(
    */
   @JsonCreator
   constructor(strTimeout: String):
-      this(timeout = StringDurationToMillisecondsConverter().convert(strTimeout)) {
-  }
+      this(timeout = StringDurationToMillisecondsConverter().convert(strTimeout))
 
   /**
    * Convenience constructor that allows an integer to be deserialized to a
    * timeout policy
    */
   @JsonCreator
-  constructor(intTimeout: Int): this(timeout = intTimeout.toLong()) {
-  }
+  constructor(intTimeout: Int): this(timeout = intTimeout.toLong())
 
   /**
    * Convenience constructor that allows a long integer to be deserialized to a
    * timeout policy
    */
   @JsonCreator
-  constructor(longTimeout: Long): this(timeout = longTimeout) {
-  }
+  constructor(longTimeout: Long): this(timeout = longTimeout)
 }

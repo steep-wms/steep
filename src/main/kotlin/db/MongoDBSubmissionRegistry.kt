@@ -566,10 +566,10 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         ),
         jsonObjectOf(
             "\$group" to jsonObjectOf(
-                "_id" to "\$$REQUIRED_CAPABILITIES",
+                "_id" to "$$REQUIRED_CAPABILITIES",
                 // priorities are stored negated
-                "minPriority" to jsonObjectOf("\$max" to "\$$PRIORITY"),
-                "maxPriority" to jsonObjectOf("\$min" to "\$$PRIORITY"),
+                "minPriority" to jsonObjectOf("\$max" to "$$PRIORITY"),
+                "maxPriority" to jsonObjectOf("\$min" to "$$PRIORITY"),
             )
         )
     ))
@@ -621,7 +621,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     }
 
     pipeline.add(jsonObjectOf(
-        "\$sortByCount" to "\$$STATUS"
+        "\$sortByCount" to "$$STATUS"
     ))
 
     return collProcessChains.aggregateAwait(pipeline).associateBy({
@@ -730,7 +730,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         .returnDocument(ReturnDocument.AFTER)
         .projection(wrap(jsonObjectOf(
             "c" to jsonObjectOf(
-                "\$size" to "\$$RUNS"
+                "\$size" to "$$RUNS"
             )
         )))
     )
@@ -770,11 +770,11 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
 
     val project = if (runNumber == null) {
       jsonObjectOf(
-          "\$last" to "\$$RUNS"
+          "\$last" to "$$RUNS"
       )
     } else {
       jsonObjectOf(
-          "\$arrayElemAt" to jsonArrayOf("\$$RUNS", runNumber - 1)
+          "\$arrayElemAt" to jsonArrayOf("$$RUNS", runNumber - 1)
       )
     }
 
@@ -856,7 +856,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
         jsonObjectOf(
             "\$project" to jsonObjectOf(
                 "c" to jsonObjectOf(
-                    "\$size" to "\$$RUNS"
+                    "\$size" to "$$RUNS"
                 )
             )
         )
@@ -1010,7 +1010,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
     return if (aggregation) {
       jsonObjectOf(
           "\$regexMatch" to jsonObjectOf(
-              "input" to "\$$field",
+              "input" to "$$field",
               "regex" to Pattern.quote(value),
               "options" to "i" // ignore case
           )
@@ -1033,7 +1033,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
   private fun makeTimestampComparison(field: String, start: Instant,
       endExclusive: Instant, operator: Operator, aggregation: Boolean): JsonObject {
     return if (aggregation) {
-      val f = "\$$field"
+      val f = "$$field"
       when (operator) {
         Operator.LT -> jsonObjectOf("\$lt" to jsonArrayOf(f, instantToTimestamp(start)))
         Operator.LTE -> jsonObjectOf("\$lt" to jsonArrayOf(f, instantToTimestamp(endExclusive)))
@@ -1261,7 +1261,7 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
       pipelines[Type.PROCESS_CHAIN]?.add(0, jsonObjectOf(
           "\$addFields" to jsonObjectOf(
               "runs0" to jsonObjectOf(
-                  "\$first" to "\$$RUNS"
+                  "\$first" to "$$RUNS"
               )
           )
       ))
@@ -1303,10 +1303,10 @@ class MongoDBSubmissionRegistry(private val vertx: Vertx,
           "\$addFields" to jsonObjectOf(
               "joinedRequiredCapabilities" to jsonObjectOf(
                   "\$reduce" to jsonObjectOf(
-                      "input" to "\$$REQUIRED_CAPABILITIES",
+                      "input" to "$$REQUIRED_CAPABILITIES",
                       "initialValue" to "",
                       "in" to jsonObjectOf(
-                          "\$concat" to jsonArrayOf("\$\$value", "\$\$this", "\u00a0")
+                          "\$concat" to jsonArrayOf("$\$value", "$\$this", "\u00a0")
                       )
                   )
               )

@@ -204,7 +204,7 @@ class InMemoryVMRegistry(private val vertx: Vertx) : VMRegistry {
       val values = awaitResult<List<String>> { map.values(it) }
       val ids1 = values
           .map { JsonUtils.readValue<VMEntry>(it) }
-          .filter { it.vm.destructionTime?.isBefore(timestamp) ?: false }
+          .filter { it.vm.destructionTime?.isBefore(timestamp) == true }
           .map { it.vm.id }
           .toSet()
 

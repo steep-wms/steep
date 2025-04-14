@@ -338,7 +338,7 @@ object SearchResultMatcher {
       maxFragmentLength: Int = DEFAULT_MAX_FRAGMENT_LENGTH): List<Match> {
     // collect all terms and group them by locator
     val locators = if (query.terms.isNotEmpty()) {
-      query.locators.ifEmpty { Locator.values().toSet() }
+      query.locators.ifEmpty { Locator.entries.toSet() }
     } else {
       emptyList()
     }

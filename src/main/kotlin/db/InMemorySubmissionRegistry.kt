@@ -287,7 +287,7 @@ class InMemorySubmissionRegistry(private val vertx: Vertx) : SubmissionRegistry 
         val submissionValues = awaitResult<List<String>> { submissionMap.values(it) }
         val submissionIDs1 = submissionValues
             .map { JsonUtils.readValue<SubmissionEntry>(it) }
-            .filter { it.submission.endTime?.isBefore(timestamp) ?: false }
+            .filter { it.submission.endTime?.isBefore(timestamp) == true }
             .map { it.submission.id }
             .toSet()
 

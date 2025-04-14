@@ -6,7 +6,6 @@ import db.RegistryFactoryConstants.DRIVER_POSTGRESQL
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import org.slf4j.LoggerFactory
-import java.lang.IllegalStateException
 
 /**
  * Creates [VMRegistry] objects

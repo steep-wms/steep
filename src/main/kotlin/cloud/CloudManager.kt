@@ -356,7 +356,7 @@ class CloudManager : CoroutineVerticle() {
     val lockName = VM_CREATION_LOCK_PREFIX + id
     return try {
       vertx.sharedData().getLockWithTimeout(lockName, 1).coAwait()
-    } catch (t: Throwable) {
+    } catch (_: Throwable) {
       // Could not acquire lock. Assume someone else is already creating the VM
       null
     }
@@ -422,7 +422,7 @@ class CloudManager : CoroutineVerticle() {
         if (shouldDelete) {
           val active = try {
             cloudClient.isVMActive(externalId)
-          } catch (e: NoSuchElementException) {
+          } catch (_: NoSuchElementException) {
             false
           }
           if (active) {
@@ -580,7 +580,7 @@ class CloudManager : CoroutineVerticle() {
       // we need to query all 'setups'. Copy the whole map to local to avoid
       // multiple cluster map requests.
       val cbs = setupCircuitBreakers.getAllBySetup()
-      val possibleSetups = setups.filter { cbs[it.id]?.canPerformAttempt ?: true }
+      val possibleSetups = setups.filter { cbs[it.id]?.canPerformAttempt != false }
       if (possibleSetups.isEmpty()) {
         break
       }
@@ -870,7 +870,7 @@ class CloudManager : CoroutineVerticle() {
       try {
         ssh.tryConnect(retrySeconds)
         break
-      } catch (e: IOException) {
+      } catch (_: IOException) {
         delay(min(deadline.toEpochMilli() - Instant.now().toEpochMilli(),
             retrySeconds * 1000L))
         val now = Instant.now()

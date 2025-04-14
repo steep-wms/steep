@@ -352,7 +352,7 @@ class RemoteAgentRegistry(private val vertx: Vertx) : AgentRegistry, CoroutineSc
         allocatedAgentsCache[agentId] = true
         return RemoteAgent(address, vertx)
       }
-    } catch (t: Throwable) {
+    } catch (_: Throwable) {
       // fall through
     }
 

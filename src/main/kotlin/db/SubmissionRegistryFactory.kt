@@ -5,7 +5,6 @@ import db.RegistryFactoryConstants.DRIVER_MONGODB
 import db.RegistryFactoryConstants.DRIVER_POSTGRESQL
 import io.vertx.core.Vertx
 import org.slf4j.LoggerFactory
-import java.lang.IllegalStateException
 
 /**
  * Creates [SubmissionRegistry] objects

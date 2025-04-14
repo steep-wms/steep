@@ -234,7 +234,7 @@ class Controller(private val disablePeriodicLookupForSubmissions: Boolean = fals
     val lockName = PROCESSING_SUBMISSION_LOCK_PREFIX + submissionId
     return try {
       vertx.sharedData().getLockWithTimeout(lockName, 1).coAwait()
-    } catch (t: Throwable) {
+    } catch (_: Throwable) {
       // Could not acquire lock. Assume someone else is already processing
       // this submission
       null

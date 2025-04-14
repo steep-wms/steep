@@ -106,8 +106,9 @@ class SetupSelector(private val vmRegistry: VMRegistry,
               params.capabilities)
           if (m >= params.max) {
             // there already are enough VMs with these capabilities
-            log.trace("There already are $m VMs with capabilities " +
-                "${params.capabilities}. The maximum number is ${params.max}.")
+            log.trace(
+                "There already are {} VMs with capabilities {}. The maximum number is {}.",
+                m, params.capabilities, params.max)
             continue@outer
           }
 

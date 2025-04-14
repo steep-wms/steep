@@ -531,8 +531,8 @@ class HttpEndpoint : CoroutineVerticle() {
 
     val result = if (contentType == null || !contentType.startsWith("image/")) {
       val text = url.readText()
-          .replace("/\$\$MYBASEPATH\$\$", basePath)
-          .replace("/\$\$MYBASEURL\$\$", basePath).let {
+          .replace("/$\$MYBASEPATH$$", basePath)
+          .replace("/$\$MYBASEURL$$", basePath).let {
             if (replaceFavicons) {
               it.replace("\"/favicons/", "\"$basePath/favicons/")
             } else {
@@ -716,7 +716,7 @@ class HttpEndpoint : CoroutineVerticle() {
       // check if there is a process chain with this ID
       val status = try {
         submissionRegistry.getProcessChainStatus(id)
-      } catch (e: NoSuchElementException) {
+      } catch (_: NoSuchElementException) {
         renderError(ctx, 404, if (headersOnly) null else "There is no process " +
             "chain with ID `$id'")
         return@launch
@@ -752,7 +752,7 @@ class HttpEndpoint : CoroutineVerticle() {
         } else {
           totalRuns
         }
-      } catch (e: NumberFormatException) {
+      } catch (_: NumberFormatException) {
         renderError(ctx, 400, "Invalid run number")
         return@launch
       }
@@ -997,10 +997,10 @@ class HttpEndpoint : CoroutineVerticle() {
 
       val timeZone = try {
         ctx.request().getParam("timeZone")?.let { ZoneId.of(it) } ?: ZoneId.systemDefault()
-      } catch (e: ZoneRulesException) {
+      } catch (_: ZoneRulesException) {
         renderError(ctx, 400, "Unknown timezone")
         return
-      } catch (e: DateTimeException) {
+      } catch (_: DateTimeException) {
         renderError(ctx, 400, "Invalid timezone")
         return
       }
@@ -1282,7 +1282,7 @@ class HttpEndpoint : CoroutineVerticle() {
         val status = ctx.request().getParam("status")?.let {
           try {
             Submission.Status.valueOf(it)
-          } catch (e: IllegalArgumentException) {
+          } catch (_: IllegalArgumentException) {
             renderError(ctx, 400, "Invalid status: $it")
             return@launch
           }
@@ -1348,14 +1348,14 @@ class HttpEndpoint : CoroutineVerticle() {
 
     val strStatus: String? = try {
       update.getString("status")
-    } catch (e: ClassCastException) {
+    } catch (_: ClassCastException) {
       renderError(ctx, 400, "`status' property must be a string")
       return
     }
 
     val priority: Int? = try {
       update.getInteger("priority")
-    } catch (e: ClassCastException) {
+    } catch (_: ClassCastException) {
       renderError(ctx, 400, "`priority' property must be an integer")
       return
     }
@@ -1369,7 +1369,7 @@ class HttpEndpoint : CoroutineVerticle() {
     val status = strStatus?.let {
       try {
         Submission.Status.valueOf(strStatus)
-      } catch (e: IllegalArgumentException) {
+      } catch (_: IllegalArgumentException) {
         renderError(ctx, 400, "Invalid `status' property")
         return
       }
@@ -1545,7 +1545,7 @@ class HttpEndpoint : CoroutineVerticle() {
         val status = ctx.request().getParam("status")?.let {
           try {
             VM.Status.valueOf(it)
-          } catch (e: IllegalArgumentException) {
+          } catch (_: IllegalArgumentException) {
             renderError(ctx, 400, "Invalid status: $it")
             return@launch
           }
@@ -1692,7 +1692,7 @@ class HttpEndpoint : CoroutineVerticle() {
         val status = ctx.request().getParam("status")?.let {
           try {
             SubmissionRegistry.ProcessChainStatus.valueOf(it)
-          } catch (e: IllegalArgumentException) {
+          } catch (_: IllegalArgumentException) {
             renderError(ctx, 400, "Invalid status: $it")
             return@launch
           }
@@ -1787,7 +1787,7 @@ class HttpEndpoint : CoroutineVerticle() {
         val id = ctx.pathParam("id")
         val runs = try {
           submissionRegistry.getProcessChainRuns(id)
-        } catch (e: NoSuchElementException) {
+        } catch (_: NoSuchElementException) {
           renderError(ctx, 404, "There is no process chain with ID `$id'")
           return@launch
         }
@@ -1820,14 +1820,14 @@ class HttpEndpoint : CoroutineVerticle() {
 
     val strStatus: String? = try {
       update.getString("status")
-    } catch (e: ClassCastException) {
+    } catch (_: ClassCastException) {
       renderError(ctx, 400, "`status' property must be a string")
       return
     }
 
     val priority: Int? = try {
       update.getInteger("priority")
-    } catch (e: ClassCastException) {
+    } catch (_: ClassCastException) {
       renderError(ctx, 400, "`priority' property must be an integer")
       return
     }
@@ -1841,7 +1841,7 @@ class HttpEndpoint : CoroutineVerticle() {
     val status = strStatus?.let {
       try {
         SubmissionRegistry.ProcessChainStatus.valueOf(strStatus)
-      } catch (e: IllegalArgumentException) {
+      } catch (_: IllegalArgumentException) {
         renderError(ctx, 400, "Invalid `status' property")
         return
       }

@@ -50,7 +50,7 @@ class NotifyingVMRegistry(private val delegate: VMRegistry, private val vertx: V
     delegate.setVMStatus(id, currentStatus, newStatus)
     val actualStatus = try {
       delegate.getVMStatus(id)
-    } catch (e: NoSuchElementException) {
+    } catch (_: NoSuchElementException) {
       // setVMStatus is a noop if the VM does not exist
       return
     }
