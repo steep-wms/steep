@@ -451,16 +451,17 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       return actions[0]
     }
 
-    val nChildrenPerAction = IdentityHashMap<ExecuteAction, Int>()
+    val uniqueChildrenPerAction = IdentityHashMap<ExecuteAction,
+        IdentityHashMap<ExecuteAction, Unit>>()
     val temporary = IdentityHashMap<ExecuteAction, Unit>()
 
     var topAction: ExecuteAction? = null
     var visitedActions = 0
 
-    fun visit(a: ExecuteAction): Int? {
-      var nChildren = nChildrenPerAction[a]
-      if (nChildren != null) {
-        return nChildren
+    fun visit(a: ExecuteAction): IdentityHashMap<ExecuteAction, Unit>? {
+      var uniqueChildren = uniqueChildrenPerAction[a]
+      if (uniqueChildren != null) {
+        return uniqueChildren
       }
 
       if (temporary.containsKey(a)) {
@@ -471,18 +472,20 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       temporary[a] = Unit
 
       val children = getNextExecuteActions(a, inputsToActions, dependsOnToActions)
-      nChildren = children.size
+      uniqueChildren = IdentityHashMap()
+      children.forEach { uniqueChildren[it] = Unit }
       for (c in children) {
-        nChildren += visit(c) ?: return null
+        val cc = visit(c) ?: return null
+        uniqueChildren.putAll(cc)
       }
 
       temporary.remove(a)
 
-      nChildrenPerAction[a] = nChildren
+      uniqueChildrenPerAction[a] = uniqueChildren
       topAction = a
       visitedActions++
 
-      return nChildren
+      return uniqueChildren
     }
 
     // sort given actions and their dependents topologically
@@ -490,7 +493,7 @@ class ProcessChainGenerator(workflow: Workflow, private val tmpPath: String,
       visit(a) ?: return null
     }
 
-    return if (nChildrenPerAction[topAction] == visitedActions - 1) {
+    return if (uniqueChildrenPerAction[topAction]?.size == visitedActions - 1) {
       // All actions are children of `topAction`. This is the root node!
       topAction
     } else {

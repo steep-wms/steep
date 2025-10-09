@@ -278,6 +278,10 @@ class ProcessChainGeneratorTest {
         // Test if we can build a chain of three actions via `dependsOn`
         T("dependsOnChain"),
 
+        // Test if we can build a chain of four actions via `dependsOn` where
+        // the fourth one depends on all three previous actions
+        T("dependsOnChainLong"),
+
         // Test if we can build a single process chain of three actions A, B,
         // and C via `dependsOn` where the last one (C) is a join action that
         // uses the outputs of the previous two actions (A and B) as inputs.
