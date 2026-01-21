@@ -35,7 +35,7 @@ dependencies {
     implementation("org.codehaus.janino:janino:3.1.12") // for conditionals in logback.xml
 
     implementation("io.vertx:vertx-core:4.5.8")
-    implementation("io.vertx:vertx-hazelcast:4.5.8")
+    implementation("io.vertx:vertx-hazelcast:4.5.10")
     implementation("io.vertx:vertx-lang-kotlin:4.5.8")
     implementation("io.vertx:vertx-lang-kotlin-coroutines:4.5.8")
     implementation("io.vertx:vertx-micrometer-metrics:4.5.8")
