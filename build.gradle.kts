@@ -100,7 +100,7 @@ dependencies {
     testImplementation("io.fabric8:kubernetes-server-mock:6.13.1")
     testImplementation("io.mockk:mockk:1.13.11")
     testImplementation("io.vertx:vertx-junit5:4.5.8")
-    testImplementation("org.assertj:assertj-core:3.26.0")
+    testImplementation("org.assertj:assertj-core:3.26.3")
     testImplementation("org.bouncycastle:bcpkix-jdk18on:1.78.1") // necessary for org.testcontainers:k3s
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.3")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.3")
