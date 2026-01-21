@@ -41,8 +41,8 @@ dependencies {
     implementation("io.vertx:vertx-micrometer-metrics:4.5.8")
     implementation("io.vertx:vertx-mongo-client:4.5.8")
     implementation("io.vertx:vertx-pg-client:4.5.8")
-    implementation("io.vertx:vertx-web:4.5.8")
-    implementation("io.vertx:vertx-web-client:4.5.8")
+    implementation("io.vertx:vertx-web:4.5.10")
+    implementation("io.vertx:vertx-web-client:4.5.10")
 
     // manually constrain Hazelcast version to 4.x to maintain backwards compatibility
     // TODO upgrade to v5 (i.e. remove this line) with Steep 7.0
